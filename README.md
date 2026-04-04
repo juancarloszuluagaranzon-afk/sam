@@ -45,9 +45,19 @@ Este repositorio contiene la evolución del sistema **SAM Control**, desde su pr
    npm run dev
    ```
 
-## Licencia
+## Despliegue en Vercel
 
-Este proyecto es de uso privado para operaciones agrícolas específicas.
+Para desplegar la aplicación en Vercel desde este repositorio:
+
+1.  **Importar Proyecto**: En el dashboard de Vercel, selecciona "Import Project" y conéctalo con tu repositorio de GitHub `juancarloszuluagaranzon-afk/sam`.
+2.  **Configurar Directorio Raíz**:
+    -   En la sección **Framework Preset**, asegúrate de que esté en `Vite`.
+    -   En **Root Directory**, haz clic en "Edit" y selecciona la carpeta `sam-app`.
+3.  **Variables de Entorno**:
+    -   Expande la sección "Environment Variables" y añade:
+        -   `VITE_SUPABASE_URL`: (Tu URL de Supabase)
+        -   `VITE_SUPABASE_ANON_KEY`: (Tu Anon Key de Supabase)
+4.  **Desplegar**: Haz clic en **Deploy**. Vercel detectará automáticamente la configuración de `vercel.json` para manejar las rutas.
 
 ---
 *Desarrollado como parte de la modernización tecnológica del SAM.*

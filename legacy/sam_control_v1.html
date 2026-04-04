@@ -1,0 +1,1087 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SAM Control</title>
+  <style>
+    :root {
+      --bg: #f4f2ea;
+      --paper: #ffffff;
+      --ink: #1f2a1f;
+      --muted: #667164;
+      --line: #d9d5c7;
+      --brand: #3b6d11;
+      --brand-2: #ba7517;
+      --danger: #a32d2d;
+      --soft: #ece9df;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #f7f5ed 0%, #f0ece1 100%);
+      color: var(--ink);
+    }
+    button, select, input { font: inherit; }
+    .top {
+      display: none;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: var(--brand);
+      color: #fff;
+    }
+    .wrap {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 18px;
+    }
+    .login {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .box, .card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(43, 50, 39, 0.06);
+    }
+    .box { width: min(360px, 100%); padding: 28px; }
+    .card { padding: 14px; }
+    .grid2, .grid4 {
+      display: grid;
+      gap: 12px;
+    }
+    .grid2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .stack { display: flex; flex-direction: column; gap: 10px; }
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+    }
+    .pri { background: var(--brand); color: #fff; }
+    .warn { background: var(--brand-2); color: #fff; }
+    .danger { background: var(--danger); color: #fff; }
+    .soft { background: var(--soft); color: var(--ink); }
+    .sel, .inp {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #cfc8b6;
+      border-radius: 10px;
+      background: #fff;
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+    .kpi {
+      font-size: 30px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--soft);
+      padding: 4px;
+      border-radius: 12px;
+      margin-bottom: 14px;
+    }
+    .tab {
+      flex: 1;
+      background: transparent;
+      border: 0;
+      border-radius: 10px;
+      padding: 9px 10px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background: #fff;
+      font-weight: 700;
+    }
+    .content { display: none; }
+    .content.active { display: block; }
+    .line {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid #efecdf;
+    }
+    .line:last-child { border-bottom: 0; }
+    .chip, .status {
+      display: inline-block;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .chip { background: var(--soft); color: var(--ink); }
+    .status.pend { background: #e8f0fb; color: #1d5fa5; }
+    .status.proc { background: #f8e8d2; color: #a66b11; }
+    .status.done { background: #e6f3dd; color: #356614; }
+    .status.cancel { background: #fbe9e9; color: var(--danger); }
+    .tbl {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    .tbl th, .tbl td {
+      padding: 9px 8px;
+      border-top: 1px solid #efecdf;
+      text-align: left;
+      font-size: 13px;
+      vertical-align: top;
+    }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #222;
+      color: #fff;
+      padding: 11px 14px;
+      border-radius: 12px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: .2s;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 16px;
+    }
+    .modal.open { display: flex; }
+    .modal-card {
+      width: min(460px, 100%);
+      background: #fff;
+      border-radius: 16px;
+      padding: 18px;
+    }
+    .hero-title { margin: 0 0 8px; }
+    .panel-note {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      background: #f3f8ee;
+      color: #3a5d27;
+      font-size: 12px;
+    }
+    .src {
+      font-size: 11px;
+      color: #dfead4;
+    }
+    @media (max-width: 760px) {
+      .grid2, .grid4 { grid-template-columns: 1fr; }
+      .wrap { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="top" id="top">
+    <strong>SAM Control</strong>
+    <div class="row">
+      <span id="badge"></span>
+      <span class="src" id="sourceBadge"></span>
+      <button class="btn soft" onclick="logout()">Salir</button>
+    </div>
+  </div>
+
+  <div id="login" class="login">
+    <div class="box">
+      <h2 class="hero-title">SAM Control</h2>
+      <p class="muted">Servicios Agricolas Morales<br>Ingenio Risaralda</p>
+      <div class="stack">
+        <button class="btn pri" onclick="loginAs('supervisor')">Supervisor</button>
+        <button class="btn warn" onclick="showOps()">Operador</button>
+      </div>
+      <div class="panel-note">MVP conectado a Supabase para maestro y asignaciones. Si la red falla, usamos respaldo local.</div>
+    </div>
+  </div>
+
+  <div id="ops" class="login" style="display:none">
+    <div class="box">
+      <h3>Seleccionar Operador</h3>
+      <div class="stack">
+        <button class="btn pri" onclick="loginAs('operador','U003')">William Ortiz</button>
+        <button class="btn warn" onclick="loginAs('operador','U004')">Ismael Reyes</button>
+        <button class="btn soft" onclick="backLogin()">Volver</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app" style="display:none">
+    <div class="wrap">
+      <div id="sup" style="display:none">
+        <div class="tabs">
+          <button class="tab active" onclick="tab(event,'sup','r')">Resumen</button>
+          <button class="tab" onclick="tab(event,'sup','a')">Asignar</button>
+          <button class="tab" onclick="tab(event,'sup','l')">Labores</button>
+        </div>
+
+        <div class="content active" id="sup-r">
+          <div class="grid4">
+            <div class="card"><div class="muted">Ha planificadas hoy</div><div class="kpi" id="sp">0.0</div></div>
+            <div class="card"><div class="muted">Ha ejecutadas hoy</div><div class="kpi" id="se">0.0</div></div>
+            <div class="card"><div class="muted">Cumplimiento</div><div class="kpi" id="sc">0%</div></div>
+            <div class="card"><div class="muted">En proceso</div><div class="kpi" id="sn">0</div></div>
+          </div>
+          <div class="grid2" style="margin-top:12px">
+            <div class="card"><h4>Operadores</h4><div id="opsum"></div></div>
+            <div class="card"><h4>Equipos</h4><div id="eqsum"></div></div>
+          </div>
+        </div>
+
+        <div class="content" id="sup-a">
+          <div class="card">
+            <h4>Nueva Asignacion</h4>
+            <div class="grid2">
+              <div>
+                <label>Hacienda</label>
+                <select class="sel" id="h" onchange="chgH()"></select>
+              </div>
+              <div>
+                <label>Suerte</label>
+                <select class="sel" id="s" onchange="chgS()"></select>
+              </div>
+            </div>
+
+            <div class="card" id="sinfo" style="display:none;margin-top:12px;background:#f3fbf7">
+              <div class="line"><span>Area</span><span id="sarea"></span></div>
+              <div class="line"><span>Sugerida</span><span id="ssug"></span></div>
+              <div id="seq" class="row" style="margin-top:8px"></div>
+            </div>
+
+            <div style="margin-top:10px">
+              <label>Labor</label>
+              <select class="sel" id="lab"></select>
+            </div>
+
+            <div class="grid2" style="margin-top:10px">
+              <div>
+                <label>Operador</label>
+                <select class="sel" id="op"></select>
+              </div>
+              <div>
+                <label>Equipo</label>
+                <select class="sel" id="eq"></select>
+              </div>
+            </div>
+
+            <div style="margin-top:10px">
+              <label>Observacion</label>
+              <input class="inp" id="obs" placeholder="Indicaciones para la labor">
+            </div>
+
+            <button class="btn pri" style="margin-top:12px;width:100%" onclick="crear()">Crear asignacion</button>
+          </div>
+        </div>
+
+        <div class="content" id="sup-l">
+          <div class="card">
+            <div class="row">
+              <select class="sel" id="fest" onchange="renderSup()" style="max-width:180px">
+                <option value="">Todos</option>
+                <option value="PENDIENTE">PENDIENTE</option>
+                <option value="EN_PROCESO">EN_PROCESO</option>
+                <option value="COMPLETADA">COMPLETADA</option>
+                <option value="CANCELADA">CANCELADA</option>
+              </select>
+              <select class="sel" id="fop" onchange="renderSup()" style="max-width:220px"></select>
+            </div>
+            <table class="tbl">
+              <thead>
+                <tr>
+                  <th>Hacienda</th>
+                  <th>Suerte</th>
+                  <th>Labor</th>
+                  <th>Operador</th>
+                  <th>Estado</th>
+                  <th>Ha</th>
+                  <th>Accion</th>
+                </tr>
+              </thead>
+              <tbody id="tb"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="opr" style="display:none;max-width:620px;margin:0 auto">
+        <div class="card" style="background:var(--brand);color:#fff">
+          <div><strong id="on"></strong></div>
+          <div class="src" id="oe"></div>
+        </div>
+
+        <div class="grid2" style="margin:12px 0">
+          <div class="card"><div class="muted">Ha ejecutadas / plan hoy</div><div class="kpi"><span id="oej">0.0</span> / <span id="opl">0.0</span></div></div>
+          <div class="card"><div class="muted">Cumplimiento</div><div class="kpi" id="opc">0%</div><div class="muted" id="otot">0 / 0 labores</div></div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab active" onclick="tab(event,'opr','p')">Asignadas</button>
+          <button class="tab" onclick="tab(event,'opr','c')">Campo Libre</button>
+          <button class="tab" onclick="tab(event,'opr','h')">Historial</button>
+        </div>
+
+        <div class="content active" id="opr-p"><div id="olist"></div></div>
+        <div class="content" id="opr-c">
+          <div class="card">
+            <p class="muted">Toma una suerte en campo y registra la labor que vas a hacer.</p>
+            <div>
+              <label>Hacienda</label>
+              <select class="sel" id="lh" onchange="chgLH()"></select>
+            </div>
+            <div style="margin-top:10px">
+              <label>Suerte</label>
+              <select class="sel" id="ls" onchange="chgLS()"></select>
+            </div>
+            <div id="linfo" style="display:none;margin-top:10px">
+              <div class="line"><span>Area</span><span id="la"></span></div>
+              <div class="line"><span>Sugerida</span><span id="ln"></span></div>
+              <div class="line"><span>Tractor</span><span id="lt"></span></div>
+              <div style="margin-top:10px">
+                <label>Labor</label>
+                <select class="sel" id="ll"></select>
+              </div>
+            </div>
+            <button class="btn pri" style="margin-top:12px;width:100%" onclick="tomar()">Tomar labor</button>
+          </div>
+        </div>
+        <div class="content" id="opr-h"><div id="hist"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="mfin">
+    <div class="modal-card">
+      <h3>Finalizar labor</h3>
+      <div id="finfo" class="muted" style="margin:8px 0"></div>
+      <input class="inp" id="fha" type="number" step="0.01" placeholder="Hectareas ejecutadas">
+      <input class="inp" id="fob" placeholder="Observaciones" style="margin-top:8px">
+      <div class="row" style="margin-top:12px">
+        <button class="btn soft" onclick="closeM('mfin')">Cerrar</button>
+        <button class="btn pri" onclick="fin()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="mcancel">
+    <div class="modal-card">
+      <h3>Cancelar asignacion</h3>
+      <p class="muted">Confirmar cancelacion?</p>
+      <div class="row">
+        <button class="btn soft" onclick="closeM('mcancel')">No</button>
+        <button class="btn danger" onclick="doCancel()">Si</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const STORAGE_KEY = 'sam-control-backup-v2';
+    const SUPABASE_URL = 'https://efwgncsjrqzvistqyfqc.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_q1jIkS_JeZdXPmJK628uZA__kwMUU99';
+    const SEQ = ['DESPEJE', 'REPIQUE', 'RENCALLE', 'SUBSUELO', 'TRIPLE', 'FERTILIZACION', 'ZANJAS'];
+    const USERS = {
+      U002: { id: 'U002', n: 'Alfredo Uran', rol: 'supervisor', e: '' },
+      U003: { id: 'U003', n: 'William Ortiz', rol: 'operador', e: 'VALTRA9903' },
+      U004: { id: 'U004', n: 'Ismael Reyes', rol: 'operador', e: 'CASE1304' }
+    };
+    const EQUIPOS = {
+      VALTRA9903: 'Valtra 9903',
+      CASE1304: 'Case 1304'
+    };
+    const MR_LOCAL = [
+      [103, 'CONSTANCIA', '0001', 0.51],
+      [103, 'CONSTANCIA', '0002', 1.91],
+      [103, 'CONSTANCIA', '0003', 1.67],
+      [105, 'SANTA MONICA', '0001', 7.71],
+      [105, 'SANTA MONICA', '0002', 3.48],
+      [108, 'RIOGRANDE', '0001', 5.26],
+      [126, 'GUADALCANAL', '0002', 4.69],
+      [126, 'GUADALCANAL', '0003', 9.47]
+    ].map((x) => ({ c: x[0], h: x[1], s: x[2], a: Number(x[3]) }));
+
+    let sb = null;
+    let maestro = [...MR_LOCAL];
+    let currentCancelId = null;
+    let currentFinishId = null;
+    const state = {
+      role: null,
+      userId: null,
+      assignments: [],
+      source: 'local'
+    };
+
+    const q = (id) => document.getElementById(id);
+    const toast = (message, delay = 2200) => {
+      q('toast').textContent = message;
+      q('toast').classList.add('show');
+      setTimeout(() => q('toast').classList.remove('show'), delay);
+    };
+
+    const todayKey = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    const dateKeyFromIso = (value) => {
+      if (!value) return '';
+      return new Date(value).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' });
+    };
+    const timeLabel = (value) => {
+      if (!value) return null;
+      return new Date(value).toLocaleTimeString('es-CO', {
+        timeZone: 'America/Bogota',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+    const statusCls = (estado) => {
+      if (estado === 'COMPLETADA') return 'done';
+      if (estado === 'EN_PROCESO') return 'proc';
+      if (estado === 'CANCELADA') return 'cancel';
+      return 'pend';
+    };
+    const normalizeEstado = (estado) => {
+      const value = String(estado || 'PENDIENTE').trim().toUpperCase();
+      if (value === 'ASIGNADO' || value === 'PENDIENTE') return 'PENDIENTE';
+      if (value === 'EN_PROGRESO' || value === 'EN PROGRESO' || value === 'EN_PROCESO') return 'EN_PROCESO';
+      if (value === 'FINALIZADO' || value === 'COMPLETADA') return 'COMPLETADA';
+      if (value === 'CANCELADA') return 'CANCELADA';
+      return value;
+    };
+    const sourceLabel = () => state.source === 'supabase' ? 'Datos: Supabase' : 'Datos: respaldo local';
+    const saveBackup = () => {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ assignments: state.assignments }));
+    };
+    const loadBackup = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+        if (raw && Array.isArray(raw.assignments)) state.assignments = raw.assignments;
+      } catch (_) {}
+    };
+
+    function mapRowToAssignment(row) {
+      const suerteCodigo = row.suerte_codigo || '';
+      const [hc, ns] = suerteCodigo.includes('-') ? suerteCodigo.split('-') : [row.codigo_hacienda, row.numero_suerte];
+      const codigoHacienda = Number(row.codigo_hacienda || hc || 0);
+      const numeroSuerte = String(row.numero_suerte || ns || '').trim();
+      return {
+        id: row.id,
+        fecha: dateKeyFromIso(row.created_at),
+        createdAt: row.created_at,
+        supervisorId: row.supervisor_id || 'U002',
+        supervisorNombre: row.supervisor_nombre || USERS.U002.n,
+        operadorId: row.operador_id || '',
+        operadorNombre: row.operador_nombre || '',
+        equipoId: row.equipo_codigo || row.tractor || '',
+        equipoNombre: row.equipo_nombre || row.tractor || '',
+        codigoHacienda,
+        nombreHacienda: row.nombre_hacienda || nameH(codigoHacienda),
+        numeroSuerte,
+        suerteCodigo: suerteCodigo || `${codigoHacienda}-${numeroSuerte}`,
+        labor: row.labor_nombre,
+        areaNeta: Number(row.area_asignada || 0),
+        estado: normalizeEstado(row.estado),
+        fechaInicioIso: row.fecha_inicio,
+        fechaFinIso: row.fecha_fin,
+        horaInicio: timeLabel(row.fecha_inicio),
+        horaFin: timeLabel(row.fecha_fin),
+        hectareasEjecutadas: Number(row.area_realizada || 0),
+        observaciones: row.observaciones || '',
+        tipo: row.tipo_registro || 'ASIGNADA'
+      };
+    }
+
+    function mapAssignmentToRow(item) {
+      return {
+        suerte_codigo: item.suerteCodigo || `${item.codigoHacienda}-${item.numeroSuerte}`,
+        numero_suerte: item.numeroSuerte,
+        codigo_hacienda: item.codigoHacienda,
+        nombre_hacienda: item.nombreHacienda,
+        labor_nombre: item.labor,
+        tractor: item.equipoNombre || EQUIPOS[item.equipoId] || item.equipoId,
+        equipo_codigo: item.equipoId,
+        equipo_nombre: item.equipoNombre || EQUIPOS[item.equipoId] || item.equipoId,
+        area_asignada: Number(item.areaNeta || 0),
+        estado: item.estado,
+        fecha_inicio: item.fechaInicioIso || null,
+        fecha_fin: item.fechaFinIso || null,
+        area_realizada: item.hectareasEjecutadas || null,
+        tipo_area: 'NETA',
+        observaciones: item.observaciones || '',
+        supervisor_id: item.supervisorId || 'U002',
+        supervisor_nombre: item.supervisorNombre || USERS.U002.n,
+        operador_id: item.operadorId || null,
+        operador_nombre: item.operadorNombre || null,
+        tipo_registro: item.tipo || 'ASIGNADA'
+      };
+    }
+
+    function findM(codigo, suerte) {
+      return maestro.find((item) => item.c === codigo && item.s === suerte);
+    }
+
+    function nameH(codigo) {
+      const item = maestro.find((row) => row.c === codigo);
+      return item ? item.h : String(codigo || '');
+    }
+
+    function nextL(codigo, suerte) {
+      const done = state.assignments
+        .filter((item) => item.codigoHacienda === codigo && item.numeroSuerte === suerte && item.estado === 'COMPLETADA')
+        .map((item) => item.labor);
+      return SEQ.find((labor) => !done.includes(labor)) || null;
+    }
+
+    function todaysAssignments(includeCancelled = false) {
+      return state.assignments.filter((item) => {
+        const sameDay = item.fecha === todayKey();
+        const allowed = includeCancelled ? true : item.estado !== 'CANCELADA';
+        return sameDay && allowed;
+      });
+    }
+
+    function sortAssignments(items) {
+      return [...items].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+    }
+
+    function fillH(selectId) {
+      const select = q(selectId);
+      const codes = [...new Set(maestro.map((item) => item.c))].sort((a, b) => a - b);
+      select.innerHTML = '<option value="">- Seleccionar -</option>' + codes
+        .map((codigo) => `<option value="${codigo}">${codigo} - ${nameH(codigo)}</option>`)
+        .join('');
+    }
+
+    function fillS(haciendaId, suerteId) {
+      const codigo = Number(q(haciendaId).value || 0);
+      const select = q(suerteId);
+      select.innerHTML = '<option value="">- Seleccionar -</option>';
+      if (!codigo) return;
+      maestro
+        .filter((item) => item.c === codigo)
+        .forEach((item) => {
+          select.innerHTML += `<option value="${item.s}">${item.s} (${item.a.toFixed(2)} ha)</option>`;
+        });
+    }
+
+    function fillOperatorSelects() {
+      const ops = ['U003', 'U004'];
+      q('op').innerHTML = '<option value="">- Seleccionar -</option>' + ops
+        .map((id) => `<option value="${id}">${USERS[id].n}</option>`)
+        .join('');
+      q('fop').innerHTML = '<option value="">Todos operadores</option>' + ops
+        .map((id) => `<option value="${id}">${USERS[id].n}</option>`)
+        .join('');
+      q('eq').innerHTML = '<option value="">- Seleccionar -</option>' + Object.keys(EQUIPOS)
+        .map((id) => `<option value="${id}">${EQUIPOS[id]}</option>`)
+        .join('');
+    }
+
+    async function ensureSupabase() {
+      if (sb) return sb;
+      if (!window.supabase || !window.supabase.createClient) return null;
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return sb;
+    }
+
+    async function loadMaestro() {
+      try {
+        const client = await ensureSupabase();
+        if (!client) throw new Error('Supabase no disponible');
+        const { data, error } = await client
+          .from('maestro_risaralda')
+          .select('hacienda,nombre_hacienda,suerte,area_neta')
+          .eq('activo', true)
+          .order('hacienda')
+          .order('suerte');
+        if (error) throw error;
+        if (data && data.length) {
+          maestro = data.map((row) => ({
+            c: Number(row.hacienda),
+            h: row.nombre_hacienda,
+            s: row.suerte,
+            a: Number(row.area_neta)
+          }));
+        }
+      } catch (error) {
+        maestro = [...MR_LOCAL];
+        console.warn('Fallback maestro local', error);
+      }
+    }
+
+    async function loadAssignments() {
+      try {
+        const client = await ensureSupabase();
+        if (!client) throw new Error('Supabase no disponible');
+        const { data, error } = await client
+          .from('asignaciones')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        state.assignments = sortAssignments((data || []).map(mapRowToAssignment));
+        state.source = 'supabase';
+        saveBackup();
+      } catch (error) {
+        loadBackup();
+        state.source = 'local';
+        console.warn('Fallback asignaciones local', error);
+      }
+      q('sourceBadge').textContent = sourceLabel();
+    }
+
+    async function insertAssignment(item) {
+      const client = await ensureSupabase();
+      if (!client) throw new Error('Sin cliente Supabase');
+      const payload = mapAssignmentToRow(item);
+      const { data, error } = await client.from('asignaciones').insert(payload).select('*').single();
+      if (error) throw error;
+      return mapRowToAssignment(data);
+    }
+
+    async function patchAssignment(id, patch) {
+      const client = await ensureSupabase();
+      if (!client) throw new Error('Sin cliente Supabase');
+      const { data, error } = await client.from('asignaciones').update(patch).eq('id', id).select('*').single();
+      if (error) throw error;
+      return mapRowToAssignment(data);
+    }
+
+    function upsertLocalAssignment(item) {
+      const index = state.assignments.findIndex((row) => row.id === item.id);
+      if (index >= 0) state.assignments[index] = item;
+      else state.assignments.unshift(item);
+      state.assignments = sortAssignments(state.assignments);
+      saveBackup();
+    }
+
+    function renderAll() {
+      q('sourceBadge').textContent = sourceLabel();
+      if (state.role === 'supervisor') renderSup();
+      if (state.role === 'operador') renderOp();
+    }
+
+    function initSup() {
+      fillOperatorSelects();
+      fillH('h');
+      renderSup();
+    }
+
+    function initOp() {
+      fillH('lh');
+      const user = USERS[state.userId];
+      q('on').textContent = user.n;
+      q('oe').textContent = `Tractor: ${EQUIPOS[user.e]}`;
+      renderOp();
+    }
+
+    function loginAs(role, userId) {
+      state.role = role;
+      state.userId = role === 'supervisor' ? 'U002' : userId;
+      q('login').style.display = 'none';
+      q('ops').style.display = 'none';
+      q('top').style.display = 'flex';
+      q('app').style.display = 'block';
+      q('badge').textContent = USERS[state.userId].n;
+      q('sourceBadge').textContent = sourceLabel();
+      if (role === 'supervisor') {
+        q('sup').style.display = 'block';
+        q('opr').style.display = 'none';
+        initSup();
+      } else {
+        q('sup').style.display = 'none';
+        q('opr').style.display = 'block';
+        initOp();
+      }
+    }
+
+    function logout() {
+      state.role = null;
+      state.userId = null;
+      q('top').style.display = 'none';
+      q('app').style.display = 'none';
+      q('sup').style.display = 'none';
+      q('opr').style.display = 'none';
+      q('login').style.display = 'flex';
+    }
+
+    function showOps() {
+      q('login').style.display = 'none';
+      q('ops').style.display = 'flex';
+    }
+
+    function backLogin() {
+      q('ops').style.display = 'none';
+      q('login').style.display = 'flex';
+    }
+
+    function tab(event, prefix, id) {
+      document.querySelectorAll(`#${prefix} .tab`).forEach((node) => node.classList.remove('active'));
+      document.querySelectorAll(`#${prefix} .content`).forEach((node) => node.classList.remove('active'));
+      event.currentTarget.classList.add('active');
+      q(`${prefix}-${id}`).classList.add('active');
+    }
+
+    function chgH() {
+      fillS('h', 's');
+      q('sinfo').style.display = 'none';
+      q('lab').innerHTML = '<option value="">- Seleccionar suerte primero -</option>';
+    }
+
+    function chgS() {
+      const codigo = Number(q('h').value || 0);
+      const suerte = q('s').value;
+      if (!codigo || !suerte) {
+        q('sinfo').style.display = 'none';
+        return;
+      }
+      const maestroItem = findM(codigo, suerte);
+      const sugerida = nextL(codigo, suerte);
+      const done = state.assignments
+        .filter((item) => item.codigoHacienda === codigo && item.numeroSuerte === suerte && item.estado === 'COMPLETADA')
+        .map((item) => item.labor);
+      q('sarea').textContent = `${maestroItem ? maestroItem.a.toFixed(2) : '0.00'} ha`;
+      q('ssug').textContent = sugerida ? `Sugerida: ${sugerida}` : 'Todas completadas';
+      q('seq').innerHTML = SEQ.map((labor) => {
+        let label = labor;
+        if (done.includes(labor)) label += ' ✓';
+        else if (labor === sugerida) label += ' <- sugerida';
+        return `<span class="chip">${label}</span>`;
+      }).join('');
+      q('lab').innerHTML = '<option value="">- Seleccionar labor -</option>' + SEQ.map((labor) => {
+        let label = labor;
+        if (done.includes(labor)) label += ' ✓';
+        else if (labor === sugerida) label += ' <- sugerida';
+        return `<option value="${labor}" ${labor === sugerida ? 'selected' : ''}>${label}</option>`;
+      }).join('');
+      q('sinfo').style.display = 'block';
+    }
+
+    async function crear() {
+      const codigo = Number(q('h').value || 0);
+      const suerte = q('s').value;
+      const labor = q('lab').value;
+      const operadorId = q('op').value;
+      const equipoId = q('eq').value;
+      const observaciones = q('obs').value.trim();
+      if (!codigo || !suerte || !labor || !operadorId || !equipoId) {
+        toast('Completa todos los campos');
+        return;
+      }
+      const maestroItem = findM(codigo, suerte);
+      const draft = {
+        codigoHacienda: codigo,
+        nombreHacienda: nameH(codigo),
+        numeroSuerte: suerte,
+        suerteCodigo: `${codigo}-${suerte}`,
+        labor,
+        areaNeta: maestroItem ? maestroItem.a : 0,
+        estado: 'PENDIENTE',
+        fechaInicioIso: null,
+        fechaFinIso: null,
+        hectareasEjecutadas: 0,
+        observaciones,
+        supervisorId: 'U002',
+        supervisorNombre: USERS.U002.n,
+        operadorId,
+        operadorNombre: USERS[operadorId].n,
+        equipoId,
+        equipoNombre: EQUIPOS[equipoId],
+        tipo: 'ASIGNADA'
+      };
+      try {
+        const saved = await insertAssignment(draft);
+        upsertLocalAssignment(saved);
+        q('h').value = '';
+        chgH();
+        q('op').value = '';
+        q('eq').value = '';
+        q('obs').value = '';
+        renderAll();
+        toast('Asignacion creada en Supabase');
+      } catch (error) {
+        console.error(error);
+        toast('No se pudo crear la asignacion');
+      }
+    }
+
+    function renderSup() {
+      const dayRows = todaysAssignments();
+      const planned = dayRows.reduce((sum, item) => sum + Number(item.areaNeta || 0), 0);
+      const executed = dayRows
+        .filter((item) => item.estado === 'COMPLETADA')
+        .reduce((sum, item) => sum + Number(item.hectareasEjecutadas || 0), 0);
+      const progress = planned ? Math.round((executed / planned) * 100) : 0;
+      const inProgress = dayRows.filter((item) => item.estado === 'EN_PROCESO').length;
+      q('sp').textContent = planned.toFixed(1);
+      q('se').textContent = executed.toFixed(1);
+      q('sc').textContent = `${progress}%`;
+      q('sn').textContent = String(inProgress);
+
+      const operatorIds = ['U003', 'U004'];
+      q('opsum').innerHTML = operatorIds.map((id) => {
+        const items = dayRows.filter((item) => item.operadorId === id);
+        const activeCount = items.filter((item) => item.estado === 'EN_PROCESO').length;
+        const operatorPlan = items.reduce((sum, item) => sum + Number(item.areaNeta || 0), 0);
+        const operatorDone = items
+          .filter((item) => item.estado === 'COMPLETADA')
+          .reduce((sum, item) => sum + Number(item.hectareasEjecutadas || 0), 0);
+        const note = activeCount ? `${activeCount} en proceso` : 'Sin labor activa';
+        return `<div class="line"><span>${USERS[id].n}<br><small class="muted">${note}</small></span><strong>${operatorDone.toFixed(1)}/${operatorPlan.toFixed(1)} ha</strong></div>`;
+      }).join('');
+
+      q('eqsum').innerHTML = Object.keys(EQUIPOS).map((id) => {
+        const activeCount = dayRows.filter((item) => item.equipoId === id && item.estado === 'EN_PROCESO').length;
+        return `<div class="line"><span>${EQUIPOS[id]}</span><span class="status ${activeCount ? 'proc' : 'done'}">${activeCount ? `${activeCount} activas` : 'Disponible'}</span></div>`;
+      }).join('');
+
+      let rows = sortAssignments(state.assignments);
+      const estadoFiltro = q('fest').value;
+      const operadorFiltro = q('fop').value;
+      if (estadoFiltro) rows = rows.filter((item) => item.estado === estadoFiltro);
+      if (operadorFiltro) rows = rows.filter((item) => item.operadorId === operadorFiltro);
+      q('tb').innerHTML = rows.length ? rows.map((item) => {
+        const operator = item.operadorNombre || USERS[item.operadorId]?.n || '-';
+        const area = item.estado === 'COMPLETADA' ? Number(item.hectareasEjecutadas || 0) : Number(item.areaNeta || 0);
+        const action = item.estado === 'PENDIENTE'
+          ? `<button class="btn soft" onclick="cancel('${item.id}')">Cancelar</button>`
+          : '';
+        return `<tr>
+          <td>${item.nombreHacienda}</td>
+          <td>${item.numeroSuerte}</td>
+          <td>${item.labor}</td>
+          <td>${operator}</td>
+          <td><span class="status ${statusCls(item.estado)}">${item.estado}</span></td>
+          <td>${area.toFixed(2)}</td>
+          <td>${action}</td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="7">Sin resultados</td></tr>';
+    }
+
+    function cancel(id) {
+      currentCancelId = id;
+      q('mcancel').classList.add('open');
+    }
+
+    async function doCancel() {
+      try {
+        const updated = await patchAssignment(currentCancelId, { estado: 'CANCELADA' });
+        upsertLocalAssignment(updated);
+        q('mcancel').classList.remove('open');
+        renderAll();
+        toast('Asignacion cancelada');
+      } catch (error) {
+        console.error(error);
+        toast('No se pudo cancelar');
+      }
+    }
+
+    function renderOp() {
+      const user = USERS[state.userId];
+      const dayRows = todaysAssignments().filter((item) => item.operadorId === state.userId);
+      const planned = dayRows.reduce((sum, item) => sum + Number(item.areaNeta || 0), 0);
+      const executed = dayRows
+        .filter((item) => item.estado === 'COMPLETADA')
+        .reduce((sum, item) => sum + Number(item.hectareasEjecutadas || 0), 0);
+      const progress = planned ? Math.round((executed / planned) * 100) : 0;
+      const doneCount = dayRows.filter((item) => item.estado === 'COMPLETADA').length;
+      q('on').textContent = user.n;
+      q('oe').textContent = `Tractor: ${EQUIPOS[user.e]}`;
+      q('oej').textContent = executed.toFixed(1);
+      q('opl').textContent = planned.toFixed(1);
+      q('opc').textContent = `${progress}%`;
+      q('otot').textContent = `${doneCount} / ${dayRows.length} labores`;
+
+      const active = sortAssignments(dayRows.filter((item) => item.estado === 'PENDIENTE' || item.estado === 'EN_PROCESO'));
+      q('olist').innerHTML = active.length ? active.map((item) => {
+        const actions = item.estado === 'EN_PROCESO'
+          ? `<button class="btn warn" onclick="openFin('${item.id}')">Finalizar</button>`
+          : `<button class="btn pri" onclick="start('${item.id}')">Iniciar</button>`;
+        return `<div class="card" style="margin-bottom:10px;border-left:4px solid ${item.estado === 'EN_PROCESO' ? '#ba7517' : '#3b6d11'}">
+          <div class="line">
+            <div>
+              <strong>${item.nombreHacienda} - ${item.numeroSuerte}</strong>
+              <div class="muted">${item.equipoNombre || EQUIPOS[item.equipoId] || '-'}</div>
+            </div>
+            <span class="status ${statusCls(item.estado)}">${item.estado}</span>
+          </div>
+          <div class="row">
+            <span class="chip">${item.labor}</span>
+            <span class="chip">${Number(item.areaNeta || 0).toFixed(2)} ha</span>
+            ${item.horaInicio ? `<span class="chip">Inicio: ${item.horaInicio}</span>` : ''}
+            ${item.tipo === 'LIBRE' ? '<span class="chip">Campo libre</span>' : ''}
+          </div>
+          <div class="row" style="margin-top:10px">${actions}</div>
+        </div>`;
+      }).join('') : '<div class="card">Sin labores activas hoy</div>';
+
+      const history = sortAssignments(dayRows.filter((item) => item.estado === 'COMPLETADA'));
+      q('hist').innerHTML = history.length ? history.map((item) => {
+        return `<div class="card" style="margin-bottom:10px">
+          <strong>${item.nombreHacienda} - ${item.numeroSuerte}</strong>
+          <div class="muted">${item.horaInicio || '-'} -> ${item.horaFin || '-'}</div>
+          <div class="row" style="margin-top:8px">
+            <span class="chip">${item.labor}</span>
+            <span class="chip">${Number(item.hectareasEjecutadas || 0).toFixed(2)} ha</span>
+            ${item.tipo === 'LIBRE' ? '<span class="chip">Campo libre</span>' : ''}
+          </div>
+        </div>`;
+      }).join('') : '<div class="card">Sin labores completadas hoy</div>';
+    }
+
+    async function start(id) {
+      try {
+        const updated = await patchAssignment(id, {
+          estado: 'EN_PROCESO',
+          fecha_inicio: new Date().toISOString()
+        });
+        upsertLocalAssignment(updated);
+        renderAll();
+        toast('Labor iniciada');
+      } catch (error) {
+        console.error(error);
+        toast('No se pudo iniciar la labor');
+      }
+    }
+
+    function openFin(id) {
+      currentFinishId = id;
+      const item = state.assignments.find((row) => row.id === id);
+      if (!item) return;
+      q('finfo').textContent = `${item.nombreHacienda} - ${item.numeroSuerte} | ${item.labor}`;
+      q('fha').value = Number(item.areaNeta || 0).toFixed(2);
+      q('fob').value = item.observaciones || '';
+      q('mfin').classList.add('open');
+    }
+
+    async function fin() {
+      const item = state.assignments.find((row) => row.id === currentFinishId);
+      const hectareas = Number(q('fha').value || 0);
+      if (!item || !(hectareas > 0)) {
+        toast('Ingresa las hectareas');
+        return;
+      }
+      try {
+        const updated = await patchAssignment(currentFinishId, {
+          estado: 'COMPLETADA',
+          fecha_fin: new Date().toISOString(),
+          area_realizada: hectareas,
+          observaciones: q('fob').value.trim()
+        });
+        upsertLocalAssignment(updated);
+        q('mfin').classList.remove('open');
+        renderAll();
+        toast('Labor completada');
+      } catch (error) {
+        console.error(error);
+        toast('No se pudo finalizar la labor');
+      }
+    }
+
+    function chgLH() {
+      fillS('lh', 'ls');
+      q('linfo').style.display = 'none';
+    }
+
+    function chgLS() {
+      const codigo = Number(q('lh').value || 0);
+      const suerte = q('ls').value;
+      if (!codigo || !suerte) {
+        q('linfo').style.display = 'none';
+        return;
+      }
+      const maestroItem = findM(codigo, suerte);
+      const sugerida = nextL(codigo, suerte);
+      const done = state.assignments
+        .filter((item) => item.codigoHacienda === codigo && item.numeroSuerte === suerte && item.estado === 'COMPLETADA')
+        .map((item) => item.labor);
+      q('la').textContent = `${maestroItem ? maestroItem.a.toFixed(2) : '0.00'} ha`;
+      q('ln').textContent = sugerida ? `Sugerida: ${sugerida}` : 'Todas completadas';
+      q('lt').textContent = EQUIPOS[USERS[state.userId].e];
+      q('ll').innerHTML = '<option value="">- Seleccionar labor -</option>' + SEQ.map((labor) => {
+        let label = labor;
+        if (done.includes(labor)) label += ' ✓';
+        else if (labor === sugerida) label += ' <- sugerida';
+        return `<option value="${labor}" ${labor === sugerida ? 'selected' : ''}>${label}</option>`;
+      }).join('');
+      q('linfo').style.display = 'block';
+    }
+
+    async function tomar() {
+      const codigo = Number(q('lh').value || 0);
+      const suerte = q('ls').value;
+      const labor = q('ll').value;
+      if (!codigo || !suerte || !labor) {
+        toast('Completa la labor libre');
+        return;
+      }
+      const maestroItem = findM(codigo, suerte);
+      const user = USERS[state.userId];
+      const draft = {
+        codigoHacienda: codigo,
+        nombreHacienda: nameH(codigo),
+        numeroSuerte: suerte,
+        suerteCodigo: `${codigo}-${suerte}`,
+        labor,
+        areaNeta: maestroItem ? maestroItem.a : 0,
+        estado: 'EN_PROCESO',
+        fechaInicioIso: new Date().toISOString(),
+        fechaFinIso: null,
+        hectareasEjecutadas: 0,
+        observaciones: 'Tomada en campo',
+        supervisorId: 'U002',
+        supervisorNombre: USERS.U002.n,
+        operadorId: state.userId,
+        operadorNombre: user.n,
+        equipoId: user.e,
+        equipoNombre: EQUIPOS[user.e],
+        tipo: 'LIBRE'
+      };
+      try {
+        const saved = await insertAssignment(draft);
+        upsertLocalAssignment(saved);
+        q('lh').value = '';
+        chgLH();
+        const tabButton = document.querySelectorAll('#opr .tab')[0];
+        tab({ currentTarget: tabButton }, 'opr', 'p');
+        renderAll();
+        toast('Labor tomada en campo');
+      } catch (error) {
+        console.error(error);
+        toast('No se pudo registrar campo libre');
+      }
+    }
+
+    function closeM(id) {
+      q(id).classList.remove('open');
+    }
+
+    async function boot() {
+      fillOperatorSelects();
+      loadBackup();
+      q('sourceBadge').textContent = sourceLabel();
+      await Promise.all([loadMaestro(), loadAssignments()]);
+      renderAll();
+    }
+
+    boot();
+  </script>
+</body>
+</html>

@@ -235,6 +235,11 @@ export async function updateAssignment(
   if (input.finishedAt !== undefined) payload.fecha_fin = input.finishedAt
   if (input.executedArea !== undefined) payload.area_realizada = input.executedArea
   if (input.notes !== undefined) payload.observaciones = input.notes
+  if (input.equipmentCode !== undefined) payload.equipo_codigo = input.equipmentCode
+  if (input.equipmentName !== undefined) {
+    payload.equipo_nombre = input.equipmentName
+    payload.tractor = input.equipmentName
+  }
 
   const { data, error } = await supabase
     .from('asignaciones')

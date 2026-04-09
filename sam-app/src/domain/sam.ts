@@ -81,4 +81,6 @@ export interface UpdateAssignmentInput {
   finishedAt?: string | null
   executedArea?: number | null
   notes?: string
+  equipmentCode?: string
+  equipmentName?: string
 }

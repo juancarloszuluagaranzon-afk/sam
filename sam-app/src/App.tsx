@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useState, type FormEvent } from 'react'
+﻿import { startTransition, useEffect, useMemo, useState, type FormEvent } from 'react'
 import './App.css'
 import { WORKFLOW } from './data/constants'
 import type {
@@ -22,7 +22,7 @@ import {
 
 const SESSION_KEY = 'sam-app-session-v1'
 
-type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos'
+type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero'
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
 type SessionUser = UserProfile
@@ -68,6 +68,10 @@ function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }
 
+function normalizeIdentity(value: string | null | undefined) {
+  return String(value ?? '').trim().toUpperCase()
+}
+
 function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   const completed = assignments
     .filter(
@@ -96,6 +100,7 @@ function getStatusMeta(status: AssignmentStatus) {
 
 function App() {
   const [session, setSession] = useState<SessionUser | null>(null)
+  const [isSideMenuOpen, setIsSideMenuOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -106,8 +111,6 @@ function App() {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [users, setUsers] = useState<UserProfile[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
-  const [maestroSource, setMaestroSource] = useState('fallback')
-  const [assignmentsSource, setAssignmentsSource] = useState('fallback')
   const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('resumen')
@@ -115,6 +118,7 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
   const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string }>>({})
+  const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const saved = window.localStorage.getItem(SESSION_KEY)
@@ -145,8 +149,6 @@ function App() {
         setAssignments(assignmentResult.data)
         setUsers(userResult.data)
         setEquipment(equipmentResult.data)
-        setMaestroSource(maestroResult.source)
-        setAssignmentsSource(assignmentResult.source)
       })
     } catch {
       setError('No pudimos cargar toda la informacion operativa.')
@@ -157,6 +159,7 @@ function App() {
 
   function saveSession(user: SessionUser | null) {
     setSession(user)
+    setIsSideMenuOpen(false)
 
     if (user) {
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
@@ -209,7 +212,21 @@ function App() {
 
   const operatorAssignments = useMemo(() => {
     if (!session || session.role !== 'operador') return []
-    return assignments.filter((assignment) => assignment.operatorId === session.id)
+
+    const sessionId = normalizeIdentity(session.id)
+    const sessionName = normalizeIdentity(session.name)
+
+    return assignments.filter((assignment) => {
+      const assignmentOperatorId = normalizeIdentity(assignment.operatorId)
+      const assignmentOperatorName = normalizeIdentity(assignment.operatorName)
+
+      // Robust matching for historical rows where operator_id may be missing or inconsistent.
+      return (
+        assignmentOperatorId === sessionId ||
+        (assignmentOperatorId === '' && assignmentOperatorName === sessionName) ||
+        assignmentOperatorName === sessionName
+      )
+    })
   }, [assignments, session])
 
   const activeAssignments = useMemo(
@@ -264,6 +281,25 @@ function App() {
     [assignments],
   )
 
+  const programmedSuerteRows = useMemo(() => {
+    const programmedKeys = new Set(
+      assignments
+        .filter(
+          (assignment) =>
+            assignment.kind === 'ASIGNADA' && assignment.status !== 'CANCELADA',
+        )
+        .map((assignment) => `${assignment.haciendaCode}-${assignment.suerte}`),
+    )
+
+    return maestro
+      .filter((row) => programmedKeys.has(`${row.haciendaCode}-${row.suerte}`))
+      .sort(
+        (a, b) =>
+          a.haciendaCode - b.haciendaCode ||
+          a.suerte.localeCompare(b.suerte),
+      )
+  }, [assignments, maestro])
+
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setBusy(true)
@@ -288,7 +324,6 @@ function App() {
   async function refreshAssignments() {
     const result = await loadAssignments()
     setAssignments(result.data)
-    setAssignmentsSource(result.source)
   }
 
   async function handleCreateAssignment(event: FormEvent<HTMLFormElement>) {
@@ -395,6 +430,15 @@ function App() {
   }
 
   async function handleStartAssignment(assignment: Assignment) {
+    const equipmentCode =
+      startEquipmentDrafts[assignment.id] || assignment.equipmentCode || session?.equipmentCode || ''
+    const selectedEquipment = equipment.find((item) => item.code === equipmentCode)
+
+    if (!selectedEquipment) {
+      setError('Selecciona un equipo valido antes de iniciar la labor.')
+      return
+    }
+
     setBusy(true)
     setError('')
 
@@ -402,6 +446,13 @@ function App() {
       await updateAssignment(assignment.id, {
         status: 'EN_PROCESO',
         startedAt: new Date().toISOString(),
+        equipmentCode: selectedEquipment.code,
+        equipmentName: selectedEquipment.name,
+      })
+      setStartEquipmentDrafts((current) => {
+        const next = { ...current }
+        delete next[assignment.id]
+        return next
       })
       setInfo(`Labor iniciada: ${assignment.labor}.`)
       await refreshAssignments()
@@ -491,12 +542,19 @@ function App() {
     }))
   }
 
+  function updateStartEquipmentDraft(assignmentId: string, equipmentCode: string) {
+    setStartEquipmentDrafts((current) => ({
+      ...current,
+      [assignmentId]: equipmentCode,
+    }))
+  }
+
   const loginOptions = useMemo(
     () =>
       [
-        { id: 'U002', label: 'Alfredo Uran · Supervisor' },
-        { id: 'U003', label: 'William Ortiz · Operador' },
-        { id: 'U004', label: 'Ismael Reyes · Operador' },
+        { id: 'U002', label: 'Alfredo Uran Â· Supervisor' },
+        { id: 'U003', label: 'William Ortiz Â· Operador' },
+        { id: 'U004', label: 'Ismael Reyes Â· Operador' },
       ] as const,
     [],
   )
@@ -520,15 +578,6 @@ function App() {
           <div className="auth-copy">
             <p className="eyebrow">SAM Control</p>
             <h1>Control operativo para Servicios Agricolas Morales</h1>
-            <p>
-              Entramos por el panel de piloto, pero el tablero interior conserva la
-              logica del MVP aprobado.
-            </p>
-            <ul className="auth-bullets">
-              <li>Maestro: {maestroSource}</li>
-              <li>Asignaciones: {assignmentsSource}</li>
-              <li>Usuarios: {users.length}</li>
-            </ul>
           </div>
 
           <form className="login-card" onSubmit={handleLogin}>
@@ -565,14 +614,19 @@ function App() {
     )
   }
 
-  const visibleAssignments =
-    session.role === 'supervisor' ? filteredAssignments : operatorAssignments
-
   return (
     <main className="app-shell">
       <header className="topbar">
         <div className="brand-block">
-          <div className="brand-logo">SF</div>
+          <button
+            className="top-icon-btn menu-left"
+            onClick={() => setIsSideMenuOpen((current) => !current)}
+            aria-expanded={isSideMenuOpen}
+            aria-controls="side-menu"
+            aria-label="Abrir menu"
+          >
+            ≡
+          </button>
           <div>
             <strong>SAM Control</strong>
             <span>{session.role === 'supervisor' ? 'Supervisor' : 'Operador'}</span>
@@ -580,41 +634,101 @@ function App() {
         </div>
 
         <div className="topbar-actions">
-          <span className="user-pill">{session.name}</span>
-          <button className="ghost-button" onClick={() => saveSession(null)}>
-            Salir
+          <button className="top-icon-btn" aria-label="Buscar">
+            ⌕
+          </button>
+          <button className="top-icon-btn" aria-label="Verificar">
+            ☑
+          </button>
+          <button className="top-icon-btn" aria-label="Refrescar" onClick={() => void hydrate()}>
+            ↻
           </button>
         </div>
       </header>
 
+      <div
+        className={`side-overlay ${isSideMenuOpen ? 'open' : ''}`}
+        onClick={() => setIsSideMenuOpen(false)}
+      />
+      <aside
+        id="side-menu"
+        className={`side-drawer ${isSideMenuOpen ? 'open' : ''}`}
+        aria-hidden={!isSideMenuOpen}
+      >
+        <div className="side-drawer-head">
+          <strong>Sesion activa</strong>
+          <button
+            className="inline-button"
+            onClick={() => setIsSideMenuOpen(false)}
+          >
+            Cerrar
+          </button>
+        </div>
+        <div className="side-user-card">
+          <span className="user-pill">{session.name}</span>
+          <p>{session.role === 'supervisor' ? 'Supervisor' : 'Operador'}</p>
+        </div>
+        <button className="primary-button" onClick={() => saveSession(null)}>
+          Salir
+        </button>
+      </aside>
+
       <div className="dashboard-shell">
         <section className="toolbar-card">
-          <nav className="tab-nav" aria-label="Navegacion principal">
+          <nav
+            className={
+              session.role === 'operador'
+                ? 'tab-nav operator-tab-nav floating-nav'
+                : 'tab-nav floating-nav'
+            }
+            aria-label="Navegacion principal"
+          >
             {session.role === 'supervisor' ? (
               <>
                 <button
                   className={supervisorTab === 'resumen' ? 'active' : ''}
                   onClick={() => setSupervisorTab('resumen')}
                 >
-                  Resumen
+                  <span className="nav-item">
+                    <span className="nav-icon">⌂</span>
+                    <span className="nav-label">Resumen</span>
+                  </span>
                 </button>
                 <button
                   className={supervisorTab === 'asignar' ? 'active' : ''}
                   onClick={() => setSupervisorTab('asignar')}
                 >
-                  + Asignar
+                  <span className="nav-item">
+                    <span className="nav-icon">＋</span>
+                    <span className="nav-label">Asignar</span>
+                  </span>
                 </button>
                 <button
                   className={supervisorTab === 'labores' ? 'active' : ''}
                   onClick={() => setSupervisorTab('labores')}
                 >
-                  Labores
+                  <span className="nav-item">
+                    <span className="nav-icon">✓</span>
+                    <span className="nav-label">Labores</span>
+                  </span>
                 </button>
                 <button
                   className={supervisorTab === 'equipos' ? 'active' : ''}
                   onClick={() => setSupervisorTab('equipos')}
                 >
-                  Equipos
+                  <span className="nav-item">
+                    <span className="nav-icon">▣</span>
+                    <span className="nav-label">Equipos</span>
+                  </span>
+                </button>
+                <button
+                  className={supervisorTab === 'tablero' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('tablero')}
+                >
+                  <span className="nav-item">
+                    <span className="nav-icon">◫</span>
+                    <span className="nav-label">Tablero</span>
+                  </span>
                 </button>
               </>
             ) : (
@@ -623,28 +737,33 @@ function App() {
                   className={operatorTab === 'activas' ? 'active' : ''}
                   onClick={() => setOperatorTab('activas')}
                 >
-                  Activas
+                  <span className="nav-item">
+                    <span className="nav-icon">▶</span>
+                    <span className="nav-label">Activas</span>
+                  </span>
                 </button>
                 <button
                   className={operatorTab === 'campo' ? 'active' : ''}
                   onClick={() => setOperatorTab('campo')}
                 >
-                  Campo libre
+                  <span className="nav-item">
+                    <span className="nav-icon">⌖</span>
+                    <span className="nav-label">Campo</span>
+                  </span>
                 </button>
                 <button
                   className={operatorTab === 'historial' ? 'active' : ''}
                   onClick={() => setOperatorTab('historial')}
                 >
-                  Historial
+                  <span className="nav-item">
+                    <span className="nav-icon">◷</span>
+                    <span className="nav-label">Historial</span>
+                  </span>
                 </button>
               </>
             )}
           </nav>
 
-          <div className="toolbar-meta">
-            <span className="soft-pill">Maestro: {maestroSource}</span>
-            <span className="soft-pill">Asignaciones: {assignmentsSource}</span>
-          </div>
         </section>
 
         {(error || info) && (
@@ -654,32 +773,34 @@ function App() {
           </section>
         )}
 
-        <section className="kpi-grid">
-          <article className="metric-panel">
-            <p>HA PLANIFICADAS HOY</p>
-            <strong>{metrics.plannedArea.toFixed(1)}</strong>
-            <span>hectareas</span>
-          </article>
-          <article className="metric-panel">
-            <p>HA EJECUTADAS</p>
-            <strong>{metrics.executedArea.toFixed(1)}</strong>
-            <span>hectareas</span>
-          </article>
-          <article className="metric-panel">
-            <p>CUMPLIMIENTO</p>
-            <strong className={metrics.completion < 30 ? 'danger' : ''}>
-              {metrics.completion}%
-            </strong>
-            <div className="progress-track">
-              <span style={{ width: `${Math.min(metrics.completion, 100)}%` }} />
-            </div>
-          </article>
-          <article className="metric-panel">
-            <p>EN PROCESO</p>
-            <strong>{metrics.inProgress}</strong>
-            <span>labores activas</span>
-          </article>
-        </section>
+        {session.role === 'supervisor' && supervisorTab === 'resumen' ? (
+          <section className="kpi-grid">
+            <article className="metric-panel">
+              <p>HA PLANIFICADAS HOY</p>
+              <strong>{metrics.plannedArea.toFixed(1)}</strong>
+              <span>hectareas</span>
+            </article>
+            <article className="metric-panel">
+              <p>HA EJECUTADAS</p>
+              <strong>{metrics.executedArea.toFixed(1)}</strong>
+              <span>hectareas</span>
+            </article>
+            <article className="metric-panel">
+              <p>CUMPLIMIENTO</p>
+              <strong className={metrics.completion < 30 ? 'danger' : ''}>
+                {metrics.completion}%
+              </strong>
+              <div className="progress-track">
+                <span style={{ width: `${Math.min(metrics.completion, 100)}%` }} />
+              </div>
+            </article>
+            <article className="metric-panel">
+              <p>EN PROCESO</p>
+              <strong>{metrics.inProgress}</strong>
+              <span>labores activas</span>
+            </article>
+          </section>
+        ) : null}
 
         {session.role === 'supervisor' && supervisorTab === 'resumen' ? (
           <>
@@ -763,7 +884,7 @@ function App() {
                     <p>{item.labor}</p>
                     <strong>{item.executed.toFixed(1)}</strong>
                     <span>
-                      / {item.planned.toFixed(1)} ha · {item.count} labores
+                      / {item.planned.toFixed(1)} ha Â· {item.count} labores
                     </span>
                     <div className="progress-track">
                       <span
@@ -810,7 +931,7 @@ function App() {
                       <option value="">Seleccionar</option>
                       {assignmentSuertes.map((row) => (
                         <option key={`${row.haciendaCode}-${row.suerte}`} value={row.suerte}>
-                          {row.suerte} · {formatArea(row.area)}
+                          {row.suerte} Â· {formatArea(row.area)}
                         </option>
                       ))}
                     </select>
@@ -832,7 +953,7 @@ function App() {
                               assignments,
                               `${assignmentForm.haciendaCode}-${assignmentForm.suerte}`,
                             )
-                            ? ' ← sugerida'
+                            ? ' â† sugerida'
                             : ''
                           : ''}
                       </option>
@@ -900,7 +1021,7 @@ function App() {
                           {assignment.haciendaName} - {assignment.suerte}
                         </strong>
                         <span>
-                          {assignment.labor} · {assignment.operatorName || 'Sin operador'}
+                          {assignment.labor} · {assignment.operatorName || 'Sin operador'} · {assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}
                         </span>
                       </div>
                       <div className="movement-side">
@@ -912,6 +1033,99 @@ function App() {
                 })}
               </div>
             </article>
+          </section>
+        ) : null}
+
+        {session.role === 'supervisor' && supervisorTab === 'tablero' ? (
+          <section className="panel-card tablero-section">
+            <div className="panel-title">
+              <div>
+                <h2>Tablero de Cumplimiento de Labores</h2>
+                <p className="subtle-copy">
+                  La secuencia de labores es DESPEJE-REPIQUE-RENCALLE-V-SUBSUELO-TRIPLE-FERTILIZACION-ZANJAS.
+                </p>
+              </div>
+            </div>
+            <div className="tablero-wrap">
+              <table className="tablero-table">
+                <thead>
+                  <tr>
+                    <th className="tab-sticky-col">SUERTE</th>
+                    <th className="tab-meta-col">HA TOTAL</th>
+                    <th className="tab-meta-col">INICIO</th>
+                    <th className="tab-meta-col">DIAS</th>
+                    <th className="tab-meta-col">ROT.</th>
+                    {WORKFLOW.map((labor) => (
+                      <th key={labor} className="tab-labor-col">{labor}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {programmedSuerteRows.map((row) => {
+                    const suerteKey = `${row.haciendaCode}-${row.suerte}`
+                    const rowAssignments = assignments.filter(
+                      (assignment) =>
+                        assignment.status !== 'CANCELADA' &&
+                        (assignment.suerteCode === suerteKey ||
+                          (assignment.suerte === row.suerte &&
+                            assignment.haciendaCode === row.haciendaCode)),
+                    )
+                    const firstDate =
+                      rowAssignments
+                        .slice()
+                        .sort((a, b) => a.dateKey.localeCompare(b.dateKey))[0]
+                        ?.dateKey ?? '-'
+
+                    return (
+                      <tr key={suerteKey} className="tablero-row">
+                        <td className="tab-sticky-col">
+                          <strong>{row.haciendaCode}-{row.suerte}</strong>
+                          <small>{row.haciendaName}</small>
+                        </td>
+                        <td className="center-cell">{row.area.toFixed(2)}</td>
+                        <td className="center-cell">{firstDate}</td>
+                        <td className="center-cell">1</td>
+                        <td className="center-cell">DOBLE</td>
+                        {WORKFLOW.map((labor) => {
+                          const assignment = rowAssignments.find(
+                            (item) => item.labor.toUpperCase() === labor.toUpperCase(),
+                          )
+                          const status = assignment?.status ?? 'PENDIENTE'
+                          const cellClass =
+                            status === 'COMPLETADA'
+                              ? 'labor-cell-box completada'
+                              : status === 'EN_PROCESO'
+                                ? 'labor-cell-box en_proceso'
+                                : 'labor-cell-box pendiente'
+
+                          return (
+                            <td key={labor} className="labor-cell-td">
+                              <div className={cellClass}>
+                                {status === 'COMPLETADA' && <span className="check">OK</span>}
+                                {status === 'EN_PROCESO' && <span className="spinner">RUN</span>}
+                                {(status === 'PENDIENTE' || !assignment) && (
+                                  <span className="warn">NO</span>
+                                )}
+                                <span>
+                                  {assignment
+                                    ? `${assignment.area.toFixed(2)} ha`
+                                    : 'No ejecutada'}
+                                </span>
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="tablero-legend">
+              <span className="tablero-legend-item completada"><span className="check">OK</span> Ejecutada</span>
+              <span className="tablero-legend-item en_proceso"><span className="spinner">RUN</span> En ejecucion</span>
+              <span className="tablero-legend-item pendiente"><span className="warn">NO</span> No ejecutada</span>
+            </div>
           </section>
         ) : null}
 
@@ -1026,7 +1240,7 @@ function App() {
                       <strong>{planned.toFixed(1)} ha</strong>
                       <span>
                         {active
-                          ? `${active.operatorName} · ${active.haciendaName} ${active.suerte}`
+                          ? `${active.operatorName} Â· ${active.haciendaName} ${active.suerte}`
                           : 'Sin labor activa'}
                       </span>
                     </div>
@@ -1038,19 +1252,19 @@ function App() {
         ) : null}
 
         {session.role === 'operador' && operatorTab === 'activas' ? (
-          <section className="operator-stack">
+          <section className="operator-stack operator-mobile-stack">
             {activeAssignments.map((assignment) => {
               const meta = getStatusMeta(assignment.status)
               const draft = finishDrafts[assignment.id]
               return (
-                <article key={assignment.id} className="panel-card active-card">
+                <article key={assignment.id} className="panel-card active-card operator-work-card">
                   <div className="panel-title split">
                     <div>
                       <h2>
                         {assignment.haciendaName} - {assignment.suerte}
                       </h2>
                       <p className="subtle-copy">
-                        {assignment.labor} · {formatArea(assignment.area)}
+                        {assignment.labor} Â· {formatArea(assignment.area)}
                       </p>
                     </div>
                     <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
@@ -1060,13 +1274,35 @@ function App() {
                     <span>Inicio: {formatTime(assignment.startedAt)}</span>
                   </div>
                   {assignment.status === 'PENDIENTE' ? (
-                    <button
-                      className="primary-button"
-                      onClick={() => void handleStartAssignment(assignment)}
-                      disabled={busy}
-                    >
-                      Iniciar labor
-                    </button>
+                    <div className="start-grid">
+                      <label>
+                        Equipo para ejecutar
+                        <select
+                          value={
+                            startEquipmentDrafts[assignment.id] ||
+                            assignment.equipmentCode ||
+                            session.equipmentCode
+                          }
+                          onChange={(event) =>
+                            updateStartEquipmentDraft(assignment.id, event.target.value)
+                          }
+                        >
+                          <option value="">Seleccionar equipo</option>
+                          {equipment.map((item) => (
+                            <option key={item.code} value={item.code}>
+                              {item.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <button
+                        className="primary-button"
+                        onClick={() => void handleStartAssignment(assignment)}
+                        disabled={busy}
+                      >
+                        Iniciar labor
+                      </button>
+                    </div>
                   ) : (
                     <div className="finish-grid">
                       <label>
@@ -1112,8 +1348,8 @@ function App() {
         ) : null}
 
         {session.role === 'operador' && operatorTab === 'campo' ? (
-          <section className="dashboard-grid two-up">
-            <article className="panel-card">
+          <section className="dashboard-grid two-up operator-field-layout">
+            <article className="panel-card operator-form-card">
               <div className="panel-title">
                 <h2>Tomar suerte en campo</h2>
               </div>
@@ -1142,7 +1378,7 @@ function App() {
                       <option value="">Seleccionar</option>
                       {freeFieldSuertes.map((row) => (
                         <option key={`${row.haciendaCode}-${row.suerte}`} value={row.suerte}>
-                          {row.suerte} · {formatArea(row.area)}
+                          {row.suerte} Â· {formatArea(row.area)}
                         </option>
                       ))}
                     </select>
@@ -1164,7 +1400,7 @@ function App() {
                               assignments,
                               `${freeFieldForm.haciendaCode}-${freeFieldForm.suerte}`,
                             )
-                            ? ' ← sugerida'
+                            ? ' â† sugerida'
                             : ''
                           : ''}
                       </option>
@@ -1208,7 +1444,7 @@ function App() {
               </form>
             </article>
 
-            <article className="panel-card">
+            <article className="panel-card operator-journey-card">
               <div className="panel-title">
                 <h2>Tu jornada</h2>
               </div>
@@ -1236,7 +1472,7 @@ function App() {
         ) : null}
 
         {session.role === 'operador' && operatorTab === 'historial' ? (
-          <section className="panel-card">
+          <section className="panel-card operator-history-card">
             <div className="panel-title">
               <h2>Historial</h2>
             </div>
@@ -1250,7 +1486,7 @@ function App() {
                         {assignment.haciendaName} - {assignment.suerte}
                       </strong>
                       <span>
-                        {assignment.labor} · {assignment.executedArea.toFixed(1)} ha
+                        {assignment.labor} Â· {assignment.executedArea.toFixed(1)} ha
                       </span>
                     </div>
                     <div className="movement-side">
@@ -1267,17 +1503,6 @@ function App() {
           </section>
         ) : null}
 
-        <section className="panel-card compact-panel">
-          <div className="panel-title split">
-            <h2>Lectura operativa</h2>
-            <span className="muted-text">{visibleAssignments.length} registros visibles</span>
-          </div>
-          <div className="summary-chips">
-            <span className="soft-chip">Haciendas cargadas: {haciendas.length}</span>
-            <span className="soft-chip">Suertes: {maestro.length}</span>
-            <span className="soft-chip">Secuencia base: {WORKFLOW.length} pasos</span>
-          </div>
-        </section>
       </div>
     </main>
   )

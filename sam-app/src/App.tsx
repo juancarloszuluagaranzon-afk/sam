@@ -1213,7 +1213,7 @@ function App() {
                       value={assignmentForm.haciendaCode}
                       onChange={(value) => updateAssignmentForm('haciendaCode', value)}
                       options={haciendas.map((item) => ({
-                        value: item.code,
+                        value: String(item.code),
                         label: `${item.code} - ${item.name}`,
                       }))}
                     />
@@ -1845,7 +1845,7 @@ function App() {
                       value={freeFieldForm.haciendaCode}
                       onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
                       options={haciendas.map((item) => ({
-                        value: item.code,
+                        value: String(item.code),
                         label: `${item.code} - ${item.name}`,
                       }))}
                     />

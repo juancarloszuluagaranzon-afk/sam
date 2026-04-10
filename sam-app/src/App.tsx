@@ -1,4 +1,4 @@
-﻿import { startTransition, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import './App.css'
 import { WORKFLOW } from './data/constants'
 import type {
@@ -10,6 +10,7 @@ import type {
 } from './domain/sam'
 import {
   appLogin,
+  createEquipment,
   createAssignment,
   formatTime,
   loadAppUsers,
@@ -18,6 +19,7 @@ import {
   loadMaestro,
   summarizeAssignments,
   updateAssignment,
+  appChangePin,
 } from './services/samApi'
 
 const SESSION_KEY = 'sam-app-session-v1'
@@ -27,6 +29,16 @@ type OperatorTab = 'activas' | 'campo' | 'historial'
 
 type SessionUser = UserProfile
 
+function isSupervisorOrOwner(role: SessionUser['role'] | undefined): boolean {
+  return role === 'supervisor' || role === 'owner'
+}
+
+function getRoleLabel(role: SessionUser['role'] | undefined): string {
+  if (role === 'owner') return 'Propietario'
+  if (role === 'supervisor') return 'Supervisor'
+  return 'Operador'
+}
+
 interface AssignmentFormState {
   haciendaCode: string
   suerte: string
@@ -34,6 +46,21 @@ interface AssignmentFormState {
   operatorId: string
   equipmentCode: string
   notes: string
+  cliente: string
+}
+
+interface EquipmentFormState {
+  code: string
+  name: string
+  type: 'tractor' | 'implemento' | 'vehiculo' | 'otro'
+  state: 'activo' | 'en_mantenimiento' | 'inactivo'
+  brand: string
+  model: string
+  year: string
+  plate: string
+  serialNumber: string
+  notes: string
+  active: boolean
 }
 
 const EMPTY_FORM: AssignmentFormState = {
@@ -43,6 +70,21 @@ const EMPTY_FORM: AssignmentFormState = {
   operatorId: '',
   equipmentCode: '',
   notes: '',
+  cliente: '',
+}
+
+const EMPTY_EQUIPMENT_FORM: EquipmentFormState = {
+  code: '',
+  name: '',
+  type: 'tractor',
+  state: 'activo',
+  brand: '',
+  model: '',
+  year: '',
+  plate: '',
+  serialNumber: '',
+  notes: '',
+  active: true,
 }
 
 function getTodayKey() {
@@ -98,9 +140,109 @@ function getStatusMeta(status: AssignmentStatus) {
   return { label: 'Pendiente', tone: 'pending' as const }
 }
 
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder = 'Seleccionar',
+}: {
+  value: string
+  onChange: (value: string) => void
+  options: { value: string; label: string; rightLabel?: string }[]
+  placeholder?: string
+}) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const wrapperRef = useRef<HTMLDivElement>(null)
+
+  const selectedOption = options.find((opt) => opt.value === String(value))
+  const displayValue = isOpen ? query : selectedOption ? selectedOption.label : ''
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+        setQuery('')
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const filteredOptions = options.filter((opt) =>
+    opt.label.toLowerCase().includes(query.toLowerCase()) ||
+    (opt.rightLabel && opt.rightLabel.toLowerCase().includes(query.toLowerCase())),
+  )
+
+  return (
+    <div className="searchable-select" ref={wrapperRef}>
+      <input
+        className="searchable-select-input"
+        type="text"
+        placeholder={placeholder}
+        value={displayValue}
+        onChange={(e) => {
+          setQuery(e.target.value)
+          if (!isOpen) setIsOpen(true)
+        }}
+        onFocus={() => {
+          setIsOpen(true)
+          setQuery('')
+        }}
+        autoComplete="off"
+      />
+      <div
+        className="searchable-select-arrow"
+        onClick={() => {
+          setIsOpen(!isOpen)
+          if (!isOpen) setQuery('')
+        }}
+      >
+        <span>&#x25BC;</span>
+      </div>
+      {isOpen && (
+        <ul className="searchable-select-options">
+          <li
+            className={`searchable-select-item ${!value ? 'selected' : ''}`}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onChange('')
+              setIsOpen(false)
+              setQuery('')
+            }}
+          >
+            {placeholder}
+          </li>
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((opt) => (
+              <li
+                key={opt.value}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onChange(opt.value)
+                  setIsOpen(false)
+                  setQuery('')
+                }}
+                className={`searchable-select-item ${opt.value === String(value) ? 'selected' : ''}`}
+              >
+                <span>{opt.label}</span>
+                {opt.rightLabel && <span className="searchable-select-item-right">{opt.rightLabel}</span>}
+              </li>
+            ))
+          ) : (
+            <li className="searchable-select-item searchable-select-empty">Sin resultados</li>
+          )}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function App() {
   const [session, setSession] = useState<SessionUser | null>(null)
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false)
+  const [isPinModalOpen, setIsPinModalOpen] = useState(false)
+  const [pinForm, setPinForm] = useState({ current: '', newPin: '', confirm: '', error: '', loading: false })
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -113,12 +255,15 @@ function App() {
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
+  const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('resumen')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
+  const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'TODO'>('HOY')
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
-  const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string }>>({})
+  const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string; horometroFinal: string }>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
+  const [startHorometroDrafts, setStartHorometroDrafts] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const saved = window.localStorage.getItem(SESSION_KEY)
@@ -210,6 +355,32 @@ function App() {
     })
   }, [assignments, operatorFilter, statusFilter])
 
+  const handleChangePin = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!session) return
+
+    if (pinForm.newPin !== pinForm.confirm) {
+      setPinForm(prev => ({ ...prev, error: 'El PIN nuevo y la confirmacion no coinciden' }))
+      return
+    }
+
+    if (pinForm.newPin.length < 4) {
+      setPinForm(prev => ({ ...prev, error: 'El nuevo PIN debe tener al menos 4 caracteres' }))
+      return
+    }
+
+    setPinForm(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      await appChangePin(session.id, pinForm.current, pinForm.newPin)
+      setInfo('PIN actualizado exitosamente.')
+      setIsPinModalOpen(false)
+      setPinForm({ current: '', newPin: '', confirm: '', error: '', loading: false })
+      setIsSideMenuOpen(false)
+    } catch (err: any) {
+      setPinForm(prev => ({ ...prev, error: err.message || 'Error al cambiar el PIN', loading: false }))
+    }
+  }
+
   const operatorAssignments = useMemo(() => {
     if (!session || session.role !== 'operador') return []
 
@@ -246,6 +417,33 @@ function App() {
       ),
     [operatorAssignments],
   )
+
+  const filteredHistory = useMemo(() => {
+    if (operatorHistoryPeriod === 'TODO') return historyAssignments
+
+    const [year, month, day] = todayKey.split('-').map(Number)
+    const baseDate = new Date(year, month - 1, day)
+    
+    let startLimit: Date
+    if (operatorHistoryPeriod === 'HOY') {
+      startLimit = baseDate
+    } else if (operatorHistoryPeriod === 'ESTA_SEMANA') {
+      startLimit = new Date(baseDate)
+      const dayOfWeek = startLimit.getDay()
+      const diff = startLimit.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
+      startLimit.setDate(diff)
+    } else {
+      // ESTE_MES
+      startLimit = new Date(baseDate)
+      startLimit.setDate(1)
+    }
+
+    return historyAssignments.filter((assignment) => {
+      const [y, m, d] = assignment.dateKey.split('-').map(Number)
+      const itemDate = new Date(y, m - 1, d)
+      return itemDate >= startLimit
+    })
+  }, [historyAssignments, operatorHistoryPeriod, todayKey])
 
   const laborToday = useMemo(() => {
     const groups = new Map<
@@ -326,9 +524,50 @@ function App() {
     setAssignments(result.data)
   }
 
+  async function refreshEquipment() {
+    const result = await loadEquipment()
+    setEquipment(result.data)
+  }
+
+  async function handleCreateEquipment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!equipmentForm.code.trim() || !equipmentForm.name.trim()) {
+      setError('Codigo y nombre son obligatorios para crear el equipo.')
+      return
+    }
+
+    setBusy(true)
+    setError('')
+
+    try {
+      await createEquipment({
+        code: equipmentForm.code.trim().toUpperCase(),
+        name: equipmentForm.name.trim(),
+        type: equipmentForm.type,
+        state: equipmentForm.state,
+        brand: equipmentForm.brand.trim(),
+        model: equipmentForm.model.trim(),
+        year: equipmentForm.year ? Number(equipmentForm.year) : null,
+        plate: equipmentForm.plate.trim(),
+        serialNumber: equipmentForm.serialNumber.trim(),
+        notes: equipmentForm.notes.trim(),
+        active: equipmentForm.active,
+      })
+
+      setEquipmentForm(EMPTY_EQUIPMENT_FORM)
+      await refreshEquipment()
+      setInfo('Equipo creado correctamente.')
+    } catch {
+      setError('No se pudo crear el equipo. Revisa codigo unico y campos.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleCreateAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!session || session.role !== 'supervisor') return
+    if (!session || !isSupervisorOrOwner(session.role)) return
 
     const maestroRow = maestro.find(
       (row) =>
@@ -338,8 +577,8 @@ function App() {
     const operator = operators.find((item) => item.id === assignmentForm.operatorId)
     const equipmentItem = equipment.find((item) => item.code === assignmentForm.equipmentCode)
 
-    if (!maestroRow || !operator || !equipmentItem || !assignmentForm.labor) {
-      setError('Completa hacienda, suerte, labor, operador y equipo.')
+    if (!maestroRow || !operator || !equipmentItem || !assignmentForm.labor || !assignmentForm.cliente) {
+      setError('Completa hacienda, suerte, labor, operador, equipo y cliente.')
       return
     }
 
@@ -360,6 +599,7 @@ function App() {
         equipmentCode: equipmentItem.code,
         equipmentName: equipmentItem.name,
         notes: assignmentForm.notes,
+        cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
         kind: 'ASIGNADA',
         initialStatus: 'PENDIENTE',
       })
@@ -389,8 +629,8 @@ function App() {
       (item) => item.code === (freeFieldForm.equipmentCode || session.equipmentCode),
     )
 
-    if (!maestroRow || !operator || !equipmentItem || !freeFieldForm.labor) {
-      setError('Completa hacienda, suerte, labor y equipo para tomar campo libre.')
+    if (!maestroRow || !operator || !equipmentItem || !freeFieldForm.labor || !freeFieldForm.cliente) {
+      setError('Completa hacienda, suerte, labor, equipo y cliente para tomar campo libre.')
       return
     }
 
@@ -411,6 +651,7 @@ function App() {
         equipmentCode: equipmentItem.code,
         equipmentName: equipmentItem.name,
         notes: freeFieldForm.notes,
+        cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
         kind: 'LIBRE',
         initialStatus: 'PENDIENTE',
       })
@@ -439,6 +680,17 @@ function App() {
       return
     }
 
+    const horometroInicialRaw = startHorometroDrafts[assignment.id] ?? ''
+    if (!horometroInicialRaw.trim()) {
+      setError('Ingresa el horometro inicial antes de iniciar la labor.')
+      return
+    }
+    const horometroInicial = Number(horometroInicialRaw)
+    if (isNaN(horometroInicial) || horometroInicial < 0) {
+      setError('El horometro inicial debe ser un numero valido.')
+      return
+    }
+
     setBusy(true)
     setError('')
 
@@ -448,8 +700,14 @@ function App() {
         startedAt: new Date().toISOString(),
         equipmentCode: selectedEquipment.code,
         equipmentName: selectedEquipment.name,
+        horometroInicial,
       })
       setStartEquipmentDrafts((current) => {
+        const next = { ...current }
+        delete next[assignment.id]
+        return next
+      })
+      setStartHorometroDrafts((current) => {
         const next = { ...current }
         delete next[assignment.id]
         return next
@@ -472,6 +730,17 @@ function App() {
       return
     }
 
+    const horometroFinalRaw = draft?.horometroFinal ?? ''
+    if (!horometroFinalRaw.trim()) {
+      setError('Ingresa el horometro final antes de finalizar la labor.')
+      return
+    }
+    const horometroFinal = Number(horometroFinalRaw)
+    if (isNaN(horometroFinal) || horometroFinal < 0) {
+      setError('El horometro final debe ser un numero valido.')
+      return
+    }
+
     setBusy(true)
     setError('')
 
@@ -481,6 +750,7 @@ function App() {
         finishedAt: new Date().toISOString(),
         executedArea,
         notes: draft?.notes ?? assignment.notes,
+        horometroFinal,
       })
       setFinishDrafts((current) => {
         const next = { ...current }
@@ -531,14 +801,22 @@ function App() {
     })
   }
 
-  function updateFinishDraft(assignmentId: string, field: 'area' | 'notes', value: string) {
+  function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal', value: string) {
     setFinishDrafts((current) => ({
       ...current,
       [assignmentId]: {
         area: current[assignmentId]?.area ?? '',
         notes: current[assignmentId]?.notes ?? '',
+        horometroFinal: current[assignmentId]?.horometroFinal ?? '',
         [field]: value,
       },
+    }))
+  }
+
+  function updateStartHorometroDraft(assignmentId: string, value: string) {
+    setStartHorometroDrafts((current) => ({
+      ...current,
+      [assignmentId]: value,
     }))
   }
 
@@ -549,12 +827,23 @@ function App() {
     }))
   }
 
+  function updateEquipmentForm<K extends keyof EquipmentFormState>(
+    field: K,
+    value: EquipmentFormState[K],
+  ) {
+    setEquipmentForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
   const loginOptions = useMemo(
     () =>
       [
-        { id: 'U002', label: 'Alfredo Uran Â· Supervisor' },
-        { id: 'U003', label: 'William Ortiz Â· Operador' },
-        { id: 'U004', label: 'Ismael Reyes Â· Operador' },
+        { id: 'U001', label: 'Cristhian Morales - Owner' },
+        { id: 'U002', label: 'Alfredo Uran - Supervisor' },
+        { id: 'U003', label: 'William Ortiz - Operador' },
+        { id: 'U004', label: 'Ismael Reyes - Operador' },
       ] as const,
     [],
   )
@@ -625,23 +914,23 @@ function App() {
             aria-controls="side-menu"
             aria-label="Abrir menu"
           >
-            ≡
+            â‰¡
           </button>
           <div>
             <strong>SAM Control</strong>
-            <span>{session.role === 'supervisor' ? 'Supervisor' : 'Operador'}</span>
+            <span>{getRoleLabel(session.role)}</span>
           </div>
         </div>
 
         <div className="topbar-actions">
           <button className="top-icon-btn" aria-label="Buscar">
-            ⌕
+            âŒ•
           </button>
           <button className="top-icon-btn" aria-label="Verificar">
-            ☑
+            â˜‘
           </button>
           <button className="top-icon-btn" aria-label="Refrescar" onClick={() => void hydrate()}>
-            ↻
+            â†»
           </button>
         </div>
       </header>
@@ -666,8 +955,18 @@ function App() {
         </div>
         <div className="side-user-card">
           <span className="user-pill">{session.name}</span>
-          <p>{session.role === 'supervisor' ? 'Supervisor' : 'Operador'}</p>
+          <p>{getRoleLabel(session.role)}</p>
         </div>
+        <button 
+          className="primary-button outline" 
+          onClick={() => {
+            setIsSideMenuOpen(false)
+            setIsPinModalOpen(true)
+          }} 
+          style={{ marginBottom: '8px' }}
+        >
+          Cambiar PIN
+        </button>
         <button className="primary-button" onClick={() => saveSession(null)}>
           Salir
         </button>
@@ -677,13 +976,13 @@ function App() {
         <section className="toolbar-card">
           <nav
             className={
-              session.role === 'operador'
-                ? 'tab-nav operator-tab-nav floating-nav'
-                : 'tab-nav floating-nav'
+              isSupervisorOrOwner(session.role)
+                ? 'tab-nav floating-nav'
+                : 'tab-nav operator-tab-nav floating-nav'
             }
             aria-label="Navegacion principal"
           >
-            {session.role === 'supervisor' ? (
+            {isSupervisorOrOwner(session.role) ? (
               <>
                 <button
                   className={supervisorTab === 'resumen' ? 'active' : ''}
@@ -773,7 +1072,7 @@ function App() {
           </section>
         )}
 
-        {session.role === 'supervisor' && supervisorTab === 'resumen' ? (
+        {isSupervisorOrOwner(session.role) && supervisorTab === 'resumen' ? (
           <section className="kpi-grid">
             <article className="metric-panel">
               <p>HA PLANIFICADAS HOY</p>
@@ -802,7 +1101,7 @@ function App() {
           </section>
         ) : null}
 
-        {session.role === 'supervisor' && supervisorTab === 'resumen' ? (
+        {isSupervisorOrOwner(session.role) && supervisorTab === 'resumen' ? (
           <>
             <section className="dashboard-grid two-up">
               <article className="panel-card">
@@ -884,7 +1183,7 @@ function App() {
                     <p>{item.labor}</p>
                     <strong>{item.executed.toFixed(1)}</strong>
                     <span>
-                      / {item.planned.toFixed(1)} ha Â· {item.count} labores
+                      / {item.planned.toFixed(1)} ha - {item.count} labores
                     </span>
                     <div className="progress-track">
                       <span
@@ -900,7 +1199,7 @@ function App() {
           </>
         ) : null}
 
-        {session.role === 'supervisor' && supervisorTab === 'asignar' ? (
+        {isSupervisorOrOwner(session.role) && supervisorTab === 'asignar' ? (
           <section className="dashboard-grid two-up">
             <article className="panel-card">
               <div className="panel-title">
@@ -910,86 +1209,84 @@ function App() {
                 <div className="form-grid">
                   <label>
                     Hacienda
-                    <select
+                    <SearchableSelect
                       value={assignmentForm.haciendaCode}
-                      onChange={(event) => updateAssignmentForm('haciendaCode', event.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      {haciendas.map((item) => (
-                        <option key={item.code} value={item.code}>
-                          {item.code} - {item.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateAssignmentForm('haciendaCode', value)}
+                      options={haciendas.map((item) => ({
+                        value: item.code,
+                        label: `${item.code} - ${item.name}`,
+                      }))}
+                    />
                   </label>
                   <label>
                     Suerte
-                    <select
+                    <SearchableSelect
                       value={assignmentForm.suerte}
-                      onChange={(event) => updateAssignmentForm('suerte', event.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      {assignmentSuertes.map((row) => (
-                        <option key={`${row.haciendaCode}-${row.suerte}`} value={row.suerte}>
-                          {row.suerte} Â· {formatArea(row.area)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateAssignmentForm('suerte', value)}
+                      options={assignmentSuertes.map((row) => ({
+                        value: row.suerte,
+                        label: `${row.suerte} - ${formatArea(row.area)}`,
+                      }))}
+                    />
                   </label>
                 </div>
-                <label>
-                  Labor
-                  <select
-                    value={assignmentForm.labor}
-                    onChange={(event) => updateAssignmentForm('labor', event.target.value)}
-                  >
-                    <option value="">Seleccionar</option>
-                    {WORKFLOW.map((labor) => (
-                      <option key={labor} value={labor}>
-                        {labor}
-                        {assignmentForm.haciendaCode && assignmentForm.suerte
-                          ? labor ===
-                            getSuggestedLabor(
-                              assignments,
-                              `${assignmentForm.haciendaCode}-${assignmentForm.suerte}`,
-                            )
-                            ? ' â† sugerida'
-                            : ''
-                          : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="form-grid">
+                  <label>
+                    Labor
+                    <SearchableSelect
+                      value={assignmentForm.labor}
+                      onChange={(value) => updateAssignmentForm('labor', value)}
+                      options={WORKFLOW.map((labor) => {
+                        const isSuggested =
+                          assignmentForm.haciendaCode && assignmentForm.suerte
+                            ? labor ===
+                              getSuggestedLabor(
+                                assignments,
+                                `${assignmentForm.haciendaCode}-${assignmentForm.suerte}`,
+                              )
+                            : false
+                        return {
+                          value: labor,
+                          label: labor,
+                          rightLabel: isSuggested ? '<- sugerida' : undefined,
+                        }
+                      })}
+                    />
+                  </label>
+                  <label>
+                    Cliente
+                    <SearchableSelect
+                      value={assignmentForm.cliente}
+                      onChange={(value) => updateAssignmentForm('cliente', value)}
+                      options={[
+                        { value: 'ingenios', label: 'Ingenios' },
+                        { value: 'proveedores', label: 'Proveedores' },
+                      ]}
+                    />
+                  </label>
+                </div>
                 <div className="form-grid">
                   <label>
                     Operador
-                    <select
+                    <SearchableSelect
                       value={assignmentForm.operatorId}
-                      onChange={(event) => updateAssignmentForm('operatorId', event.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      {operators.map((operator) => (
-                        <option key={operator.id} value={operator.id}>
-                          {operator.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateAssignmentForm('operatorId', value)}
+                      options={operators.map((operator) => ({
+                        value: operator.id,
+                        label: operator.name,
+                      }))}
+                    />
                   </label>
                   <label>
                     Equipo
-                    <select
+                    <SearchableSelect
                       value={assignmentForm.equipmentCode}
-                      onChange={(event) =>
-                        updateAssignmentForm('equipmentCode', event.target.value)
-                      }
-                    >
-                      <option value="">Seleccionar</option>
-                      {equipment.map((item) => (
-                        <option key={item.code} value={item.code}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateAssignmentForm('equipmentCode', value)}
+                      options={equipment.map((item) => ({
+                        value: item.code,
+                        label: item.name,
+                      }))}
+                    />
                   </label>
                 </div>
                 <label>
@@ -1021,12 +1318,17 @@ function App() {
                           {assignment.haciendaName} - {assignment.suerte}
                         </strong>
                         <span>
-                          {assignment.labor} · {assignment.operatorName || 'Sin operador'} · {assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}
+                          {assignment.labor}
+                          {assignment.kind === 'ASIGNADA' ? (
+                            <span className="kind-badge asignada">Prog.</span>
+                          ) : (
+                            <span className="kind-badge libre">Campo</span>
+                          )}{' '}
+                          Â· {assignment.operatorName || 'Sin operador'} Â· {assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}
                         </span>
                       </div>
                       <div className="movement-side">
-                        <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
-                        <small>{formatArea(assignment.area)}</small>
+                        <span className={`status-pill ${meta.tone}`}>{formatArea(assignment.area)}</span>
                       </div>
                     </div>
                   )
@@ -1036,13 +1338,13 @@ function App() {
           </section>
         ) : null}
 
-        {session.role === 'supervisor' && supervisorTab === 'tablero' ? (
+        {isSupervisorOrOwner(session.role) && supervisorTab === 'tablero' ? (
           <section className="panel-card tablero-section">
             <div className="panel-title">
               <div>
                 <h2>Tablero de Cumplimiento de Labores</h2>
                 <p className="subtle-copy">
-                  La secuencia de labores es DESPEJE-REPIQUE-RENCALLE-V-SUBSUELO-TRIPLE-FERTILIZACION-ZANJAS.
+                  La secuencia de labores es {WORKFLOW.join(' - ')}.
                 </p>
               </div>
             </div>
@@ -1129,7 +1431,7 @@ function App() {
           </section>
         ) : null}
 
-        {session.role === 'supervisor' && supervisorTab === 'labores' ? (
+        {isSupervisorOrOwner(session.role) && supervisorTab === 'labores' ? (
           <section className="panel-card">
             <div className="panel-title split">
               <h2>Labores</h2>
@@ -1176,7 +1478,14 @@ function App() {
                       <tr key={assignment.id}>
                         <td>{assignment.haciendaName}</td>
                         <td>{assignment.suerte}</td>
-                        <td>{assignment.labor}</td>
+                        <td>
+                          {assignment.labor}
+                          {assignment.kind === 'ASIGNADA' ? (
+                            <span className="kind-badge asignada">Prog.</span>
+                          ) : (
+                            <span className="kind-badge libre">Campo</span>
+                          )}
+                        </td>
                         <td>{assignment.operatorName || 'Sin operador'}</td>
                         <td>{assignment.equipmentName || '-'}</td>
                         <td>
@@ -1204,50 +1513,190 @@ function App() {
           </section>
         ) : null}
 
-        {session.role === 'supervisor' && supervisorTab === 'equipos' ? (
-          <section className="panel-card">
-            <div className="panel-title">
-              <h2>Estado de equipos</h2>
-            </div>
-            <div className="equipment-grid">
-              {equipment.map((item) => {
-                const active = assignments.find(
-                  (assignment) =>
-                    assignment.equipmentCode === item.code &&
-                    assignment.status === 'EN_PROCESO',
-                )
-                const planned = assignments
-                  .filter(
+        {isSupervisorOrOwner(session.role) && supervisorTab === 'equipos' ? (
+          <section className="dashboard-grid two-up">
+            <article className="panel-card">
+              <div className="panel-title">
+                <h2>Crear equipo</h2>
+              </div>
+              <form className="form-grid-block" onSubmit={handleCreateEquipment}>
+                <div className="form-grid">
+                  <label>
+                    Codigo
+                    <input
+                      value={equipmentForm.code}
+                      onChange={(event) =>
+                        updateEquipmentForm('code', event.target.value)
+                      }
+                      placeholder="TRC-001"
+                    />
+                  </label>
+                  <label>
+                    Nombre
+                    <input
+                      value={equipmentForm.name}
+                      onChange={(event) =>
+                        updateEquipmentForm('name', event.target.value)
+                      }
+                      placeholder="Case 1304"
+                    />
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Tipo
+                    <select
+                      value={equipmentForm.type}
+                      onChange={(event) =>
+                        updateEquipmentForm(
+                          'type',
+                          event.target.value as EquipmentFormState['type'],
+                        )
+                      }
+                    >
+                      <option value="tractor">tractor</option>
+                      <option value="implemento">implemento</option>
+                      <option value="vehiculo">vehiculo</option>
+                      <option value="otro">otro</option>
+                    </select>
+                  </label>
+                  <label>
+                    Estado
+                    <select
+                      value={equipmentForm.state}
+                      onChange={(event) =>
+                        updateEquipmentForm(
+                          'state',
+                          event.target.value as EquipmentFormState['state'],
+                        )
+                      }
+                    >
+                      <option value="activo">activo</option>
+                      <option value="en_mantenimiento">en_mantenimiento</option>
+                      <option value="inactivo">inactivo</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Marca
+                    <input
+                      value={equipmentForm.brand}
+                      onChange={(event) =>
+                        updateEquipmentForm('brand', event.target.value)
+                      }
+                    />
+                  </label>
+                  <label>
+                    Modelo
+                    <input
+                      value={equipmentForm.model}
+                      onChange={(event) =>
+                        updateEquipmentForm('model', event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Ano
+                    <input
+                      value={equipmentForm.year}
+                      onChange={(event) =>
+                        updateEquipmentForm('year', event.target.value)
+                      }
+                      placeholder="2024"
+                    />
+                  </label>
+                  <label>
+                    Placa
+                    <input
+                      value={equipmentForm.plate}
+                      onChange={(event) =>
+                        updateEquipmentForm('plate', event.target.value)
+                      }
+                    />
+                  </label>
+                </div>
+                <label>
+                  Numero de serie
+                  <input
+                    value={equipmentForm.serialNumber}
+                    onChange={(event) =>
+                      updateEquipmentForm('serialNumber', event.target.value)
+                    }
+                  />
+                </label>
+                <label>
+                  Observaciones
+                  <textarea
+                    rows={3}
+                    value={equipmentForm.notes}
+                    onChange={(event) =>
+                      updateEquipmentForm('notes', event.target.value)
+                    }
+                  />
+                </label>
+                <label className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    checked={equipmentForm.active}
+                    onChange={(event) =>
+                      updateEquipmentForm('active', event.target.checked)
+                    }
+                  />
+                  Equipo activo
+                </label>
+                <button className="primary-button" type="submit" disabled={busy}>
+                  {busy ? 'Guardando...' : 'Crear equipo'}
+                </button>
+              </form>
+            </article>
+
+            <article className="panel-card">
+              <div className="panel-title">
+                <h2>Estado de equipos</h2>
+              </div>
+              <div className="equipment-grid">
+                {equipment.map((item) => {
+                  const active = assignments.find(
                     (assignment) =>
                       assignment.equipmentCode === item.code &&
-                      assignment.dateKey === todayKey &&
-                      assignment.status !== 'CANCELADA',
+                      assignment.status === 'EN_PROCESO',
                   )
-                  .reduce((sum, assignment) => sum + assignment.area, 0)
+                  const planned = assignments
+                    .filter(
+                      (assignment) =>
+                        assignment.equipmentCode === item.code &&
+                        assignment.dateKey === todayKey &&
+                        assignment.status !== 'CANCELADA',
+                    )
+                    .reduce((sum, assignment) => sum + assignment.area, 0)
 
-                return (
-                  <article key={item.code} className="equipment-card">
-                    <div className="equipment-card-head">
-                      <div>
-                        <h3>{item.name}</h3>
-                        <p>{item.code}</p>
+                  return (
+                    <article key={item.code} className="equipment-card">
+                      <div className="equipment-card-head">
+                        <div>
+                          <h3>{item.name}</h3>
+                          <p>{item.code}</p>
+                        </div>
+                        <span className={`status-pill ${active ? 'progress' : 'done'}`}>
+                          {active ? 'En uso' : 'Disponible'}
+                        </span>
                       </div>
-                      <span className={`status-pill ${active ? 'progress' : 'done'}`}>
-                        {active ? 'En uso' : 'Disponible'}
-                      </span>
-                    </div>
-                    <div className="equipment-card-body">
-                      <strong>{planned.toFixed(1)} ha</strong>
-                      <span>
-                        {active
-                          ? `${active.operatorName} Â· ${active.haciendaName} ${active.suerte}`
-                          : 'Sin labor activa'}
-                      </span>
-                    </div>
-                  </article>
-                )
-              })}
-            </div>
+                      <div className="equipment-card-body">
+                        <strong>{planned.toFixed(1)} ha</strong>
+                        <span>
+                          {active
+                            ? `${active.operatorName} Â· ${active.haciendaName} ${active.suerte}`
+                            : 'Sin labor activa'}
+                        </span>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </article>
           </section>
         ) : null}
 
@@ -1264,7 +1713,13 @@ function App() {
                         {assignment.haciendaName} - {assignment.suerte}
                       </h2>
                       <p className="subtle-copy">
-                        {assignment.labor} Â· {formatArea(assignment.area)}
+                        {assignment.labor} 
+                        {assignment.kind === 'ASIGNADA' ? (
+                          <span className="kind-badge asignada">Prog.</span>
+                        ) : (
+                          <span className="kind-badge libre">Campo</span>
+                        )}{' '}
+                        - {formatArea(assignment.area)}
                       </p>
                     </div>
                     <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
@@ -1272,6 +1727,9 @@ function App() {
                   <div className="active-meta">
                     <span>Equipo: {assignment.equipmentName || '-'}</span>
                     <span>Inicio: {formatTime(assignment.startedAt)}</span>
+                    {assignment.horometroInicial != null && (
+                      <span>Horometro inicial: {assignment.horometroInicial}</span>
+                    )}
                   </div>
                   {assignment.status === 'PENDIENTE' ? (
                     <div className="start-grid">
@@ -1295,6 +1753,19 @@ function App() {
                           ))}
                         </select>
                       </label>
+                      <label>
+                        Horometro inicial
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={startHorometroDrafts[assignment.id] ?? ''}
+                          onChange={(event) =>
+                            updateStartHorometroDraft(assignment.id, event.target.value)
+                          }
+                          placeholder="Ej: 4523.5"
+                        />
+                      </label>
                       <button
                         className="primary-button"
                         onClick={() => void handleStartAssignment(assignment)}
@@ -1313,6 +1784,19 @@ function App() {
                             updateFinishDraft(assignment.id, 'area', event.target.value)
                           }
                           placeholder={assignment.area.toFixed(1)}
+                        />
+                      </label>
+                      <label>
+                        Horometro final
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={draft?.horometroFinal ?? ''}
+                          onChange={(event) =>
+                            updateFinishDraft(assignment.id, 'horometroFinal', event.target.value)
+                          }
+                          placeholder="Ej: 4541.2"
                         />
                       </label>
                       <label className="finish-notes">
@@ -1357,72 +1841,73 @@ function App() {
                 <div className="form-grid">
                   <label>
                     Hacienda
-                    <select
+                    <SearchableSelect
                       value={freeFieldForm.haciendaCode}
-                      onChange={(event) => updateFreeFieldForm('haciendaCode', event.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      {haciendas.map((item) => (
-                        <option key={item.code} value={item.code}>
-                          {item.code} - {item.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
+                      options={haciendas.map((item) => ({
+                        value: item.code,
+                        label: `${item.code} - ${item.name}`,
+                      }))}
+                    />
                   </label>
                   <label>
                     Suerte
-                    <select
+                    <SearchableSelect
                       value={freeFieldForm.suerte}
-                      onChange={(event) => updateFreeFieldForm('suerte', event.target.value)}
-                    >
-                      <option value="">Seleccionar</option>
-                      {freeFieldSuertes.map((row) => (
-                        <option key={`${row.haciendaCode}-${row.suerte}`} value={row.suerte}>
-                          {row.suerte} Â· {formatArea(row.area)}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateFreeFieldForm('suerte', value)}
+                      options={freeFieldSuertes.map((row) => ({
+                        value: row.suerte,
+                        label: `${row.suerte} - ${formatArea(row.area)}`,
+                      }))}
+                    />
                   </label>
                 </div>
-                <label>
-                  Labor
-                  <select
-                    value={freeFieldForm.labor}
-                    onChange={(event) => updateFreeFieldForm('labor', event.target.value)}
-                  >
-                    <option value="">Seleccionar</option>
-                    {WORKFLOW.map((labor) => (
-                      <option key={labor} value={labor}>
-                        {labor}
-                        {freeFieldForm.haciendaCode && freeFieldForm.suerte
-                          ? labor ===
-                            getSuggestedLabor(
-                              assignments,
-                              `${freeFieldForm.haciendaCode}-${freeFieldForm.suerte}`,
-                            )
-                            ? ' â† sugerida'
-                            : ''
-                          : ''}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="form-grid">
+                  <label>
+                    Labor
+                    <SearchableSelect
+                      value={freeFieldForm.labor}
+                      onChange={(value) => updateFreeFieldForm('labor', value)}
+                      options={WORKFLOW.map((labor) => {
+                        const isSuggested =
+                          freeFieldForm.haciendaCode && freeFieldForm.suerte
+                            ? labor ===
+                              getSuggestedLabor(
+                                assignments,
+                                `${freeFieldForm.haciendaCode}-${freeFieldForm.suerte}`,
+                              )
+                            : false
+                        return {
+                          value: labor,
+                          label: labor,
+                          rightLabel: isSuggested ? '<- sugerida' : undefined,
+                        }
+                      })}
+                    />
+                  </label>
+                  <label>
+                    Cliente
+                    <SearchableSelect
+                      value={freeFieldForm.cliente}
+                      onChange={(value) => updateFreeFieldForm('cliente', value)}
+                      options={[
+                        { value: 'ingenios', label: 'Ingenios' },
+                        { value: 'proveedores', label: 'Proveedores' },
+                      ]}
+                    />
+                  </label>
+                </div>
                 <div className="form-grid">
                   <label>
                     Equipo
-                    <select
+                    <SearchableSelect
                       value={freeFieldForm.equipmentCode || session.equipmentCode}
-                      onChange={(event) =>
-                        updateFreeFieldForm('equipmentCode', event.target.value)
-                      }
-                    >
-                      <option value="">Seleccionar</option>
-                      {equipment.map((item) => (
-                        <option key={item.code} value={item.code}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value) => updateFreeFieldForm('equipmentCode', value)}
+                      options={equipment.map((item) => ({
+                        value: item.code,
+                        label: item.name,
+                      }))}
+                    />
                   </label>
                   <label>
                     Operador
@@ -1473,11 +1958,39 @@ function App() {
 
         {session.role === 'operador' && operatorTab === 'historial' ? (
           <section className="panel-card operator-history-card">
-            <div className="panel-title">
+            <div className="panel-title split">
               <h2>Historial</h2>
+              <select
+                value={operatorHistoryPeriod}
+                onChange={(e) => setOperatorHistoryPeriod(e.target.value as any)}
+                className="base-input"
+                style={{ width: 'auto', margin: 0, padding: '4px 8px', fontSize: '0.85rem' }}
+              >
+                <option value="HOY">Hoy</option>
+                <option value="ESTA_SEMANA">Esta semana</option>
+                <option value="ESTE_MES">Este mes</option>
+                <option value="TODO">Todo</option>
+              </select>
             </div>
+            
+            <div className="journey-stats" style={{ marginBottom: '1.5rem', marginTop: '1rem', background: '#f8f9fc', padding: '1rem', borderRadius: '8px' }}>
+              <div>
+                <strong>{filteredHistory.length}</strong>
+                <span>cerradas</span>
+              </div>
+              <div>
+                <strong>
+                  {filteredHistory
+                    .filter((item) => item.status === 'COMPLETADA')
+                    .reduce((sum, item) => sum + item.executedArea, 0)
+                    .toFixed(1)}
+                </strong>
+                <span>ha ejecutadas</span>
+              </div>
+            </div>
+
             <div className="list-rows">
-              {historyAssignments.map((assignment) => {
+              {filteredHistory.map((assignment) => {
                 const meta = getStatusMeta(assignment.status)
                 return (
                   <div key={assignment.id} className="movement-row">
@@ -1486,7 +1999,13 @@ function App() {
                         {assignment.haciendaName} - {assignment.suerte}
                       </strong>
                       <span>
-                        {assignment.labor} Â· {assignment.executedArea.toFixed(1)} ha
+                        {assignment.labor} 
+                        {assignment.kind === 'ASIGNADA' ? (
+                          <span className="kind-badge asignada">Prog.</span>
+                        ) : (
+                          <span className="kind-badge libre">Campo</span>
+                        )}{' '}
+                        - {assignment.executedArea.toFixed(1)} ha
                       </span>
                     </div>
                     <div className="movement-side">
@@ -1496,12 +2015,60 @@ function App() {
                   </div>
                 )
               })}
-              {!historyAssignments.length ? (
+              {!filteredHistory.length ? (
                 <p className="muted-text">Aun no hay labores cerradas.</p>
               ) : null}
             </div>
           </section>
         ) : null}
+
+        <div className={`modal-overlay ${isPinModalOpen ? 'open' : ''}`}>
+          <div className="modal-card">
+            <h3>Cambiar PIN</h3>
+            <form onSubmit={handleChangePin} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="field">
+                <label>PIN Actual</label>
+                <input 
+                  type="password" 
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={pinForm.current}
+                  onChange={e => setPinForm(p => ({ ...p, current: e.target.value, error: '' }))}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label>Nuevo PIN</label>
+                <input 
+                  type="password" 
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={pinForm.newPin}
+                  onChange={e => setPinForm(p => ({ ...p, newPin: e.target.value, error: '' }))}
+                  required
+                />
+              </div>
+              <div className="field">
+                <label>Confirmar Nuevo PIN</label>
+                <input 
+                  type="password" 
+                  pattern="[0-9]*"
+                  inputMode="numeric"
+                  value={pinForm.confirm}
+                  onChange={e => setPinForm(p => ({ ...p, confirm: e.target.value, error: '' }))}
+                  required
+                />
+              </div>
+              {pinForm.error && <div className="detail-error" style={{ marginBottom: '0' }}>{pinForm.error}</div>}
+              <div className="modal-footer">
+                <button type="button" className="inline-button" onClick={() => setIsPinModalOpen(false)}>Cancelar</button>
+                <button type="submit" className="primary-button" disabled={pinForm.loading}>
+                  {pinForm.loading ? 'Cambiando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
 
       </div>
     </main>

@@ -6,7 +6,8 @@ export const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY
 export const WORKFLOW = [
   'DESPEJE',
   'REPIQUE',
-  'RENCALLE',
+  'REENCALLE',
+  'REENCALLE V',
   'SUBSUELO',
   'TRIPLE',
   'FERTILIZACION',

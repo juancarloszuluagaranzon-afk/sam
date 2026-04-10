@@ -2,6 +2,7 @@ import { LOCAL_MAESTRO } from '../data/constants'
 import type {
   Assignment,
   AssignmentStatus,
+  CreateEquipmentInput,
   CreateAssignmentInput,
   DashboardMetrics,
   Equipment,
@@ -68,7 +69,10 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     finishedAt: row.fecha_fin ? String(row.fecha_fin) : null,
     executedArea: Number(row.area_realizada ?? 0),
     notes: String(row.observaciones ?? ''),
+    cliente: (row.cliente as 'ingenios' | 'proveedores') || undefined,
     kind: String(row.tipo_registro ?? 'ASIGNADA'),
+    horometroInicial: row.horometro_inicial != null ? Number(row.horometro_inicial) : null,
+    horometroFinal: row.horometro_final != null ? Number(row.horometro_final) : null,
   }
 }
 
@@ -94,6 +98,7 @@ function mapAssignmentPayload(input: CreateAssignmentInput) {
     operador_id: input.operatorId,
     operador_nombre: input.operatorName,
     tipo_registro: input.kind,
+    cliente: input.cliente,
   }
 }
 
@@ -160,7 +165,7 @@ export async function loadAppUsers(): Promise<{
     data: data.map((row) => ({
       id: String(row.id),
       name: String(row.nombre_completo),
-      role: row.rol === 'supervisor' ? 'supervisor' : 'operador',
+      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
     })),
     source: 'supabase',
@@ -190,6 +195,37 @@ export async function loadEquipment(): Promise<{
   }
 }
 
+export async function createEquipment(input: CreateEquipmentInput) {
+  const payload: Record<string, unknown> = {
+    codigo: input.code,
+    nombre: input.name,
+    tipo: input.type,
+    estado: input.state,
+    marca: input.brand || null,
+    modelo: input.model || null,
+    ['a\u00f1o']: input.year,
+    placa: input.plate || null,
+    numero_serie: input.serialNumber || null,
+    observaciones: input.notes || null,
+    activo: input.active,
+  }
+
+  const { data, error } = await supabase
+    .from('equipos')
+    .insert(payload)
+    .select('codigo,nombre')
+    .single()
+
+  if (error || !data) {
+    throw error ?? new Error('No se pudo crear el equipo')
+  }
+
+  return {
+    code: String(data.codigo),
+    name: String(data.nombre),
+  } as Equipment
+}
+
 export async function appLogin(userId: string, pin: string) {
   const { data, error } = await supabase.rpc('app_login', {
     p_user_id: userId,
@@ -205,9 +241,23 @@ export async function appLogin(userId: string, pin: string) {
   return {
     id: String(row.id),
     name: String(row.nombre_completo),
-    role: row.rol === 'supervisor' ? 'supervisor' : 'operador',
+    role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : 'operador',
     equipmentCode: String(row.equipo_codigo ?? ''),
   } as UserProfile
+}
+
+export async function appChangePin(userId: string, currentPin: string, newPin: string) {
+  const { error } = await supabase.rpc('app_change_pin', {
+    p_user_id: userId,
+    p_current_pin: currentPin,
+    p_new_pin: newPin,
+  })
+
+  if (error) {
+    throw new Error(error.message || 'Error al cambiar PIN')
+  }
+
+  return true
 }
 
 export async function createAssignment(input: CreateAssignmentInput) {
@@ -240,6 +290,8 @@ export async function updateAssignment(
     payload.equipo_nombre = input.equipmentName
     payload.tractor = input.equipmentName
   }
+  if (input.horometroInicial !== undefined) payload.horometro_inicial = input.horometroInicial
+  if (input.horometroFinal !== undefined) payload.horometro_final = input.horometroFinal
 
   const { data, error } = await supabase
     .from('asignaciones')

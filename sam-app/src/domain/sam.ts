@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador'
+export type Role = 'supervisor' | 'operador' | 'owner'
 
 export type UserId = 'U002' | 'U003' | 'U004'
 
@@ -18,6 +18,20 @@ export interface UserProfile {
 export interface Equipment {
   code: string
   name: string
+}
+
+export interface CreateEquipmentInput {
+  code: string
+  name: string
+  type: 'tractor' | 'implemento' | 'vehiculo' | 'otro'
+  state: 'activo' | 'en_mantenimiento' | 'inactivo'
+  brand: string
+  model: string
+  year: number | null
+  plate: string
+  serialNumber: string
+  notes: string
+  active: boolean
 }
 
 export interface MaestroRow {
@@ -48,6 +62,9 @@ export interface Assignment {
   executedArea: number
   notes: string
   kind: string
+  horometroInicial: number | null
+  horometroFinal: number | null
+  cliente?: 'ingenios' | 'proveedores'
 }
 
 export interface DashboardMetrics {
@@ -71,6 +88,7 @@ export interface CreateAssignmentInput {
   equipmentName: string
   notes: string
   kind: string
+  cliente: 'ingenios' | 'proveedores'
   initialStatus: AssignmentStatus
   startedAt?: string | null
 }
@@ -83,4 +101,6 @@ export interface UpdateAssignmentInput {
   notes?: string
   equipmentCode?: string
   equipmentName?: string
+  horometroInicial?: number | null
+  horometroFinal?: number | null
 }

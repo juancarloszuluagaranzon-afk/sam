@@ -1497,7 +1497,9 @@ function App() {
                                 )}
                                 <span>
                                   {assignment
-                                    ? `${assignment.area.toFixed(2)} ha`
+                                    ? assignment.status === 'COMPLETADA' && assignment.executedArea > 0
+                                      ? `${assignment.executedArea.toFixed(2)} ha`
+                                      : `${assignment.area.toFixed(2)} ha`
                                     : 'No ejecutada'}
                                 </span>
                               </div>
@@ -1571,7 +1573,11 @@ function App() {
                     <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
 
                     <span className="labor-label">Area</span>
-                    <span className="labor-area">{formatArea(assignment.area)}</span>
+                    <span className="labor-area">
+                      {assignment.status === 'COMPLETADA' && assignment.executedArea > 0
+                        ? formatArea(assignment.executedArea)
+                        : formatArea(assignment.area)}
+                    </span>
 
                     {assignment.status === 'PENDIENTE' && (
                       <div className="labor-actions" onClick={(e) => e.stopPropagation()}>

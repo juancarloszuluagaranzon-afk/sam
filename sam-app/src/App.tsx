@@ -1428,22 +1428,17 @@ function App() {
         {isSupervisorOrOwner(session.role) && supervisorTab === 'tablero' ? (
           <section className="panel-card tablero-section">
             <div className="panel-title">
-              <div>
-                <h2>Tablero de Cumplimiento de Labores</h2>
-                <p className="subtle-copy">
-                  La secuencia de labores es {WORKFLOW.join(' - ')}.
-                </p>
-              </div>
+              <h2>Tablero</h2>
             </div>
             <div className="tablero-wrap">
               <table className="tablero-table">
                 <thead>
                   <tr>
                     <th className="tab-sticky-col">SUERTE</th>
-                    <th className="tab-meta-col">HA TOTAL</th>
+                    <th className="tab-meta-col">HA</th>
                     <th className="tab-meta-col">INICIO</th>
-                    <th className="tab-meta-col">DIAS</th>
-                    <th className="tab-meta-col">ROT.</th>
+                    <th className="tab-meta-col tab-hide-mobile">DIAS</th>
+                    <th className="tab-meta-col tab-hide-mobile">ROT.</th>
                     {WORKFLOW.map((labor) => (
                       <th key={labor} className="tab-labor-col">{labor}</th>
                     ))}
@@ -1471,10 +1466,10 @@ function App() {
                           <strong>{row.haciendaCode}-{row.suerte}</strong>
                           <small>{row.haciendaName}</small>
                         </td>
-                        <td className="center-cell">{row.area.toFixed(2)}</td>
+                        <td className="center-cell">{row.area.toFixed(1)}</td>
                         <td className="center-cell">{firstDate}</td>
-                        <td className="center-cell">1</td>
-                        <td className="center-cell">DOBLE</td>
+                        <td className="center-cell tab-hide-mobile">1</td>
+                        <td className="center-cell tab-hide-mobile">DOBLE</td>
                         {WORKFLOW.map((labor) => {
                           const assignment = rowAssignments.find(
                             (item) => item.labor.toUpperCase() === labor.toUpperCase(),

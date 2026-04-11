@@ -1080,7 +1080,7 @@ th {
 .tablero-wrap {
   width: 100%;
   overflow-x: auto;
-  border-radius: 16px;
+  border-radius: 12px;
   background: #f9f7f2;
 }
 
@@ -1088,13 +1088,14 @@ th {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  min-width: 1200px;
+  min-width: 720px;
+  font-size: 0.75rem;
 }
 
-.tablero-table th, 
+.tablero-table th,
 .tablero-table td {
   border: 1px solid #ebe4d5;
-  padding: 12px;
+  padding: 7px 6px;
 }
 
 .tab-sticky-col {
@@ -1108,18 +1109,18 @@ th {
 
 .tab-sticky-col strong {
   display: block;
-  font-size: 1.1rem;
+  font-size: 0.8rem;
 }
 
 .tab-sticky-col small {
   color: #67715f;
-  font-size: 0.75rem;
+  font-size: 0.68rem;
 }
 
 .tab-labor-col {
   background: #f0eadb;
   text-align: center;
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   letter-spacing: 0.05em;
   color: #495746;
 }
@@ -1135,13 +1136,35 @@ th {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  min-height: 50px;
-  padding: 6px;
-  border-radius: 8px;
-  font-size: 0.85rem;
+  gap: 2px;
+  min-height: 36px;
+  padding: 4px 3px;
+  border-radius: 6px;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #444;
+}
+
+@media (max-width: 640px) {
+  .tab-hide-mobile {
+    display: none;
+  }
+
+  .tablero-table {
+    min-width: 480px;
+    font-size: 0.7rem;
+  }
+
+  .tablero-table th,
+  .tablero-table td {
+    padding: 5px 4px;
+  }
+
+  .labor-cell-box {
+    min-height: 30px;
+    font-size: 0.6rem;
+    padding: 3px 2px;
+  }
 }
 
 .labor-cell-box.pendiente {

@@ -1485,18 +1485,14 @@ function App() {
                           return (
                             <td key={labor} className="labor-cell-td">
                               <div className={cellClass}>
-                                {status === 'COMPLETADA' && <span className="check">OK</span>}
                                 {status === 'EN_PROCESO' && <span className="spinner">RUN</span>}
-                                {(status === 'PENDIENTE' || !assignment) && (
-                                  <span className="warn">NO</span>
+                                {status === 'COMPLETADA' && (
+                                  <span>
+                                    {assignment.executedArea > 0
+                                      ? `${assignment.executedArea.toFixed(1)} ha`
+                                      : `${assignment.area.toFixed(1)} ha`}
+                                  </span>
                                 )}
-                                <span>
-                                  {assignment
-                                    ? assignment.status === 'COMPLETADA' && assignment.executedArea > 0
-                                      ? `${assignment.executedArea.toFixed(2)} ha`
-                                      : `${assignment.area.toFixed(2)} ha`
-                                    : 'No ejecutada'}
-                                </span>
                               </div>
                             </td>
                           )
@@ -1508,9 +1504,9 @@ function App() {
               </table>
             </div>
             <div className="tablero-legend">
-              <span className="tablero-legend-item completada"><span className="check">OK</span> Ejecutada</span>
+              <span className="tablero-legend-item completada">Ejecutada</span>
               <span className="tablero-legend-item en_proceso"><span className="spinner">RUN</span> En ejecucion</span>
-              <span className="tablero-legend-item pendiente"><span className="warn">NO</span> No ejecutada</span>
+              <span className="tablero-legend-item pendiente">Pendiente</span>
             </div>
           </section>
         ) : null}

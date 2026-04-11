@@ -1503,6 +1503,9 @@ function App() {
                                       : `${assignment.area.toFixed(1)} ha`}
                                   </span>
                                 )}
+                                {status === 'PENDIENTE' && (
+                                  <span>{(assignment?.area ?? row.area).toFixed(1)} ha</span>
+                                )}
                               </div>
                             </td>
                           )

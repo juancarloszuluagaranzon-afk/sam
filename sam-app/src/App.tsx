@@ -511,8 +511,8 @@ function App() {
       const user = await appLogin(loginUserId, loginPin)
       saveSession(user)
       setInfo(`Sesion iniciada para ${user.name}.`)
-      if (user.role === 'supervisor') {
-        setSupervisorTab('resumen')
+      if (isSupervisorOrOwner(user.role)) {
+        setSupervisorTab('labores')
       } else {
         setOperatorTab('activas')
       }
@@ -1024,12 +1024,12 @@ function App() {
             {isSupervisorOrOwner(session.role) ? (
               <>
                 <button
-                  className={supervisorTab === 'resumen' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('resumen')}
+                  className={supervisorTab === 'labores' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('labores')}
                 >
                   <span className="nav-item">
-                    <span className="nav-icon">⌂</span>
-                    <span className="nav-label">Resumen</span>
+                    <span className="nav-icon">✓</span>
+                    <span className="nav-label">Labores</span>
                   </span>
                 </button>
                 <button
@@ -1042,12 +1042,12 @@ function App() {
                   </span>
                 </button>
                 <button
-                  className={supervisorTab === 'labores' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('labores')}
+                  className={supervisorTab === 'resumen' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('resumen')}
                 >
                   <span className="nav-item">
-                    <span className="nav-icon">✓</span>
-                    <span className="nav-label">Labores</span>
+                    <span className="nav-icon">⌂</span>
+                    <span className="nav-label">Resumen</span>
                   </span>
                 </button>
                 <button

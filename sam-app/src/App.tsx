@@ -1459,33 +1459,37 @@ function App() {
                 const meta = getStatusMeta(assignment.status)
                 return (
                   <li key={assignment.id} className="labor-item">
+                    <span className="labor-label">Hacienda</span>
+                    <span className="labor-value">{assignment.haciendaName}</span>
+
+                    <span className="labor-label">Suerte</span>
+                    <span className="labor-value">{assignment.suerte}</span>
+
+                    <span className="labor-label">Tipo</span>
+                    <span className="labor-value">
+                      {assignment.kind === 'ASIGNADA' ? (
+                        <span className="kind-badge asignada">Prog.</span>
+                      ) : (
+                        <span className="kind-badge libre">Campo</span>
+                      )}
+                    </span>
+
+                    <span className="labor-label">Estado</span>
                     <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
-                    <div className="labor-item-body">
-                      <div className="labor-item-top">
-                        <strong className="labor-name">{assignment.labor}</strong>
-                        {assignment.kind === 'ASIGNADA' ? (
-                          <span className="kind-badge asignada">Prog.</span>
-                        ) : (
-                          <span className="kind-badge libre">Campo</span>
-                        )}
-                      </div>
-                      <p className="labor-item-meta">
-                        {assignment.haciendaName} · {assignment.suerte}
-                        {assignment.operatorName ? ` · ${assignment.operatorName}` : ''}
-                        {assignment.equipmentName ? ` · ${assignment.equipmentName}` : ''}
-                      </p>
-                    </div>
-                    <div className="labor-item-right">
-                      <span className="labor-area">{formatArea(assignment.area)}</span>
-                      {assignment.status === 'PENDIENTE' && (
+
+                    <span className="labor-label">Area</span>
+                    <span className="labor-area">{formatArea(assignment.area)}</span>
+
+                    {assignment.status === 'PENDIENTE' && (
+                      <div className="labor-actions">
                         <button
                           className="cancel-btn"
                           onClick={() => void handleCancelAssignment(assignment)}
                         >
                           Cancelar
                         </button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </li>
                 )
               })}

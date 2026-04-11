@@ -262,6 +262,7 @@ function App() {
   const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'TODO'>('HOY')
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
+  const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
   const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string; horometroFinal: string }>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
   const [startHorometroDrafts, setStartHorometroDrafts] = useState<Record<string, string>>({})
@@ -1458,7 +1459,7 @@ function App() {
               {filteredAssignments.map((assignment) => {
                 const meta = getStatusMeta(assignment.status)
                 return (
-                  <li key={assignment.id} className="labor-item">
+                  <li key={assignment.id} className="labor-item labor-item--tappable" onClick={() => setSelectedLabor(assignment)}>
                     <span className="labor-label">Hacienda</span>
                     <span className="labor-value">{assignment.haciendaName}</span>
 
@@ -1481,7 +1482,7 @@ function App() {
                     <span className="labor-area">{formatArea(assignment.area)}</span>
 
                     {assignment.status === 'PENDIENTE' && (
-                      <div className="labor-actions">
+                      <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="cancel-btn"
                           onClick={() => void handleCancelAssignment(assignment)}
@@ -2008,6 +2009,105 @@ function App() {
             </div>
           </section>
         ) : null}
+
+        {selectedLabor && (() => {
+          const meta = getStatusMeta(selectedLabor.status)
+          return (
+            <div className="modal-overlay open" onClick={() => setSelectedLabor(null)}>
+              <div className="modal-card labor-detail-card" onClick={(e) => e.stopPropagation()}>
+                <div className="labor-detail-header">
+                  <div>
+                    <h3>{selectedLabor.labor}</h3>
+                    <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
+                  </div>
+                  <button className="modal-close-btn" onClick={() => setSelectedLabor(null)} aria-label="Cerrar">✕</button>
+                </div>
+
+                <div className="labor-detail-grid">
+                  <span className="labor-label">Hacienda</span>
+                  <span className="labor-value">{selectedLabor.haciendaName}</span>
+
+                  <span className="labor-label">Suerte</span>
+                  <span className="labor-value">{selectedLabor.suerte}</span>
+
+                  <span className="labor-label">Tipo</span>
+                  <span className="labor-value">
+                    {selectedLabor.kind === 'ASIGNADA' ? (
+                      <span className="kind-badge asignada">Programada</span>
+                    ) : (
+                      <span className="kind-badge libre">Campo libre</span>
+                    )}
+                  </span>
+
+                  <span className="labor-label">Operador</span>
+                  <span className="labor-value">{selectedLabor.operatorName || '—'}</span>
+
+                  <span className="labor-label">Equipo</span>
+                  <span className="labor-value">{selectedLabor.equipmentName || '—'}</span>
+
+                  <span className="labor-label">Área plan.</span>
+                  <span className="labor-area">{formatArea(selectedLabor.area)}</span>
+
+                  {selectedLabor.executedArea > 0 && (
+                    <>
+                      <span className="labor-label">Área ejec.</span>
+                      <span className="labor-area">{formatArea(selectedLabor.executedArea)}</span>
+                    </>
+                  )}
+
+                  {selectedLabor.horometroInicial !== null && (
+                    <>
+                      <span className="labor-label">Horóm. ini.</span>
+                      <span className="labor-value">{selectedLabor.horometroInicial} h</span>
+                    </>
+                  )}
+
+                  {selectedLabor.horometroFinal !== null && (
+                    <>
+                      <span className="labor-label">Horóm. fin.</span>
+                      <span className="labor-value">{selectedLabor.horometroFinal} h</span>
+                    </>
+                  )}
+
+                  {selectedLabor.startedAt && (
+                    <>
+                      <span className="labor-label">Inicio</span>
+                      <span className="labor-value">{formatTime(selectedLabor.startedAt)}</span>
+                    </>
+                  )}
+
+                  {selectedLabor.finishedAt && (
+                    <>
+                      <span className="labor-label">Fin</span>
+                      <span className="labor-value">{formatTime(selectedLabor.finishedAt)}</span>
+                    </>
+                  )}
+
+                  {selectedLabor.notes && (
+                    <>
+                      <span className="labor-label">Notas</span>
+                      <span className="labor-value">{selectedLabor.notes}</span>
+                    </>
+                  )}
+                </div>
+
+                {selectedLabor.status === 'PENDIENTE' && (
+                  <div className="modal-footer">
+                    <button
+                      className="cancel-btn"
+                      onClick={() => {
+                        void handleCancelAssignment(selectedLabor)
+                        setSelectedLabor(null)
+                      }}
+                    >
+                      Cancelar labor
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )
+        })()}
 
         <div className={`modal-overlay ${isPinModalOpen ? 'open' : ''}`}>
           <div className="modal-card">

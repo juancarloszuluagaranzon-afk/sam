@@ -1212,3 +1212,61 @@ th {
   margin-top: 1rem;
   justify-content: flex-end;
 }
+
+.labor-detail-card {
+  max-width: 460px;
+  width: 95%;
+  gap: 0;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.labor-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.labor-detail-header h3 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+  color: #1c2819;
+}
+
+.modal-close-btn {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 0;
+  background: #f0ece3;
+  color: #4d5847;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.modal-close-btn:hover {
+  background: #e3ddd0;
+}
+
+.labor-detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 16px;
+  align-items: center;
+  padding-bottom: 4px;
+}
+
+.labor-item--tappable {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.labor-item--tappable:hover {
+  background: #f5f2ec;
+}

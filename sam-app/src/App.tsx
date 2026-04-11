@@ -115,6 +115,18 @@ function normalizeIdentity(value: string | null | undefined) {
   return String(value ?? '').trim().toUpperCase()
 }
 
+function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: string, totalArea: number): number {
+  const executed = assignments
+    .filter(
+      (a) =>
+        a.suerteCode === suerteCode &&
+        normalizeText(a.labor) === normalizeText(labor) &&
+        a.status === 'COMPLETADA',
+    )
+    .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
+  return Math.max(0, totalArea - executed)
+}
+
 function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   const completed = assignments
     .filter(
@@ -265,7 +277,7 @@ function App() {
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
   const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
-  const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string; horometroFinal: string }>>({})
+  const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string; horometroFinal: string; isComplete: boolean }>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
   const [startHorometroDrafts, setStartHorometroDrafts] = useState<Record<string, string>>({})
 
@@ -605,7 +617,7 @@ function App() {
             haciendaName: maestroRow.haciendaName,
             suerte: maestroRow.suerte,
             labor: assignmentForm.labor,
-            area: maestroRow.area,
+            area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, assignmentForm.labor, maestroRow.area),
             supervisorId: session.id,
             supervisorName: session.name,
             operatorId: operator.id,
@@ -670,7 +682,7 @@ function App() {
             haciendaName: maestroRow.haciendaName,
             suerte: maestroRow.suerte,
             labor: freeFieldForm.labor,
-            area: maestroRow.area,
+            area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, freeFieldForm.labor, maestroRow.area),
             supervisorId: supervisors[0]?.id ?? 'U002',
             supervisorName: supervisors[0]?.name ?? 'Supervisor',
             operatorId: operator.id,
@@ -751,10 +763,15 @@ function App() {
 
   async function handleFinishAssignment(assignment: Assignment) {
     const draft = finishDrafts[assignment.id]
-    const executedArea = Number(draft?.area ?? assignment.area)
+    const isComplete = draft?.isComplete ?? false
+    const executedArea = isComplete ? assignment.area : Number(draft?.area ?? '')
 
-    if (!executedArea) {
+    if (!executedArea || executedArea <= 0) {
       setError('Ingresa las hectareas ejecutadas antes de finalizar.')
+      return
+    }
+    if (!isComplete && executedArea > assignment.area) {
+      setError(`El area ejecutada no puede superar el area de la suerte (${formatArea(assignment.area)}).`)
       return
     }
 
@@ -854,7 +871,20 @@ function App() {
         area: current[assignmentId]?.area ?? '',
         notes: current[assignmentId]?.notes ?? '',
         horometroFinal: current[assignmentId]?.horometroFinal ?? '',
+        isComplete: current[assignmentId]?.isComplete ?? false,
         [field]: value,
+      },
+    }))
+  }
+
+  function setFinishDraftComplete(assignmentId: string, isComplete: boolean, fullArea: number) {
+    setFinishDrafts((current) => ({
+      ...current,
+      [assignmentId]: {
+        area: isComplete ? fullArea.toFixed(1) : (current[assignmentId]?.area ?? ''),
+        notes: current[assignmentId]?.notes ?? '',
+        horometroFinal: current[assignmentId]?.horometroFinal ?? '',
+        isComplete,
       },
     }))
   }
@@ -1826,16 +1856,43 @@ function App() {
                     </div>
                   ) : (
                     <div className="finish-grid">
-                      <label>
-                        Ha ejecutadas
-                        <input
-                          value={draft?.area ?? ''}
-                          onChange={(event) =>
-                            updateFinishDraft(assignment.id, 'area', event.target.value)
-                          }
-                          placeholder={assignment.area.toFixed(1)}
-                        />
-                      </label>
+                      <div className="complete-toggle-row">
+                        <div>
+                          <span className="complete-toggle-label">Labor completada al 100%</span>
+                          <span className="complete-toggle-hint">
+                            {draft?.isComplete
+                              ? `Se registran ${formatArea(assignment.area)}`
+                              : 'Ingresa el área ejecutada'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={draft?.isComplete ?? false}
+                          className={`toggle-switch ${(draft?.isComplete ?? false) ? 'on' : ''}`}
+                          onClick={() => setFinishDraftComplete(assignment.id, !(draft?.isComplete ?? false), assignment.area)}
+                        >
+                          <span className="toggle-thumb" />
+                        </button>
+                      </div>
+
+                      {!(draft?.isComplete ?? false) && (
+                        <label>
+                          Ha ejecutadas
+                          <input
+                            type="number"
+                            min={0.1}
+                            step={0.1}
+                            max={assignment.area}
+                            value={draft?.area ?? ''}
+                            onChange={(event) =>
+                              updateFinishDraft(assignment.id, 'area', event.target.value)
+                            }
+                            placeholder={`máx. ${assignment.area.toFixed(1)}`}
+                          />
+                        </label>
+                      )}
+
                       <label>
                         Horometro final
                         <input

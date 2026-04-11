@@ -1346,6 +1346,61 @@ th {
   color: #2f6511;
 }
 
+/* --- Toggle completa/parcial --- */
+.complete-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: #f5f2eb;
+  border-radius: 12px;
+  margin-bottom: 2px;
+}
+
+.complete-toggle-label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1c2819;
+}
+
+.complete-toggle-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: #7a8275;
+  margin-top: 2px;
+}
+
+.toggle-switch {
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  border-radius: 14px;
+  border: 0;
+  background: #ccc;
+  cursor: pointer;
+  padding: 3px;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+}
+
+.toggle-switch.on {
+  background: #2f6511;
+  justify-content: flex-end;
+}
+
+.toggle-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+  display: block;
+  transition: transform 0.2s ease;
+}
+
 .labor-item--tappable {
   cursor: pointer;
   transition: background 0.15s;

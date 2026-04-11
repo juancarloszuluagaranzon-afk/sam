@@ -966,9 +966,12 @@ function App() {
               <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
             </svg>
           </button>
-          <div>
-            <strong>SAM Control</strong>
-            <span>{getRoleLabel(session.role)}</span>
+          <div className="brand-info">
+            <img src={logoAgromorales} alt="AgroMorales" className="header-logo" />
+            <div>
+              <strong>AgroMorales</strong>
+              <span>{getRoleLabel(session.role)}</span>
+            </div>
           </div>
         </div>
 

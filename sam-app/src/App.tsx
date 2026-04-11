@@ -864,6 +864,12 @@ function App() {
     )
   }
 
+  function prefillAssignmentForm(haciendaCode: number, suerte: string, labor: string) {
+    setAssignmentForm({ ...EMPTY_FORM, haciendaCode: String(haciendaCode), labor })
+    setAssignmentSuertesList([suerte])
+    setSupervisorTab('asignar')
+  }
+
   function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal', value: string) {
     setFinishDrafts((current) => ({
       ...current,
@@ -1475,18 +1481,22 @@ function App() {
                             (item) => item.labor.toUpperCase() === labor.toUpperCase(),
                           )
                           const status = assignment?.status ?? 'PENDIENTE'
-                          const cellClass =
-                            status === 'COMPLETADA'
-                              ? 'labor-cell-box completada'
-                              : status === 'EN_PROCESO'
-                                ? 'labor-cell-box en_proceso'
-                                : 'labor-cell-box pendiente'
+                          const isAssignable = status === 'PENDIENTE' && isSupervisorOrOwner(session!.role)
+                          const cellClass = [
+                            'labor-cell-box',
+                            status === 'COMPLETADA' ? 'completada' : status === 'EN_PROCESO' ? 'en_proceso' : 'pendiente',
+                            isAssignable ? 'tab-cell-assignable' : '',
+                          ].join(' ').trim()
 
                           return (
                             <td key={labor} className="labor-cell-td">
-                              <div className={cellClass}>
+                              <div
+                                className={cellClass}
+                                onClick={isAssignable ? () => prefillAssignmentForm(row.haciendaCode, row.suerte, labor) : undefined}
+                                title={isAssignable ? `Asignar ${labor}` : undefined}
+                              >
                                 {status === 'EN_PROCESO' && <span className="spinner">RUN</span>}
-                                {status === 'COMPLETADA' && (
+                                {status === 'COMPLETADA' && assignment && (
                                   <span>
                                     {assignment.executedArea > 0
                                       ? `${assignment.executedArea.toFixed(1)} ha`

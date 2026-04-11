@@ -1185,6 +1185,23 @@ th {
   border: 1px solid #c3e2bf;
 }
 
+.labor-cell-box.tab-cell-assignable {
+  cursor: pointer;
+}
+
+.labor-cell-box.tab-cell-assignable:hover {
+  background: #f0c8c3;
+  border-color: #c0473d;
+  color: #7a1f18;
+}
+
+.labor-cell-box.tab-cell-assignable::after {
+  content: '+';
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.5;
+}
+
 .tablero-legend {
   display: flex;
   gap: 20px;

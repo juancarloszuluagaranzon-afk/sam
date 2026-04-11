@@ -915,7 +915,11 @@ function App() {
             aria-controls="side-menu"
             aria-label="Abrir menu"
           >
-            â‰¡
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <rect y="3" width="20" height="2" rx="1" fill="currentColor"/>
+              <rect y="9" width="20" height="2" rx="1" fill="currentColor"/>
+              <rect y="15" width="20" height="2" rx="1" fill="currentColor"/>
+            </svg>
           </button>
           <div>
             <strong>SAM Control</strong>
@@ -923,17 +927,6 @@ function App() {
           </div>
         </div>
 
-        <div className="topbar-actions">
-          <button className="top-icon-btn" aria-label="Buscar">
-            âŒ•
-          </button>
-          <button className="top-icon-btn" aria-label="Verificar">
-            â˜‘
-          </button>
-          <button className="top-icon-btn" aria-label="Refrescar" onClick={() => void hydrate()}>
-            â†»
-          </button>
-        </div>
       </header>
 
       <div

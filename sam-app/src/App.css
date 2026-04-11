@@ -44,19 +44,28 @@
   border-radius: 28px;
   background: linear-gradient(135deg, #2f6511 0%, #406f17 65%, #7e6718 100%);
   color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
 }
 
-.auth-copy h1 {
-  margin: 10px 0 14px;
-  font-size: clamp(2rem, 4vw, 3.4rem);
-  line-height: 1.02;
-  max-width: 14ch;
+.auth-logo {
+  width: min(280px, 80%);
+  height: auto;
+  border-radius: 12px;
+  object-fit: contain;
 }
 
-.auth-copy p {
+.auth-company-name {
   margin: 0;
-  max-width: 52ch;
-  color: rgba(255, 255, 255, 0.88);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.92);
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .auth-bullets {

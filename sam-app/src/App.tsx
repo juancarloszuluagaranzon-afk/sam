@@ -1,5 +1,6 @@
 import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import './App.css'
+import logoAgromorales from './assets/logo-agromorales.jpeg'
 import { WORKFLOW } from './data/constants'
 import type {
   Assignment,
@@ -865,8 +866,8 @@ function App() {
       <main className="app-shell auth-shell">
         <section className="auth-panel">
           <div className="auth-copy">
-            <p className="eyebrow">SAM Control</p>
-            <h1>Control operativo para Servicios Agricolas Morales</h1>
+            <img src={logoAgromorales} alt="Agroservicios Morales" className="auth-logo" />
+            <p className="auth-company-name">Agroindustrial de Servicios Morales S.A.S</p>
           </div>
 
           <form className="login-card" onSubmit={handleLogin}>

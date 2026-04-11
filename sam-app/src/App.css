@@ -754,7 +754,6 @@ th {
     padding-bottom: 96px;
   }
 
-  .tab-nav,
   .kpi-grid,
   .form-grid,
   .two-up,
@@ -803,38 +802,55 @@ th {
     right: 0;
     bottom: 0;
     z-index: 70;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
-    background: rgba(250, 248, 242, 0.96);
-    border-top: 1px solid #ddd5c8;
-    box-shadow: 0 -8px 20px rgba(44, 38, 18, 0.1);
+    padding: 0 0 env(safe-area-inset-bottom);
+    background: #fff;
+    border-top: 1px solid #e0ddd4;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
     display: grid;
-    gap: 6px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .operator-tab-nav.floating-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .floating-nav button {
-    border-radius: 10px;
-    padding: 8px 6px;
-    min-height: 54px;
+    border-radius: 0;
+    padding: 8px 4px;
+    min-height: 58px;
     background: transparent;
-    border: 1px solid transparent;
+    border: 0;
     box-shadow: none;
-    color: #63705f;
+    color: #7a8275;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+  }
+
+  .floating-nav button .nav-icon {
+    font-size: 1.1rem;
+    line-height: 1;
   }
 
   .floating-nav button .nav-label {
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .floating-nav button.active {
-    background: #eaf3e4;
-    border-color: #cbdcc2;
-    color: #1f4f0f;
+    color: #2f6511;
+    background: transparent;
+    border: 0;
     box-shadow: none;
   }
 
-  .floating-nav button.active .nav-icon {
-    color: #2e6811;
+  .floating-nav button.active .nav-label {
+    font-weight: 700;
   }
 }
 
@@ -888,65 +904,6 @@ th {
     background: transparent;
   }
 
-  .floating-nav {
-    left: 0;
-    right: 0;
-    transform: none;
-    width: 100%;
-    border-radius: 0;
-    border: 0;
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    background: #43a047;
-    box-shadow: 0 -6px 16px rgba(20, 52, 18, 0.24);
-    padding: 2px 2px calc(2px + env(safe-area-inset-bottom));
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
-  }
-
-  .operator-tab-nav.floating-nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .floating-nav .nav-item {
-    gap: 0;
-    min-height: 18px;
-  }
-
-  .floating-nav .nav-icon {
-    width: 14px;
-    height: 14px;
-    border-radius: 4px;
-    display: inline-grid;
-    place-items: center;
-    font-size: 0.68rem;
-    color: rgba(255, 255, 255, 0.86);
-    transition: background 0.16s ease, color 0.16s ease, transform 0.16s ease;
-  }
-
-  .floating-nav .nav-label {
-    display: block;
-    font-size: 0.46rem;
-    color: rgba(255, 255, 255, 0.92);
-    font-weight: 600;
-    letter-spacing: 0;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
-  .floating-nav button.active .nav-icon {
-    background: rgba(255, 255, 255, 0.22);
-    color: #fff;
-    transform: translateY(0);
-  }
-
-  .floating-nav button.active .nav-label {
-    color: #fff;
-    font-weight: 700;
-    text-decoration: underline;
-    text-underline-offset: 4px;
-    text-decoration-thickness: 2px;
-  }
-
   .topbar {
     padding: 10px 8px;
   }
@@ -981,28 +938,6 @@ th {
   }
 }
 
-@media (max-width: 420px) {
-  .floating-nav {
-    padding-left: 6px;
-    padding-right: 6px;
-    gap: 1px;
-  }
-
-  .floating-nav button {
-    min-height: 22px;
-    padding: 1px 0;
-  }
-
-  .floating-nav .nav-label {
-    font-size: 0.42rem;
-  }
-
-  .floating-nav .nav-icon {
-    width: 13px;
-    height: 13px;
-    font-size: 0.62rem;
-  }
-}
 /* --- Tablero Styles --- */
 .tablero-wrap {
   width: 100%;

@@ -259,7 +259,7 @@ function App() {
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [freeFieldSuertesList, setFreeFieldSuertesList] = useState<string[]>([])
   const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
-  const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('resumen')
+  const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
   const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'TODO'>('HOY')
   const [statusFilter, setStatusFilter] = useState('TODAS')

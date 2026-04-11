@@ -257,6 +257,7 @@ function App() {
   const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [assignmentSuertesList, setAssignmentSuertesList] = useState<string[]>([])
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
+  const [freeFieldSuertesList, setFreeFieldSuertesList] = useState<string[]>([])
   const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('resumen')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
@@ -635,52 +636,63 @@ function App() {
     event.preventDefault()
     if (!session || session.role !== 'operador') return
 
-    const maestroRow = maestro.find(
-      (row) =>
-        row.haciendaCode === Number(freeFieldForm.haciendaCode) &&
-        row.suerte === freeFieldForm.suerte,
-    )
+    if (freeFieldSuertesList.length === 0) {
+      setError('Selecciona al menos una suerte.')
+      return
+    }
+
     const operator = operators.find((item) => item.id === session.id)
     const equipmentItem = equipment.find(
       (item) => item.code === (freeFieldForm.equipmentCode || session.equipmentCode),
     )
 
-    if (!maestroRow || !operator || !equipmentItem || !freeFieldForm.labor || !freeFieldForm.cliente) {
-      setError('Completa hacienda, suerte, labor, equipo y cliente para tomar campo libre.')
+    if (!operator || !equipmentItem || !freeFieldForm.labor || !freeFieldForm.cliente) {
+      setError('Completa labor, equipo y cliente para tomar campo libre.')
       return
     }
+
+    const maestroRows = freeFieldSuertesList
+      .map((suerte) =>
+        maestro.find(
+          (row) => row.haciendaCode === Number(freeFieldForm.haciendaCode) && row.suerte === suerte,
+        ),
+      )
+      .filter((row): row is NonNullable<typeof row> => row !== undefined)
 
     setBusy(true)
     setError('')
 
     try {
-      await createAssignment({
-        haciendaCode: maestroRow.haciendaCode,
-        haciendaName: maestroRow.haciendaName,
-        suerte: maestroRow.suerte,
-        labor: freeFieldForm.labor,
-        area: maestroRow.area,
-        supervisorId: supervisors[0]?.id ?? 'U002',
-        supervisorName: supervisors[0]?.name ?? 'Supervisor',
-        operatorId: operator.id,
-        operatorName: operator.name,
-        equipmentCode: equipmentItem.code,
-        equipmentName: equipmentItem.name,
-        notes: freeFieldForm.notes,
-        cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
-        kind: 'LIBRE',
-        initialStatus: 'PENDIENTE',
-      })
+      await Promise.all(
+        maestroRows.map((maestroRow) =>
+          createAssignment({
+            haciendaCode: maestroRow.haciendaCode,
+            haciendaName: maestroRow.haciendaName,
+            suerte: maestroRow.suerte,
+            labor: freeFieldForm.labor,
+            area: maestroRow.area,
+            supervisorId: supervisors[0]?.id ?? 'U002',
+            supervisorName: supervisors[0]?.name ?? 'Supervisor',
+            operatorId: operator.id,
+            operatorName: operator.name,
+            equipmentCode: equipmentItem.code,
+            equipmentName: equipmentItem.name,
+            notes: freeFieldForm.notes,
+            cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+            kind: 'LIBRE',
+            initialStatus: 'PENDIENTE',
+          }),
+        ),
+      )
 
-      setFreeFieldForm((current) => ({
-        ...EMPTY_FORM,
-        equipmentCode: current.equipmentCode || session.equipmentCode,
-      }))
-      setInfo('Labor tomada en campo libre.')
+      const savedEquipment = freeFieldForm.equipmentCode || session.equipmentCode
+      setFreeFieldForm({ ...EMPTY_FORM, equipmentCode: savedEquipment })
+      setFreeFieldSuertesList([])
+      setInfo(`${maestroRows.length} labor(es) tomadas en campo libre.`)
       await refreshAssignments()
       setOperatorTab('activas')
     } catch {
-      setError('No se pudo registrar la labor en campo libre.')
+      setError('No se pudo registrar las labores en campo libre.')
     } finally {
       setBusy(false)
     }
@@ -820,10 +832,19 @@ function App() {
   function updateFreeFieldForm(field: keyof AssignmentFormState, value: string) {
     setFreeFieldForm((current) => {
       if (field === 'haciendaCode') {
+        setFreeFieldSuertesList([])
         return { ...current, haciendaCode: value, suerte: '' }
       }
       return { ...current, [field]: value }
     })
+  }
+
+  function toggleFreeFieldSuerte(suerte: string) {
+    setFreeFieldSuertesList((current) =>
+      current.includes(suerte)
+        ? current.filter((s) => s !== suerte)
+        : [...current, suerte],
+    )
   }
 
   function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal', value: string) {
@@ -1876,17 +1897,31 @@ function App() {
                       }))}
                     />
                   </label>
-                  <label>
-                    Suerte
-                    <SearchableSelect
-                      value={freeFieldForm.suerte}
-                      onChange={(value) => updateFreeFieldForm('suerte', value)}
-                      options={freeFieldSuertes.map((row) => ({
-                        value: row.suerte,
-                        label: `${row.suerte} - ${formatArea(row.area)}`,
-                      }))}
-                    />
-                  </label>
+                  <div>
+                    <span className="field-label">Suertes</span>
+                    {freeFieldForm.haciendaCode ? (
+                      <ul className="suertes-checklist">
+                        {freeFieldSuertes.map((row) => (
+                          <li key={row.suerte}>
+                            <label className="suerte-check-item">
+                              <input
+                                type="checkbox"
+                                checked={freeFieldSuertesList.includes(row.suerte)}
+                                onChange={() => toggleFreeFieldSuerte(row.suerte)}
+                              />
+                              <span className="suerte-check-code">{row.suerte}</span>
+                              <span className="suerte-check-area">{formatArea(row.area)}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="field-hint">Selecciona una hacienda primero</p>
+                    )}
+                    {freeFieldSuertesList.length > 0 && (
+                      <p className="suertes-count">{freeFieldSuertesList.length} suerte(s) seleccionada(s)</p>
+                    )}
+                  </div>
                 </div>
                 <div className="form-grid">
                   <label>
@@ -1895,12 +1930,13 @@ function App() {
                       value={freeFieldForm.labor}
                       onChange={(value) => updateFreeFieldForm('labor', value)}
                       options={WORKFLOW.map((labor) => {
+                        const firstSuerte = freeFieldSuertesList[0]
                         const isSuggested =
-                          freeFieldForm.haciendaCode && freeFieldForm.suerte
+                          freeFieldForm.haciendaCode && firstSuerte
                             ? labor ===
                               getSuggestedLabor(
                                 assignments,
-                                `${freeFieldForm.haciendaCode}-${freeFieldForm.suerte}`,
+                                `${freeFieldForm.haciendaCode}-${firstSuerte}`,
                               )
                             : false
                         return {

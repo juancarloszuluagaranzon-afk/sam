@@ -1262,6 +1262,75 @@ th {
   padding-bottom: 4px;
 }
 
+.field-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #293825;
+}
+
+.field-hint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: #9a9e92;
+}
+
+.suertes-checklist {
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #ddd7c9;
+  border-radius: 10px;
+  background: #fafaf8;
+}
+
+.suerte-check-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0ebe0;
+  transition: background 0.12s;
+}
+
+.suerte-check-item:last-child {
+  border-bottom: 0;
+}
+
+.suerte-check-item:hover {
+  background: #f2ede3;
+}
+
+.suerte-check-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2f6511;
+  flex-shrink: 0;
+}
+
+.suerte-check-code {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1c2819;
+  flex: 1;
+}
+
+.suerte-check-area {
+  font-size: 0.78rem;
+  color: #7a8275;
+}
+
+.suertes-count {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2f6511;
+}
+
 .labor-item--tappable {
   cursor: pointer;
   transition: background 0.15s;

@@ -255,6 +255,7 @@ function App() {
   const [users, setUsers] = useState<UserProfile[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>(EMPTY_FORM)
+  const [assignmentSuertesList, setAssignmentSuertesList] = useState<string[]>([])
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('resumen')
@@ -571,47 +572,60 @@ function App() {
     event.preventDefault()
     if (!session || !isSupervisorOrOwner(session.role)) return
 
-    const maestroRow = maestro.find(
-      (row) =>
-        row.haciendaCode === Number(assignmentForm.haciendaCode) &&
-        row.suerte === assignmentForm.suerte,
-    )
+    if (assignmentSuertesList.length === 0) {
+      setError('Selecciona al menos una suerte.')
+      return
+    }
+
     const operator = operators.find((item) => item.id === assignmentForm.operatorId)
     const equipmentItem = equipment.find((item) => item.code === assignmentForm.equipmentCode)
 
-    if (!maestroRow || !operator || !equipmentItem || !assignmentForm.labor || !assignmentForm.cliente) {
-      setError('Completa hacienda, suerte, labor, operador, equipo y cliente.')
+    if (!operator || !equipmentItem || !assignmentForm.labor || !assignmentForm.cliente) {
+      setError('Completa labor, operador, equipo y cliente.')
       return
     }
+
+    const maestroRows = assignmentSuertesList
+      .map((suerte) =>
+        maestro.find(
+          (row) => row.haciendaCode === Number(assignmentForm.haciendaCode) && row.suerte === suerte,
+        ),
+      )
+      .filter((row): row is NonNullable<typeof row> => row !== undefined)
 
     setBusy(true)
     setError('')
 
     try {
-      await createAssignment({
-        haciendaCode: maestroRow.haciendaCode,
-        haciendaName: maestroRow.haciendaName,
-        suerte: maestroRow.suerte,
-        labor: assignmentForm.labor,
-        area: maestroRow.area,
-        supervisorId: session.id,
-        supervisorName: session.name,
-        operatorId: operator.id,
-        operatorName: operator.name,
-        equipmentCode: equipmentItem.code,
-        equipmentName: equipmentItem.name,
-        notes: assignmentForm.notes,
-        cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
-        kind: 'ASIGNADA',
-        initialStatus: 'PENDIENTE',
-      })
+      await Promise.all(
+        maestroRows.map((maestroRow) =>
+          createAssignment({
+            haciendaCode: maestroRow.haciendaCode,
+            haciendaName: maestroRow.haciendaName,
+            suerte: maestroRow.suerte,
+            labor: assignmentForm.labor,
+            area: maestroRow.area,
+            supervisorId: session.id,
+            supervisorName: session.name,
+            operatorId: operator.id,
+            operatorName: operator.name,
+            equipmentCode: equipmentItem.code,
+            equipmentName: equipmentItem.name,
+            notes: assignmentForm.notes,
+            cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+            kind: 'ASIGNADA',
+            initialStatus: 'PENDIENTE',
+          }),
+        ),
+      )
 
       setAssignmentForm(EMPTY_FORM)
-      setInfo('Asignacion creada en Supabase.')
+      setAssignmentSuertesList([])
+      setInfo(`${maestroRows.length} asignacion(es) creadas.`)
       await refreshAssignments()
       setSupervisorTab('labores')
     } catch {
-      setError('No se pudo crear la asignacion.')
+      setError('No se pudo crear las asignaciones.')
     } finally {
       setBusy(false)
     }
@@ -788,10 +802,19 @@ function App() {
   function updateAssignmentForm(field: keyof AssignmentFormState, value: string) {
     setAssignmentForm((current) => {
       if (field === 'haciendaCode') {
+        setAssignmentSuertesList([])
         return { ...current, haciendaCode: value, suerte: '' }
       }
       return { ...current, [field]: value }
     })
+  }
+
+  function toggleAssignmentSuerte(suerte: string) {
+    setAssignmentSuertesList((current) =>
+      current.includes(suerte)
+        ? current.filter((s) => s !== suerte)
+        : [...current, suerte],
+    )
   }
 
   function updateFreeFieldForm(field: keyof AssignmentFormState, value: string) {
@@ -1213,17 +1236,31 @@ function App() {
                       }))}
                     />
                   </label>
-                  <label>
-                    Suerte
-                    <SearchableSelect
-                      value={assignmentForm.suerte}
-                      onChange={(value) => updateAssignmentForm('suerte', value)}
-                      options={assignmentSuertes.map((row) => ({
-                        value: row.suerte,
-                        label: `${row.suerte} - ${formatArea(row.area)}`,
-                      }))}
-                    />
-                  </label>
+                  <div>
+                    <span className="field-label">Suertes</span>
+                    {assignmentForm.haciendaCode ? (
+                      <ul className="suertes-checklist">
+                        {assignmentSuertes.map((row) => (
+                          <li key={row.suerte}>
+                            <label className="suerte-check-item">
+                              <input
+                                type="checkbox"
+                                checked={assignmentSuertesList.includes(row.suerte)}
+                                onChange={() => toggleAssignmentSuerte(row.suerte)}
+                              />
+                              <span className="suerte-check-code">{row.suerte}</span>
+                              <span className="suerte-check-area">{formatArea(row.area)}</span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="field-hint">Selecciona una hacienda primero</p>
+                    )}
+                    {assignmentSuertesList.length > 0 && (
+                      <p className="suertes-count">{assignmentSuertesList.length} suerte(s) seleccionada(s)</p>
+                    )}
+                  </div>
                 </div>
                 <div className="form-grid">
                   <label>
@@ -1232,12 +1269,13 @@ function App() {
                       value={assignmentForm.labor}
                       onChange={(value) => updateAssignmentForm('labor', value)}
                       options={WORKFLOW.map((labor) => {
+                        const firstSuerte = assignmentSuertesList[0]
                         const isSuggested =
-                          assignmentForm.haciendaCode && assignmentForm.suerte
+                          assignmentForm.haciendaCode && firstSuerte
                             ? labor ===
                               getSuggestedLabor(
                                 assignments,
-                                `${assignmentForm.haciendaCode}-${assignmentForm.suerte}`,
+                                `${assignmentForm.haciendaCode}-${firstSuerte}`,
                               )
                             : false
                         return {

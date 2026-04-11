@@ -1427,8 +1427,11 @@ function App() {
 
         {isSupervisorOrOwner(session.role) && supervisorTab === 'labores' ? (
           <section className="panel-card">
-            <div className="panel-title split">
-              <h2>Labores</h2>
+            <div className="labores-header">
+              <div className="labores-title-row">
+                <h2>Labores</h2>
+                <span className="labores-count">{filteredAssignments.length}</span>
+              </div>
               <div className="filter-row">
                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                   <option value="TODAS">Todos los estados</option>
@@ -1441,7 +1444,7 @@ function App() {
                   value={operatorFilter}
                   onChange={(event) => setOperatorFilter(event.target.value)}
                 >
-                  <option value="TODOS">Todos los operadores</option>
+                  <option value="TODOS">Todos los op.</option>
                   {operators.map((operator) => (
                     <option key={operator.id} value={operator.id}>
                       {operator.name}
@@ -1451,59 +1454,45 @@ function App() {
               </div>
             </div>
 
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Hacienda</th>
-                    <th>Suerte</th>
-                    <th>Labor</th>
-                    <th>Operador</th>
-                    <th>Equipo</th>
-                    <th>Estado</th>
-                    <th>Area</th>
-                    <th>Accion</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredAssignments.map((assignment) => {
-                    const meta = getStatusMeta(assignment.status)
-                    return (
-                      <tr key={assignment.id}>
-                        <td>{assignment.haciendaName}</td>
-                        <td>{assignment.suerte}</td>
-                        <td>
-                          {assignment.labor}
-                          {assignment.kind === 'ASIGNADA' ? (
-                            <span className="kind-badge asignada">Prog.</span>
-                          ) : (
-                            <span className="kind-badge libre">Campo</span>
-                          )}
-                        </td>
-                        <td>{assignment.operatorName || 'Sin operador'}</td>
-                        <td>{assignment.equipmentName || '-'}</td>
-                        <td>
-                          <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
-                        </td>
-                        <td>{formatArea(assignment.area)}</td>
-                        <td>
-                          {assignment.status === 'PENDIENTE' ? (
-                            <button
-                              className="inline-button danger-button"
-                              onClick={() => void handleCancelAssignment(assignment)}
-                            >
-                              Cancelar
-                            </button>
-                          ) : (
-                            <span className="muted-text">Sin accion</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+            <ul className="labores-list">
+              {filteredAssignments.map((assignment) => {
+                const meta = getStatusMeta(assignment.status)
+                return (
+                  <li key={assignment.id} className="labor-item">
+                    <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
+                    <div className="labor-item-body">
+                      <div className="labor-item-top">
+                        <strong className="labor-name">{assignment.labor}</strong>
+                        {assignment.kind === 'ASIGNADA' ? (
+                          <span className="kind-badge asignada">Prog.</span>
+                        ) : (
+                          <span className="kind-badge libre">Campo</span>
+                        )}
+                      </div>
+                      <p className="labor-item-meta">
+                        {assignment.haciendaName} · {assignment.suerte}
+                        {assignment.operatorName ? ` · ${assignment.operatorName}` : ''}
+                        {assignment.equipmentName ? ` · ${assignment.equipmentName}` : ''}
+                      </p>
+                    </div>
+                    <div className="labor-item-right">
+                      <span className="labor-area">{formatArea(assignment.area)}</span>
+                      {assignment.status === 'PENDIENTE' && (
+                        <button
+                          className="cancel-btn"
+                          onClick={() => void handleCancelAssignment(assignment)}
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+              {filteredAssignments.length === 0 && (
+                <li className="labores-empty">Sin labores para los filtros seleccionados.</li>
+              )}
+            </ul>
           </section>
         ) : null}
 

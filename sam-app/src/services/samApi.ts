@@ -165,7 +165,7 @@ export async function loadAppUsers(): Promise<{
     data: data.map((row) => ({
       id: String(row.id),
       name: String(row.nombre_completo),
-      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : 'operador',
+      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
     })),
     source: 'supabase',
@@ -241,7 +241,7 @@ export async function appLogin(userId: string, pin: string) {
   return {
     id: String(row.id),
     name: String(row.nombre_completo),
-    role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : 'operador',
+    role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
     equipmentCode: String(row.equipo_codigo ?? ''),
   } as UserProfile
 }

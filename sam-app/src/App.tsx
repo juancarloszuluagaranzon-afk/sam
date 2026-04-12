@@ -317,6 +317,9 @@ function App() {
         setMaestro(maestroResult.data)
         setAssignments(assignmentResult.data)
         setUsers(userResult.data)
+        if (userResult.data.length > 0) {
+          setLoginUserId((prev) => prev || userResult.data[0].id)
+        }
         setEquipment(equipmentResult.data)
       })
     } catch {
@@ -981,13 +984,11 @@ function App() {
 
   const loginOptions = useMemo(
     () =>
-      [
-        { id: 'U001', label: 'Cristhian Morales - Owner' },
-        { id: 'U002', label: 'Alfredo Uran - Supervisor' },
-        { id: 'U003', label: 'William Ortiz - Operador' },
-        { id: 'U004', label: 'Ismael Reyes - Operador' },
-      ] as const,
-    [],
+      users.map((u) => ({
+        id: u.id,
+        label: `${u.name} - ${getRoleLabel(u.role)}`,
+      })),
+    [users],
   )
 
   if (loading) {

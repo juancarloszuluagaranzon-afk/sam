@@ -1044,6 +1044,23 @@ th {
 .status-chip.pending  { background: #e5edff; color: #3558a6; }
 .status-chip.cancel   { background: #f7dfd8; color: #9c3f1d; }
 
+/* Chip estilo cinta — ocupa todo el ancho de la celda */
+.status-chip--block {
+  display: block;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border-left: 4px solid currentColor;
+  font-size: 0.72rem;
+}
+
+.labor-name {
+  font-weight: 700;
+  color: #2f6511;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  letter-spacing: 0.03em;
+}
+
 .labor-actions {
   grid-column: 1 / -1;
   display: flex;

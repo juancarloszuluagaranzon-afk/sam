@@ -1753,6 +1753,9 @@ function App() {
                     <span className="labor-label">Suerte</span>
                     <span className="labor-value">{assignment.suerte}</span>
 
+                    <span className="labor-label">Labor</span>
+                    <span className="labor-value labor-name">{assignment.labor}</span>
+
                     <span className="labor-label">Tipo</span>
                     <span className="labor-value">
                       {assignment.kind === 'ASIGNADA' ? (
@@ -1763,7 +1766,7 @@ function App() {
                     </span>
 
                     <span className="labor-label">Estado</span>
-                    <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
+                    <span className={`status-chip status-chip--block ${meta.tone}`}>{meta.label}</span>
 
                     <span className="labor-label">Area</span>
                     <span className="labor-area">
@@ -2388,6 +2391,12 @@ function App() {
                     </>
                   )}
 
+                  <span className="labor-label">Inicio</span>
+                  <span className="labor-value">{formatTime(selectedLabor.startedAt)}</span>
+
+                  <span className="labor-label">Fin</span>
+                  <span className="labor-value">{formatTime(selectedLabor.finishedAt)}</span>
+
                   {selectedLabor.horometroInicial !== null && (
                     <>
                       <span className="labor-label">Horóm. ini.</span>
@@ -2399,20 +2408,6 @@ function App() {
                     <>
                       <span className="labor-label">Horóm. fin.</span>
                       <span className="labor-value">{selectedLabor.horometroFinal} h</span>
-                    </>
-                  )}
-
-                  {selectedLabor.startedAt && (
-                    <>
-                      <span className="labor-label">Inicio</span>
-                      <span className="labor-value">{formatTime(selectedLabor.startedAt)}</span>
-                    </>
-                  )}
-
-                  {selectedLabor.finishedAt && (
-                    <>
-                      <span className="labor-label">Fin</span>
-                      <span className="labor-value">{formatTime(selectedLabor.finishedAt)}</span>
                     </>
                   )}
 

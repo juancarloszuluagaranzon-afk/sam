@@ -1449,3 +1449,129 @@ th {
 .labor-item--tappable:hover {
   background: #f5f2ec;
 }
+
+/* ── Admin nav (6 tabs) ── */
+@media (max-width: 900px) {
+  .floating-nav.admin-nav {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .floating-nav.admin-nav button {
+    padding: 6px 2px;
+  }
+
+  .floating-nav.admin-nav .nav-icon {
+    font-size: 0.95rem;
+  }
+
+  .floating-nav.admin-nav .nav-label {
+    font-size: 0.6rem;
+  }
+}
+
+/* ── Reporte tab ── */
+.report-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.report-filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.report-filter-row select,
+.report-filter-row input[type="date"] {
+  flex: 1;
+  min-width: 130px;
+}
+
+.report-filter-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #4a5240;
+  flex: 1;
+  min-width: 120px;
+}
+
+.report-filter-label input {
+  width: 100%;
+}
+
+.report-summary-bar {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: #f4f7f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #2f6511;
+}
+
+.report-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 16px;
+  border-radius: 10px;
+  border: 1px solid #e0e8d8;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.report-table th {
+  background: #f0f5ea;
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #3a4a30;
+  white-space: nowrap;
+  border-bottom: 1px solid #dde8d0;
+}
+
+.report-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #eef3e8;
+  vertical-align: middle;
+}
+
+.report-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.report-table .num-cell {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.report-overflow-note {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #7a8a6a;
+  padding: 10px;
+}
+
+.report-empty {
+  text-align: center;
+  font-size: 0.88rem;
+  color: #7a8a6a;
+  padding: 24px;
+}
+
+.report-download-btn {
+  width: 100%;
+  padding: 14px;
+  font-size: 0.95rem;
+}

@@ -25,18 +25,19 @@ import {
 
 const SESSION_KEY = 'sam-app-session-v1'
 
-type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero'
+type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte'
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
 type SessionUser = UserProfile
 
 function isSupervisorOrOwner(role: SessionUser['role'] | undefined): boolean {
-  return role === 'supervisor' || role === 'owner'
+  return role === 'supervisor' || role === 'owner' || role === 'administracion'
 }
 
 function getRoleLabel(role: SessionUser['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
   if (role === 'supervisor') return 'Supervisor'
+  if (role === 'administracion') return 'Administración'
   return 'Operador'
 }
 
@@ -280,6 +281,13 @@ function App() {
   const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string; horometroFinal: string; isComplete: boolean }>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
   const [startHorometroDrafts, setStartHorometroDrafts] = useState<Record<string, string>>({})
+  const [reportFilters, setReportFilters] = useState({
+    desde: '',
+    hasta: '',
+    estado: 'TODAS',
+    haciendaCode: '',
+    operatorId: 'TODOS',
+  })
 
   useEffect(() => {
     const saved = window.localStorage.getItem(SESSION_KEY)
@@ -513,6 +521,19 @@ function App() {
           a.suerte.localeCompare(b.suerte),
       )
   }, [assignments, maestro])
+
+  const filteredReport = useMemo(() => {
+    return assignments
+      .filter((a) => {
+        if (reportFilters.desde && a.dateKey < reportFilters.desde) return false
+        if (reportFilters.hasta && a.dateKey > reportFilters.hasta) return false
+        if (reportFilters.estado !== 'TODAS' && a.status !== reportFilters.estado) return false
+        if (reportFilters.haciendaCode && String(a.haciendaCode) !== reportFilters.haciendaCode) return false
+        if (reportFilters.operatorId !== 'TODOS' && a.operatorId !== reportFilters.operatorId) return false
+        return true
+      })
+      .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
+  }, [assignments, reportFilters])
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -870,6 +891,45 @@ function App() {
     setSupervisorTab('asignar')
   }
 
+  async function handleDownloadReport() {
+    if (filteredReport.length === 0) return
+    setBusy(true)
+    setError('')
+    try {
+      const { utils, writeFile } = await import('xlsx')
+      const rows = filteredReport.map((a) => ({
+        'Fecha': a.dateKey,
+        'Hacienda': a.haciendaName,
+        'Suerte': a.suerte,
+        'Código Suerte': a.suerteCode,
+        'Labor': a.labor,
+        'Área Plan. (ha)': a.area,
+        'Área Ejec. (ha)': a.executedArea > 0 ? a.executedArea : '',
+        'Estado': a.status,
+        'Operador': a.operatorName,
+        'Supervisor': a.supervisorId,
+        'Equipo': a.equipmentName,
+        'Inicio': a.startedAt ?? '',
+        'Fin': a.finishedAt ?? '',
+        'Horometro Ini': a.horometroInicial ?? '',
+        'Horometro Fin': a.horometroFinal ?? '',
+        'Cliente': a.cliente ?? '',
+        'Tipo': a.kind,
+        'Notas': a.notes,
+      }))
+      const ws = utils.json_to_sheet(rows)
+      const wb = utils.book_new()
+      utils.book_append_sheet(wb, ws, 'Labores')
+      const filename = `reporte-${reportFilters.desde || 'inicio'}-${reportFilters.hasta || 'hoy'}.xlsx`
+      writeFile(wb, filename)
+      setInfo(`Reporte descargado: ${filteredReport.length} registros.`)
+    } catch {
+      setError('No se pudo generar el reporte.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal', value: string) {
     setFinishDrafts((current) => ({
       ...current,
@@ -1053,11 +1113,11 @@ function App() {
       <div className="dashboard-shell">
         <section className="toolbar-card">
           <nav
-            className={
-              isSupervisorOrOwner(session.role)
-                ? 'tab-nav floating-nav'
-                : 'tab-nav operator-tab-nav floating-nav'
-            }
+            className={[
+              'tab-nav floating-nav',
+              !isSupervisorOrOwner(session.role) ? 'operator-tab-nav' : '',
+              session.role === 'administracion' ? 'admin-nav' : '',
+            ].filter(Boolean).join(' ')}
             aria-label="Navegacion principal"
           >
             {isSupervisorOrOwner(session.role) ? (
@@ -1107,6 +1167,17 @@ function App() {
                     <span className="nav-label">Tablero</span>
                   </span>
                 </button>
+                {session.role === 'administracion' && (
+                  <button
+                    className={supervisorTab === 'reporte' ? 'active' : ''}
+                    onClick={() => setSupervisorTab('reporte')}
+                  >
+                    <span className="nav-item">
+                      <span className="nav-icon">⬦</span>
+                      <span className="nav-label">Reporte</span>
+                    </span>
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -1521,6 +1592,123 @@ function App() {
               <span className="tablero-legend-item en_proceso"><span className="spinner">RUN</span> En ejecucion</span>
               <span className="tablero-legend-item pendiente">Pendiente</span>
             </div>
+          </section>
+        ) : null}
+
+        {session.role === 'administracion' && supervisorTab === 'reporte' ? (
+          <section className="panel-card">
+            <div className="panel-title">
+              <h2>Reporte de Labores</h2>
+            </div>
+
+            <div className="report-filters">
+              <div className="report-filter-row">
+                <label className="report-filter-label">
+                  Desde
+                  <input
+                    type="date"
+                    value={reportFilters.desde}
+                    onChange={(e) => setReportFilters((f) => ({ ...f, desde: e.target.value }))}
+                  />
+                </label>
+                <label className="report-filter-label">
+                  Hasta
+                  <input
+                    type="date"
+                    value={reportFilters.hasta}
+                    onChange={(e) => setReportFilters((f) => ({ ...f, hasta: e.target.value }))}
+                  />
+                </label>
+              </div>
+              <div className="report-filter-row">
+                <select
+                  value={reportFilters.estado}
+                  onChange={(e) => setReportFilters((f) => ({ ...f, estado: e.target.value }))}
+                >
+                  <option value="TODAS">Todos los estados</option>
+                  <option value="PENDIENTE">Pendiente</option>
+                  <option value="EN_PROCESO">En proceso</option>
+                  <option value="COMPLETADA">Completada</option>
+                  <option value="CANCELADA">Cancelada</option>
+                </select>
+                <select
+                  value={reportFilters.haciendaCode}
+                  onChange={(e) => setReportFilters((f) => ({ ...f, haciendaCode: e.target.value }))}
+                >
+                  <option value="">Todas las haciendas</option>
+                  {haciendas.map((h) => (
+                    <option key={h.code} value={String(h.code)}>{h.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={reportFilters.operatorId}
+                  onChange={(e) => setReportFilters((f) => ({ ...f, operatorId: e.target.value }))}
+                >
+                  <option value="TODOS">Todos los operadores</option>
+                  {operators.map((op) => (
+                    <option key={op.id} value={op.id}>{op.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="report-summary-bar">
+              <span>{filteredReport.length} registros</span>
+              <span>{filteredReport.reduce((s, a) => s + a.area, 0).toFixed(1)} ha plan.</span>
+              <span>{filteredReport.filter(a => a.status === 'COMPLETADA').reduce((s, a) => s + (a.executedArea || a.area), 0).toFixed(1)} ha ejec.</span>
+            </div>
+
+            <div className="report-table-wrap">
+              <table className="report-table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Hacienda</th>
+                    <th>Suerte</th>
+                    <th>Labor</th>
+                    <th>Área</th>
+                    <th>Estado</th>
+                    <th>Operador</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredReport.slice(0, 30).map((a) => {
+                    const meta = getStatusMeta(a.status)
+                    return (
+                      <tr key={a.id}>
+                        <td>{a.dateKey}</td>
+                        <td>{a.haciendaName}</td>
+                        <td>{a.suerte}</td>
+                        <td>{a.labor}</td>
+                        <td className="num-cell">
+                          {a.status === 'COMPLETADA'
+                            ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
+                            : formatArea(a.area)}
+                        </td>
+                        <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
+                        <td>{a.operatorName}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              {filteredReport.length > 30 && (
+                <p className="report-overflow-note">
+                  Mostrando 30 de {filteredReport.length}. Descarga el Excel para el listado completo.
+                </p>
+              )}
+              {filteredReport.length === 0 && (
+                <p className="report-empty">Sin registros para los filtros seleccionados.</p>
+              )}
+            </div>
+
+            <button
+              className="btn-primary report-download-btn"
+              onClick={handleDownloadReport}
+              disabled={busy || filteredReport.length === 0}
+            >
+              {busy ? 'Generando...' : `Descargar Excel (${filteredReport.length} registros)`}
+            </button>
           </section>
         ) : null}
 

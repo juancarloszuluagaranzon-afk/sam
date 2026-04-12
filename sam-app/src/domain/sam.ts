@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador' | 'owner'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion'
 
 export type UserId = 'U002' | 'U003' | 'U004'
 

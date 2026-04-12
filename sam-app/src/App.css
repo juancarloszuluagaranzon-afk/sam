@@ -1396,6 +1396,26 @@ th {
   color: #7a8275;
 }
 
+.suerte-check-item--done {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.suerte-check-item--done:hover {
+  background: transparent;
+}
+
+.suerte-check-done {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #3f6d14;
+  background: #e7f0da;
+  padding: 2px 7px;
+  border-radius: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .suertes-count {
   margin: 6px 0 0;
   font-size: 0.78rem;

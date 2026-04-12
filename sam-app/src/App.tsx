@@ -630,6 +630,17 @@ function App() {
       )
       .filter((row): row is NonNullable<typeof row> => row !== undefined)
 
+    // Regla de negocio: no se puede programar una labor ya completada totalmente
+    const suertesCompletas = maestroRows.filter(
+      (row) => getRemainingArea(assignments, `${row.haciendaCode}-${row.suerte}`, assignmentForm.labor, row.area) === 0,
+    )
+    if (suertesCompletas.length > 0) {
+      setError(
+        `La labor "${assignmentForm.labor}" ya está completamente ejecutada en: ${suertesCompletas.map((r) => r.suerte).join(', ')}. Solo se puede programar si hay área pendiente.`,
+      )
+      return
+    }
+
     setBusy(true)
     setError('')
 
@@ -694,6 +705,17 @@ function App() {
         ),
       )
       .filter((row): row is NonNullable<typeof row> => row !== undefined)
+
+    // Regla de negocio: no se puede tomar campo en una labor ya completada totalmente
+    const suertesCompletas = maestroRows.filter(
+      (row) => getRemainingArea(assignments, `${row.haciendaCode}-${row.suerte}`, freeFieldForm.labor, row.area) === 0,
+    )
+    if (suertesCompletas.length > 0) {
+      setError(
+        `La labor "${freeFieldForm.labor}" ya está completamente ejecutada en: ${suertesCompletas.map((r) => r.suerte).join(', ')}. No hay área pendiente.`,
+      )
+      return
+    }
 
     setBusy(true)
     setError('')
@@ -1372,19 +1394,30 @@ function App() {
                     <span className="field-label">Suertes</span>
                     {assignmentForm.haciendaCode ? (
                       <ul className="suertes-checklist">
-                        {assignmentSuertes.map((row) => (
-                          <li key={row.suerte}>
-                            <label className="suerte-check-item">
-                              <input
-                                type="checkbox"
-                                checked={assignmentSuertesList.includes(row.suerte)}
-                                onChange={() => toggleAssignmentSuerte(row.suerte)}
-                              />
-                              <span className="suerte-check-code">{row.suerte}</span>
-                              <span className="suerte-check-area">{formatArea(row.area)}</span>
-                            </label>
-                          </li>
-                        ))}
+                        {assignmentSuertes.map((row) => {
+                          const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
+                          const remaining = assignmentForm.labor
+                            ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area)
+                            : row.area
+                          const isCompleted = assignmentForm.labor && remaining === 0
+                          return (
+                            <li key={row.suerte}>
+                              <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={assignmentSuertesList.includes(row.suerte)}
+                                  onChange={() => !isCompleted && toggleAssignmentSuerte(row.suerte)}
+                                  disabled={!!isCompleted}
+                                />
+                                <span className="suerte-check-code">{row.suerte}</span>
+                                {isCompleted
+                                  ? <span className="suerte-check-done">Completa</span>
+                                  : <span className="suerte-check-area">{formatArea(remaining)}</span>
+                                }
+                              </label>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : (
                       <p className="field-hint">Selecciona una hacienda primero</p>
@@ -2163,19 +2196,30 @@ function App() {
                     <span className="field-label">Suertes</span>
                     {freeFieldForm.haciendaCode ? (
                       <ul className="suertes-checklist">
-                        {freeFieldSuertes.map((row) => (
-                          <li key={row.suerte}>
-                            <label className="suerte-check-item">
-                              <input
-                                type="checkbox"
-                                checked={freeFieldSuertesList.includes(row.suerte)}
-                                onChange={() => toggleFreeFieldSuerte(row.suerte)}
-                              />
-                              <span className="suerte-check-code">{row.suerte}</span>
-                              <span className="suerte-check-area">{formatArea(row.area)}</span>
-                            </label>
-                          </li>
-                        ))}
+                        {freeFieldSuertes.map((row) => {
+                          const suerteCode = `${freeFieldForm.haciendaCode}-${row.suerte}`
+                          const remaining = freeFieldForm.labor
+                            ? getRemainingArea(assignments, suerteCode, freeFieldForm.labor, row.area)
+                            : row.area
+                          const isCompleted = freeFieldForm.labor && remaining === 0
+                          return (
+                            <li key={row.suerte}>
+                              <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={freeFieldSuertesList.includes(row.suerte)}
+                                  onChange={() => !isCompleted && toggleFreeFieldSuerte(row.suerte)}
+                                  disabled={!!isCompleted}
+                                />
+                                <span className="suerte-check-code">{row.suerte}</span>
+                                {isCompleted
+                                  ? <span className="suerte-check-done">Completa</span>
+                                  : <span className="suerte-check-area">{formatArea(remaining)}</span>
+                                }
+                              </label>
+                            </li>
+                          )
+                        })}
                       </ul>
                     ) : (
                       <p className="field-hint">Selecciona una hacienda primero</p>

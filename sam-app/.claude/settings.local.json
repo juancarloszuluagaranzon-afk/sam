@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm run:*)",
+      "Bash(node --input-type=module)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "Bash(node -e \"require\\('dexie'\\); console.log\\('dexie ok'\\)\")",
+      "Bash(node -e \"require\\('vite-plugin-pwa'\\); console.log\\('pwa ok'\\)\")",
+      "Bash(node -e ':*)"
+    ]
+  }
+}

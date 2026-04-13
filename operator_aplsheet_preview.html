@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SAM Operador - Preview AppSheet</title>
+    <style>
+      :root {
+        --bg: #f3f5ef;
+        --card: #ffffff;
+        --line: #d8decf;
+        --text: #1f2a1f;
+        --muted: #63705f;
+        --brand: #2f6a12;
+        --ok-bg: #ddf1dd;
+        --ok-fg: #1f6a24;
+        --run-bg: #fdf1d0;
+        --run-fg: #8a5a11;
+        --wait-bg: #f8ddda;
+        --wait-fg: #9b2f2a;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: "Segoe UI", Tahoma, sans-serif;
+      }
+
+      .app {
+        max-width: 980px;
+        margin: 0 auto;
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+      }
+
+      .topbar {
+        background: var(--brand);
+        color: #fff;
+        padding: 14px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .title strong { display: block; font-size: 1.05rem; }
+      .title span { font-size: .86rem; opacity: .9; }
+      .badge {
+        background: rgba(255,255,255,.18);
+        border: 1px solid rgba(255,255,255,.25);
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: .82rem;
+        font-weight: 700;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding: 10px 12px;
+      }
+
+      .tabs button {
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 12px;
+        padding: 10px;
+        font-weight: 700;
+        color: #3b4a3a;
+        cursor: pointer;
+      }
+
+      .tabs button.active {
+        border-color: #c6d7bc;
+        background: #ebf5e6;
+        color: #1f4f0f;
+      }
+
+      .content { padding: 10px 12px 24px; }
+      .hidden { display: none; }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        padding: 12px;
+        margin-bottom: 10px;
+      }
+
+      .card h3 {
+        margin: 0 0 8px;
+        font-size: 1rem;
+      }
+
+      .meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        margin: 6px 0 10px;
+      }
+
+      .pill {
+        border-radius: 999px;
+        padding: 6px 10px;
+        font-size: .78rem;
+        font-weight: 700;
+      }
+      .ok { background: var(--ok-bg); color: var(--ok-fg); }
+      .run { background: var(--run-bg); color: var(--run-fg); }
+      .wait { background: var(--wait-bg); color: var(--wait-fg); }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      label {
+        display: grid;
+        gap: 5px;
+        font-size: .85rem;
+        color: var(--muted);
+      }
+
+      input, select, textarea, button.action {
+        width: 100%;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 10px;
+        font: inherit;
+      }
+
+      textarea { min-height: 74px; resize: vertical; }
+
+      button.action {
+        background: #3d7415;
+        color: #fff;
+        font-weight: 700;
+        border: 0;
+      }
+
+      .sub { color: var(--muted); font-size: .84rem; }
+
+      @media (max-width: 760px) {
+        .app { max-width: 100%; }
+        .row { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div class="title">
+          <strong>SAM Control</strong>
+          <span>Panel Operador - estilo AppSheet</span>
+        </div>
+        <div class="badge">William Ortiz</div>
+      </header>
+
+      <nav class="tabs">
+        <button class="active" data-tab="activas">Activas</button>
+        <button data-tab="campo">Campo libre</button>
+        <button data-tab="historial">Historial</button>
+      </nav>
+
+      <section class="content">
+        <div id="activas">
+          <article class="card">
+            <h3>CONSTANCIA - 0002</h3>
+            <div class="meta">
+              <span class="pill wait">Pendiente</span>
+              <span class="pill">RENCALLE</span>
+              <span class="pill">2.40 ha</span>
+            </div>
+            <p class="sub">Equipo asignado: Valtra 9903</p>
+            <div class="row">
+              <label>
+                Equipo para ejecutar
+                <select>
+                  <option>Valtra 9903</option>
+                  <option>Case 1304</option>
+                  <option>John Deere 5403</option>
+                </select>
+              </label>
+              <label>
+                Accion
+                <button class="action">Iniciar labor</button>
+              </label>
+            </div>
+          </article>
+
+          <article class="card">
+            <h3>SANTA MONICA - 0001</h3>
+            <div class="meta">
+              <span class="pill run">En ejecucion</span>
+              <span class="pill">DESPEJE</span>
+              <span class="pill">7.70 ha</span>
+            </div>
+            <div class="row">
+              <label>
+                Ha ejecutadas
+                <input value="3.2" />
+              </label>
+              <label>
+                Equipo en uso
+                <select>
+                  <option>Case 1304</option>
+                  <option>Valtra 9903</option>
+                </select>
+              </label>
+            </div>
+            <label>
+              Observaciones
+              <textarea placeholder="Notas de cierre o novedades de campo"></textarea>
+            </label>
+            <button class="action">Finalizar labor</button>
+          </article>
+        </div>
+
+        <div id="campo" class="hidden">
+          <article class="card">
+            <h3>Tomar suerte en campo</h3>
+            <div class="row">
+              <label>Hacienda<select><option>103 - CONSTANCIA</option><option>105 - SANTA MONICA</option></select></label>
+              <label>Suerte<select><option>0003</option><option>0004</option></select></label>
+            </div>
+            <div class="row">
+              <label>Labor<select><option>RENCALLE (sugerida)</option><option>REPIQUE</option><option>TRIPLE</option></select></label>
+              <label>Equipo<select><option>Valtra 9903</option><option>Case 1304</option></select></label>
+            </div>
+            <label>Observaciones<textarea placeholder="Detalle de la labor tomada"></textarea></label>
+            <button class="action">Tomar labor</button>
+          </article>
+        </div>
+
+        <div id="historial" class="hidden">
+          <article class="card">
+            <h3>RIOGRANDE - 0001</h3>
+            <div class="meta">
+              <span class="pill ok">Completada</span>
+              <span class="pill">REPIQUE</span>
+              <span class="pill">5.20 ha</span>
+            </div>
+            <p class="sub">Finalizada hoy 14:42</p>
+          </article>
+          <article class="card">
+            <h3>CONSTANCIA - 0001</h3>
+            <div class="meta">
+              <span class="pill ok">Completada</span>
+              <span class="pill">DESPEJE</span>
+              <span class="pill">0.50 ha</span>
+            </div>
+            <p class="sub">Finalizada ayer 16:08</p>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const tabs = document.querySelectorAll('[data-tab]');
+      const panels = ['activas', 'campo', 'historial'].map(id => document.getElementById(id));
+
+      tabs.forEach(btn => {
+        btn.addEventListener('click', () => {
+          tabs.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const current = btn.dataset.tab;
+          panels.forEach(p => p.classList.toggle('hidden', p.id !== current));
+        });
+      });
+    </script>
+  </body>
+</html>

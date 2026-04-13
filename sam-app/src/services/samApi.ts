@@ -10,6 +10,7 @@ import type {
   UpdateAssignmentInput,
   UserProfile,
 } from '../domain/sam'
+import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
 
 type Source = 'supabase' | 'fallback'
@@ -106,25 +107,28 @@ export async function loadMaestro(): Promise<{
   data: MaestroRow[]
   source: Source
 }> {
-  const { data, error } = await supabase
-    .from('maestro_risaralda')
-    .select('hacienda,nombre_hacienda,suerte,area_neta')
-    .eq('activo', true)
-    .order('hacienda')
-    .order('suerte')
+  try {
+    const { data, error } = await supabase
+      .from('maestro_risaralda')
+      .select('hacienda,nombre_hacienda,suerte,area_neta')
+      .eq('activo', true)
+      .order('hacienda')
+      .order('suerte')
 
-  if (error || !data?.length) {
-    return { data: LOCAL_MAESTRO, source: 'fallback' }
-  }
+    if (error || !data?.length) throw error ?? new Error('empty')
 
-  return {
-    data: data.map((row) => ({
+    const mapped: MaestroRow[] = data.map((row) => ({
       haciendaCode: Number(row.hacienda),
       haciendaName: row.nombre_hacienda,
       suerte: row.suerte,
       area: Number(row.area_neta),
-    })),
-    source: 'supabase',
+    }))
+    void db.maestro.clear().then(() => db.maestro.bulkPut(mapped))
+    return { data: mapped, source: 'supabase' }
+  } catch {
+    const cached = await db.maestro.toArray()
+    if (cached.length) return { data: cached, source: 'fallback' }
+    return { data: LOCAL_MAESTRO, source: 'fallback' }
   }
 }
 
@@ -132,18 +136,22 @@ export async function loadAssignments(): Promise<{
   data: Assignment[]
   source: Source
 }> {
-  const { data, error } = await supabase
-    .from('asignaciones')
-    .select('*')
-    .order('created_at', { ascending: false })
+  try {
+    const { data, error } = await supabase
+      .from('asignaciones')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  if (error || !data) {
-    return { data: [], source: 'fallback' }
-  }
+    if (error || !data) throw error ?? new Error('empty')
 
-  return {
-    data: data.map((row) => mapAssignment(row as Record<string, unknown>)),
-    source: 'supabase',
+    const mapped = data.map((row) => mapAssignment(row as Record<string, unknown>))
+    void db.assignments.clear().then(() => db.assignments.bulkPut(mapped))
+    void db.meta.put({ key: 'assignments_synced_at', value: new Date().toISOString() })
+    return { data: mapped, source: 'supabase' }
+  } catch {
+    const cached = await db.assignments.toArray()
+    cached.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+    return { data: cached, source: 'fallback' }
   }
 }
 
@@ -151,24 +159,26 @@ export async function loadAppUsers(): Promise<{
   data: UserProfile[]
   source: Source
 }> {
-  const { data, error } = await supabase
-    .from('app_usuarios')
-    .select('id,nombre_completo,rol,equipo_codigo')
-    .eq('activo', true)
-    .order('orden')
+  try {
+    const { data, error } = await supabase
+      .from('app_usuarios')
+      .select('id,nombre_completo,rol,equipo_codigo')
+      .eq('activo', true)
+      .order('orden')
 
-  if (error || !data) {
-    return { data: [], source: 'fallback' }
-  }
+    if (error || !data) throw error ?? new Error('empty')
 
-  return {
-    data: data.map((row) => ({
+    const mapped: UserProfile[] = data.map((row) => ({
       id: String(row.id),
       name: String(row.nombre_completo),
       role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
-    })),
-    source: 'supabase',
+    }))
+    void db.users.clear().then(() => db.users.bulkPut(mapped))
+    return { data: mapped, source: 'supabase' }
+  } catch {
+    const cached = await db.users.toArray()
+    return { data: cached, source: 'fallback' }
   }
 }
 
@@ -176,22 +186,24 @@ export async function loadEquipment(): Promise<{
   data: Equipment[]
   source: Source
 }> {
-  const { data, error } = await supabase
-    .from('equipos')
-    .select('codigo,nombre')
-    .eq('activo', true)
-    .order('codigo')
+  try {
+    const { data, error } = await supabase
+      .from('equipos')
+      .select('codigo,nombre')
+      .eq('activo', true)
+      .order('codigo')
 
-  if (error || !data) {
-    return { data: [], source: 'fallback' }
-  }
+    if (error || !data) throw error ?? new Error('empty')
 
-  return {
-    data: data.map((row) => ({
+    const mapped: Equipment[] = data.map((row) => ({
       code: String(row.codigo),
       name: String(row.nombre),
-    })),
-    source: 'supabase',
+    }))
+    void db.equipment.clear().then(() => db.equipment.bulkPut(mapped))
+    return { data: mapped, source: 'supabase' }
+  } catch {
+    const cached = await db.equipment.toArray()
+    return { data: cached, source: 'fallback' }
   }
 }
 

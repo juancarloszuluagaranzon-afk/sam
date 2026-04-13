@@ -1,4 +1,4 @@
-import { startTransition, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import './App.css'
 import logoAgromorales from './assets/logo-agromorales.jpeg'
 import { WORKFLOW } from './data/constants'
@@ -9,6 +9,7 @@ import type {
   MaestroRow,
   UserProfile,
 } from './domain/sam'
+import { db } from './lib/db'
 import {
   appLogin,
   createEquipment,
@@ -261,6 +262,8 @@ function App() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [outboxCount, setOutboxCount] = useState(0)
   const [loginUserId, setLoginUserId] = useState('U002')
   const [loginPin, setLoginPin] = useState('2402')
   const [maestro, setMaestro] = useState<MaestroRow[]>([])
@@ -289,6 +292,29 @@ function App() {
     operatorId: 'TODOS',
   })
 
+  const syncOutbox = useCallback(async () => {
+    const pending = await db.outbox.where('status').equals('pending').toArray()
+    if (pending.length === 0) return
+
+    let synced = 0
+    for (const item of pending) {
+      try {
+        await updateAssignment(item.assignmentId, item.payload)
+        await db.outbox.delete(item.id!)
+        synced++
+      } catch {
+        await db.outbox.update(item.id!, { status: 'error' })
+      }
+    }
+
+    if (synced > 0) {
+      setOutboxCount(0)
+      const result = await loadAssignments()
+      setAssignments(result.data)
+      setInfo(`${synced} accion${synced > 1 ? 'es sincronizadas' : ' sincronizada'} con el servidor.`)
+    }
+  }, [])
+
   useEffect(() => {
     const saved = window.localStorage.getItem(SESSION_KEY)
     if (saved) {
@@ -299,8 +325,26 @@ function App() {
       }
     }
 
+    // Check pending outbox on startup
+    void db.outbox.where('status').equals('pending').count().then((count) => {
+      setOutboxCount(count)
+    })
+
+    const onOnline = () => {
+      setIsOnline(true)
+      void syncOutbox()
+    }
+    const onOffline = () => setIsOnline(false)
+    window.addEventListener('online', onOnline)
+    window.addEventListener('offline', onOffline)
+
     void hydrate()
-  }, [])
+
+    return () => {
+      window.removeEventListener('online', onOnline)
+      window.removeEventListener('offline', onOffline)
+    }
+  }, [syncOutbox])
 
   async function hydrate() {
     setLoading(true)
@@ -794,14 +838,38 @@ function App() {
     setBusy(true)
     setError('')
 
+    const startPayload = {
+      status: 'EN_PROCESO' as const,
+      startedAt: new Date().toISOString(),
+      equipmentCode: selectedEquipment.code,
+      equipmentName: selectedEquipment.name,
+      horometroInicial,
+    }
+
     try {
-      await updateAssignment(assignment.id, {
-        status: 'EN_PROCESO',
-        startedAt: new Date().toISOString(),
-        equipmentCode: selectedEquipment.code,
-        equipmentName: selectedEquipment.name,
-        horometroInicial,
-      })
+      if (!isOnline) {
+        await db.outbox.add({
+          assignmentId: assignment.id,
+          type: 'START',
+          payload: startPayload,
+          queuedAt: new Date().toISOString(),
+          status: 'pending',
+        })
+        setAssignments((current) =>
+          current.map((a) =>
+            a.id === assignment.id
+              ? { ...a, status: 'EN_PROCESO', startedAt: startPayload.startedAt, equipmentCode: selectedEquipment.code, equipmentName: selectedEquipment.name }
+              : a,
+          ),
+        )
+        void db.assignments.update(assignment.id, { status: 'EN_PROCESO', startedAt: startPayload.startedAt })
+        setOutboxCount((c) => c + 1)
+        setInfo(`Labor iniciada (sin conexion, se sincronizara al recuperar senal).`)
+      } else {
+        await updateAssignment(assignment.id, startPayload)
+        await refreshAssignments()
+        setInfo(`Labor iniciada: ${assignment.labor}.`)
+      }
       setStartEquipmentDrafts((current) => {
         const next = { ...current }
         delete next[assignment.id]
@@ -812,8 +880,6 @@ function App() {
         delete next[assignment.id]
         return next
       })
-      setInfo(`Labor iniciada: ${assignment.labor}.`)
-      await refreshAssignments()
     } catch {
       setError('No se pudo iniciar la labor.')
     } finally {
@@ -849,21 +915,43 @@ function App() {
     setBusy(true)
     setError('')
 
+    const finishPayload = {
+      status: 'COMPLETADA' as const,
+      finishedAt: new Date().toISOString(),
+      executedArea,
+      notes: draft?.notes ?? assignment.notes,
+      horometroFinal,
+    }
+
     try {
-      await updateAssignment(assignment.id, {
-        status: 'COMPLETADA',
-        finishedAt: new Date().toISOString(),
-        executedArea,
-        notes: draft?.notes ?? assignment.notes,
-        horometroFinal,
-      })
+      if (!isOnline) {
+        await db.outbox.add({
+          assignmentId: assignment.id,
+          type: 'FINISH',
+          payload: finishPayload,
+          queuedAt: new Date().toISOString(),
+          status: 'pending',
+        })
+        setAssignments((current) =>
+          current.map((a) =>
+            a.id === assignment.id
+              ? { ...a, status: 'COMPLETADA', finishedAt: finishPayload.finishedAt, executedArea }
+              : a,
+          ),
+        )
+        void db.assignments.update(assignment.id, { status: 'COMPLETADA', finishedAt: finishPayload.finishedAt, executedArea })
+        setOutboxCount((c) => c + 1)
+        setInfo(`Labor finalizada (sin conexion, se sincronizara al recuperar senal).`)
+      } else {
+        await updateAssignment(assignment.id, finishPayload)
+        await refreshAssignments()
+        setInfo(`Labor finalizada: ${assignment.labor}.`)
+      }
       setFinishDrafts((current) => {
         const next = { ...current }
         delete next[assignment.id]
         return next
       })
-      setInfo(`Labor finalizada: ${assignment.labor}.`)
-      await refreshAssignments()
     } catch {
       setError('No se pudo finalizar la labor.')
     } finally {
@@ -1146,6 +1234,26 @@ function App() {
           Salir
         </button>
       </aside>
+
+      {!isOnline && (
+        <div className="offline-banner">
+          <div className="offline-banner-left">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="1" y1="1" x2="23" y2="23"/>
+              <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+              <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+              <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+              <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+              <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+              <line x1="12" y1="20" x2="12.01" y2="20"/>
+            </svg>
+            <span>Sin conexion - modo campo</span>
+          </div>
+          {outboxCount > 0 && (
+            <span className="offline-badge">{outboxCount} pendiente{outboxCount > 1 ? 's' : ''}</span>
+          )}
+        </div>
+      )}
 
       <div className="dashboard-shell">
         <section className="toolbar-card">

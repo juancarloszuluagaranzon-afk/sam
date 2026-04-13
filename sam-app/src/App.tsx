@@ -445,6 +445,20 @@ function App() {
     [operatorAssignments],
   )
 
+  const operatorMetrics = useMemo(() => {
+    const todayOps = operatorAssignments.filter(
+      (a) => a.dateKey === todayKey && a.status !== 'CANCELADA',
+    )
+    const todayPlanned = todayOps.reduce((sum, a) => sum + a.area, 0)
+    const todayExecuted = todayOps
+      .filter((a) => a.status === 'COMPLETADA')
+      .reduce((sum, a) => sum + a.executedArea, 0)
+    const completion = todayPlanned ? Math.round((todayExecuted / todayPlanned) * 100) : 0
+    const inProgress = operatorAssignments.filter((a) => a.status === 'EN_PROCESO').length
+    const pending = operatorAssignments.filter((a) => a.status === 'PENDIENTE').length
+    return { todayPlanned, todayExecuted, completion, inProgress, pending }
+  }, [operatorAssignments, todayKey])
+
   const filteredHistory = useMemo(() => {
     if (operatorHistoryPeriod === 'TODO') return historyAssignments
 
@@ -1235,6 +1249,27 @@ function App() {
             )}
           </nav>
 
+          {isSupervisorOrOwner(session.role) && (
+            <div className="day-status-bar">
+              <div className="day-status-item">
+                <strong>{metrics.plannedArea.toFixed(1)}</strong>
+                <span>Ha planif.</span>
+              </div>
+              <div className={`day-status-item day-status-item--green`}>
+                <strong>{metrics.executedArea.toFixed(1)}</strong>
+                <span>Ha ejecut.</span>
+              </div>
+              <div className={`day-status-item ${metrics.completion >= 70 ? 'day-status-item--green' : metrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
+                <strong>{metrics.completion}%</strong>
+                <span>Cumplimiento</span>
+              </div>
+              <div className={`day-status-item ${metrics.inProgress > 0 ? 'day-status-item--amber' : ''}`}>
+                <strong>{metrics.inProgress}</strong>
+                <span>En progreso</span>
+              </div>
+            </div>
+          )}
+
         </section>
 
         {(error || info) && (
@@ -1522,7 +1557,7 @@ function App() {
                           ) : (
                             <span className="kind-badge libre">Campo</span>
                           )}{' '}
-                          Â· {assignment.operatorName || 'Sin operador'} Â· {assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}
+                          - {assignment.operatorName || 'Sin operador'} - {assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}
                         </span>
                       </div>
                       <div className="movement-side">
@@ -2003,7 +2038,7 @@ function App() {
                         <strong>{planned.toFixed(1)} ha</strong>
                         <span>
                           {active
-                            ? `${active.operatorName} Â· ${active.haciendaName} ${active.suerte}`
+                            ? `${active.operatorName} - ${active.haciendaName} ${active.suerte}`
                             : 'Sin labor activa'}
                         </span>
                       </div>
@@ -2017,6 +2052,30 @@ function App() {
 
         {session.role === 'operador' && operatorTab === 'activas' ? (
           <section className="operator-stack operator-mobile-stack">
+            <div className="operator-kpi-grid">
+              <article className="operator-kpi-card operator-kpi-card--neutral">
+                <strong>{operatorMetrics.todayPlanned.toFixed(1)}</strong>
+                <span>ha planificadas hoy</span>
+              </article>
+              <article className="operator-kpi-card operator-kpi-card--green">
+                <strong>{operatorMetrics.todayExecuted.toFixed(1)}</strong>
+                <span>ha ejecutadas</span>
+                <div className="operator-kpi-bar">
+                  <span style={{ width: `${Math.min(operatorMetrics.completion, 100)}%` }} />
+                </div>
+              </article>
+              <article className={`operator-kpi-card ${operatorMetrics.completion >= 70 ? 'operator-kpi-card--green' : operatorMetrics.completion >= 30 ? 'operator-kpi-card--amber' : 'operator-kpi-card--red'}`}>
+                <strong>{operatorMetrics.completion}%</strong>
+                <span>cumplimiento</span>
+                <div className="operator-kpi-bar">
+                  <span style={{ width: `${Math.min(operatorMetrics.completion, 100)}%` }} />
+                </div>
+              </article>
+              <article className="operator-kpi-card operator-kpi-card--amber">
+                <strong>{operatorMetrics.inProgress}</strong>
+                <span>{operatorMetrics.inProgress === 1 ? 'labor en progreso' : 'labores en progreso'}</span>
+              </article>
+            </div>
             {activeAssignments.map((assignment) => {
               const meta = getStatusMeta(assignment.status)
               const draft = finishDrafts[assignment.id]
@@ -2341,21 +2400,37 @@ function App() {
               </select>
             </div>
             
-            <div className="journey-stats" style={{ marginBottom: '1.5rem', marginTop: '1rem', background: '#f8f9fc', padding: '1rem', borderRadius: '8px' }}>
-              <div>
-                <strong>{filteredHistory.length}</strong>
-                <span>cerradas</span>
-              </div>
-              <div>
-                <strong>
-                  {filteredHistory
-                    .filter((item) => item.status === 'COMPLETADA')
-                    .reduce((sum, item) => sum + item.executedArea, 0)
-                    .toFixed(1)}
-                </strong>
-                <span>ha ejecutadas</span>
-              </div>
-            </div>
+            {(() => {
+              const completadas = filteredHistory.filter((a) => a.status === 'COMPLETADA')
+              const haPlaneadas = completadas.reduce((sum, a) => sum + a.area, 0)
+              const haEjecutadas = completadas.reduce((sum, a) => sum + a.executedArea, 0)
+              const eficiencia = haPlaneadas ? Math.round((haEjecutadas / haPlaneadas) * 100) : 0
+              return (
+                <div className="operator-kpi-grid" style={{ margin: '1rem 0 1.5rem' }}>
+                  <article className="operator-kpi-card operator-kpi-card--neutral">
+                    <strong>{haPlaneadas.toFixed(1)}</strong>
+                    <span>ha planificadas</span>
+                  </article>
+                  <article className="operator-kpi-card operator-kpi-card--green">
+                    <strong>{haEjecutadas.toFixed(1)}</strong>
+                    <span>ha ejecutadas</span>
+                  </article>
+                  <article className="operator-kpi-card operator-kpi-card--green">
+                    <strong>{completadas.length}</strong>
+                    <span>{completadas.length === 1 ? 'completada' : 'completadas'}</span>
+                  </article>
+                  <article className={`operator-kpi-card ${eficiencia >= 70 ? 'operator-kpi-card--green' : eficiencia >= 30 ? 'operator-kpi-card--amber' : 'operator-kpi-card--red'}`}>
+                    <strong>{haPlaneadas ? `${eficiencia}%` : '-'}</strong>
+                    <span>eficiencia</span>
+                    {haPlaneadas > 0 && (
+                      <div className="operator-kpi-bar">
+                        <span style={{ width: `${Math.min(eficiencia, 100)}%` }} />
+                      </div>
+                    )}
+                  </article>
+                </div>
+              )
+            })()}
 
             <div className="list-rows">
               {filteredHistory.map((assignment) => {

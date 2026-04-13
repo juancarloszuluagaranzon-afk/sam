@@ -253,6 +253,10 @@ function SearchableSelect({
   )
 }
 
+function generateTempId() {
+  return `offline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
+
 function App() {
   const [session, setSession] = useState<SessionUser | null>(null)
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false)
@@ -296,10 +300,28 @@ function App() {
     const pending = await db.outbox.where('status').equals('pending').toArray()
     if (pending.length === 0) return
 
+    // tempId → realId map built from CREATE results
+    const tempIdMap: Record<string, string> = {}
     let synced = 0
-    for (const item of pending) {
+
+    // Pass 1: CREATE items first so temp IDs can be resolved for subsequent UPDATEs
+    for (const item of pending.filter((i) => i.type === 'CREATE')) {
       try {
-        await updateAssignment(item.assignmentId, item.payload)
+        const real = await createAssignment(item.createInput!)
+        tempIdMap[item.tempId!] = real.id
+        await db.outbox.delete(item.id!)
+        await db.assignments.delete(item.tempId!)
+        synced++
+      } catch {
+        await db.outbox.update(item.id!, { status: 'error' })
+      }
+    }
+
+    // Pass 2: UPDATE items (START, FINISH, CANCEL) — resolve temp IDs if needed
+    for (const item of pending.filter((i) => i.type === 'UPDATE')) {
+      const realId = tempIdMap[item.assignmentId!] ?? item.assignmentId!
+      try {
+        await updateAssignment(realId, item.updatePayload!)
         await db.outbox.delete(item.id!)
         synced++
       } catch {
@@ -311,7 +333,7 @@ function App() {
       setOutboxCount(0)
       const result = await loadAssignments()
       setAssignments(result.data)
-      setInfo(`${synced} accion${synced > 1 ? 'es sincronizadas' : ' sincronizada'} con el servidor.`)
+      setInfo(`${synced} accion${synced !== 1 ? 'es sincronizadas' : ' sincronizada'} con el servidor.`)
     }
   }, [])
 
@@ -703,14 +725,19 @@ function App() {
     setError('')
 
     try {
-      await Promise.all(
-        maestroRows.map((maestroRow) =>
-          createAssignment({
+      if (!isOnline) {
+        const now = new Date().toISOString()
+        const localAssignments: Assignment[] = []
+
+        for (const maestroRow of maestroRows) {
+          const tempId = generateTempId()
+          const area = getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, assignmentForm.labor, maestroRow.area)
+          const createInput: Parameters<typeof createAssignment>[0] = {
             haciendaCode: maestroRow.haciendaCode,
             haciendaName: maestroRow.haciendaName,
             suerte: maestroRow.suerte,
             labor: assignmentForm.labor,
-            area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, assignmentForm.labor, maestroRow.area),
+            area,
             supervisorId: session.id,
             supervisorName: session.name,
             operatorId: operator.id,
@@ -721,14 +748,68 @@ function App() {
             cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
             kind: 'ASIGNADA',
             initialStatus: 'PENDIENTE',
-          }),
-        ),
-      )
+          }
+          const local: Assignment = {
+            id: tempId,
+            createdAt: now,
+            dateKey: getTodayKey(),
+            haciendaCode: maestroRow.haciendaCode,
+            haciendaName: maestroRow.haciendaName,
+            suerte: maestroRow.suerte,
+            suerteCode: `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
+            labor: assignmentForm.labor,
+            area,
+            status: 'PENDIENTE',
+            operatorId: operator.id,
+            operatorName: operator.name,
+            supervisorId: session.id,
+            equipmentCode: equipmentItem.code,
+            equipmentName: equipmentItem.name,
+            startedAt: null,
+            finishedAt: null,
+            executedArea: 0,
+            notes: assignmentForm.notes,
+            kind: 'ASIGNADA',
+            horometroInicial: null,
+            horometroFinal: null,
+            cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+          }
+          await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
+          await db.assignments.put(local)
+          localAssignments.push(local)
+        }
+
+        setAssignments((current) => [...localAssignments, ...current])
+        setOutboxCount((c) => c + maestroRows.length)
+        setInfo(`${maestroRows.length} asignacion(es) creadas localmente. Se sincronizaran al recuperar senal.`)
+      } else {
+        await Promise.all(
+          maestroRows.map((maestroRow) =>
+            createAssignment({
+              haciendaCode: maestroRow.haciendaCode,
+              haciendaName: maestroRow.haciendaName,
+              suerte: maestroRow.suerte,
+              labor: assignmentForm.labor,
+              area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, assignmentForm.labor, maestroRow.area),
+              supervisorId: session.id,
+              supervisorName: session.name,
+              operatorId: operator.id,
+              operatorName: operator.name,
+              equipmentCode: equipmentItem.code,
+              equipmentName: equipmentItem.name,
+              notes: assignmentForm.notes,
+              cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+              kind: 'ASIGNADA',
+              initialStatus: 'PENDIENTE',
+            }),
+          ),
+        )
+        await refreshAssignments()
+        setInfo(`${maestroRows.length} asignacion(es) creadas.`)
+      }
 
       setAssignmentForm(EMPTY_FORM)
       setAssignmentSuertesList([])
-      setInfo(`${maestroRows.length} asignacion(es) creadas.`)
-      await refreshAssignments()
       setSupervisorTab('labores')
     } catch {
       setError('No se pudo crear las asignaciones.')
@@ -779,16 +860,21 @@ function App() {
     setError('')
 
     try {
-      await Promise.all(
-        maestroRows.map((maestroRow) =>
-          createAssignment({
+      if (!isOnline) {
+        const now = new Date().toISOString()
+        const localAssignments: Assignment[] = []
+
+        for (const maestroRow of maestroRows) {
+          const tempId = generateTempId()
+          const area = getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, freeFieldForm.labor, maestroRow.area)
+          const createInput: Parameters<typeof createAssignment>[0] = {
             haciendaCode: maestroRow.haciendaCode,
             haciendaName: maestroRow.haciendaName,
             suerte: maestroRow.suerte,
             labor: freeFieldForm.labor,
-            area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, freeFieldForm.labor, maestroRow.area),
-            supervisorId: supervisors[0]?.id ?? 'U002',
-            supervisorName: supervisors[0]?.name ?? 'Supervisor',
+            area,
+            supervisorId: supervisors[0]?.id ?? '',
+            supervisorName: supervisors[0]?.name ?? '',
             operatorId: operator.id,
             operatorName: operator.name,
             equipmentCode: equipmentItem.code,
@@ -797,15 +883,69 @@ function App() {
             cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
             kind: 'LIBRE',
             initialStatus: 'PENDIENTE',
-          }),
-        ),
-      )
+          }
+          const local: Assignment = {
+            id: tempId,
+            createdAt: now,
+            dateKey: getTodayKey(),
+            haciendaCode: maestroRow.haciendaCode,
+            haciendaName: maestroRow.haciendaName,
+            suerte: maestroRow.suerte,
+            suerteCode: `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
+            labor: freeFieldForm.labor,
+            area,
+            status: 'PENDIENTE',
+            operatorId: operator.id,
+            operatorName: operator.name,
+            supervisorId: supervisors[0]?.id ?? '',
+            equipmentCode: equipmentItem.code,
+            equipmentName: equipmentItem.name,
+            startedAt: null,
+            finishedAt: null,
+            executedArea: 0,
+            notes: freeFieldForm.notes,
+            kind: 'LIBRE',
+            horometroInicial: null,
+            horometroFinal: null,
+            cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+          }
+          await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
+          await db.assignments.put(local)
+          localAssignments.push(local)
+        }
+
+        setAssignments((current) => [...localAssignments, ...current])
+        setOutboxCount((c) => c + maestroRows.length)
+        setInfo(`${maestroRows.length} labor(es) creadas localmente. Se sincronizaran al recuperar senal.`)
+      } else {
+        await Promise.all(
+          maestroRows.map((maestroRow) =>
+            createAssignment({
+              haciendaCode: maestroRow.haciendaCode,
+              haciendaName: maestroRow.haciendaName,
+              suerte: maestroRow.suerte,
+              labor: freeFieldForm.labor,
+              area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, freeFieldForm.labor, maestroRow.area),
+              supervisorId: supervisors[0]?.id ?? 'U002',
+              supervisorName: supervisors[0]?.name ?? 'Supervisor',
+              operatorId: operator.id,
+              operatorName: operator.name,
+              equipmentCode: equipmentItem.code,
+              equipmentName: equipmentItem.name,
+              notes: freeFieldForm.notes,
+              cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+              kind: 'LIBRE',
+              initialStatus: 'PENDIENTE',
+            }),
+          ),
+        )
+        await refreshAssignments()
+        setInfo(`${maestroRows.length} labor(es) tomadas en campo libre.`)
+      }
 
       const savedEquipment = freeFieldForm.equipmentCode || session.equipmentCode
       setFreeFieldForm({ ...EMPTY_FORM, equipmentCode: savedEquipment })
       setFreeFieldSuertesList([])
-      setInfo(`${maestroRows.length} labor(es) tomadas en campo libre.`)
-      await refreshAssignments()
       setOperatorTab('activas')
     } catch {
       setError('No se pudo registrar las labores en campo libre.')
@@ -849,9 +989,9 @@ function App() {
     try {
       if (!isOnline) {
         await db.outbox.add({
+          type: 'UPDATE',
           assignmentId: assignment.id,
-          type: 'START',
-          payload: startPayload,
+          updatePayload: startPayload,
           queuedAt: new Date().toISOString(),
           status: 'pending',
         })
@@ -926,9 +1066,9 @@ function App() {
     try {
       if (!isOnline) {
         await db.outbox.add({
+          type: 'UPDATE',
           assignmentId: assignment.id,
-          type: 'FINISH',
-          payload: finishPayload,
+          updatePayload: finishPayload,
           queuedAt: new Date().toISOString(),
           status: 'pending',
         })
@@ -964,11 +1104,25 @@ function App() {
     setError('')
 
     try {
-      await updateAssignment(assignment.id, {
-        status: 'CANCELADA',
-      })
-      setInfo(`Asignacion cancelada: ${assignment.labor}.`)
-      await refreshAssignments()
+      if (!isOnline) {
+        await db.outbox.add({
+          type: 'UPDATE',
+          assignmentId: assignment.id,
+          updatePayload: { status: 'CANCELADA' },
+          queuedAt: new Date().toISOString(),
+          status: 'pending',
+        })
+        setAssignments((current) =>
+          current.map((a) => (a.id === assignment.id ? { ...a, status: 'CANCELADA' } : a)),
+        )
+        void db.assignments.update(assignment.id, { status: 'CANCELADA' })
+        setOutboxCount((c) => c + 1)
+        setInfo(`Asignacion cancelada localmente. Se sincronizara al recuperar senal.`)
+      } else {
+        await updateAssignment(assignment.id, { status: 'CANCELADA' })
+        setInfo(`Asignacion cancelada: ${assignment.labor}.`)
+        await refreshAssignments()
+      }
     } catch {
       setError('No se pudo cancelar la asignacion.')
     } finally {

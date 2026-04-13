@@ -307,9 +307,6 @@
   flex-direction: column;
   gap: 0;
   margin-bottom: 22px;
-  position: sticky;
-  top: 83px;
-  z-index: 40;
 }
 
 .day-status-bar {
@@ -957,7 +954,6 @@ th {
   .toolbar-card {
     padding: 8px;
     margin-bottom: 14px;
-    top: 78px;
   }
 
   .day-status-item {

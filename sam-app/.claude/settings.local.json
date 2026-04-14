@@ -10,7 +10,9 @@
       "WebFetch(domain:github.com)",
       "Bash(node -e \"require\\('dexie'\\); console.log\\('dexie ok'\\)\")",
       "Bash(node -e \"require\\('vite-plugin-pwa'\\); console.log\\('pwa ok'\\)\")",
-      "Bash(node -e ':*)"
+      "Bash(node -e ':*)",
+      "Bash(node scripts/generate-maestro-sql.js \"/c/Users/Agr349/Downloads/maestro_risaralda_rows.csv\")",
+      "Bash(node scripts/generate-maestro-sql.cjs \"/c/Users/Agr349/Downloads/maestro_risaralda_rows.csv\")"
     ]
   }
 }

@@ -108,14 +108,36 @@ export async function loadMaestro(): Promise<{
   source: Source
 }> {
   try {
-    const { data, error } = await supabase
-      .from('maestro_risaralda')
-      .select('hacienda,nombre_hacienda,suerte,area_neta')
-      .eq('activo', true)
-      .order('hacienda')
-      .order('suerte')
+    let allData: any[] = []
+    let hasMore = true
+    let page = 0
+    const limit = 1000
 
-    if (error || !data?.length) throw error ?? new Error('empty')
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('maestro_risaralda')
+        .select('hacienda,nombre_hacienda,suerte,area_neta')
+        .eq('activo', true)
+        .order('hacienda')
+        .order('suerte')
+        .range(page * limit, (page + 1) * limit - 1)
+
+      if (error) throw error
+
+      if (data && data.length > 0) {
+        allData = allData.concat(data)
+        if (data.length < limit) {
+          hasMore = false
+        } else {
+          page++
+        }
+      } else {
+        hasMore = false
+      }
+    }
+
+    if (!allData.length) throw new Error('empty')
+    const data = allData
 
     const mapped: MaestroRow[] = data.map((row) => ({
       haciendaCode: Number(row.hacienda),

@@ -90,6 +90,7 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-04-13]** La tabla maestro no coincide con la base de datos porque Supabase/PostgREST limita los requests GET a 1000 registros por defecto. → solución: Implementar paginación usando un bucle con el método .range(start, end) de supabase-js, concatenando los resultados hasta obtener todo el conjunto de datos.
 
 - **[2026-04-09]** `supabase.rpc('app_login')` retorna array aunque sea un solo usuario → siempre usar `data[0]`, nunca `data` directo
 - **[2026-04-09]** El campo `equipo_codigo` en filas históricas puede estar vacío; usar `row.equipo_codigo ?? row.tractor ?? ''` para leer, nunca solo `row.equipo_codigo`

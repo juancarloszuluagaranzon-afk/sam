@@ -90,6 +90,7 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-04-13]** Cambios hechos localmente no se ven en Vercel de inmediato → solución: Asegurarse siempre de hacer commit y push de las correciones al repositorio (branch main) para que Vercel haga el redespliegue automático y refleje los cambios en producción.
 - **[2026-04-13]** La tabla maestro no coincide con la base de datos porque Supabase/PostgREST limita los requests GET a 1000 registros por defecto. → solución: Implementar paginación usando un bucle con el método .range(start, end) de supabase-js, concatenando los resultados hasta obtener todo el conjunto de datos.
 
 - **[2026-04-09]** `supabase.rpc('app_login')` retorna array aunque sea un solo usuario → siempre usar `data[0]`, nunca `data` directo

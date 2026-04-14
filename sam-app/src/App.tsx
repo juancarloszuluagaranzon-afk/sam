@@ -194,7 +194,7 @@ function SearchableSelect({
       <input
         className="searchable-select-input"
         type="text"
-        placeholder={placeholder}
+        placeholder={isOpen ? `Buscar ${placeholder.toLowerCase()}...` : placeholder}
         value={displayValue}
         onChange={(e) => {
           setQuery(e.target.value)
@@ -1683,6 +1683,7 @@ function App() {
                     <SearchableSelect
                       value={assignmentForm.haciendaCode}
                       onChange={(value) => updateAssignmentForm('haciendaCode', value)}
+                      placeholder="Hacienda"
                       options={haciendas.map((item) => ({
                         value: String(item.code),
                         label: `${item.code} - ${item.name}`,
@@ -2509,6 +2510,7 @@ function App() {
                     <SearchableSelect
                       value={freeFieldForm.haciendaCode}
                       onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
+                      placeholder="Hacienda"
                       options={haciendas.map((item) => ({
                         value: String(item.code),
                         label: `${item.code} - ${item.name}`,

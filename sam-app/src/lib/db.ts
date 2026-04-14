@@ -49,6 +49,11 @@ class SamDb extends Dexie {
         outbox: '++id, type, assignmentId, tempId, status, queuedAt',
       })
       .upgrade((tx) => tx.table('outbox').clear())
+
+    // v3: clear maestro cache so users get full maestro_risaralda from Supabase
+    this.version(3)
+      .stores({})
+      .upgrade((tx) => tx.table('maestro').clear())
   }
 }
 

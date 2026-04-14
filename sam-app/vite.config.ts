@@ -34,23 +34,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              networkTimeoutSeconds: 5,
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+        // Supabase API calls NO se cachean en el SW — ya los manejamos en IndexedDB (Dexie).
+        // Cachear aquí causa que las respuestas paginadas (Range header) colisionen con la
+        // misma URL cacheada y devuelvan datos incompletos.
+        runtimeCaching: [],
       },
     }),
   ],

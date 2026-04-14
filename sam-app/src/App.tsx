@@ -355,6 +355,8 @@ function App() {
     const onOnline = () => {
       setIsOnline(true)
       void syncOutbox()
+      // Refrescar maestro al recuperar señal (puede haber nuevas haciendas/suertes)
+      void loadMaestro().then((result) => setMaestro(result.data))
     }
     const onOffline = () => setIsOnline(false)
     window.addEventListener('online', onOnline)

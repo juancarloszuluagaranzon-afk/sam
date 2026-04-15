@@ -362,11 +362,19 @@ function App() {
     window.addEventListener('online', onOnline)
     window.addEventListener('offline', onOffline)
 
+    const onVisible = () => {
+      if (document.visibilityState === 'visible' && navigator.onLine) {
+        void loadAssignments().then((r) => setAssignments(r.data))
+      }
+    }
+    document.addEventListener('visibilitychange', onVisible)
+
     void hydrate()
 
     return () => {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [syncOutbox])
 
@@ -592,8 +600,7 @@ function App() {
     const programmedKeys = new Set(
       assignments
         .filter(
-          (assignment) =>
-            assignment.kind === 'ASIGNADA' && assignment.status !== 'CANCELADA',
+          (assignment) => assignment.status !== 'CANCELADA',
         )
         .map((assignment) => `${assignment.haciendaCode}-${assignment.suerte}`),
     )

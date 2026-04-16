@@ -111,7 +111,7 @@ function getTodayKey() {
 }
 
 function formatArea(value: number) {
-  return `${value.toFixed(1)} ha`
+  return `${value.toFixed(2)} ha`
 }
 
 function initials(name: string) {

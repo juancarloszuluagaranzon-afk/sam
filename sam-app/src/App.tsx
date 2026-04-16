@@ -22,6 +22,7 @@ import {
   summarizeAssignments,
   updateAssignment,
   appChangePin,
+  createAppUser,
 } from './services/samApi'
 
 const SESSION_KEY = 'sam-app-session-v1'
@@ -33,7 +34,7 @@ const INGENIOS = [
   { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
 ]
 
-type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte'
+type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios'
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
 type SessionUser = UserProfile
@@ -292,6 +293,7 @@ function App() {
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [freeFieldSuertesList, setFreeFieldSuertesList] = useState<string[]>([])
   const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
+  const [userForm, setUserForm] = useState({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
   const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'TODO'>('HOY')
@@ -1542,6 +1544,17 @@ function App() {
                     </span>
                   </button>
                 )}
+                {session.role === 'owner' && (
+                  <button
+                    className={supervisorTab === 'usuarios' ? 'active' : ''}
+                    onClick={() => setSupervisorTab('usuarios')}
+                  >
+                    <span className="nav-item">
+                      <span className="nav-icon">👤</span>
+                      <span className="nav-label">Usuarios</span>
+                    </span>
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -2127,6 +2140,98 @@ function App() {
             >
               {busy ? 'Generando...' : `Descargar Excel (${filteredReport.length} registros)`}
             </button>
+          </section>
+        ) : null}
+
+        {session.role === 'owner' && supervisorTab === 'usuarios' ? (
+          <section className="dashboard-grid two-up">
+            <article className="panel-card">
+              <div className="panel-title">
+                <h2>Crear usuario</h2>
+              </div>
+              <form
+                className="form-grid-block"
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (!userForm.id || !userForm.nombreCompleto || !userForm.rol || !userForm.pin) {
+                    setError('Completa ID, nombre, rol y PIN.')
+                    return
+                  }
+                  setBusy(true)
+                  setError('')
+                  try {
+                    await createAppUser(userForm)
+                    setInfo(`Usuario ${userForm.nombreCompleto} creado exitosamente.`)
+                    setUserForm({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                  } catch (err: unknown) {
+                    const msg = err instanceof Error ? err.message : 'Error al crear usuario'
+                    setError(msg)
+                  } finally {
+                    setBusy(false)
+                  }
+                }}
+              >
+                <div className="form-grid">
+                  <label>
+                    ID de usuario
+                    <input
+                      value={userForm.id}
+                      onChange={(e) => setUserForm((f) => ({ ...f, id: e.target.value }))}
+                      placeholder="Ej: U005"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Nombre completo
+                    <input
+                      value={userForm.nombreCompleto}
+                      onChange={(e) => setUserForm((f) => ({ ...f, nombreCompleto: e.target.value }))}
+                      placeholder="Nombre y apellido"
+                      required
+                    />
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Rol
+                    <select
+                      value={userForm.rol}
+                      onChange={(e) => setUserForm((f) => ({ ...f, rol: e.target.value }))}
+                      required
+                    >
+                      <option value="">Seleccionar</option>
+                      <option value="operador">Operador</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="administracion">Administración</option>
+                      <option value="owner">Propietario</option>
+                    </select>
+                  </label>
+                  <label>
+                    PIN inicial
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={userForm.pin}
+                      onChange={(e) => setUserForm((f) => ({ ...f, pin: e.target.value }))}
+                      placeholder="Solo números"
+                      required
+                    />
+                  </label>
+                </div>
+                <label>
+                  Equipo asignado <span className="field-optional">(opcional)</span>
+                  <SearchableSelect
+                    value={userForm.equipoCodigo}
+                    onChange={(value) => setUserForm((f) => ({ ...f, equipoCodigo: value }))}
+                    options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                  />
+                </label>
+                <button className="primary-button" type="submit" disabled={busy}>
+                  {busy ? 'Creando...' : 'Crear usuario'}
+                </button>
+              </form>
+            </article>
           </section>
         ) : null}
 

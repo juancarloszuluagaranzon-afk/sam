@@ -1774,77 +1774,73 @@ function App() {
                 <h2>Crear asignacion</h2>
               </div>
               <form className="form-grid-block" onSubmit={handleCreateAssignment}>
-                <div className="form-grid">
-                  <label>
-                    Cliente
-                    <SearchableSelect
-                      value={assignmentForm.cliente}
-                      onChange={(value) => updateAssignmentForm('cliente', value)}
-                      options={[
-                        { value: 'ingenios', label: 'Ingenios' },
-                        { value: 'proveedores', label: 'Proveedores' },
-                      ]}
-                    />
-                  </label>
-                  <label>
-                    Ingenio
-                    <SearchableSelect
-                      value={assignmentForm.ingenioId}
-                      onChange={(value) => updateAssignmentForm('ingenioId', value)}
-                      placeholder="Selecciona un ingenio"
-                      options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
-                    />
-                  </label>
-                </div>
-                <div className="form-grid">
-                  <label>
-                    Hacienda
-                    <SearchableSelect
-                      value={assignmentForm.haciendaCode}
-                      onChange={(value) => updateAssignmentForm('haciendaCode', value)}
-                      placeholder={assignmentForm.cliente === 'ingenios' && !assignmentForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
-                      options={assignmentHaciendas.map((item) => ({
-                        value: item.code,
-                        label: `${item.code} - ${item.name}`,
-                      }))}
-                    />
-                  </label>
-                  <div>
-                    <span className="field-label">Suertes</span>
-                    {assignmentForm.haciendaCode ? (
-                      <ul className="suertes-checklist">
-                        {assignmentSuertes.map((row) => {
-                          const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
-                          const remaining = assignmentForm.labor
-                            ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area)
-                            : row.area
-                          const isCompleted = assignmentForm.labor && remaining === 0
-                          return (
-                            <li key={row.suerte}>
-                              <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
-                                <input
-                                  type="checkbox"
-                                  checked={assignmentSuertesList.includes(row.suerte)}
-                                  onChange={() => !isCompleted && toggleAssignmentSuerte(row.suerte)}
-                                  disabled={!!isCompleted}
-                                />
-                                <span className="suerte-check-code">{row.suerte}</span>
-                                {isCompleted
-                                  ? <span className="suerte-check-done">Completa</span>
-                                  : <span className="suerte-check-area">{formatArea(remaining)}</span>
-                                }
-                              </label>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                    ) : (
-                      <p className="field-hint">Selecciona una hacienda primero</p>
-                    )}
-                    {assignmentSuertesList.length > 0 && (
-                      <p className="suertes-count">{assignmentSuertesList.length} suerte(s) seleccionada(s)</p>
-                    )}
-                  </div>
+                <label>
+                  Cliente
+                  <SearchableSelect
+                    value={assignmentForm.cliente}
+                    onChange={(value) => updateAssignmentForm('cliente', value)}
+                    options={[
+                      { value: 'ingenios', label: 'Ingenios' },
+                      { value: 'proveedores', label: 'Proveedores' },
+                    ]}
+                  />
+                </label>
+                <label>
+                  Ingenio
+                  <SearchableSelect
+                    value={assignmentForm.ingenioId}
+                    onChange={(value) => updateAssignmentForm('ingenioId', value)}
+                    placeholder="Selecciona un ingenio"
+                    options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                  />
+                </label>
+                <label>
+                  Hacienda
+                  <SearchableSelect
+                    value={assignmentForm.haciendaCode}
+                    onChange={(value) => updateAssignmentForm('haciendaCode', value)}
+                    placeholder={!assignmentForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                    options={assignmentHaciendas.map((item) => ({
+                      value: item.code,
+                      label: `${item.code} - ${item.name}`,
+                    }))}
+                  />
+                </label>
+                <div>
+                  <span className="field-label">Suertes</span>
+                  {assignmentForm.haciendaCode ? (
+                    <ul className="suertes-checklist">
+                      {assignmentSuertes.map((row) => {
+                        const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
+                        const remaining = assignmentForm.labor
+                          ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area)
+                          : row.area
+                        const isCompleted = assignmentForm.labor && remaining === 0
+                        return (
+                          <li key={row.suerte}>
+                            <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={assignmentSuertesList.includes(row.suerte)}
+                                onChange={() => !isCompleted && toggleAssignmentSuerte(row.suerte)}
+                                disabled={!!isCompleted}
+                              />
+                              <span className="suerte-check-code">{row.suerte}</span>
+                              {isCompleted
+                                ? <span className="suerte-check-done">Completa</span>
+                                : <span className="suerte-check-area">{formatArea(remaining)}</span>
+                              }
+                            </label>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="field-hint">Selecciona una hacienda primero</p>
+                  )}
+                  {assignmentSuertesList.length > 0 && (
+                    <p className="suertes-count">{assignmentSuertesList.length} suerte(s) seleccionada(s)</p>
+                  )}
                 </div>
                 <label>
                   Labor
@@ -1855,56 +1851,44 @@ function App() {
                       const firstSuerte = assignmentSuertesList[0]
                       const isSuggested =
                         assignmentForm.haciendaCode && firstSuerte
-                          ? labor ===
-                            getSuggestedLabor(
-                              assignments,
-                              `${assignmentForm.haciendaCode}-${firstSuerte}`,
-                            )
+                          ? labor === getSuggestedLabor(assignments, `${assignmentForm.haciendaCode}-${firstSuerte}`)
                           : false
-                      return {
-                        value: labor,
-                        label: labor,
-                        rightLabel: isSuggested ? '<- sugerida' : undefined,
-                      }
+                      return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
                     })}
                   />
                 </label>
-                <div className="form-grid">
-                  <label>
-                    Operador
-                    <SearchableSelect
-                      value={assignmentForm.operatorId}
-                      onChange={(value) => updateAssignmentForm('operatorId', value)}
-                      options={operators.map((op) => ({ value: op.id, label: op.name }))}
-                    />
-                  </label>
-                  <label>
-                    Equipo
-                    <SearchableSelect
-                      value={assignmentForm.equipmentCode}
-                      onChange={(value) => updateAssignmentForm('equipmentCode', value)}
-                      options={equipment.map((item) => ({ value: item.code, label: item.name }))}
-                    />
-                  </label>
-                </div>
-                <div className="form-grid">
-                  <label>
-                    Operador 2 <span className="field-optional">(opcional)</span>
-                    <SearchableSelect
-                      value={assignmentForm.operatorId2}
-                      onChange={(value) => updateAssignmentForm('operatorId2', value)}
-                      options={operators.map((op) => ({ value: op.id, label: op.name }))}
-                    />
-                  </label>
-                  <label>
-                    Equipo 2 <span className="field-optional">(opcional)</span>
-                    <SearchableSelect
-                      value={assignmentForm.equipmentCode2}
-                      onChange={(value) => updateAssignmentForm('equipmentCode2', value)}
-                      options={equipment.map((item) => ({ value: item.code, label: item.name }))}
-                    />
-                  </label>
-                </div>
+                <label>
+                  Operador
+                  <SearchableSelect
+                    value={assignmentForm.operatorId}
+                    onChange={(value) => updateAssignmentForm('operatorId', value)}
+                    options={operators.map((op) => ({ value: op.id, label: op.name }))}
+                  />
+                </label>
+                <label>
+                  Equipo
+                  <SearchableSelect
+                    value={assignmentForm.equipmentCode}
+                    onChange={(value) => updateAssignmentForm('equipmentCode', value)}
+                    options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                  />
+                </label>
+                <label>
+                  Operador 2 <span className="field-optional">(opcional)</span>
+                  <SearchableSelect
+                    value={assignmentForm.operatorId2}
+                    onChange={(value) => updateAssignmentForm('operatorId2', value)}
+                    options={operators.map((op) => ({ value: op.id, label: op.name }))}
+                  />
+                </label>
+                <label>
+                  Equipo 2 <span className="field-optional">(opcional)</span>
+                  <SearchableSelect
+                    value={assignmentForm.equipmentCode2}
+                    onChange={(value) => updateAssignmentForm('equipmentCode2', value)}
+                    options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                  />
+                </label>
                 <label>
                   Observaciones
                   <textarea

@@ -299,6 +299,8 @@ function App() {
   const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'TODO'>('HOY')
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
+  const [ingenioFilter, setIngenioFilter] = useState('TODOS')
+  const [haciendaFilter, setHaciendaFilter] = useState('TODAS')
   const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
   const [finishDrafts, setFinishDrafts] = useState<Record<string, { area: string; notes: string; horometroFinal: string; isComplete: boolean }>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
@@ -479,9 +481,28 @@ function App() {
     return assignments.filter((assignment) => {
       if (statusFilter !== 'TODAS' && assignment.status !== statusFilter) return false
       if (operatorFilter !== 'TODOS' && assignment.operatorId !== operatorFilter) return false
+      if (haciendaFilter !== 'TODAS' && assignment.haciendaCode !== haciendaFilter) return false
+      if (ingenioFilter !== 'TODOS') {
+        const row = maestro.find(
+          (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
+        )
+        if (!row || row.ingenio_id !== ingenioFilter) return false
+      }
       return true
     })
-  }, [assignments, operatorFilter, statusFilter])
+  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, maestro])
+
+  const haciendaFilterOptions = useMemo(() => {
+    const codes = new Map<string, string>()
+    assignments.forEach((a) => {
+      if (ingenioFilter !== 'TODOS') {
+        const row = maestro.find((r) => r.haciendaCode === a.haciendaCode)
+        if (!row || row.ingenio_id !== ingenioFilter) return
+      }
+      if (!codes.has(a.haciendaCode)) codes.set(a.haciendaCode, a.haciendaName)
+    })
+    return Array.from(codes.entries()).map(([code, name]) => ({ code, name }))
+  }, [assignments, ingenioFilter, maestro])
 
   const handleChangePin = async (e: FormEvent) => {
     e.preventDefault()
@@ -2250,15 +2271,28 @@ function App() {
                   <option value="COMPLETADA">Completada</option>
                   <option value="CANCELADA">Cancelada</option>
                 </select>
-                <select
-                  value={operatorFilter}
-                  onChange={(event) => setOperatorFilter(event.target.value)}
-                >
+                <select value={operatorFilter} onChange={(event) => setOperatorFilter(event.target.value)}>
                   <option value="TODOS">Todos los op.</option>
                   {operators.map((operator) => (
-                    <option key={operator.id} value={operator.id}>
-                      {operator.name}
-                    </option>
+                    <option key={operator.id} value={operator.id}>{operator.name}</option>
+                  ))}
+                </select>
+                <select
+                  value={ingenioFilter}
+                  onChange={(event) => {
+                    setIngenioFilter(event.target.value)
+                    setHaciendaFilter('TODAS')
+                  }}
+                >
+                  <option value="TODOS">Todos los ingenios</option>
+                  {INGENIOS.map((ing) => (
+                    <option key={ing.id} value={ing.id}>{ing.nombre}</option>
+                  ))}
+                </select>
+                <select value={haciendaFilter} onChange={(event) => setHaciendaFilter(event.target.value)}>
+                  <option value="TODAS">Todas las haciendas</option>
+                  {haciendaFilterOptions.map(({ code, name }) => (
+                    <option key={code} value={code}>{name}</option>
                   ))}
                 </select>
               </div>

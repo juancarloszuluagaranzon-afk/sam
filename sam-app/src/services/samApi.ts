@@ -47,7 +47,7 @@ function normalizeStatus(value: string | null | undefined): AssignmentStatus {
 function mapAssignment(row: Record<string, unknown>): Assignment {
   const suerteCode = String(row.suerte_codigo ?? '')
   const parts = suerteCode.includes('-') ? suerteCode.split('-') : []
-  const haciendaCode = Number(row.codigo_hacienda ?? parts[0] ?? 0)
+  const haciendaCode = String(row.codigo_hacienda ?? parts[0] ?? '')
   const suerte = String(row.numero_suerte ?? parts[1] ?? '')
 
   return {
@@ -116,7 +116,7 @@ export async function loadMaestro(): Promise<{
     while (hasMore) {
       const { data, error } = await supabase
         .from('maestro_risaralda')
-        .select('hacienda,nombre_hacienda,suerte,area_neta')
+        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id')
         .eq('activo', true)
         .order('hacienda')
         .order('suerte')
@@ -140,10 +140,11 @@ export async function loadMaestro(): Promise<{
     const data = allData
 
     const mapped: MaestroRow[] = data.map((row) => ({
-      haciendaCode: Number(row.hacienda),
+      haciendaCode: String(row.hacienda),
       haciendaName: row.nombre_hacienda,
       suerte: row.suerte,
       area: Number(row.area_neta),
+      ingenio_id: String(row.ingenio_id ?? 'risaralda'),
     }))
     void db.maestro.clear().then(() => db.maestro.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }

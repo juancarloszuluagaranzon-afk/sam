@@ -1504,6 +1504,13 @@ th {
   color: #9a9e92;
 }
 
+.field-optional {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: #9a9e92;
+  margin-left: 4px;
+}
+
 .suertes-checklist {
   list-style: none;
   margin: 4px 0 0;

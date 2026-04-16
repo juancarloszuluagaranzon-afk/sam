@@ -54,6 +54,11 @@ class SamDb extends Dexie {
     this.version(3)
       .stores({})
       .upgrade((tx) => tx.table('maestro').clear())
+
+    // v4: maestro gains ingenio_id; haciendaCode changes to string — clear cache
+    this.version(4)
+      .stores({})
+      .upgrade((tx) => tx.table('maestro').clear())
   }
 }
 

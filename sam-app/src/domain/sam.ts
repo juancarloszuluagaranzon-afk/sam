@@ -35,17 +35,18 @@ export interface CreateEquipmentInput {
 }
 
 export interface MaestroRow {
-  haciendaCode: number
+  haciendaCode: string
   haciendaName: string
   suerte: string
   area: number
+  ingenio_id: string
 }
 
 export interface Assignment {
   id: string
   createdAt: string
   dateKey: string
-  haciendaCode: number
+  haciendaCode: string
   haciendaName: string
   suerte: string
   suerteCode: string
@@ -75,7 +76,7 @@ export interface DashboardMetrics {
 }
 
 export interface CreateAssignmentInput {
-  haciendaCode: number
+  haciendaCode: string
   haciendaName: string
   suerte: string
   labor: string

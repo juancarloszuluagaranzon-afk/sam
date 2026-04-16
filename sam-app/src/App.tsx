@@ -26,6 +26,13 @@ import {
 
 const SESSION_KEY = 'sam-app-session-v1'
 
+const INGENIOS = [
+  { id: 'risaralda', nombre: 'Ingenio Risaralda' },
+  { id: 'pichichi', nombre: 'Ingenio Pichichi' },
+  { id: 'mayaguez', nombre: 'Ingenio Mayaguez' },
+  { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
+]
+
 type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte'
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -48,8 +55,11 @@ interface AssignmentFormState {
   labor: string
   operatorId: string
   equipmentCode: string
+  operatorId2: string
+  equipmentCode2: string
   notes: string
   cliente: string
+  ingenioId: string
 }
 
 interface EquipmentFormState {
@@ -72,8 +82,11 @@ const EMPTY_FORM: AssignmentFormState = {
   labor: '',
   operatorId: '',
   equipmentCode: '',
+  operatorId2: '',
+  equipmentCode2: '',
   notes: '',
   cliente: '',
+  ingenioId: '',
 }
 
 const EMPTY_EQUIPMENT_FORM: EquipmentFormState = {
@@ -430,24 +443,34 @@ function App() {
     [assignments, todayKey],
   )
 
-  const haciendas = useMemo(() => {
-    const map = new Map<number, string>()
+  const assignmentHaciendas = useMemo(() => {
+    const map = new Map<string, string>()
     maestro.forEach((row) => {
+      if (assignmentForm.ingenioId && row.ingenio_id !== assignmentForm.ingenioId) return
       if (!map.has(row.haciendaCode)) {
         map.set(row.haciendaCode, row.haciendaName)
       }
     })
     return Array.from(map.entries()).map(([code, name]) => ({ code, name }))
-  }, [maestro])
+  }, [maestro, assignmentForm.ingenioId])
+
+  const freeFieldHaciendas = useMemo(() => {
+    const map = new Map<string, string>()
+    maestro.forEach((row) => {
+      if (freeFieldForm.ingenioId && row.ingenio_id !== freeFieldForm.ingenioId) return
+      if (!map.has(row.haciendaCode)) {
+        map.set(row.haciendaCode, row.haciendaName)
+      }
+    })
+    return Array.from(map.entries()).map(([code, name]) => ({ code, name }))
+  }, [maestro, freeFieldForm.ingenioId])
 
   const assignmentSuertes = useMemo(() => {
-    const code = Number(assignmentForm.haciendaCode)
-    return maestro.filter((row) => row.haciendaCode === code)
+    return maestro.filter((row) => row.haciendaCode === assignmentForm.haciendaCode)
   }, [assignmentForm.haciendaCode, maestro])
 
   const freeFieldSuertes = useMemo(() => {
-    const code = Number(freeFieldForm.haciendaCode)
-    return maestro.filter((row) => row.haciendaCode === code)
+    return maestro.filter((row) => row.haciendaCode === freeFieldForm.haciendaCode)
   }, [freeFieldForm.haciendaCode, maestro])
 
   const filteredAssignments = useMemo(() => {
@@ -609,7 +632,7 @@ function App() {
       .filter((row) => programmedKeys.has(`${row.haciendaCode}-${row.suerte}`))
       .sort(
         (a, b) =>
-          a.haciendaCode - b.haciendaCode ||
+          String(a.haciendaCode).localeCompare(String(b.haciendaCode)) ||
           a.suerte.localeCompare(b.suerte),
       )
   }, [assignments, maestro])
@@ -620,7 +643,7 @@ function App() {
         if (reportFilters.desde && a.dateKey < reportFilters.desde) return false
         if (reportFilters.hasta && a.dateKey > reportFilters.hasta) return false
         if (reportFilters.estado !== 'TODAS' && a.status !== reportFilters.estado) return false
-        if (reportFilters.haciendaCode && String(a.haciendaCode) !== reportFilters.haciendaCode) return false
+        if (reportFilters.haciendaCode && a.haciendaCode !== reportFilters.haciendaCode) return false
         if (reportFilters.operatorId !== 'TODOS' && a.operatorId !== reportFilters.operatorId) return false
         return true
       })
@@ -711,10 +734,22 @@ function App() {
       return
     }
 
+    const operator2 = assignmentForm.operatorId2
+      ? operators.find((item) => item.id === assignmentForm.operatorId2)
+      : null
+    const equipmentItem2 = assignmentForm.equipmentCode2
+      ? equipment.find((item) => item.code === assignmentForm.equipmentCode2)
+      : null
+
+    if ((assignmentForm.operatorId2 && !equipmentItem2) || (!assignmentForm.operatorId2 && assignmentForm.equipmentCode2)) {
+      setError('Si asignas un segundo par, completa tanto operador 2 como equipo 2.')
+      return
+    }
+
     const maestroRows = assignmentSuertesList
       .map((suerte) =>
         maestro.find(
-          (row) => row.haciendaCode === Number(assignmentForm.haciendaCode) && row.suerte === suerte,
+          (row) => row.haciendaCode === assignmentForm.haciendaCode && row.suerte === suerte,
         ),
       )
       .filter((row): row is NonNullable<typeof row> => row !== undefined)
@@ -792,35 +827,40 @@ function App() {
         setOutboxCount((c) => c + maestroRows.length)
         setInfo(`${maestroRows.length} asignacion(es) creadas localmente. Se sincronizaran al recuperar senal.`)
       } else {
-        await Promise.all(
-          maestroRows.map((maestroRow) =>
-            createAssignment({
-              haciendaCode: maestroRow.haciendaCode,
-              haciendaName: maestroRow.haciendaName,
-              suerte: maestroRow.suerte,
-              labor: assignmentForm.labor,
-              area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, assignmentForm.labor, maestroRow.area),
-              supervisorId: session.id,
-              supervisorName: session.name,
-              operatorId: operator.id,
-              operatorName: operator.name,
-              equipmentCode: equipmentItem.code,
-              equipmentName: equipmentItem.name,
-              notes: assignmentForm.notes,
-              cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
-              kind: 'ASIGNADA',
-              initialStatus: 'PENDIENTE',
-            }),
-          ),
-        )
+        const buildInputs = (op: typeof operator, eq: typeof equipmentItem) =>
+          maestroRows.map((maestroRow) => ({
+            haciendaCode: maestroRow.haciendaCode,
+            haciendaName: maestroRow.haciendaName,
+            suerte: maestroRow.suerte,
+            labor: assignmentForm.labor,
+            area: getRemainingArea(assignments, `${maestroRow.haciendaCode}-${maestroRow.suerte}`, assignmentForm.labor, maestroRow.area),
+            supervisorId: session.id,
+            supervisorName: session.name,
+            operatorId: op.id,
+            operatorName: op.name,
+            equipmentCode: eq.code,
+            equipmentName: eq.name,
+            notes: assignmentForm.notes,
+            cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+            kind: 'ASIGNADA',
+            initialStatus: 'PENDIENTE' as const,
+          }))
+
+        const allInputs = [
+          ...buildInputs(operator, equipmentItem),
+          ...(operator2 && equipmentItem2 ? buildInputs(operator2, equipmentItem2) : []),
+        ]
+        await Promise.all(allInputs.map((input) => createAssignment(input)))
         await refreshAssignments()
-        setInfo(`${maestroRows.length} asignacion(es) creadas.`)
+        const pares = operator2 && equipmentItem2 ? 2 : 1
+        setInfo(`${maestroRows.length * pares} asignacion(es) creadas (${pares} par(es) operador-equipo).`)
       }
 
       setAssignmentForm(EMPTY_FORM)
       setAssignmentSuertesList([])
       setSupervisorTab('labores')
-    } catch {
+    } catch (err) {
+      console.error('[createAssignment]', err)
       setError('No se pudo crear las asignaciones.')
     } finally {
       setBusy(false)
@@ -849,7 +889,7 @@ function App() {
     const maestroRows = freeFieldSuertesList
       .map((suerte) =>
         maestro.find(
-          (row) => row.haciendaCode === Number(freeFieldForm.haciendaCode) && row.suerte === suerte,
+          (row) => row.haciendaCode === freeFieldForm.haciendaCode && row.suerte === suerte,
         ),
       )
       .filter((row): row is NonNullable<typeof row> => row !== undefined)
@@ -1141,6 +1181,14 @@ function App() {
 
   function updateAssignmentForm(field: keyof AssignmentFormState, value: string) {
     setAssignmentForm((current) => {
+      if (field === 'cliente') {
+        setAssignmentSuertesList([])
+        return { ...current, cliente: value, ingenioId: '', haciendaCode: '', suerte: '' }
+      }
+      if (field === 'ingenioId') {
+        setAssignmentSuertesList([])
+        return { ...current, ingenioId: value, haciendaCode: '', suerte: '' }
+      }
       if (field === 'haciendaCode') {
         setAssignmentSuertesList([])
         return { ...current, haciendaCode: value, suerte: '' }
@@ -1159,6 +1207,14 @@ function App() {
 
   function updateFreeFieldForm(field: keyof AssignmentFormState, value: string) {
     setFreeFieldForm((current) => {
+      if (field === 'cliente') {
+        setFreeFieldSuertesList([])
+        return { ...current, cliente: value, ingenioId: '', haciendaCode: '', suerte: '' }
+      }
+      if (field === 'ingenioId') {
+        setFreeFieldSuertesList([])
+        return { ...current, ingenioId: value, haciendaCode: '', suerte: '' }
+      }
       if (field === 'haciendaCode') {
         setFreeFieldSuertesList([])
         return { ...current, haciendaCode: value, suerte: '' }
@@ -1175,8 +1231,8 @@ function App() {
     )
   }
 
-  function prefillAssignmentForm(haciendaCode: number, suerte: string, labor: string) {
-    setAssignmentForm({ ...EMPTY_FORM, haciendaCode: String(haciendaCode), labor })
+  function prefillAssignmentForm(haciendaCode: string, suerte: string, labor: string) {
+    setAssignmentForm({ ...EMPTY_FORM, haciendaCode, labor })
     setAssignmentSuertesList([suerte])
     setSupervisorTab('asignar')
   }
@@ -1686,13 +1742,35 @@ function App() {
               <form className="form-grid-block" onSubmit={handleCreateAssignment}>
                 <div className="form-grid">
                   <label>
+                    Cliente
+                    <SearchableSelect
+                      value={assignmentForm.cliente}
+                      onChange={(value) => updateAssignmentForm('cliente', value)}
+                      options={[
+                        { value: 'ingenios', label: 'Ingenios' },
+                        { value: 'proveedores', label: 'Proveedores' },
+                      ]}
+                    />
+                  </label>
+                  <label>
+                    Ingenio
+                    <SearchableSelect
+                      value={assignmentForm.ingenioId}
+                      onChange={(value) => updateAssignmentForm('ingenioId', value)}
+                      placeholder="Selecciona un ingenio"
+                      options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                    />
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
                     Hacienda
                     <SearchableSelect
                       value={assignmentForm.haciendaCode}
                       onChange={(value) => updateAssignmentForm('haciendaCode', value)}
-                      placeholder="Hacienda"
-                      options={haciendas.map((item) => ({
-                        value: String(item.code),
+                      placeholder={assignmentForm.cliente === 'ingenios' && !assignmentForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                      options={assignmentHaciendas.map((item) => ({
+                        value: item.code,
                         label: `${item.code} - ${item.name}`,
                       }))}
                     />
@@ -1734,52 +1812,36 @@ function App() {
                     )}
                   </div>
                 </div>
-                <div className="form-grid">
-                  <label>
-                    Labor
-                    <SearchableSelect
-                      value={assignmentForm.labor}
-                      onChange={(value) => updateAssignmentForm('labor', value)}
-                      options={WORKFLOW.map((labor) => {
-                        const firstSuerte = assignmentSuertesList[0]
-                        const isSuggested =
-                          assignmentForm.haciendaCode && firstSuerte
-                            ? labor ===
-                              getSuggestedLabor(
-                                assignments,
-                                `${assignmentForm.haciendaCode}-${firstSuerte}`,
-                              )
-                            : false
-                        return {
-                          value: labor,
-                          label: labor,
-                          rightLabel: isSuggested ? '<- sugerida' : undefined,
-                        }
-                      })}
-                    />
-                  </label>
-                  <label>
-                    Cliente
-                    <SearchableSelect
-                      value={assignmentForm.cliente}
-                      onChange={(value) => updateAssignmentForm('cliente', value)}
-                      options={[
-                        { value: 'ingenios', label: 'Ingenios' },
-                        { value: 'proveedores', label: 'Proveedores' },
-                      ]}
-                    />
-                  </label>
-                </div>
+                <label>
+                  Labor
+                  <SearchableSelect
+                    value={assignmentForm.labor}
+                    onChange={(value) => updateAssignmentForm('labor', value)}
+                    options={WORKFLOW.map((labor) => {
+                      const firstSuerte = assignmentSuertesList[0]
+                      const isSuggested =
+                        assignmentForm.haciendaCode && firstSuerte
+                          ? labor ===
+                            getSuggestedLabor(
+                              assignments,
+                              `${assignmentForm.haciendaCode}-${firstSuerte}`,
+                            )
+                          : false
+                      return {
+                        value: labor,
+                        label: labor,
+                        rightLabel: isSuggested ? '<- sugerida' : undefined,
+                      }
+                    })}
+                  />
+                </label>
                 <div className="form-grid">
                   <label>
                     Operador
                     <SearchableSelect
                       value={assignmentForm.operatorId}
                       onChange={(value) => updateAssignmentForm('operatorId', value)}
-                      options={operators.map((operator) => ({
-                        value: operator.id,
-                        label: operator.name,
-                      }))}
+                      options={operators.map((op) => ({ value: op.id, label: op.name }))}
                     />
                   </label>
                   <label>
@@ -1787,10 +1849,25 @@ function App() {
                     <SearchableSelect
                       value={assignmentForm.equipmentCode}
                       onChange={(value) => updateAssignmentForm('equipmentCode', value)}
-                      options={equipment.map((item) => ({
-                        value: item.code,
-                        label: item.name,
-                      }))}
+                      options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                    />
+                  </label>
+                </div>
+                <div className="form-grid">
+                  <label>
+                    Operador 2 <span className="field-optional">(opcional)</span>
+                    <SearchableSelect
+                      value={assignmentForm.operatorId2}
+                      onChange={(value) => updateAssignmentForm('operatorId2', value)}
+                      options={operators.map((op) => ({ value: op.id, label: op.name }))}
+                    />
+                  </label>
+                  <label>
+                    Equipo 2 <span className="field-optional">(opcional)</span>
+                    <SearchableSelect
+                      value={assignmentForm.equipmentCode2}
+                      onChange={(value) => updateAssignmentForm('equipmentCode2', value)}
+                      options={equipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
                 </div>
@@ -2517,9 +2594,9 @@ function App() {
                     <SearchableSelect
                       value={freeFieldForm.haciendaCode}
                       onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
-                      placeholder="Hacienda"
-                      options={haciendas.map((item) => ({
-                        value: String(item.code),
+                      placeholder={freeFieldForm.cliente === 'ingenios' && !freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                      options={freeFieldHaciendas.map((item) => ({
+                        value: item.code,
                         label: `${item.code} - ${item.name}`,
                       }))}
                     />
@@ -2597,6 +2674,17 @@ function App() {
                     />
                   </label>
                 </div>
+                {freeFieldForm.cliente === 'ingenios' && (
+                  <label>
+                    Ingenio
+                    <SearchableSelect
+                      value={freeFieldForm.ingenioId}
+                      onChange={(value) => updateFreeFieldForm('ingenioId', value)}
+                      placeholder="Selecciona un ingenio"
+                      options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                    />
+                  </label>
+                )}
                 <div className="form-grid">
                   <label>
                     Equipo

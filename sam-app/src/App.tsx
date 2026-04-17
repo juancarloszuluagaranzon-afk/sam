@@ -2285,7 +2285,7 @@ function App() {
                 return (
                   <li key={u.id} className="user-card">
                     <span className="user-card__name">{u.name}</span>
-                    <span className={`role-chip role-chip--${u.role}`}>{rolLabels[u.role] ?? u.role}</span>
+                    <span className="user-card__role">{rolLabels[u.role] ?? u.role}</span>
                     {(u.role === 'operador' || u.role === 'supervisor') && (
                       <span className={`user-status-badge user-status-badge--${status}`}>
                         {status === 'ocupado' ? 'Ocupado' : 'Libre'}

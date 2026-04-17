@@ -1625,6 +1625,13 @@ th {
   font-size: 0.95rem;
   color: #2a3a1e;
 }
+.user-card__role {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #7a8070;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 .user-card__meta {
   font-size: 0.8rem;
   color: #7a8070;

@@ -296,7 +296,7 @@ function App() {
   const [userForm, setUserForm] = useState({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
-  const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'TODO'>('HOY')
+  const [operatorHistoryPeriod, setOperatorHistoryPeriod] = useState<'HOY' | 'ESTA_SEMANA' | 'ESTE_MES' | 'QUINCENA_1' | 'QUINCENA_2' | 'TODO'>('HOY')
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
   const [ingenioFilter, setIngenioFilter] = useState('TODOS')
@@ -586,8 +586,10 @@ function App() {
 
     const [year, month, day] = todayKey.split('-').map(Number)
     const baseDate = new Date(year, month - 1, day)
-    
+
     let startLimit: Date
+    let endLimit: Date | null = null
+
     if (operatorHistoryPeriod === 'HOY') {
       startLimit = baseDate
     } else if (operatorHistoryPeriod === 'ESTA_SEMANA') {
@@ -595,16 +597,23 @@ function App() {
       const dayOfWeek = startLimit.getDay()
       const diff = startLimit.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1)
       startLimit.setDate(diff)
+    } else if (operatorHistoryPeriod === 'QUINCENA_1') {
+      startLimit = new Date(year, month - 1, 1)
+      endLimit = new Date(year, month - 1, 15)
+    } else if (operatorHistoryPeriod === 'QUINCENA_2') {
+      startLimit = new Date(year, month - 1, 16)
+      endLimit = new Date(year, month, 0) // último día del mes
     } else {
       // ESTE_MES
-      startLimit = new Date(baseDate)
-      startLimit.setDate(1)
+      startLimit = new Date(year, month - 1, 1)
     }
 
     return historyAssignments.filter((assignment) => {
       const [y, m, d] = assignment.dateKey.split('-').map(Number)
       const itemDate = new Date(y, m - 1, d)
-      return itemDate >= startLimit
+      if (itemDate < startLimit) return false
+      if (endLimit && itemDate > endLimit) return false
+      return true
     })
   }, [historyAssignments, operatorHistoryPeriod, todayKey])
 
@@ -2879,6 +2888,8 @@ function App() {
               >
                 <option value="HOY">Hoy</option>
                 <option value="ESTA_SEMANA">Esta semana</option>
+                <option value="QUINCENA_1">Quincena 1 (1–15)</option>
+                <option value="QUINCENA_2">Quincena 2 (16–fin)</option>
                 <option value="ESTE_MES">Este mes</option>
                 <option value="TODO">Todo</option>
               </select>

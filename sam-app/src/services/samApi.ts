@@ -395,9 +395,13 @@ export function summarizeAssignments(
       assignment.dateKey === targetDate && assignment.status !== 'CANCELADA',
   )
   const plannedArea = sameDay.reduce((sum, assignment) => sum + assignment.area, 0)
-  const executedArea = sameDay
-    .filter((assignment) => assignment.status === 'COMPLETADA')
-    .reduce((sum, assignment) => sum + assignment.executedArea, 0)
+  const executedArea = assignments
+    .filter(
+      (a) =>
+        a.status === 'COMPLETADA' &&
+        (a.dateKey === targetDate || dayKey(a.finishedAt) === targetDate),
+    )
+    .reduce((sum, a) => sum + a.executedArea, 0)
   const inProgress = sameDay.filter(
     (assignment) => assignment.status === 'EN_PROCESO',
   ).length

@@ -297,6 +297,7 @@ function App() {
   const [userForm, setUserForm] = useState({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
   const [isUserFormOpen, setIsUserFormOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
+  const [userSearch, setUserSearch] = useState('')
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
   const [historyMonth, setHistoryMonth] = useState(() =>
@@ -2183,8 +2184,16 @@ function App() {
               <h2>Usuarios</h2>
             </div>
 
+            <input
+              className="user-search-input"
+              type="search"
+              placeholder="Buscar por nombre..."
+              value={userSearch}
+              onChange={(e) => setUserSearch(e.target.value)}
+            />
+
             <ul className="user-cards-list">
-              {users.map((u) => {
+              {users.filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase())).map((u) => {
                 const status = operatorStatusMap.get(u.id) ?? 'disponible'
                 const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
                 return (

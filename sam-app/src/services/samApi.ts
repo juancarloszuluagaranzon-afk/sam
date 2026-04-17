@@ -317,6 +317,28 @@ export async function createAppUser(input: {
   return true
 }
 
+export async function updateAppUser(input: {
+  id: string
+  nombreCompleto: string
+  rol: string
+  pin: string
+  equipoCodigo: string
+}) {
+  const { error } = await supabase.rpc('app_update_user', {
+    p_id: input.id.toUpperCase(),
+    p_nombre: input.nombreCompleto,
+    p_rol: input.rol,
+    p_pin: input.pin || null,
+    p_equipo_codigo: input.equipoCodigo || null,
+  })
+
+  if (error) {
+    throw new Error(error.message || 'No se pudo actualizar el usuario')
+  }
+
+  return true
+}
+
 export async function createAssignment(input: CreateAssignmentInput) {
   const { data, error } = await supabase
     .from('asignaciones')

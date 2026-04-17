@@ -1511,6 +1511,71 @@ th {
   margin-left: 4px;
 }
 
+/* Gestión de usuarios */
+.usuarios-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+.usuarios-table th {
+  text-align: left;
+  padding: 6px 10px;
+  color: #9a9e92;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e8e4dc;
+}
+.usuarios-table td {
+  padding: 10px 10px;
+  border-bottom: 1px solid #f0ece4;
+  vertical-align: middle;
+}
+.user-status-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+.user-status-badge--disponible {
+  background: #d4edda;
+  color: #2d6a4f;
+}
+.user-status-badge--ocupado {
+  background: #fff3cd;
+  color: #856404;
+}
+.usuarios-form-collapsible {
+  border-top: 1px solid #e8e4dc;
+  padding-top: 1rem;
+}
+.usuarios-form-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: none;
+  border: 1px solid #d4d0c8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #3a4a2e;
+  cursor: pointer;
+}
+.usuarios-form-toggle:hover {
+  background: #f5f2ec;
+}
+.chevron {
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.chevron--up {
+  transform: rotate(180deg);
+}
+
 .suertes-checklist {
   list-style: none;
   margin: 4px 0 0;

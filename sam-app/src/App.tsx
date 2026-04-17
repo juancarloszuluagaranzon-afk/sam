@@ -23,6 +23,7 @@ import {
   updateAssignment,
   appChangePin,
   createAppUser,
+  updateAppUser,
 } from './services/samApi'
 
 const SESSION_KEY = 'sam-app-session-v1'
@@ -294,6 +295,8 @@ function App() {
   const [freeFieldSuertesList, setFreeFieldSuertesList] = useState<string[]>([])
   const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
   const [userForm, setUserForm] = useState({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+  const [isUserFormOpen, setIsUserFormOpen] = useState(false)
+  const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
   const [historyMonth, setHistoryMonth] = useState(() =>
@@ -506,6 +509,25 @@ function App() {
     })
     return Array.from(codes.entries()).map(([code, name]) => ({ code, name }))
   }, [assignments, ingenioFilter, maestro])
+
+  const nextUserId = useMemo(() => {
+    const nums = users
+      .map((u) => parseInt(u.id.replace(/^U/i, ''), 10))
+      .filter((n) => !isNaN(n))
+    const max = nums.length ? Math.max(...nums) : 0
+    return `U${String(max + 1).padStart(3, '0')}`
+  }, [users])
+
+  const operatorStatusMap = useMemo(() => {
+    const map = new Map<string, 'ocupado' | 'disponible'>()
+    users.filter((u) => u.role === 'operador').forEach((u) => {
+      const busy = assignments.some(
+        (a) => a.operatorId === u.id && a.status === 'EN_PROCESO',
+      )
+      map.set(u.id, busy ? 'ocupado' : 'disponible')
+    })
+    return map
+  }, [users, assignments])
 
   const handleChangePin = async (e: FormEvent) => {
     e.preventDefault()
@@ -2156,94 +2178,176 @@ function App() {
         ) : null}
 
         {session.role === 'owner' && supervisorTab === 'usuarios' ? (
-          <section className="dashboard-grid two-up">
-            <article className="panel-card">
-              <div className="panel-title">
-                <h2>Crear usuario</h2>
-              </div>
-              <form
-                className="form-grid-block"
-                onSubmit={async (e) => {
-                  e.preventDefault()
-                  if (!userForm.id || !userForm.nombreCompleto || !userForm.rol || !userForm.pin) {
-                    setError('Completa ID, nombre, rol y PIN.')
-                    return
+          <section className="panel-card">
+            <div className="panel-title">
+              <h2>Operadores</h2>
+            </div>
+            <table className="usuarios-table">
+              <thead>
+                <tr>
+                  <th>Nombre</th>
+                  <th>Equipo</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.filter((u) => u.role === 'operador' || u.role === 'supervisor').map((u) => {
+                  const status = operatorStatusMap.get(u.id) ?? 'disponible'
+                  return (
+                    <tr key={u.id}>
+                      <td>{u.name}</td>
+                      <td>{u.equipmentCode || '—'}</td>
+                      <td>
+                        <span className={`user-status-badge user-status-badge--${status}`}>
+                          {status === 'ocupado' ? 'Ocupado' : 'Disponible'}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="inline-button"
+                          onClick={() => {
+                            setEditingUserId(u.id)
+                            setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
+                            setIsUserFormOpen(true)
+                          }}
+                        >
+                          Editar
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+
+            <div className="usuarios-form-collapsible">
+              <button
+                className="usuarios-form-toggle"
+                onClick={() => {
+                  if (isUserFormOpen && editingUserId) {
+                    setEditingUserId(null)
+                    setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
                   }
-                  setBusy(true)
-                  setError('')
-                  try {
-                    await createAppUser(userForm)
-                    setInfo(`Usuario ${userForm.nombreCompleto} creado exitosamente.`)
-                    setUserForm({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
-                  } catch (err: unknown) {
-                    const msg = err instanceof Error ? err.message : 'Error al crear usuario'
-                    setError(msg)
-                  } finally {
-                    setBusy(false)
-                  }
+                  setIsUserFormOpen((v) => !v)
                 }}
               >
-                <div className="form-grid">
+                <span>{editingUserId ? `Editando: ${userForm.nombreCompleto}` : '＋ Nuevo usuario'}</span>
+                <span className={`chevron ${isUserFormOpen ? 'chevron--up' : ''}`}>▾</span>
+              </button>
+
+              {isUserFormOpen && (
+                <form
+                  className="form-grid-block"
+                  style={{ marginTop: '1rem' }}
+                  onSubmit={async (e) => {
+                    e.preventDefault()
+                    const isEditing = !!editingUserId
+                    if (!userForm.nombreCompleto || !userForm.rol) {
+                      setError('Completa nombre y rol.')
+                      return
+                    }
+                    if (!isEditing && !userForm.pin) {
+                      setError('El PIN es obligatorio al crear un usuario.')
+                      return
+                    }
+                    setBusy(true)
+                    setError('')
+                    try {
+                      if (isEditing) {
+                        await updateAppUser(userForm)
+                        setInfo(`Usuario ${userForm.nombreCompleto} actualizado.`)
+                      } else {
+                        await createAppUser({ ...userForm, id: userForm.id || nextUserId })
+                        setInfo(`Usuario ${userForm.nombreCompleto} creado.`)
+                      }
+                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                      setEditingUserId(null)
+                      setIsUserFormOpen(false)
+                    } catch (err: unknown) {
+                      setError(err instanceof Error ? err.message : 'Error al guardar usuario')
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  <div className="form-grid">
+                    <label>
+                      ID de usuario
+                      <input
+                        value={userForm.id || nextUserId}
+                        onChange={(e) => setUserForm((f) => ({ ...f, id: e.target.value }))}
+                        disabled={!!editingUserId}
+                      />
+                    </label>
+                    <label>
+                      Nombre completo
+                      <input
+                        value={userForm.nombreCompleto}
+                        onChange={(e) => setUserForm((f) => ({ ...f, nombreCompleto: e.target.value }))}
+                        placeholder="Nombre y apellido"
+                        required
+                      />
+                    </label>
+                  </div>
+                  <div className="form-grid">
+                    <label>
+                      Rol
+                      <select
+                        value={userForm.rol}
+                        onChange={(e) => setUserForm((f) => ({ ...f, rol: e.target.value }))}
+                        required
+                      >
+                        <option value="">Seleccionar</option>
+                        <option value="operador">Operador</option>
+                        <option value="supervisor">Supervisor</option>
+                        <option value="administracion">Administración</option>
+                        <option value="owner">Propietario</option>
+                      </select>
+                    </label>
+                    <label>
+                      {editingUserId ? 'Nuevo PIN' : 'PIN inicial'}
+                      {editingUserId && <span className="field-optional"> (vacío = sin cambio)</span>}
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        value={userForm.pin}
+                        onChange={(e) => setUserForm((f) => ({ ...f, pin: e.target.value }))}
+                        placeholder="Solo números"
+                        required={!editingUserId}
+                      />
+                    </label>
+                  </div>
                   <label>
-                    ID de usuario
-                    <input
-                      value={userForm.id}
-                      onChange={(e) => setUserForm((f) => ({ ...f, id: e.target.value }))}
-                      placeholder="Ej: U005"
-                      required
+                    Equipo asignado <span className="field-optional">(opcional)</span>
+                    <SearchableSelect
+                      value={userForm.equipoCodigo}
+                      onChange={(value) => setUserForm((f) => ({ ...f, equipoCodigo: value }))}
+                      options={equipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
-                  <label>
-                    Nombre completo
-                    <input
-                      value={userForm.nombreCompleto}
-                      onChange={(e) => setUserForm((f) => ({ ...f, nombreCompleto: e.target.value }))}
-                      placeholder="Nombre y apellido"
-                      required
-                    />
-                  </label>
-                </div>
-                <div className="form-grid">
-                  <label>
-                    Rol
-                    <select
-                      value={userForm.rol}
-                      onChange={(e) => setUserForm((f) => ({ ...f, rol: e.target.value }))}
-                      required
-                    >
-                      <option value="">Seleccionar</option>
-                      <option value="operador">Operador</option>
-                      <option value="supervisor">Supervisor</option>
-                      <option value="administracion">Administración</option>
-                      <option value="owner">Propietario</option>
-                    </select>
-                  </label>
-                  <label>
-                    PIN inicial
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      value={userForm.pin}
-                      onChange={(e) => setUserForm((f) => ({ ...f, pin: e.target.value }))}
-                      placeholder="Solo números"
-                      required
-                    />
-                  </label>
-                </div>
-                <label>
-                  Equipo asignado <span className="field-optional">(opcional)</span>
-                  <SearchableSelect
-                    value={userForm.equipoCodigo}
-                    onChange={(value) => setUserForm((f) => ({ ...f, equipoCodigo: value }))}
-                    options={equipment.map((item) => ({ value: item.code, label: item.name }))}
-                  />
-                </label>
-                <button className="primary-button" type="submit" disabled={busy}>
-                  {busy ? 'Creando...' : 'Crear usuario'}
-                </button>
-              </form>
-            </article>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button className="primary-button" type="submit" disabled={busy} style={{ flex: 1 }}>
+                      {busy ? 'Guardando...' : editingUserId ? 'Guardar cambios' : 'Crear usuario'}
+                    </button>
+                    {editingUserId && (
+                      <button
+                        type="button"
+                        className="inline-button"
+                        onClick={() => {
+                          setEditingUserId(null)
+                          setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                          setIsUserFormOpen(false)
+                        }}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
+                </form>
+              )}
+            </div>
           </section>
         ) : null}
 

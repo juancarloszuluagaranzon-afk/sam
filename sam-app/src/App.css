@@ -203,6 +203,11 @@
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
+@media (max-width: 359px) {
+  .user-kpi-sheet__grid {
+    grid-template-columns: 1fr;
+  }
+}
 .user-kpi-card {
   background: #faf8f4;
   border: 1px solid #e8e4dc;
@@ -240,13 +245,24 @@
   right: 0;
   background: #fff;
   border-radius: 20px 20px 0 0;
-  padding: 12px 16px 32px;
+  padding: 12px 16px calc(24px + env(safe-area-inset-bottom, 0px));
   z-index: 195;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.12);
   animation: slideUp 0.22s ease;
   display: flex;
   flex-direction: column;
   gap: 6px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+@media (min-width: 600px) {
+  .more-sheet {
+    left: 50%;
+    right: auto;
+    width: 440px;
+    transform: translateX(-50%);
+    border-radius: 20px 20px 0 0;
+  }
 }
 .more-sheet__handle {
   width: 40px;

@@ -300,6 +300,7 @@ function App() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  const [selectedUserCard, setSelectedUserCard] = useState<UserProfile | null>(null)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
   const [historyMonth, setHistoryMonth] = useState(() =>
@@ -1484,6 +1485,52 @@ function App() {
         onClick={() => setIsSideMenuOpen(false)}
       />
 
+      {selectedUserCard && (() => {
+        const opAssignments = assignments.filter((a) => a.operatorId === selectedUserCard.id || a.operatorName === selectedUserCard.name)
+        const todayAssignments = opAssignments.filter((a) => a.dateKey === todayKey && a.status !== 'CANCELADA')
+        const planned = todayAssignments.reduce((s, a) => s + a.area, 0)
+        const executed = todayAssignments.filter((a) => a.status === 'COMPLETADA').reduce((s, a) => s + a.executedArea, 0)
+        const inProg = todayAssignments.filter((a) => a.status === 'EN_PROCESO').length
+        const completion = planned ? Math.round((executed / planned) * 100) : 0
+        const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
+        return (
+          <>
+            <div className="more-sheet-overlay" onClick={() => setSelectedUserCard(null)} />
+            <div className="more-sheet user-kpi-sheet" role="dialog" aria-label={`KPI ${selectedUserCard.name}`}>
+              <div className="more-sheet__handle" />
+              <div className="user-kpi-sheet__header">
+                <span className="user-kpi-sheet__name">{selectedUserCard.name}</span>
+                <span className="user-card__role">{rolLabels[selectedUserCard.role] ?? selectedUserCard.role}</span>
+              </div>
+              <div className="user-kpi-sheet__grid">
+                <div className="user-kpi-card">
+                  <span className="user-kpi-card__label">HA PLANIF. HOY</span>
+                  <strong className="user-kpi-card__value">{planned.toFixed(2)}</strong>
+                  <span className="user-kpi-card__unit">hectáreas</span>
+                </div>
+                <div className="user-kpi-card">
+                  <span className="user-kpi-card__label">HA EJECUTADAS</span>
+                  <strong className="user-kpi-card__value">{executed.toFixed(2)}</strong>
+                  <span className="user-kpi-card__unit">hectáreas</span>
+                </div>
+                <div className="user-kpi-card">
+                  <span className="user-kpi-card__label">CUMPLIMIENTO</span>
+                  <strong className={`user-kpi-card__value ${completion >= 70 ? 'kpi-green' : completion >= 30 ? 'kpi-amber' : 'kpi-red'}`}>{completion}%</strong>
+                  <div className="progress-track" style={{ marginTop: 4 }}>
+                    <span style={{ width: `${Math.min(completion, 100)}%` }} />
+                  </div>
+                </div>
+                <div className="user-kpi-card">
+                  <span className="user-kpi-card__label">EN PROCESO</span>
+                  <strong className="user-kpi-card__value">{inProg}</strong>
+                  <span className="user-kpi-card__unit">labores activas</span>
+                </div>
+              </div>
+            </div>
+          </>
+        )
+      })()}
+
       {session.role === 'owner' && moreMenuOpen && (
         <>
           <div className="more-sheet-overlay" onClick={() => setMoreMenuOpen(false)} />
@@ -2283,7 +2330,7 @@ function App() {
                 const status = operatorStatusMap.get(u.id) ?? 'disponible'
                 const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
                 return (
-                  <li key={u.id} className="user-card">
+                  <li key={u.id} className="user-card" onClick={() => setSelectedUserCard(u)} style={{ cursor: 'pointer' }}>
                     <span className="user-card__name">{u.name}</span>
                     <span className="user-card__role">{rolLabels[u.role] ?? u.role}</span>
                     {(u.role === 'operador' || u.role === 'supervisor') && (
@@ -2296,7 +2343,8 @@ function App() {
                     )}
                     <button
                       className="user-card__edit-btn"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation()
                         setEditingUserId(u.id)
                         setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
                         setIsUserFormOpen(true)

@@ -299,6 +299,7 @@ function App() {
   const [isUserFormOpen, setIsUserFormOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false)
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
   const [historyMonth, setHistoryMonth] = useState(() =>
@@ -1482,6 +1483,35 @@ function App() {
         className={`side-overlay ${isSideMenuOpen ? 'open' : ''}`}
         onClick={() => setIsSideMenuOpen(false)}
       />
+
+      {session.role === 'owner' && moreMenuOpen && (
+        <>
+          <div className="more-sheet-overlay" onClick={() => setMoreMenuOpen(false)} />
+          <div className="more-sheet" role="dialog" aria-label="Más opciones">
+            <div className="more-sheet__handle" />
+            <button
+              className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
+              onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
+            >
+              <span className="more-sheet__icon">⬦</span>
+              <div>
+                <div className="more-sheet__label">Reporte</div>
+                <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
+              </div>
+            </button>
+            <button
+              className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
+              onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
+            >
+              <span className="more-sheet__icon">👤</span>
+              <div>
+                <div className="more-sheet__label">Usuarios</div>
+                <div className="more-sheet__desc">Gestionar usuarios y roles</div>
+              </div>
+            </button>
+          </div>
+        </>
+      )}
       <aside
         id="side-menu"
         className={`side-drawer ${isSideMenuOpen ? 'open' : ''}`}
@@ -1542,6 +1572,7 @@ function App() {
               'tab-nav floating-nav',
               !isSupervisorOrOwner(session.role) ? 'operator-tab-nav' : '',
               session.role === 'administracion' ? 'admin-nav' : '',
+              session.role === 'owner' ? 'admin-nav' : '',
             ].filter(Boolean).join(' ')}
             aria-label="Navegacion principal"
           >
@@ -1605,12 +1636,18 @@ function App() {
                 )}
                 {session.role === 'owner' && (
                   <button
-                    className={supervisorTab === 'usuarios' ? 'active' : ''}
-                    onClick={() => setSupervisorTab('usuarios')}
+                    className={
+                      (supervisorTab === 'reporte' || supervisorTab === 'usuarios') && !moreMenuOpen
+                        ? 'active'
+                        : moreMenuOpen ? 'active' : ''
+                    }
+                    onClick={() => setMoreMenuOpen((v) => !v)}
+                    aria-haspopup="true"
+                    aria-expanded={moreMenuOpen}
                   >
                     <span className="nav-item">
-                      <span className="nav-icon">👤</span>
-                      <span className="nav-label">Usuarios</span>
+                      <span className="nav-icon">⋯</span>
+                      <span className="nav-label">Más</span>
                     </span>
                   </button>
                 )}
@@ -2069,7 +2106,7 @@ function App() {
           </section>
         ) : null}
 
-        {session.role === 'administracion' && supervisorTab === 'reporte' ? (
+        {(session.role === 'administracion' || session.role === 'owner') && supervisorTab === 'reporte' ? (
           <section className="panel-card">
             <div className="panel-title">
               <h2>Reporte de Labores</h2>

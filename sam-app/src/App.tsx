@@ -1882,7 +1882,11 @@ function App() {
                   <h2>Equipos</h2>
                 </div>
                 <div className="list-rows">
-                  {equipment.map((item) => {
+                  {[...equipment].sort((a, b) => {
+                    const aActive = assignments.some(x => x.equipmentCode === a.code && x.status === 'EN_PROCESO') ? 0 : 1
+                    const bActive = assignments.some(x => x.equipmentCode === b.code && x.status === 'EN_PROCESO') ? 0 : 1
+                    return aActive - bActive
+                  }).map((item) => {
                     const active = assignments.find(
                       (assignment) =>
                         assignment.equipmentCode === item.code &&
@@ -2326,7 +2330,14 @@ function App() {
             />
 
             <ul className="user-cards-list">
-              {users.filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase())).map((u) => {
+              {users
+                .filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase()))
+                .sort((a, b) => {
+                  const aOcupado = operatorStatusMap.get(a.id) === 'ocupado' ? 0 : 1
+                  const bOcupado = operatorStatusMap.get(b.id) === 'ocupado' ? 0 : 1
+                  return aOcupado - bOcupado
+                })
+                .map((u) => {
                 const status = operatorStatusMap.get(u.id) ?? 'disponible'
                 const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
                 return (
@@ -2729,7 +2740,11 @@ function App() {
                 <h2>Estado de equipos</h2>
               </div>
               <div className="equipment-grid">
-                {equipment.map((item) => {
+                {[...equipment].sort((a, b) => {
+                  const aActive = assignments.some(x => x.equipmentCode === a.code && x.status === 'EN_PROCESO') ? 0 : 1
+                  const bActive = assignments.some(x => x.equipmentCode === b.code && x.status === 'EN_PROCESO') ? 0 : 1
+                  return aActive - bActive
+                }).map((item) => {
                   const active = assignments.find(
                     (assignment) =>
                       assignment.equipmentCode === item.code &&

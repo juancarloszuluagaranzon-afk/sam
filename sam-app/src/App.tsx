@@ -296,7 +296,9 @@ function App() {
   const [userForm, setUserForm] = useState({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
   const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
-  const [historyMonth, setHistoryMonth] = useState(() => todayKey.slice(0, 7))
+  const [historyMonth, setHistoryMonth] = useState(() =>
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
+  )
   const [historyPeriod, setHistoryPeriod] = useState<'Q1' | 'Q2' | 'MES'>('MES')
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')

@@ -2284,17 +2284,13 @@ function App() {
                 const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
                 return (
                   <li key={u.id} className="user-card">
-                    <div className="user-card__header">
-                      <span className="user-card__name">{u.name}</span>
-                      <div className="user-card__chips">
-                        <span className={`role-chip role-chip--${u.role}`}>{rolLabels[u.role] ?? u.role}</span>
-                        {(u.role === 'operador' || u.role === 'supervisor') && (
-                          <span className={`user-status-badge user-status-badge--${status}`}>
-                            {status === 'ocupado' ? 'Ocupado' : 'Libre'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                    <span className="user-card__name">{u.name}</span>
+                    <span className={`role-chip role-chip--${u.role}`}>{rolLabels[u.role] ?? u.role}</span>
+                    {(u.role === 'operador' || u.role === 'supervisor') && (
+                      <span className={`user-status-badge user-status-badge--${status}`}>
+                        {status === 'ocupado' ? 'Ocupado' : 'Libre'}
+                      </span>
+                    )}
                     {u.equipmentCode && (
                       <div className="user-card__meta">Equipo: {u.equipmentCode}</div>
                     )}

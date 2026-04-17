@@ -1615,26 +1615,15 @@ th {
   border: 1px solid #e8e4dc;
   border-radius: 12px;
   padding: 12px 14px;
-}
-.user-card__header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
 }
 .user-card__name {
   font-weight: 600;
   font-size: 0.95rem;
   color: #2a3a1e;
-  flex: 1;
-  min-width: 0;
-}
-.user-card__chips {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-shrink: 0;
 }
 .user-card__meta {
   font-size: 0.8rem;

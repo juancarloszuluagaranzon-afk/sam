@@ -539,6 +539,20 @@ function App() {
     return map
   }, [users, assignments])
 
+  const sortedEquipment = useMemo(() => {
+    const brandOrder: Record<string, number> = { CASE: 0, VALTRA: 1, PUMA: 2, FIAT: 3 }
+    return [...equipment].sort((a, b) => {
+      const brandA = a.name.split(' ')[0].toUpperCase()
+      const brandB = b.name.split(' ')[0].toUpperCase()
+      const pa = brandOrder[brandA] ?? 99
+      const pb = brandOrder[brandB] ?? 99
+      if (pa !== pb) return pa - pb
+      const numA = parseInt(a.name.replace(/\D/g, ''), 10) || 0
+      const numB = parseInt(b.name.replace(/\D/g, ''), 10) || 0
+      return numA - numB
+    })
+  }, [equipment])
+
   const handleChangePin = async (e: FormEvent) => {
     e.preventDefault()
     if (!session) return
@@ -1963,7 +1977,7 @@ function App() {
                   <h2>Equipos</h2>
                 </div>
                 <div className="list-rows">
-                  {[...equipment].sort((a, b) => {
+                  {[...sortedEquipment].sort((a, b) => {
                     const aActive = assignments.some(x => x.equipmentCode === a.code && x.status === 'EN_PROCESO') ? 0 : 1
                     const bActive = assignments.some(x => x.equipmentCode === b.code && x.status === 'EN_PROCESO') ? 0 : 1
                     return aActive - bActive
@@ -2118,7 +2132,7 @@ function App() {
                   <SearchableSelect
                     value={assignmentForm.equipmentCode}
                     onChange={(value) => updateAssignmentForm('equipmentCode', value)}
-                    options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                    options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
                   />
                 </label>
                 <label>
@@ -2134,7 +2148,7 @@ function App() {
                   <SearchableSelect
                     value={assignmentForm.equipmentCode2}
                     onChange={(value) => updateAssignmentForm('equipmentCode2', value)}
-                    options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                    options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
                   />
                 </label>
                 <label>
@@ -2547,7 +2561,7 @@ function App() {
                     <SearchableSelect
                       value={userForm.equipoCodigo}
                       onChange={(value) => setUserForm((f) => ({ ...f, equipoCodigo: value }))}
-                      options={equipment.map((item) => ({ value: item.code, label: item.name }))}
+                      options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
                   <div className="user-form__actions">
@@ -2827,7 +2841,7 @@ function App() {
                 <h2>Estado de equipos</h2>
               </div>
               <div className="equipment-grid">
-                {[...equipment].sort((a, b) => {
+                {[...sortedEquipment].sort((a, b) => {
                   const aActive = assignments.some(x => x.equipmentCode === a.code && x.status === 'EN_PROCESO') ? 0 : 1
                   const bActive = assignments.some(x => x.equipmentCode === b.code && x.status === 'EN_PROCESO') ? 0 : 1
                   return aActive - bActive
@@ -2943,7 +2957,7 @@ function App() {
                           }
                         >
                           <option value="">Seleccionar equipo</option>
-                          {equipment.map((item) => (
+                          {sortedEquipment.map((item) => (
                             <option key={item.code} value={item.code}>
                               {item.name}
                             </option>
@@ -3165,7 +3179,7 @@ function App() {
                     <SearchableSelect
                       value={freeFieldForm.equipmentCode || session.equipmentCode}
                       onChange={(value) => updateFreeFieldForm('equipmentCode', value)}
-                      options={equipment.map((item) => ({
+                      options={sortedEquipment.map((item) => ({
                         value: item.code,
                         label: item.name,
                       }))}

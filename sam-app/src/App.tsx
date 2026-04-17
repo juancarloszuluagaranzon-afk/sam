@@ -1490,6 +1490,16 @@ function App() {
           <div className="more-sheet" role="dialog" aria-label="Más opciones">
             <div className="more-sheet__handle" />
             <button
+              className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
+              onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
+            >
+              <span className="more-sheet__icon">◫</span>
+              <div>
+                <div className="more-sheet__label">Tablero</div>
+                <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
+              </div>
+            </button>
+            <button
               className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
               onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
             >
@@ -1497,16 +1507,6 @@ function App() {
               <div>
                 <div className="more-sheet__label">Reporte</div>
                 <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
-              </div>
-            </button>
-            <button
-              className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
-              onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
-            >
-              <span className="more-sheet__icon">👤</span>
-              <div>
-                <div className="more-sheet__label">Usuarios</div>
-                <div className="more-sheet__desc">Gestionar usuarios y roles</div>
               </div>
             </button>
           </div>
@@ -1578,6 +1578,7 @@ function App() {
           >
             {isSupervisorOrOwner(session.role) ? (
               <>
+                {/* Labores — todos los roles */}
                 <button
                   className={supervisorTab === 'labores' ? 'active' : ''}
                   onClick={() => setSupervisorTab('labores')}
@@ -1587,69 +1588,109 @@ function App() {
                     <span className="nav-label">Labores</span>
                   </span>
                 </button>
-                <button
-                  className={supervisorTab === 'asignar' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('asignar')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">＋</span>
-                    <span className="nav-label">Asignar</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'resumen' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('resumen')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">⌂</span>
-                    <span className="nav-label">Resumen</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'equipos' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('equipos')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">▣</span>
-                    <span className="nav-label">Equipos</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'tablero' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('tablero')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">◫</span>
-                    <span className="nav-label">Tablero</span>
-                  </span>
-                </button>
-                {session.role === 'administracion' && (
-                  <button
-                    className={supervisorTab === 'reporte' ? 'active' : ''}
-                    onClick={() => setSupervisorTab('reporte')}
-                  >
-                    <span className="nav-item">
-                      <span className="nav-icon">⬦</span>
-                      <span className="nav-label">Reporte</span>
-                    </span>
-                  </button>
-                )}
-                {session.role === 'owner' && (
-                  <button
-                    className={
-                      (supervisorTab === 'reporte' || supervisorTab === 'usuarios') && !moreMenuOpen
-                        ? 'active'
-                        : moreMenuOpen ? 'active' : ''
-                    }
-                    onClick={() => setMoreMenuOpen((v) => !v)}
-                    aria-haspopup="true"
-                    aria-expanded={moreMenuOpen}
-                  >
-                    <span className="nav-item">
-                      <span className="nav-icon">⋯</span>
-                      <span className="nav-label">Más</span>
-                    </span>
-                  </button>
+
+                {/* Owner: Labores · Usuarios · Equipos · Resumen · Asignar + Más(Tablero, Reporte) */}
+                {session.role === 'owner' ? (
+                  <>
+                    <button
+                      className={supervisorTab === 'usuarios' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('usuarios')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">👤</span>
+                        <span className="nav-label">Usuarios</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'equipos' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('equipos')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">▣</span>
+                        <span className="nav-label">Equipos</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'resumen' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('resumen')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">⌂</span>
+                        <span className="nav-label">Resumen</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'asignar' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('asignar')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">＋</span>
+                        <span className="nav-label">Asignar</span>
+                      </span>
+                    </button>
+                    <button
+                      className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' ? 'active' : ''}
+                      onClick={() => setMoreMenuOpen((v) => !v)}
+                      aria-haspopup="true"
+                      aria-expanded={moreMenuOpen}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">⋯</span>
+                        <span className="nav-label">Más</span>
+                      </span>
+                    </button>
+                  </>
+                ) : (
+                  /* Supervisor y administracion: orden original */
+                  <>
+                    <button
+                      className={supervisorTab === 'asignar' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('asignar')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">＋</span>
+                        <span className="nav-label">Asignar</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'resumen' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('resumen')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">⌂</span>
+                        <span className="nav-label">Resumen</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'equipos' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('equipos')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">▣</span>
+                        <span className="nav-label">Equipos</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'tablero' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('tablero')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">◫</span>
+                        <span className="nav-label">Tablero</span>
+                      </span>
+                    </button>
+                    {session.role === 'administracion' && (
+                      <button
+                        className={supervisorTab === 'reporte' ? 'active' : ''}
+                        onClick={() => setSupervisorTab('reporte')}
+                      >
+                        <span className="nav-item">
+                          <span className="nav-icon">⬦</span>
+                          <span className="nav-label">Reporte</span>
+                        </span>
+                      </button>
+                    )}
+                  </>
                 )}
               </>
             ) : (

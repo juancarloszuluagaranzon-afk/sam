@@ -487,7 +487,13 @@ function App() {
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
-      if (statusFilter !== 'TODAS' && assignment.status !== statusFilter) return false
+      // When no explicit status filter, hide completed/cancelled from previous days
+      if (statusFilter === 'TODAS') {
+        const isClosedStatus = assignment.status === 'COMPLETADA' || assignment.status === 'CANCELADA'
+        if (isClosedStatus && assignment.dateKey !== todayKey) return false
+      } else if (assignment.status !== statusFilter) {
+        return false
+      }
       if (operatorFilter !== 'TODOS' && assignment.operatorId !== operatorFilter) return false
       if (haciendaFilter !== 'TODAS' && assignment.haciendaCode !== haciendaFilter) return false
       if (ingenioFilter !== 'TODOS') {
@@ -498,7 +504,7 @@ function App() {
       }
       return true
     })
-  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, maestro])
+  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, maestro, todayKey])
 
   const haciendaFilterOptions = useMemo(() => {
     const codes = new Map<string, string>()

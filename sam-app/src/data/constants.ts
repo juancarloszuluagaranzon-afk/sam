@@ -15,12 +15,12 @@ export const WORKFLOW = [
 ]
 
 export const LOCAL_MAESTRO: MaestroRow[] = [
-  { haciendaCode: 103, haciendaName: 'CONSTANCIA', suerte: '0001', area: 0.51 },
-  { haciendaCode: 103, haciendaName: 'CONSTANCIA', suerte: '0002', area: 1.91 },
-  { haciendaCode: 103, haciendaName: 'CONSTANCIA', suerte: '0003', area: 1.67 },
-  { haciendaCode: 105, haciendaName: 'SANTA MONICA', suerte: '0001', area: 7.71 },
-  { haciendaCode: 105, haciendaName: 'SANTA MONICA', suerte: '0002', area: 3.48 },
-  { haciendaCode: 108, haciendaName: 'RIOGRANDE', suerte: '0001', area: 5.26 },
-  { haciendaCode: 126, haciendaName: 'GUADALCANAL', suerte: '0002', area: 4.69 },
-  { haciendaCode: 126, haciendaName: 'GUADALCANAL', suerte: '0003', area: 9.47 },
+  { haciendaCode: '103', haciendaName: 'CONSTANCIA', suerte: '0001', area: 0.51, ingenio_id: 'risaralda' },
+  { haciendaCode: '103', haciendaName: 'CONSTANCIA', suerte: '0002', area: 1.91, ingenio_id: 'risaralda' },
+  { haciendaCode: '103', haciendaName: 'CONSTANCIA', suerte: '0003', area: 1.67, ingenio_id: 'risaralda' },
+  { haciendaCode: '105', haciendaName: 'SANTA MONICA', suerte: '0001', area: 7.71, ingenio_id: 'risaralda' },
+  { haciendaCode: '105', haciendaName: 'SANTA MONICA', suerte: '0002', area: 3.48, ingenio_id: 'risaralda' },
+  { haciendaCode: '108', haciendaName: 'RIOGRANDE', suerte: '0001', area: 5.26, ingenio_id: 'risaralda' },
+  { haciendaCode: '126', haciendaName: 'GUADALCANAL', suerte: '0002', area: 4.69, ingenio_id: 'risaralda' },
+  { haciendaCode: '126', haciendaName: 'GUADALCANAL', suerte: '0003', area: 9.47, ingenio_id: 'risaralda' },
 ]

@@ -2188,8 +2188,8 @@ function App() {
                   onChange={(e) => setReportFilters((f) => ({ ...f, haciendaCode: e.target.value }))}
                 >
                   <option value="">Todas las haciendas</option>
-                  {haciendas.map((h) => (
-                    <option key={h.code} value={String(h.code)}>{h.name}</option>
+                  {haciendaFilterOptions.map((h) => (
+                    <option key={h.code} value={h.code}>{h.name}</option>
                   ))}
                 </select>
                 <select

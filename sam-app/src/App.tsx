@@ -2627,9 +2627,15 @@ function App() {
 
                     <span className="labor-label">Area</span>
                     <span className="labor-area">
-                      {assignment.status === 'COMPLETADA' && assignment.executedArea > 0
-                        ? formatArea(assignment.executedArea)
-                        : formatArea(assignment.area)}
+                      {(() => {
+                        const maestroRow = maestro.find((r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte)
+                        const displayed = assignment.status === 'COMPLETADA' && assignment.executedArea > 0
+                          ? assignment.executedArea
+                          : assignment.area
+                        return maestroRow
+                          ? `${formatArea(displayed)} / ${formatArea(maestroRow.area)}`
+                          : formatArea(displayed)
+                      })()}
                     </span>
 
                     {assignment.status === 'PENDIENTE' && (

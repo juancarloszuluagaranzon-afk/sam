@@ -1531,31 +1531,58 @@ function App() {
         )
       })()}
 
-      {session.role === 'owner' && moreMenuOpen && (
+      {(session.role === 'owner' || session.role === 'supervisor') && moreMenuOpen && (
         <>
           <div className="more-sheet-overlay" onClick={() => setMoreMenuOpen(false)} />
           <div className="more-sheet" role="dialog" aria-label="Más opciones">
             <div className="more-sheet__handle" />
-            <button
-              className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
-              onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
-            >
-              <span className="more-sheet__icon">◫</span>
-              <div>
-                <div className="more-sheet__label">Tablero</div>
-                <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
-              </div>
-            </button>
-            <button
-              className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
-              onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
-            >
-              <span className="more-sheet__icon">⬦</span>
-              <div>
-                <div className="more-sheet__label">Reporte</div>
-                <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
-              </div>
-            </button>
+            {session.role === 'supervisor' ? (
+              <>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'equipos' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('equipos'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">▣</span>
+                  <div>
+                    <div className="more-sheet__label">Equipos</div>
+                    <div className="more-sheet__desc">Estado y registro de equipos</div>
+                  </div>
+                </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">◫</span>
+                  <div>
+                    <div className="more-sheet__label">Tablero</div>
+                    <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
+                  </div>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">◫</span>
+                  <div>
+                    <div className="more-sheet__label">Tablero</div>
+                    <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
+                  </div>
+                </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">⬦</span>
+                  <div>
+                    <div className="more-sheet__label">Reporte</div>
+                    <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
+                  </div>
+                </button>
+              </>
+            )}
           </div>
         </>
       )}
@@ -1620,6 +1647,7 @@ function App() {
               !isSupervisorOrOwner(session.role) ? 'operator-tab-nav' : '',
               session.role === 'administracion' ? 'admin-nav' : '',
               session.role === 'owner' ? 'admin-nav' : '',
+              session.role === 'supervisor' ? 'supervisor-nav' : '',
             ].filter(Boolean).join(' ')}
             aria-label="Navegacion principal"
           >
@@ -1687,8 +1715,41 @@ function App() {
                       </span>
                     </button>
                   </>
+                ) : session.role === 'supervisor' ? (
+                  /* Supervisor: Labores · Asignar · Resumen + Más(Equipos, Tablero) */
+                  <>
+                    <button
+                      className={supervisorTab === 'asignar' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('asignar')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">＋</span>
+                        <span className="nav-label">Asignar</span>
+                      </span>
+                    </button>
+                    <button
+                      className={supervisorTab === 'resumen' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('resumen')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">⌂</span>
+                        <span className="nav-label">Resumen</span>
+                      </span>
+                    </button>
+                    <button
+                      className={moreMenuOpen || supervisorTab === 'equipos' || supervisorTab === 'tablero' ? 'active' : ''}
+                      onClick={() => setMoreMenuOpen((v) => !v)}
+                      aria-haspopup="true"
+                      aria-expanded={moreMenuOpen}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">⋯</span>
+                        <span className="nav-label">Más</span>
+                      </span>
+                    </button>
+                  </>
                 ) : (
-                  /* Supervisor y administracion: orden original */
+                  /* Administracion: Labores · Asignar · Resumen · Equipos · Tablero · Reporte */
                   <>
                     <button
                       className={supervisorTab === 'asignar' ? 'active' : ''}
@@ -1726,17 +1787,15 @@ function App() {
                         <span className="nav-label">Tablero</span>
                       </span>
                     </button>
-                    {session.role === 'administracion' && (
-                      <button
-                        className={supervisorTab === 'reporte' ? 'active' : ''}
-                        onClick={() => setSupervisorTab('reporte')}
-                      >
-                        <span className="nav-item">
-                          <span className="nav-icon">⬦</span>
-                          <span className="nav-label">Reporte</span>
-                        </span>
-                      </button>
-                    )}
+                    <button
+                      className={supervisorTab === 'reporte' ? 'active' : ''}
+                      onClick={() => setSupervisorTab('reporte')}
+                    >
+                      <span className="nav-item">
+                        <span className="nav-icon">⬦</span>
+                        <span className="nav-label">Reporte</span>
+                      </span>
+                    </button>
                   </>
                 )}
               </>

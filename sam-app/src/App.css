@@ -1946,6 +1946,10 @@ th {
   .floating-nav.admin-nav .nav-label {
     font-size: 0.6rem;
   }
+
+  .floating-nav.supervisor-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (min-width: 901px) {

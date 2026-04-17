@@ -603,22 +603,21 @@ function App() {
   )
 
   const operatorMetrics = useMemo(() => {
-    const todayOps = operatorAssignments.filter(
-      (a) => a.dateKey === todayKey && a.status !== 'CANCELADA',
+    const todayBogota = (iso: string | null) =>
+      iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : ''
+    const relevant = operatorAssignments.filter(
+      (a) =>
+        a.status !== 'CANCELADA' &&
+        (a.dateKey === todayKey ||
+          (a.status === 'COMPLETADA' && todayBogota(a.finishedAt) === todayKey)),
     )
-    const todayPlanned = todayOps.reduce((sum, a) => sum + a.area, 0)
-    const todayExecuted = operatorAssignments
-      .filter(
-        (a) =>
-          a.status === 'COMPLETADA' &&
-          (a.dateKey === todayKey ||
-            (a.finishedAt &&
-              new Date(a.finishedAt).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) === todayKey)),
-      )
+    const todayPlanned = relevant.reduce((sum, a) => sum + a.area, 0)
+    const todayExecuted = relevant
+      .filter((a) => a.status === 'COMPLETADA')
       .reduce((sum, a) => sum + a.executedArea, 0)
     const completion = todayPlanned ? Math.round((todayExecuted / todayPlanned) * 100) : 0
-    const inProgress = operatorAssignments.filter((a) => a.status === 'EN_PROCESO').length
-    const pending = operatorAssignments.filter((a) => a.status === 'PENDIENTE').length
+    const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
+    const pending = relevant.filter((a) => a.status === 'PENDIENTE').length
     return { todayPlanned, todayExecuted, completion, inProgress, pending }
   }, [operatorAssignments, todayKey])
 
@@ -1492,19 +1491,20 @@ function App() {
       />
 
       {selectedUserCard && (() => {
+        const todayBogota = (iso: string | null) =>
+          iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : ''
         const opAssignments = assignments.filter((a) => a.operatorId === selectedUserCard.id || a.operatorName === selectedUserCard.name)
-        const todayAssignments = opAssignments.filter((a) => a.dateKey === todayKey && a.status !== 'CANCELADA')
-        const planned = todayAssignments.reduce((s, a) => s + a.area, 0)
-        const executed = opAssignments
-          .filter(
-            (a) =>
-              a.status === 'COMPLETADA' &&
-              (a.dateKey === todayKey ||
-                (a.finishedAt &&
-                  new Date(a.finishedAt).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) === todayKey)),
-          )
+        const relevantCard = opAssignments.filter(
+          (a) =>
+            a.status !== 'CANCELADA' &&
+            (a.dateKey === todayKey ||
+              (a.status === 'COMPLETADA' && todayBogota(a.finishedAt) === todayKey)),
+        )
+        const planned = relevantCard.reduce((s, a) => s + a.area, 0)
+        const executed = relevantCard
+          .filter((a) => a.status === 'COMPLETADA')
           .reduce((s, a) => s + a.executedArea, 0)
-        const inProg = todayAssignments.filter((a) => a.status === 'EN_PROCESO').length
+        const inProg = relevantCard.filter((a) => a.status === 'EN_PROCESO').length
         const completion = planned ? Math.round((executed / planned) * 100) : 0
         const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
         return (
@@ -1919,22 +1919,18 @@ function App() {
                         assignment.operatorId === operator.id &&
                         assignment.status === 'EN_PROCESO',
                     )
-                    const todayAssignments = assignments.filter(
-                      (assignment) =>
-                        assignment.operatorId === operator.id &&
-                        assignment.dateKey === todayKey &&
-                        assignment.status !== 'CANCELADA',
+                    const todayBogota = (iso: string | null) =>
+                      iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : ''
+                    const relevantOp = assignments.filter(
+                      (item) =>
+                        item.operatorId === operator.id &&
+                        item.status !== 'CANCELADA' &&
+                        (item.dateKey === todayKey ||
+                          (item.status === 'COMPLETADA' && todayBogota(item.finishedAt) === todayKey)),
                     )
-                    const planned = todayAssignments.reduce((sum, item) => sum + item.area, 0)
-                    const executed = assignments
-                      .filter(
-                        (item) =>
-                          item.operatorId === operator.id &&
-                          item.status === 'COMPLETADA' &&
-                          (item.dateKey === todayKey ||
-                            (item.finishedAt &&
-                              new Date(item.finishedAt).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) === todayKey)),
-                      )
+                    const planned = relevantOp.reduce((sum, item) => sum + item.area, 0)
+                    const executed = relevantOp
+                      .filter((item) => item.status === 'COMPLETADA')
                       .reduce((sum, item) => sum + item.executedArea, 0)
 
                     return (

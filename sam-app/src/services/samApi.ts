@@ -390,21 +390,18 @@ export function summarizeAssignments(
   assignments: Assignment[],
   targetDate: string,
 ): DashboardMetrics {
-  const sameDay = assignments.filter(
-    (assignment) =>
-      assignment.dateKey === targetDate && assignment.status !== 'CANCELADA',
+  // Include assignments created today OR completed today (prior-day carryovers).
+  const relevant = assignments.filter(
+    (a) =>
+      a.status !== 'CANCELADA' &&
+      (a.dateKey === targetDate ||
+        (a.status === 'COMPLETADA' && dayKey(a.finishedAt) === targetDate)),
   )
-  const plannedArea = sameDay.reduce((sum, assignment) => sum + assignment.area, 0)
-  const executedArea = assignments
-    .filter(
-      (a) =>
-        a.status === 'COMPLETADA' &&
-        (a.dateKey === targetDate || dayKey(a.finishedAt) === targetDate),
-    )
+  const plannedArea = relevant.reduce((sum, a) => sum + a.area, 0)
+  const executedArea = relevant
+    .filter((a) => a.status === 'COMPLETADA')
     .reduce((sum, a) => sum + a.executedArea, 0)
-  const inProgress = sameDay.filter(
-    (assignment) => assignment.status === 'EN_PROCESO',
-  ).length
+  const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
 
   return {
     plannedArea,

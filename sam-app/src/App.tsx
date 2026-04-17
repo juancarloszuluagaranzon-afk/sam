@@ -2180,46 +2180,43 @@ function App() {
         {session.role === 'owner' && supervisorTab === 'usuarios' ? (
           <section className="panel-card">
             <div className="panel-title">
-              <h2>Operadores</h2>
+              <h2>Usuarios</h2>
             </div>
-            <table className="usuarios-table">
-              <thead>
-                <tr>
-                  <th>Nombre</th>
-                  <th>Equipo</th>
-                  <th>Estado</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.filter((u) => u.role === 'operador' || u.role === 'supervisor').map((u) => {
-                  const status = operatorStatusMap.get(u.id) ?? 'disponible'
-                  return (
-                    <tr key={u.id}>
-                      <td>{u.name}</td>
-                      <td>{u.equipmentCode || '—'}</td>
-                      <td>
-                        <span className={`user-status-badge user-status-badge--${status}`}>
-                          {status === 'ocupado' ? 'Ocupado' : 'Disponible'}
-                        </span>
-                      </td>
-                      <td>
-                        <button
-                          className="inline-button"
-                          onClick={() => {
-                            setEditingUserId(u.id)
-                            setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
-                            setIsUserFormOpen(true)
-                          }}
-                        >
-                          Editar
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+
+            <ul className="user-cards-list">
+              {users.map((u) => {
+                const status = operatorStatusMap.get(u.id) ?? 'disponible'
+                const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
+                return (
+                  <li key={u.id} className="user-card">
+                    <div className="user-card__header">
+                      <span className="user-card__name">{u.name}</span>
+                      <div className="user-card__chips">
+                        <span className={`role-chip role-chip--${u.role}`}>{rolLabels[u.role] ?? u.role}</span>
+                        {(u.role === 'operador' || u.role === 'supervisor') && (
+                          <span className={`user-status-badge user-status-badge--${status}`}>
+                            {status === 'ocupado' ? 'Ocupado' : 'Libre'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {u.equipmentCode && (
+                      <div className="user-card__meta">Equipo: {u.equipmentCode}</div>
+                    )}
+                    <button
+                      className="user-card__edit-btn"
+                      onClick={() => {
+                        setEditingUserId(u.id)
+                        setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
+                        setIsUserFormOpen(true)
+                      }}
+                    >
+                      Editar
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
 
             <div className="usuarios-form-collapsible">
               <button
@@ -2232,14 +2229,13 @@ function App() {
                   setIsUserFormOpen((v) => !v)
                 }}
               >
-                <span>{editingUserId ? `Editando: ${userForm.nombreCompleto}` : '＋ Nuevo usuario'}</span>
+                <span>{editingUserId ? `Editando: ${userForm.nombreCompleto}` : '+ Nuevo usuario'}</span>
                 <span className={`chevron ${isUserFormOpen ? 'chevron--up' : ''}`}>▾</span>
               </button>
 
               {isUserFormOpen && (
                 <form
-                  className="form-grid-block"
-                  style={{ marginTop: '1rem' }}
+                  className="user-form"
                   onSubmit={async (e) => {
                     e.preventDefault()
                     const isEditing = !!editingUserId
@@ -2271,54 +2267,50 @@ function App() {
                     }
                   }}
                 >
-                  <div className="form-grid">
-                    <label>
-                      ID de usuario
-                      <input
-                        value={userForm.id || nextUserId}
-                        onChange={(e) => setUserForm((f) => ({ ...f, id: e.target.value }))}
-                        disabled={!!editingUserId}
-                      />
-                    </label>
-                    <label>
-                      Nombre completo
-                      <input
-                        value={userForm.nombreCompleto}
-                        onChange={(e) => setUserForm((f) => ({ ...f, nombreCompleto: e.target.value }))}
-                        placeholder="Nombre y apellido"
-                        required
-                      />
-                    </label>
-                  </div>
-                  <div className="form-grid">
-                    <label>
-                      Rol
-                      <select
-                        value={userForm.rol}
-                        onChange={(e) => setUserForm((f) => ({ ...f, rol: e.target.value }))}
-                        required
-                      >
-                        <option value="">Seleccionar</option>
-                        <option value="operador">Operador</option>
-                        <option value="supervisor">Supervisor</option>
-                        <option value="administracion">Administración</option>
-                        <option value="owner">Propietario</option>
-                      </select>
-                    </label>
-                    <label>
-                      {editingUserId ? 'Nuevo PIN' : 'PIN inicial'}
-                      {editingUserId && <span className="field-optional"> (vacío = sin cambio)</span>}
-                      <input
-                        type="password"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        value={userForm.pin}
-                        onChange={(e) => setUserForm((f) => ({ ...f, pin: e.target.value }))}
-                        placeholder="Solo números"
-                        required={!editingUserId}
-                      />
-                    </label>
-                  </div>
+                  <label>
+                    ID de usuario
+                    <input
+                      value={userForm.id || nextUserId}
+                      onChange={(e) => setUserForm((f) => ({ ...f, id: e.target.value }))}
+                      disabled={!!editingUserId}
+                    />
+                  </label>
+                  <label>
+                    Nombre completo
+                    <input
+                      value={userForm.nombreCompleto}
+                      onChange={(e) => setUserForm((f) => ({ ...f, nombreCompleto: e.target.value }))}
+                      placeholder="Nombre y apellido"
+                      required
+                    />
+                  </label>
+                  <label>
+                    Rol
+                    <select
+                      value={userForm.rol}
+                      onChange={(e) => setUserForm((f) => ({ ...f, rol: e.target.value }))}
+                      required
+                    >
+                      <option value="">Seleccionar</option>
+                      <option value="operador">Operador</option>
+                      <option value="supervisor">Supervisor</option>
+                      <option value="administracion">Administración</option>
+                      <option value="owner">Propietario</option>
+                    </select>
+                  </label>
+                  <label>
+                    {editingUserId ? 'Nuevo PIN' : 'PIN inicial'}
+                    {editingUserId && <span className="field-optional"> (vacío = sin cambio)</span>}
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
+                      value={userForm.pin}
+                      onChange={(e) => setUserForm((f) => ({ ...f, pin: e.target.value }))}
+                      placeholder="Solo números"
+                      required={!editingUserId}
+                    />
+                  </label>
                   <label>
                     Equipo asignado <span className="field-optional">(opcional)</span>
                     <SearchableSelect
@@ -2327,8 +2319,8 @@ function App() {
                       options={equipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="primary-button" type="submit" disabled={busy} style={{ flex: 1 }}>
+                  <div className="user-form__actions">
+                    <button className="primary-button" type="submit" disabled={busy}>
                       {busy ? 'Guardando...' : editingUserId ? 'Guardar cambios' : 'Crear usuario'}
                     </button>
                     {editingUserId && (

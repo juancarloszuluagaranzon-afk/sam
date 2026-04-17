@@ -294,6 +294,7 @@ function App() {
   const [freeFieldForm, setFreeFieldForm] = useState<AssignmentFormState>(EMPTY_FORM)
   const [freeFieldSuertesList, setFreeFieldSuertesList] = useState<string[]>([])
   const [equipmentForm, setEquipmentForm] = useState<EquipmentFormState>(EMPTY_EQUIPMENT_FORM)
+  const [isEquipmentFormOpen, setIsEquipmentFormOpen] = useState(false)
   const [userForm, setUserForm] = useState({ id: '', nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
   const [isUserFormOpen, setIsUserFormOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
@@ -761,6 +762,7 @@ function App() {
       })
 
       setEquipmentForm(EMPTY_EQUIPMENT_FORM)
+      setIsEquipmentFormOpen(false)
       await refreshEquipment()
       setInfo('Equipo creado correctamente.')
     } catch {
@@ -2450,10 +2452,17 @@ function App() {
         {isSupervisorOrOwner(session.role) && supervisorTab === 'equipos' ? (
           <section className="dashboard-grid two-up">
             <article className="panel-card">
-              <div className="panel-title">
-                <h2>Crear equipo</h2>
+              <div className="usuarios-form-collapsible" style={{ borderTop: 'none', paddingTop: 0 }}>
+                <button
+                  className="usuarios-form-toggle"
+                  type="button"
+                  onClick={() => setIsEquipmentFormOpen((v) => !v)}
+                >
+                  <span>+ Crear equipo</span>
+                  <span className={`chevron ${isEquipmentFormOpen ? 'chevron--up' : ''}`}>▾</span>
+                </button>
               </div>
-              <form className="form-grid-block" onSubmit={handleCreateEquipment}>
+              {isEquipmentFormOpen && <form className="form-grid-block" style={{ marginTop: '1rem' }} onSubmit={handleCreateEquipment}>
                 <div className="form-grid">
                   <label>
                     Codigo
@@ -2584,7 +2593,7 @@ function App() {
                 <button className="primary-button" type="submit" disabled={busy}>
                   {busy ? 'Guardando...' : 'Crear equipo'}
                 </button>
-              </form>
+              </form>}
             </article>
 
             <article className="panel-card">

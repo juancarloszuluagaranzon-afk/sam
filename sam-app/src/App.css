@@ -739,6 +739,16 @@
   flex: 1;
   min-width: 0;
 }
+.operator-row__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.operator-row__top strong {
+  margin-bottom: 0;
+}
 
 .row-main strong,
 .movement-row strong,

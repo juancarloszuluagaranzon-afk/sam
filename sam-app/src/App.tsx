@@ -1920,7 +1920,12 @@ function App() {
                       <div key={operator.id} className="operator-row">
                         <div className="avatar">{initials(operator.name)}</div>
                         <div className="row-main">
-                          <strong>{operator.name}</strong>
+                          <div className="operator-row__top">
+                            <strong>{operator.name}</strong>
+                            <span className={`user-status-badge user-status-badge--${active ? 'ocupado' : 'disponible'}`}>
+                              {active ? 'Ocupado' : 'Libre'}
+                            </span>
+                          </div>
                           <span>
                             {active
                               ? `${active.labor} - ${active.haciendaName}`

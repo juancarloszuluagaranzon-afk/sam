@@ -35,16 +35,6 @@ Muestra en tiempo real:
 - **Eficiencia por Hacienda**.
 - **Estado de las labores** (Pendiente, En Proceso, Completada).
 
-## Guía de Accesos Rápidos (Entorno Piloto)
-
-Para pruebas en el entorno de desarrollo, utiliza las siguientes credenciales:
-
-| ID | Nombre | Rol | PIN |
-|---|---|---|---|
-| U002 | Alfredo Uran | Supervisor | 2402 |
-| U003 | William Ortiz| Operador | 2403 |
-| U004 | Ismael Reyes | Operador | 2404 |
-
 ## Comandos de Desarrollo
 
 ```bash

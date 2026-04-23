@@ -6,9 +6,8 @@ import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { WORKFLOW } from '../data/constants'
-import type { Assignment, MaestroRow, UserProfile } from '../domain/sam'
+import type { Assignment, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
-import type { AssignmentFormState } from './SupervisorView'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -74,8 +73,6 @@ function getStatusMeta(status: Assignment['status']) {
   return { label: 'Pendiente', tone: 'pending' as const }
 }
 
-type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
-
 function normalizeIdentity(value: string | null | undefined) {
   return String(value ?? '').trim().toUpperCase()
 }
@@ -116,8 +113,8 @@ export function OperatorView({
   const { session, assignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey } = useAppData()
 
   const {
-    freeFieldForm, setFreeFieldForm, updateFreeFieldForm,
-    freeFieldSuertesList, setFreeFieldSuertesList, toggleFreeFieldSuerte,
+    freeFieldForm, updateFreeFieldForm,
+    freeFieldSuertesList, toggleFreeFieldSuerte,
     freeFieldHaciendas, freeFieldSuertes,
     takeFreeField: onCreateFreeField,
   } = useFreeFieldForm({ onFreeFieldTaken: () => setOperatorTab('activas') })

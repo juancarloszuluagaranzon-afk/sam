@@ -455,9 +455,7 @@
 }
 
 .ghost-button:hover,
-.inline-button:hover,
-.primary-button:hover,
-.tab-nav button:hover {
+.inline-button:hover {
   transform: translateY(-1px);
 }
 
@@ -1312,102 +1310,144 @@ th {
 }
 
 .labores-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  list-style: none;
+  margin: 0;
 }
 
 .labor-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--sp-4);
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 7px 14px;
-  padding: 14px 16px;
-  background: #fff;
-  border: 1px solid #e8e2d5;
-  border-radius: 14px;
-  align-items: center;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto auto auto;
+  gap: var(--sp-2) var(--sp-3);
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.15s, transform 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.labor-label {
-  font-size: 0.7rem;
-  color: #9a9e92;
+.labor-item--tappable {
+  cursor: pointer;
+}
+
+.labor-item--tappable:active {
+  transform: scale(0.99);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* Row 1: Hacienda · Suerte (título) */
+.labor-item .labor-title {
+  grid-column: 1 / 2;
+  grid-row: 1;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-ink);
+  letter-spacing: -0.2px;
+}
+
+/* Row 1 derecha: status chip */
+.labor-item .status-chip {
+  grid-column: 2 / 3;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+}
+
+/* Row 2: nombre de labor en verde uppercase */
+.labor-item .labor-name {
+  grid-column: 1 / 3;
+  grid-row: 2;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--color-brand);
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-weight: 600;
-  white-space: nowrap;
+  letter-spacing: 0.5px;
 }
 
-.labor-value {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #1c2819;
+/* Row 3: metadata (kind badge + área) */
+.labor-item .labor-meta {
+  grid-column: 1 / 3;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* labor-label oculto — la lista ya no usa patrón tabla */
+.labor-item .labor-label {
+  display: none;
 }
 
 .labor-area {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #2f6511;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-ink-mid);
+  font-weight: 500;
 }
 
+/* Status chip base + estados */
 .status-chip {
-  display: inline-block;
-  font-size: 0.7rem;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 11px;
   font-weight: 700;
-  padding: 3px 9px;
-  border-radius: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.5px;
   white-space: nowrap;
 }
 
-.status-chip.done     { background: #e7f0da; color: #3f6d14; }
-.status-chip.progress { background: #f5e7c7; color: #9b6514; }
-.status-chip.pending  { background: #e5edff; color: #3558a6; }
-.status-chip.cancel   { background: #f7dfd8; color: #9c3f1d; }
+.status-chip.pending,
+.status-chip--pending  { background: var(--color-status-pending-bg);  color: var(--color-status-pending); }
 
-/* Chip estilo cinta — ocupa todo el ancho de la celda */
+.status-chip.progress,
+.status-chip--progress { background: var(--color-status-progress-bg); color: var(--color-status-progress); }
+
+.status-chip.done,
+.status-chip--done     { background: var(--color-status-done-bg);     color: var(--color-status-done); }
+
+.status-chip.cancel,
+.status-chip--cancel   { background: var(--color-status-cancel-bg);   color: var(--color-status-cancel); }
+
+/* status-chip--block: variante usada en el modal de detalle (chip ancho) */
 .status-chip--block {
-  display: block;
-  padding: 5px 10px;
-  border-radius: 6px;
-  border-left: 4px solid currentColor;
-  font-size: 0.72rem;
+  display: inline-flex;
 }
 
-.labor-name {
-  font-weight: 700;
-  color: #2f6511;
-  text-transform: uppercase;
-  font-size: 0.82rem;
-  letter-spacing: 0.03em;
-}
-
+/* Acciones (botón cancelar dentro de la labor card) */
 .labor-actions {
-  grid-column: 1 / -1;
+  grid-column: 1 / 3;
   display: flex;
   justify-content: flex-end;
-  padding-top: 8px;
-  border-top: 1px solid #f0ece3;
-  margin-top: 2px;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--sp-2);
 }
 
 .cancel-btn {
-  font-size: 0.78rem;
-  padding: 6px 14px;
-  border-radius: 8px;
-  border: 0;
-  background: #f3e1d8;
-  color: #8a3b1a;
-  cursor: pointer;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px solid var(--color-status-cancel);
+  color: var(--color-status-cancel);
   transition: background 0.15s;
+  min-height: 40px;
 }
 
-.cancel-btn:hover {
-  background: #e8c8ba;
+.cancel-btn:hover,
+.cancel-btn:active {
+  background: var(--color-status-cancel-bg);
 }
 
 .labores-empty {
@@ -1948,14 +1988,6 @@ th {
   transition: transform 0.2s ease;
 }
 
-.labor-item--tappable {
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.labor-item--tappable:hover {
-  background: #f5f2ec;
-}
 
 /* Admin/supervisor/operator nav: con flex: 1 el número de tabs ajusta solo.
    Para 6 tabs del owner en pantallas angostas reducimos tipografía del label. */

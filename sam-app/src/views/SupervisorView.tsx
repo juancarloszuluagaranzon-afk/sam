@@ -1351,39 +1351,34 @@ export function SupervisorView({
                 const meta = getStatusMeta(assignment.status)
                 return (
                   <li key={assignment.id} className="labor-item labor-item--tappable" onClick={() => setSelectedLabor(assignment)}>
-                    <span className="labor-label">Hacienda</span>
-                    <span className="labor-value">{assignment.haciendaName}</span>
+                    <span className="labor-title">
+                      {assignment.haciendaName}{' '}
+                      <span style={{ color: 'var(--color-ink-light)', fontWeight: 400 }}>·</span>{' '}
+                      {assignment.suerte}
+                    </span>
 
-                    <span className="labor-label">Suerte</span>
-                    <span className="labor-value">{assignment.suerte}</span>
+                    <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
 
-                    <span className="labor-label">Labor</span>
-                    <span className="labor-value labor-name">{assignment.labor}</span>
+                    <span className="labor-name">{assignment.labor}</span>
 
-                    <span className="labor-label">Tipo</span>
-                    <span className="labor-value">
+                    <div className="labor-meta">
                       {assignment.kind === 'ASIGNADA' ? (
                         <span className="kind-badge asignada">Prog.</span>
                       ) : (
                         <span className="kind-badge libre">Campo</span>
                       )}
-                    </span>
-
-                    <span className="labor-label">Estado</span>
-                    <span className={`status-chip status-chip--block ${meta.tone}`}>{meta.label}</span>
-
-                    <span className="labor-label">Area</span>
-                    <span className="labor-area">
-                      {(() => {
-                        const maestroRow = maestro.find((r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte)
-                        const displayed = assignment.status === 'COMPLETADA' && assignment.executedArea > 0
-                          ? assignment.executedArea
-                          : assignment.area
-                        return maestroRow
-                          ? `${formatArea(displayed)} / ${formatArea(maestroRow.area)}`
-                          : formatArea(displayed)
-                      })()}
-                    </span>
+                      <span className="labor-area">
+                        {(() => {
+                          const maestroRow = maestro.find((r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte)
+                          const displayed = assignment.status === 'COMPLETADA' && assignment.executedArea > 0
+                            ? assignment.executedArea
+                            : assignment.area
+                          return maestroRow
+                            ? `${formatArea(displayed)} / ${formatArea(maestroRow.area)}`
+                            : formatArea(displayed)
+                        })()}
+                      </span>
+                    </div>
 
                     {assignment.status === 'PENDIENTE' && (
                       <div className="labor-actions" onClick={(e) => e.stopPropagation()}>

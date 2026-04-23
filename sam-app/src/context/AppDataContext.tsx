@@ -72,6 +72,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     void hydrate()
   }, [])
 
+  useEffect(() => {
+    if (!info) return
+    const timer = setTimeout(() => setInfo(''), 3500)
+    return () => clearTimeout(timer)
+  }, [info])
+
+  useEffect(() => {
+    if (!error) return
+    const timer = setTimeout(() => setError(''), 5000)
+    return () => clearTimeout(timer)
+  }, [error])
+
   async function hydrate() {
     setLoading(true)
     try {

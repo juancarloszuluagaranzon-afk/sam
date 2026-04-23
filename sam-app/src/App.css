@@ -8,9 +8,12 @@
 
 .loading-shell,
 .auth-shell {
-  display: grid;
-  place-items: center;
-  padding: 32px 20px;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-paper);
+  padding: var(--sp-6);
 }
 
 .loading-card,
@@ -32,53 +35,117 @@
 }
 
 .auth-panel {
-  width: min(1100px, 100%);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
-  gap: 24px;
-  align-items: stretch;
-}
-
-.auth-copy {
-  padding: 34px;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #2f6511 0%, #406f17 65%, #7e6718 100%);
-  color: #fff;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 16px;
+  gap: var(--sp-5);
+}
+
+.auth-copy {
+  background: var(--color-brand);
+  color: #fff;
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
 }
 
 .auth-logo {
-  width: min(280px, 80%);
-  height: auto;
-  border-radius: 12px;
-  object-fit: contain;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .auth-company-name {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 500;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.92);
-  text-align: center;
-  text-transform: uppercase;
 }
 
 .auth-bullets {
-  margin: 22px 0 0;
+  margin: var(--sp-3) 0 0;
   padding-left: 18px;
   color: rgba(255, 255, 255, 0.9);
 }
 
 .login-card {
-  padding: 28px;
+  width: 100%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-card);
   display: grid;
-  gap: 16px;
+  gap: var(--sp-4);
   align-content: start;
+}
+
+.login-card input[type="password"],
+.login-card input[type="text"],
+.login-card input:not([type]) {
+  width: 100%;
+  font-size: 24px;
+  font-family: var(--font-mono);
+  letter-spacing: 8px;
+  text-align: center;
+  padding: var(--sp-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-paper);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.login-card input:focus {
+  border-color: var(--color-brand);
+}
+
+/* El select de usuario mantiene tipografía normal */
+.login-card select {
+  font-size: 14px;
+  letter-spacing: normal;
+  text-align: left;
+  font-family: var(--font-sans);
+  padding: var(--sp-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+/* Desktop: dos columnas */
+@media (min-width: 768px) {
+  .auth-panel {
+    flex-direction: row;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-6);
+    max-width: 860px;
+    align-items: center;
+  }
+  .auth-copy {
+    flex-direction: column;
+    justify-content: center;
+    min-height: 320px;
+    padding: var(--sp-6);
+    text-align: center;
+  }
+  .auth-logo {
+    width: min(220px, 80%);
+    height: auto;
+    aspect-ratio: 1 / 1;
+  }
+  .auth-company-name {
+    font-size: 15px;
+    text-transform: uppercase;
+    text-align: center;
+  }
 }
 
 .eyebrow {
@@ -606,25 +673,41 @@
 }
 
 .message-stack {
-  display: grid;
-  gap: 10px;
-  margin-bottom: 18px;
+  position: fixed;
+  top: calc(56px + var(--safe-top) + var(--sp-3));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: min(90vw, 380px);
+  pointer-events: none;
 }
 
 .feedback {
-  padding: 12px 16px;
-  border-radius: 14px;
-  font-weight: 600;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.25s ease-out;
+  pointer-events: auto;
 }
 
 .feedback.success {
-  background: #e8f3df;
-  color: #315b12;
+  background: var(--color-status-done);
+  color: #fff;
 }
 
 .feedback.error {
-  background: #f8e5dc;
-  color: #8d3b1a;
+  background: var(--color-status-cancel);
+  color: #fff;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .kpi-grid,
@@ -1087,10 +1170,6 @@ th {
   .equipment-grid,
   .two-up {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .auth-panel {
-    grid-template-columns: 1fr;
   }
 }
 

@@ -90,6 +90,8 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-04-16]** Al importar CSVs masivos (12k+ filas) en Supabase, la operación puede truncarse silenciosamente por timeouts o límites de payload, dejando registros faltantes (ej: faltaban 231 filas de pichichi). → solución: Verificar siempre el conteo total por categoría (ingenio_id) contra el CSV original y completar los huecos mediante scripts de SQL que generen INSERTs por lotes.
+- **[2026-04-16]** Al generar scripts de ayuda en Node.js para Windows (PowerShell), la redirección `node script.js > output.sql` puede usar encoding UTF-16LE por defecto, causando errores de lectura. → solución: Escribir el archivo directamente desde el script usando `fs.writeFileSync(file, content, 'utf8')` y usar la extensión `.cjs` si el proyecto es ESM.
 - **[2026-04-13]** Cambios hechos localmente no se ven en Vercel de inmediato → solución: Asegurarse siempre de hacer commit y push de las correciones al repositorio (branch main) para que Vercel haga el redespliegue automático y refleje los cambios en producción.
 - **[2026-04-13]** La tabla maestro no coincide con la base de datos porque Supabase/PostgREST limita los requests GET a 1000 registros por defecto. → solución: Implementar paginación usando un bucle con el método .range(start, end) de supabase-js, concatenando los resultados hasta obtener todo el conjunto de datos.
 

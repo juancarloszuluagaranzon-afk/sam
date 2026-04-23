@@ -997,6 +997,31 @@ th {
   padding: 16px;
 }
 
+.card-collapse-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card-collapse-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.card-collapse-chevron {
+  font-size: 0.7rem;
+  color: var(--text-muted, #888);
+}
+
 .operator-work-card h2 {
   font-size: 1.12rem;
 }

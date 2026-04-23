@@ -477,103 +477,59 @@
 
 .day-status-bar {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border-top: 1px solid #e8e3da;
-  margin-top: 10px;
-  padding-top: 10px;
-  gap: 4px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: var(--sp-3);
 }
 
 .day-status-item {
+  background: var(--color-surface);
+  padding: var(--sp-3) var(--sp-2);
+  text-align: center;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
   gap: 2px;
-  padding: 6px 4px 4px;
-  border-right: 1px solid #e8e3da;
-  position: relative;
-}
-
-.day-status-item::before {
-  content: '';
-  position: absolute;
-  top: -10px;
-  left: 20%;
-  right: 20%;
-  height: 3px;
-  border-radius: 0 0 3px 3px;
-  background: #ddd7c9;
-}
-
-.day-status-item:last-child {
-  border-right: none;
 }
 
 .day-status-item strong {
-  font-size: 1.35rem;
-  font-weight: 800;
-  color: #24311d;
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
   line-height: 1;
-  letter-spacing: -0.02em;
+  color: var(--color-ink);
 }
 
 .day-status-item span {
-  font-size: 0.65rem;
-  color: #8d9487;
+  font-size: 9px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.6px;
+  color: var(--color-ink-light);
   white-space: nowrap;
 }
 
-.day-status-item--green {
-  color: #2f6511;
-}
+.day-status-item--green strong { color: var(--color-status-done); }
+.day-status-item--amber strong { color: var(--color-status-progress); }
+.day-status-item--red strong   { color: var(--color-status-cancel); }
 
-.day-status-item--green::before {
-  background: #2f6511;
-}
-
-.day-status-item--amber {
-  color: #c97a10;
-}
-
-.day-status-item--amber::before {
-  background: #c97a10;
-}
-
-.day-status-item--red {
-  color: #b92e2e;
-}
-
-.day-status-item--red::before {
-  background: #b92e2e;
+@media (max-width: 400px) {
+  .day-status-item strong { font-size: 18px; }
 }
 
 .tab-nav {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 8px;
-  flex: 1;
-  width: 100%;
-}
-
-.operator-tab-nav {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.tab-nav button {
-  padding: 10px 8px;
-  border-radius: 12px;
-  background: #f2eee4;
-  color: #4d5847;
-  text-align: center;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-height: 56px;
+  background: var(--color-surface);
+  gap: 0;
+  overflow: visible;
+}
+
+.floating-nav {
+  width: 100%;
 }
 
 .nav-item {
@@ -581,26 +537,61 @@
 }
 
 .nav-icon {
-  font-size: 1.1rem;
+  font-size: 20px;
   line-height: 1;
-  font-weight: 700;
 }
 
 .nav-label {
-  font-size: 0.75rem;
-  line-height: 1;
-  letter-spacing: 0.01em;
+  font-size: 9px;
+  font-weight: 600;
   white-space: nowrap;
 }
 
-.tab-nav button.active {
-  background: #fff;
-  color: #2f6511;
-  box-shadow: 0 4px 12px rgba(51, 47, 28, 0.1);
-}
+/* Desktop: tabs horizontales debajo del topbar */
+@media (min-width: 768px) {
+  .tab-nav.floating-nav {
+    position: static;
+    border-bottom: 1px solid var(--color-border);
+    padding: 0 var(--sp-4);
+    gap: var(--sp-2);
+  }
 
-.floating-nav {
-  width: 100%;
+  .tab-nav button {
+    flex: 1;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    padding: var(--sp-3) var(--sp-4);
+    font-size: 14px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    background: transparent;
+    color: var(--color-ink-mid);
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s, background 0.15s, border-bottom-color 0.15s;
+  }
+
+  .tab-nav button.active {
+    color: var(--color-brand);
+    border-bottom-color: var(--color-brand);
+  }
+
+  .tab-nav button:hover:not(.active) {
+    background: rgba(26, 107, 58, 0.06);
+  }
+
+  .tab-nav .nav-label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .tab-nav .nav-icon {
+    font-size: 16px;
+  }
 }
 
 .toolbar-meta {
@@ -1116,7 +1107,6 @@ th {
 
   .dashboard-shell {
     width: min(100% - 24px, 1760px);
-    padding-bottom: 96px;
   }
 
   .form-grid,
@@ -1175,61 +1165,59 @@ th {
     justify-content: center;
   }
 
-  .floating-nav {
+}
+
+/* Mobile: bottom nav fija */
+@media (max-width: 767px) {
+  .tab-nav.floating-nav {
     position: fixed;
+    bottom: 0;
     left: 0;
     right: 0;
-    bottom: 0;
-    z-index: 70;
-    padding: 0 0 env(safe-area-inset-bottom);
-    background: #fff;
-    border-top: 1px solid #e0ddd4;
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.08);
-    display: grid;
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 0;
+    z-index: 50;
+    padding-bottom: var(--safe-bottom);
+    height: calc(60px + var(--safe-bottom));
+    border-top: 1px solid var(--color-border);
+    box-shadow: var(--shadow-nav);
   }
 
-  .operator-tab-nav.floating-nav {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .floating-nav button {
-    border-radius: 0;
-    padding: 8px 4px;
-    min-height: 58px;
-    background: transparent;
-    border: 0;
-    box-shadow: none;
-    color: #7a8275;
+  .tab-nav button {
+    flex: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-  }
-
-  .floating-nav button .nav-icon {
-    font-size: 1.1rem;
-    line-height: 1;
-  }
-
-  .floating-nav button .nav-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    line-height: 1;
-    white-space: nowrap;
-  }
-
-  .floating-nav button.active {
-    color: #2f6511;
+    gap: 2px;
+    padding: var(--sp-2) var(--sp-1);
     background: transparent;
-    border: 0;
-    box-shadow: none;
+    border: none;
+    color: var(--color-ink-light);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    cursor: pointer;
+    min-height: 56px;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
   }
 
-  .floating-nav button.active .nav-label {
-    font-weight: 700;
+  .tab-nav button.active {
+    color: var(--color-brand);
+  }
+
+  .tab-nav button.active .nav-icon::after {
+    content: '';
+    display: block;
+    width: 4px;
+    height: 4px;
+    background: var(--color-brand);
+    border-radius: 50%;
+    margin: 2px auto 0;
+  }
+
+  .dashboard-shell {
+    padding-bottom: calc(60px + var(--safe-bottom) + var(--sp-4));
   }
 }
 
@@ -1969,26 +1957,14 @@ th {
   background: #f5f2ec;
 }
 
-/* ── Admin nav (6 tabs) ── */
-@media (max-width: 900px) {
-  .floating-nav.admin-nav {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+/* Admin/supervisor/operator nav: con flex: 1 el número de tabs ajusta solo.
+   Para 6 tabs del owner en pantallas angostas reducimos tipografía del label. */
+@media (max-width: 400px) {
+  .tab-nav.admin-nav button .nav-label {
+    font-size: 8px;
   }
-
-  .floating-nav.admin-nav button {
-    padding: 6px 2px;
-  }
-
-  .floating-nav.admin-nav .nav-icon {
-    font-size: 0.95rem;
-  }
-
-  .floating-nav.admin-nav .nav-label {
-    font-size: 0.6rem;
-  }
-
-  .floating-nav.supervisor-nav {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+  .tab-nav.admin-nav button .nav-icon {
+    font-size: 16px;
   }
 }
 

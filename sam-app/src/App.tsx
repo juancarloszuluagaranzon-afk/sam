@@ -29,8 +29,16 @@ function AppContent() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', newPin: '', confirm: '', error: '', loading: false })
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
-  const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>('labores')
-  const [operatorTab, setOperatorTab] = useState<OperatorTab>('activas')
+  const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios']
+    return valid.includes(tab as SupervisorTab) ? (tab as SupervisorTab) : 'labores'
+  })
+  const [operatorTab, setOperatorTab] = useState<OperatorTab>(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab')
+    const valid: OperatorTab[] = ['activas', 'campo', 'historial']
+    return valid.includes(tab as OperatorTab) ? (tab as OperatorTab) : 'activas'
+  })
   const [historyMonth, setHistoryMonth] = useState(() =>
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
   )

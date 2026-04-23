@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
+      includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-512x512-maskable.png'],
       manifest: {
         id: '/',
         name: 'SAM Control',
@@ -22,6 +22,29 @@ export default defineConfig({
         start_url: '/',
         scope: '/',
         categories: ['productivity', 'business'],
+        shortcuts: [
+          {
+            name: 'Labores activas',
+            short_name: 'Activas',
+            description: 'Ver y gestionar labores activas',
+            url: '/?tab=activas',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+          {
+            name: 'Tomar suerte en campo',
+            short_name: 'Campo',
+            description: 'Registrar una labor de campo libre',
+            url: '/?tab=campo',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+          {
+            name: 'Asignar labor',
+            short_name: 'Asignar',
+            description: 'Crear una nueva asignación',
+            url: '/?tab=asignar',
+            icons: [{ src: 'pwa-192x192.png', sizes: '192x192' }],
+          },
+        ],
         icons: [
           {
             src: 'pwa-192x192.png',
@@ -36,7 +59,7 @@ export default defineConfig({
             purpose: 'any',
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512-maskable.png',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',

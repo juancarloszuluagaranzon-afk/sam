@@ -1,9 +1,60 @@
 :root {
-  font-family: "Segoe UI", system-ui, sans-serif;
+  /* Paleta corporativa */
+  --color-brand:       #1a6b3a;
+  --color-brand-dark:  #124d29;
+  --color-brand-mid:   #2d7a48;
+  --color-paper:       #f5f3ec;
+  --color-surface:     #ffffff;
+  --color-border:      #e0dbd0;
+  --color-ink:         #1c2418;
+  --color-ink-mid:     #4a5540;
+  --color-ink-light:   #8a9485;
+
+  /* Semáforo de estados */
+  --color-status-pending:   #3b5fc0;
+  --color-status-progress:  #b97500;
+  --color-status-done:      #2d7a3a;
+  --color-status-cancel:    #c0392b;
+  --color-status-run:       #7c5000;
+
+  /* Fondos semáforo (tintado) */
+  --color-status-pending-bg:  #e8edf8;
+  --color-status-progress-bg: #fdf3dd;
+  --color-status-done-bg:     #e6f4e8;
+  --color-status-cancel-bg:   #fce8e6;
+
+  /* Tipografía (system-ui para PWA offline; Inter/JetBrains Mono se añadirán via @font-face cuando se self-hosten) */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "Courier New", monospace;
+
+  /* Espaciado */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+
+  /* Radios */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-pill: 9999px;
+
+  /* Sombras */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.06);
+  --shadow-nav:  0 -1px 0 rgba(0, 0, 0, 0.06), 0 -4px 16px rgba(0, 0, 0, 0.08);
+
+  /* PWA safe-areas */
+  --safe-top:    env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 16px);
+
+  /* Base */
+  font-family: var(--font-sans);
   line-height: 1.5;
   font-weight: 400;
-  color: #1f2a1f;
-  background: #f2efe4;
+  color: var(--color-ink);
+  background: var(--color-paper);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;

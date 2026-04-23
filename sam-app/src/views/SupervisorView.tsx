@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
+import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
 import { createAppUser, updateAppUser } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
@@ -203,6 +204,8 @@ export function SupervisorView({
     nextUserId,
   } = useUserForm()
 
+  const { fileInputRef: photoInputRef, triggerUpload: triggerPhotoUpload, handleFileChange: handlePhotoChange, uploading: photoUploading } = usePhotoUpload()
+
   if (!session) return null
 
   function prefillAssignmentForm(haciendaCode: string, suerte: string, labor: string) {
@@ -365,9 +368,31 @@ export function SupervisorView({
           </button>
         </div>
         <div className="side-user-card">
-          <span className="user-pill">{session.name}</span>
-          <p>{getRoleLabel(session.role)}</p>
+          {session.photoUrl ? (
+            <img src={session.photoUrl} alt={session.name} className="side-user-photo" />
+          ) : (
+            <div className="avatar side-user-photo">{initials(session.name)}</div>
+          )}
+          <div className="side-user-info">
+            <strong>{session.name}</strong>
+            <p>{getRoleLabel(session.role)}</p>
+          </div>
         </div>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={handlePhotoChange}
+        />
+        <button
+          className="primary-button outline"
+          onClick={triggerPhotoUpload}
+          disabled={photoUploading}
+          style={{ marginBottom: '8px' }}
+        >
+          {photoUploading ? 'Subiendo foto...' : 'Cambiar foto'}
+        </button>
         <button
           className="primary-button outline"
           onClick={() => { setIsSideMenuOpen(false); setIsPinModalOpen(true) }}

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useFreeFieldForm } from '../hooks/useFreeFieldForm'
+import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { WORKFLOW } from '../data/constants'
@@ -17,6 +18,15 @@ const INGENIOS = [
   { id: 'mayaguez', nombre: 'Ingenio Mayaguez' },
   { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
 ]
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? '')
+    .join('')
+}
 
 function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
@@ -119,6 +129,8 @@ export function OperatorView({
     startAssignment: onStartAssignment,
     finishAssignment: onFinishAssignment,
   } = useAssignmentActions()
+
+  const { fileInputRef: photoInputRef, triggerUpload: triggerPhotoUpload, handleFileChange: handlePhotoChange, uploading: photoUploading } = usePhotoUpload()
 
   const operatorAssignments = useMemo(() => {
     if (!session) return []
@@ -283,9 +295,31 @@ export function OperatorView({
           </button>
         </div>
         <div className="side-user-card">
-          <span className="user-pill">{session.name}</span>
-          <p>{getRoleLabel(session.role)}</p>
+          {session.photoUrl ? (
+            <img src={session.photoUrl} alt={session.name} className="side-user-photo" />
+          ) : (
+            <div className="avatar side-user-photo">{initials(session.name)}</div>
+          )}
+          <div className="side-user-info">
+            <strong>{session.name}</strong>
+            <p>{getRoleLabel(session.role)}</p>
+          </div>
         </div>
+        <input
+          ref={photoInputRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={handlePhotoChange}
+        />
+        <button
+          className="primary-button outline"
+          onClick={triggerPhotoUpload}
+          disabled={photoUploading}
+          style={{ marginBottom: '8px' }}
+        >
+          {photoUploading ? 'Subiendo foto...' : 'Cambiar foto'}
+        </button>
         <button
           className="primary-button outline"
           onClick={() => { setIsSideMenuOpen(false); setIsPinModalOpen(true) }}

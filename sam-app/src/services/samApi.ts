@@ -185,7 +185,7 @@ export async function loadAppUsers(): Promise<{
   try {
     const { data, error } = await supabase
       .from('app_usuarios')
-      .select('id,nombre_completo,rol,equipo_codigo')
+      .select('id,nombre_completo,rol,equipo_codigo,foto_url')
       .eq('activo', true)
       .order('orden')
 
@@ -196,6 +196,7 @@ export async function loadAppUsers(): Promise<{
       name: String(row.nombre_completo),
       role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
+      photoUrl: row.foto_url ? String(row.foto_url) : undefined,
     }))
     void db.users.clear().then(() => db.users.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }
@@ -273,12 +274,42 @@ export async function appLogin(userId: string, pin: string) {
 
   const row = data[0]
 
+  const { data: fotoRow } = await supabase
+    .from('app_usuarios')
+    .select('foto_url')
+    .eq('id', row.id)
+    .maybeSingle()
+
   return {
     id: String(row.id),
     name: String(row.nombre_completo),
     role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
     equipmentCode: String(row.equipo_codigo ?? ''),
+    photoUrl: fotoRow?.foto_url ? String(fotoRow.foto_url) : undefined,
   } as UserProfile
+}
+
+export async function uploadUserPhoto(userId: string, file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const path = `${userId}.${ext}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+
+  if (uploadError) throw uploadError
+
+  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+  const url = `${urlData.publicUrl}?t=${Date.now()}`
+
+  const { error: updateError } = await supabase
+    .from('app_usuarios')
+    .update({ foto_url: url })
+    .eq('id', userId)
+
+  if (updateError) throw updateError
+
+  return url
 }
 
 export async function appChangePin(userId: string, currentPin: string, newPin: string) {

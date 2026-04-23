@@ -13,6 +13,7 @@ export interface UserProfile {
   name: string
   role: Role
   equipmentCode: string
+  photoUrl?: string
 }
 
 export interface Equipment {

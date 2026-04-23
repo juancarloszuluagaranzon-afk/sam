@@ -599,23 +599,21 @@ export function OperatorView({
                     ]}
                   />
                 </label>
-                {freeFieldForm.cliente === 'ingenios' && (
-                  <label>
-                    Ingenio
-                    <SearchableSelect
-                      value={freeFieldForm.ingenioId}
-                      onChange={(value) => updateFreeFieldForm('ingenioId', value)}
-                      placeholder="Selecciona un ingenio"
-                      options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
-                    />
-                  </label>
-                )}
+                <label>
+                  Ingenio
+                  <SearchableSelect
+                    value={freeFieldForm.ingenioId}
+                    onChange={(value) => updateFreeFieldForm('ingenioId', value)}
+                    placeholder="Selecciona un ingenio"
+                    options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                  />
+                </label>
                 <label>
                   Hacienda
                   <SearchableSelect
                     value={freeFieldForm.haciendaCode}
                     onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
-                    placeholder={freeFieldForm.cliente === 'ingenios' && !freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                    placeholder={!freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
                     options={freeFieldHaciendas.map((item) => ({
                       value: item.code,
                       label: `${item.code} - ${item.name}`,

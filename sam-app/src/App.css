@@ -503,10 +503,50 @@
 }
 
 .primary-button {
-  padding: 14px 18px;
-  border-radius: 16px;
-  background: #3f7215;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-4);
+  background: var(--color-brand);
   color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  min-height: 52px;
+  letter-spacing: 0.2px;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.primary-button:hover {
+  background: var(--color-brand-dark);
+}
+
+.primary-button:active {
+  transform: scale(0.98);
+  background: var(--color-brand-dark);
+}
+
+.primary-button:disabled {
+  background: var(--color-ink-light);
+  cursor: not-allowed;
+  transform: none;
+}
+
+.primary-button.outline {
+  background: transparent;
+  color: var(--color-brand);
+  border: 1.5px solid var(--color-brand);
+}
+
+.primary-button.outline:hover,
+.primary-button.outline:active {
+  background: rgba(26, 107, 58, 0.08);
+  color: var(--color-brand);
 }
 
 .inline-button {

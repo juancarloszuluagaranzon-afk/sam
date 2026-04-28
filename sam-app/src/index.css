@@ -177,3 +177,23 @@ a {
   background: #e8edf8;
   color: #2d4a9e;
 }
+
+.zone-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-left: 4px;
+}
+.zone-badge.zone-norte {
+  background: #fef3c7;
+  color: #8a5a00;
+}
+.zone-badge.zone-sur {
+  background: #ede4f5;
+  color: #5b3b87;
+}

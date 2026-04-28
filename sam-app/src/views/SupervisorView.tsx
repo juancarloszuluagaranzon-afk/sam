@@ -25,6 +25,8 @@ export interface AssignmentFormState {
   notes: string
   cliente: string
   ingenioId: string
+  supervisorId: string
+  zone: string
 }
 
 export interface EquipmentFormState {
@@ -118,6 +120,11 @@ interface Props {
   laborToday: Array<{ labor: string; planned: number; executed: number; count: number }>
   recentAssignments: Assignment[]
   programmedSuerteRows: MaestroRow[]
+  tableroAssignments: Assignment[]
+  tableroMonth: string
+  setTableroMonth: React.Dispatch<React.SetStateAction<string>>
+  tableroZone: 'TODAS' | 'NORTE' | 'SUR'
+  setTableroZone: React.Dispatch<React.SetStateAction<'TODAS' | 'NORTE' | 'SUR'>>
   filteredAssignments: Assignment[]
   filteredReport: Assignment[]
   haciendaFilterOptions: Array<{ code: string; name: string }>
@@ -152,6 +159,11 @@ export function SupervisorView({
   laborToday,
   recentAssignments,
   programmedSuerteRows,
+  tableroAssignments,
+  tableroMonth,
+  setTableroMonth,
+  tableroZone,
+  setTableroZone,
   filteredAssignments,
   filteredReport,
   haciendaFilterOptions,
@@ -190,7 +202,11 @@ export function SupervisorView({
     createAssignment: handleCreateAssignment,
   } = useAssignmentForm({ onAssignmentCreated: () => setSupervisorTab('labores') })
 
-  const { cancelAssignment: handleCancelAssignment } = useAssignmentActions()
+  const {
+    cancelAssignment: handleCancelAssignment,
+    approveAssignment: handleApproveAssignment,
+    rejectAssignment: handleRejectAssignment,
+  } = useAssignmentActions()
 
   const {
     equipmentForm, updateEquipmentForm, isEquipmentFormOpen, setIsEquipmentFormOpen,
@@ -753,6 +769,18 @@ export function SupervisorView({
               </div>
               <form className="form-grid-block" onSubmit={handleCreateAssignment}>
                 <label>
+                  Zona
+                  <SearchableSelect
+                    value={assignmentForm.zone}
+                    onChange={(value) => updateAssignmentForm('zone', value)}
+                    placeholder="Selecciona la zona"
+                    options={[
+                      { value: 'NORTE', label: 'Zona Norte' },
+                      { value: 'SUR', label: 'Zona Sur' },
+                    ]}
+                  />
+                </label>
+                <label>
                   Cliente
                   <SearchableSelect
                     value={assignmentForm.cliente}
@@ -918,8 +946,26 @@ export function SupervisorView({
 
         {supervisorTab === 'tablero' ? (
           <section className="panel-card tablero-section">
-            <div className="panel-title">
+            <div className="panel-title split">
               <h2>Tablero</h2>
+              <div className="tablero-filters">
+                <input
+                  type="month"
+                  value={tableroMonth}
+                  onChange={(e) => setTableroMonth(e.target.value)}
+                  className="base-input"
+                  aria-label="Mes"
+                />
+                <select
+                  value={tableroZone}
+                  onChange={(e) => setTableroZone(e.target.value as 'TODAS' | 'NORTE' | 'SUR')}
+                  aria-label="Zona"
+                >
+                  <option value="TODAS">Todas las zonas</option>
+                  <option value="NORTE">Zona Norte</option>
+                  <option value="SUR">Zona Sur</option>
+                </select>
+              </div>
             </div>
             <div className="tablero-wrap">
               <table className="tablero-table">
@@ -938,12 +984,11 @@ export function SupervisorView({
                 <tbody>
                   {programmedSuerteRows.map((row) => {
                     const suerteKey = `${row.haciendaCode}-${row.suerte}`
-                    const rowAssignments = assignments.filter(
+                    const rowAssignments = tableroAssignments.filter(
                       (assignment) =>
-                        assignment.status !== 'CANCELADA' &&
-                        (assignment.suerteCode === suerteKey ||
-                          (assignment.suerte === row.suerte &&
-                            assignment.haciendaCode === row.haciendaCode)),
+                        assignment.suerteCode === suerteKey ||
+                        (assignment.suerte === row.suerte &&
+                          assignment.haciendaCode === row.haciendaCode),
                     )
                     const firstDate =
                       rowAssignments
@@ -1314,6 +1359,14 @@ export function SupervisorView({
               <div className="filter-row">
                 <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
                   <option value="TODAS">Todos los estados</option>
+                  <option value="POR_APROBAR">
+                    Por aprobar{(() => {
+                      const n = assignments.filter(
+                        (a) => a.approval === 'PENDIENTE' && a.supervisorId === session.id,
+                      ).length
+                      return n > 0 ? ` (${n})` : ''
+                    })()}
+                  </option>
                   <option value="PENDIENTE">Pendiente</option>
                   <option value="EN_PROCESO">En proceso</option>
                   <option value="COMPLETADA">Completada</option>
@@ -1367,6 +1420,11 @@ export function SupervisorView({
                       ) : (
                         <span className="kind-badge libre">Campo</span>
                       )}
+                      {assignment.zone && (
+                        <span className={`zone-badge zone-${assignment.zone.toLowerCase()}`}>
+                          {assignment.zone === 'NORTE' ? 'Norte' : 'Sur'}
+                        </span>
+                      )}
                       <span className="labor-area">
                         {(() => {
                           const maestroRow = maestro.find((r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte)
@@ -1380,7 +1438,31 @@ export function SupervisorView({
                       </span>
                     </div>
 
-                    {assignment.status === 'PENDIENTE' && (
+                    {assignment.approval !== 'APROBADA' && (
+                      <span className={`approval-chip approval-${assignment.approval.toLowerCase()}`}>
+                        {assignment.approval === 'PENDIENTE' ? 'Por aprobar' : 'Rechazada'}
+                      </span>
+                    )}
+
+                    {assignment.approval === 'PENDIENTE' &&
+                      assignment.supervisorId === session.id && (
+                        <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="approve-btn"
+                            onClick={() => void handleApproveAssignment(assignment)}
+                          >
+                            Aprobar
+                          </button>
+                          <button
+                            className="cancel-btn"
+                            onClick={() => void handleRejectAssignment(assignment)}
+                          >
+                            Rechazar
+                          </button>
+                        </div>
+                      )}
+
+                    {assignment.status === 'PENDIENTE' && assignment.approval !== 'PENDIENTE' && (
                       <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="cancel-btn"

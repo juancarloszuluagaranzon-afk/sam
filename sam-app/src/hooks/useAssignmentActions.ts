@@ -194,6 +194,74 @@ export function useAssignmentActions() {
     }
   }
 
+  async function decideApproval(assignment: Assignment, decision: 'APROBADA' | 'RECHAZADA') {
+    if (!session) return
+    if (assignment.supervisorId !== session.id) {
+      setError('Solo el supervisor asignado puede aprobar o rechazar esta labor.')
+      return
+    }
+
+    setBusy(true)
+    setError('')
+
+    const now = new Date().toISOString()
+    const payload = {
+      approval: decision,
+      approvedBy: session.id,
+      approvedAt: now,
+    }
+
+    try {
+      if (!isOnline) {
+        await db.outbox.add({
+          type: 'UPDATE',
+          assignmentId: assignment.id,
+          updatePayload: payload,
+          queuedAt: now,
+          status: 'pending',
+        })
+        setAssignments((current) =>
+          current.map((a) =>
+            a.id === assignment.id
+              ? { ...a, approval: decision, approvedBy: session.id, approvedAt: now }
+              : a,
+          ),
+        )
+        void db.assignments.update(assignment.id, {
+          approval: decision,
+          approvedBy: session.id,
+          approvedAt: now,
+        })
+        setOutboxCount((c) => c + 1)
+        setInfo(
+          `Labor ${decision === 'APROBADA' ? 'aprobada' : 'rechazada'} (sin conexion, se sincronizara al recuperar senal).`,
+        )
+      } else {
+        await updateAssignment(assignment.id, payload)
+        await refreshAssignments()
+        setInfo(
+          `Labor ${decision === 'APROBADA' ? 'aprobada' : 'rechazada'}: ${assignment.labor}.`,
+        )
+      }
+    } catch {
+      setError(
+        decision === 'APROBADA'
+          ? 'No se pudo aprobar la labor.'
+          : 'No se pudo rechazar la labor.',
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function approveAssignment(assignment: Assignment) {
+    return decideApproval(assignment, 'APROBADA')
+  }
+
+  async function rejectAssignment(assignment: Assignment) {
+    return decideApproval(assignment, 'RECHAZADA')
+  }
+
   async function cancelAssignment(assignment: Assignment) {
     setBusy(true)
     setError('')
@@ -235,5 +303,7 @@ export function useAssignmentActions() {
     startAssignment,
     finishAssignment,
     cancelAssignment,
+    approveAssignment,
+    rejectAssignment,
   }
 }

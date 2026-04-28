@@ -41,6 +41,8 @@ const EMPTY_FORM: AssignmentFormState = {
   notes: '',
   cliente: '',
   ingenioId: '',
+  supervisorId: '',
+  zone: '',
 }
 
 interface Options {
@@ -129,6 +131,18 @@ export function useFreeFieldForm(options?: Options) {
       return
     }
 
+    const selectedSupervisor = supervisors.find((s) => s.id === freeFieldForm.supervisorId)
+    if (!selectedSupervisor) {
+      setError('Selecciona el supervisor que aprobará la labor.')
+      return
+    }
+
+    if (freeFieldForm.zone !== 'NORTE' && freeFieldForm.zone !== 'SUR') {
+      setError('Selecciona la zona (Norte o Sur).')
+      return
+    }
+    const zone = freeFieldForm.zone
+
     const maestroRows = freeFieldSuertesList
       .map((suerte) =>
         maestro.find(
@@ -175,8 +189,8 @@ export function useFreeFieldForm(options?: Options) {
             suerte: maestroRow.suerte,
             labor: freeFieldForm.labor,
             area,
-            supervisorId: supervisors[0]?.id ?? '',
-            supervisorName: supervisors[0]?.name ?? '',
+            supervisorId: selectedSupervisor.id,
+            supervisorName: selectedSupervisor.name,
             operatorId: operator.id,
             operatorName: operator.name,
             equipmentCode: equipmentItem.code,
@@ -185,6 +199,8 @@ export function useFreeFieldForm(options?: Options) {
             cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
             kind: 'LIBRE',
             initialStatus: 'PENDIENTE',
+            approval: 'PENDIENTE',
+            zone,
           }
           const local: Assignment = {
             id: tempId,
@@ -199,7 +215,7 @@ export function useFreeFieldForm(options?: Options) {
             status: 'PENDIENTE',
             operatorId: operator.id,
             operatorName: operator.name,
-            supervisorId: supervisors[0]?.id ?? '',
+            supervisorId: selectedSupervisor.id,
             equipmentCode: equipmentItem.code,
             equipmentName: equipmentItem.name,
             startedAt: null,
@@ -210,6 +226,10 @@ export function useFreeFieldForm(options?: Options) {
             horometroInicial: null,
             horometroFinal: null,
             cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+            approval: 'PENDIENTE',
+            approvedBy: null,
+            approvedAt: null,
+            zone,
           }
           await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
           await db.assignments.put(local)
@@ -235,8 +255,8 @@ export function useFreeFieldForm(options?: Options) {
                 freeFieldForm.labor,
                 maestroRow.area,
               ),
-              supervisorId: supervisors[0]?.id ?? 'U002',
-              supervisorName: supervisors[0]?.name ?? 'Supervisor',
+              supervisorId: selectedSupervisor.id,
+              supervisorName: selectedSupervisor.name,
               operatorId: operator.id,
               operatorName: operator.name,
               equipmentCode: equipmentItem.code,
@@ -245,6 +265,8 @@ export function useFreeFieldForm(options?: Options) {
               cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
               kind: 'LIBRE',
               initialStatus: 'PENDIENTE',
+              approval: 'PENDIENTE',
+              zone,
             }),
           ),
         )
@@ -272,6 +294,7 @@ export function useFreeFieldForm(options?: Options) {
     toggleFreeFieldSuerte,
     freeFieldHaciendas,
     freeFieldSuertes,
+    supervisors,
     takeFreeField,
   }
 }

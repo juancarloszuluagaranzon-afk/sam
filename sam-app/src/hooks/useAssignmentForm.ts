@@ -45,6 +45,8 @@ const EMPTY_FORM: AssignmentFormState = {
   notes: '',
   cliente: '',
   ingenioId: '',
+  supervisorId: '',
+  zone: '',
 }
 
 interface Options {
@@ -135,6 +137,12 @@ export function useAssignmentForm(options?: Options) {
       return
     }
 
+    if (assignmentForm.zone !== 'NORTE' && assignmentForm.zone !== 'SUR') {
+      setError('Selecciona la zona (Norte o Sur).')
+      return
+    }
+    const zone = assignmentForm.zone
+
     const operator2 = assignmentForm.operatorId2
       ? operators.find((item) => item.id === assignmentForm.operatorId2)
       : null
@@ -206,6 +214,8 @@ export function useAssignmentForm(options?: Options) {
             cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
             kind: 'ASIGNADA',
             initialStatus: 'PENDIENTE',
+            approval: 'APROBADA',
+            zone,
           }
           const local: Assignment = {
             id: tempId,
@@ -231,6 +241,10 @@ export function useAssignmentForm(options?: Options) {
             horometroInicial: null,
             horometroFinal: null,
             cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+            approval: 'APROBADA',
+            approvedBy: session.id,
+            approvedAt: now,
+            zone,
           }
           await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
           await db.assignments.put(local)
@@ -265,6 +279,8 @@ export function useAssignmentForm(options?: Options) {
             cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
             kind: 'ASIGNADA',
             initialStatus: 'PENDIENTE' as const,
+            approval: 'APROBADA' as const,
+            zone,
           }))
 
         const allInputs = [

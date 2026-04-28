@@ -1,5 +1,6 @@
 import { LOCAL_MAESTRO } from '../data/constants'
 import type {
+  ApprovalStatus,
   Assignment,
   AssignmentStatus,
   CreateEquipmentInput,
@@ -9,6 +10,7 @@ import type {
   MaestroRow,
   UpdateAssignmentInput,
   UserProfile,
+  Zone,
 } from '../domain/sam'
 import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
@@ -44,6 +46,21 @@ function normalizeStatus(value: string | null | undefined): AssignmentStatus {
   return 'PENDIENTE'
 }
 
+function normalizeApproval(value: string | null | undefined): ApprovalStatus {
+  const normalized = String(value ?? 'APROBADA').trim().toUpperCase()
+  if (normalized === 'PENDIENTE') return 'PENDIENTE'
+  if (normalized === 'RECHAZADA') return 'RECHAZADA'
+  return 'APROBADA'
+}
+
+function normalizeZone(value: string | null | undefined): Zone | null {
+  if (value == null) return null
+  const normalized = String(value).trim().toUpperCase()
+  if (normalized === 'NORTE') return 'NORTE'
+  if (normalized === 'SUR') return 'SUR'
+  return null
+}
+
 function mapAssignment(row: Record<string, unknown>): Assignment {
   const suerteCode = String(row.suerte_codigo ?? '')
   const parts = suerteCode.includes('-') ? suerteCode.split('-') : []
@@ -74,6 +91,10 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     kind: String(row.tipo_registro ?? 'ASIGNADA'),
     horometroInicial: row.horometro_inicial != null ? Number(row.horometro_inicial) : null,
     horometroFinal: row.horometro_final != null ? Number(row.horometro_final) : null,
+    approval: normalizeApproval(row.aprobacion as string | null | undefined),
+    approvedBy: row.aprobada_por ? String(row.aprobada_por) : null,
+    approvedAt: row.aprobada_en ? String(row.aprobada_en) : null,
+    zone: normalizeZone(row.zona as string | null | undefined),
   }
 }
 
@@ -100,6 +121,8 @@ function mapAssignmentPayload(input: CreateAssignmentInput) {
     operador_nombre: input.operatorName,
     tipo_registro: input.kind,
     cliente: input.cliente,
+    aprobacion: input.approval ?? 'APROBADA',
+    zona: input.zone ?? null,
   }
 }
 
@@ -402,6 +425,9 @@ export async function updateAssignment(
   }
   if (input.horometroInicial !== undefined) payload.horometro_inicial = input.horometroInicial
   if (input.horometroFinal !== undefined) payload.horometro_final = input.horometroFinal
+  if (input.approval !== undefined) payload.aprobacion = input.approval
+  if (input.approvedBy !== undefined) payload.aprobada_por = input.approvedBy
+  if (input.approvedAt !== undefined) payload.aprobada_en = input.approvedAt
 
   const { data, error } = await supabase
     .from('asignaciones')
@@ -415,6 +441,22 @@ export async function updateAssignment(
   }
 
   return mapAssignment(data as Record<string, unknown>)
+}
+
+export async function approveAssignment(assignmentId: string, supervisorId: string) {
+  return updateAssignment(assignmentId, {
+    approval: 'APROBADA',
+    approvedBy: supervisorId,
+    approvedAt: new Date().toISOString(),
+  })
+}
+
+export async function rejectAssignment(assignmentId: string, supervisorId: string) {
+  return updateAssignment(assignmentId, {
+    approval: 'RECHAZADA',
+    approvedBy: supervisorId,
+    approvedAt: new Date().toISOString(),
+  })
 }
 
 export function summarizeAssignments(

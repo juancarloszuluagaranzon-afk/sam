@@ -55,6 +55,10 @@ function AppContent() {
     haciendaCode: '',
     operatorId: 'TODOS',
   })
+  const [tableroMonth, setTableroMonth] = useState(() =>
+    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
+  )
+  const [tableroZone, setTableroZone] = useState<'TODAS' | 'NORTE' | 'SUR'>('TODAS')
 
   function saveSession(user: UserProfile | null) {
     setSession(user ? { ...user } : null)
@@ -68,9 +72,13 @@ function AppContent() {
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
-      if (statusFilter === 'TODAS') {
-        const isClosedStatus = assignment.status === 'COMPLETADA' || assignment.status === 'CANCELADA'
-        if (isClosedStatus && assignment.dateKey !== todayKey) return false
+      if (statusFilter === 'POR_APROBAR') {
+        if (assignment.approval !== 'PENDIENTE') return false
+        if (session && assignment.supervisorId !== session.id) return false
+      } else if (statusFilter === 'TODAS') {
+        // Cada día arranca limpio: solo sobreviven las EN_PROCESO (siguen "en uso").
+        // El resto solo se ve si es del día actual.
+        if (assignment.status !== 'EN_PROCESO' && assignment.dateKey !== todayKey) return false
       } else if (assignment.status !== statusFilter) {
         return false
       }
@@ -84,7 +92,7 @@ function AppContent() {
       }
       return true
     })
-  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, maestro, todayKey])
+  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, maestro, todayKey, session])
 
   const haciendaFilterOptions = useMemo(() => {
     const codes = new Map<string, string>()
@@ -116,11 +124,19 @@ function AppContent() {
 
   const recentAssignments = useMemo(() => assignments.slice(0, 8), [assignments])
 
+  const tableroAssignments = useMemo(() => {
+    return assignments.filter((a) => {
+      if (a.status === 'CANCELADA') return false
+      if (session?.role === 'supervisor' && a.supervisorId !== session.id) return false
+      if (tableroMonth && !a.dateKey.startsWith(tableroMonth)) return false
+      if (tableroZone !== 'TODAS' && a.zone !== tableroZone) return false
+      return true
+    })
+  }, [assignments, session, tableroMonth, tableroZone])
+
   const programmedSuerteRows = useMemo(() => {
     const programmedKeys = new Set(
-      assignments
-        .filter((a) => a.status !== 'CANCELADA')
-        .map((a) => `${a.haciendaCode}-${a.suerte}`),
+      tableroAssignments.map((a) => `${a.haciendaCode}-${a.suerte}`),
     )
     return maestro
       .filter((row) => programmedKeys.has(`${row.haciendaCode}-${row.suerte}`))
@@ -129,7 +145,7 @@ function AppContent() {
           String(a.haciendaCode).localeCompare(String(b.haciendaCode)) ||
           a.suerte.localeCompare(b.suerte),
       )
-  }, [assignments, maestro])
+  }, [tableroAssignments, maestro])
 
   const filteredReport = useMemo(() => {
     return assignments
@@ -209,7 +225,11 @@ function AppContent() {
         'Horometro Ini': a.horometroInicial ?? '',
         'Horometro Fin': a.horometroFinal ?? '',
         'Cliente': a.cliente ?? '',
+        'Zona': a.zone ?? '',
         'Tipo': a.kind,
+        'Aprobación': a.approval,
+        'Aprobado por': a.approvedBy ?? '',
+        'Aprobado en': a.approvedAt ?? '',
         'Notas': a.notes,
       }))
       const ws = utils.json_to_sheet(rows)
@@ -260,6 +280,11 @@ function AppContent() {
         laborToday={laborToday}
         recentAssignments={recentAssignments}
         programmedSuerteRows={programmedSuerteRows}
+        tableroAssignments={tableroAssignments}
+        tableroMonth={tableroMonth}
+        setTableroMonth={setTableroMonth}
+        tableroZone={tableroZone}
+        setTableroZone={setTableroZone}
         filteredAssignments={filteredAssignments}
         filteredReport={filteredReport}
         haciendaFilterOptions={haciendaFilterOptions}

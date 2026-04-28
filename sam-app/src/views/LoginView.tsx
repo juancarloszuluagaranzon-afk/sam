@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import SearchableSelect from '../components/SearchableSelect'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import type { UserProfile } from '../domain/sam'
 
@@ -21,7 +22,7 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
   const [pin, setPin] = useState('')
 
   const loginOptions = useMemo(
-    () => users.map((u) => ({ id: u.id, label: `${u.name} - ${roleLabel(u.role)}` })),
+    () => users.map((u) => ({ value: u.id, label: `${u.name} - ${roleLabel(u.role)}` })),
     [users],
   )
 
@@ -43,16 +44,12 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
           <h2>Acceso de piloto</h2>
           <label>
             Usuario
-            <select
+            <SearchableSelect
               value={userId}
-              onChange={(event) => setUserId(event.target.value)}
-            >
-              {loginOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onChange={setUserId}
+              options={loginOptions}
+              placeholder="Selecciona o busca tu usuario"
+            />
           </label>
           <label>
             PIN

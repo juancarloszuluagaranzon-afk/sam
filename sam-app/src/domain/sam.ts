@@ -8,6 +8,10 @@ export type AssignmentStatus =
   | 'COMPLETADA'
   | 'CANCELADA'
 
+export type ApprovalStatus = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
+
+export type Zone = 'NORTE' | 'SUR'
+
 export interface UserProfile {
   id: string
   name: string
@@ -67,6 +71,10 @@ export interface Assignment {
   horometroInicial: number | null
   horometroFinal: number | null
   cliente?: 'ingenios' | 'proveedores'
+  approval: ApprovalStatus
+  approvedBy: string | null
+  approvedAt: string | null
+  zone: Zone | null
 }
 
 export interface DashboardMetrics {
@@ -93,6 +101,8 @@ export interface CreateAssignmentInput {
   cliente: 'ingenios' | 'proveedores'
   initialStatus: AssignmentStatus
   startedAt?: string | null
+  approval?: ApprovalStatus
+  zone?: Zone | null
 }
 
 export interface UpdateAssignmentInput {
@@ -105,4 +115,7 @@ export interface UpdateAssignmentInput {
   equipmentName?: string
   horometroInicial?: number | null
   horometroFinal?: number | null
+  approval?: ApprovalStatus
+  approvedBy?: string | null
+  approvedAt?: string | null
 }

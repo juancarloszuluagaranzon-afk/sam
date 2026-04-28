@@ -116,6 +116,7 @@ export function OperatorView({
     freeFieldForm, updateFreeFieldForm,
     freeFieldSuertesList, toggleFreeFieldSuerte,
     freeFieldHaciendas, freeFieldSuertes,
+    supervisors: freeFieldSupervisors,
     takeFreeField: onCreateFreeField,
   } = useFreeFieldForm({ onFreeFieldTaken: () => setOperatorTab('activas') })
 
@@ -589,6 +590,18 @@ export function OperatorView({
               </div>
               <form className="form-grid-block" onSubmit={onCreateFreeField}>
                 <label>
+                  Zona
+                  <SearchableSelect
+                    value={freeFieldForm.zone}
+                    onChange={(value) => updateFreeFieldForm('zone', value)}
+                    placeholder="Selecciona la zona"
+                    options={[
+                      { value: 'NORTE', label: 'Zona Norte' },
+                      { value: 'SUR', label: 'Zona Sur' },
+                    ]}
+                  />
+                </label>
+                <label>
                   Cliente
                   <SearchableSelect
                     value={freeFieldForm.cliente}
@@ -682,6 +695,15 @@ export function OperatorView({
                 <label>
                   Operador
                   <input value={session.name} disabled />
+                </label>
+                <label>
+                  Supervisor
+                  <SearchableSelect
+                    value={freeFieldForm.supervisorId}
+                    onChange={(value) => updateFreeFieldForm('supervisorId', value)}
+                    placeholder="Selecciona el supervisor que aprobará"
+                    options={freeFieldSupervisors.map((s) => ({ value: s.id, label: s.name }))}
+                  />
                 </label>
                 <label>
                   Observaciones

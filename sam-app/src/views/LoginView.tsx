@@ -41,7 +41,7 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
 
         <form className="login-card" onSubmit={handleSubmit}>
           <p className="eyebrow">Ingreso</p>
-          <h2>Acceso de piloto</h2>
+          <h2>Acceso</h2>
           <label>
             Usuario
             <SearchableSelect

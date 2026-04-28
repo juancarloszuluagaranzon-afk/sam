@@ -249,7 +249,7 @@ function AppContent() {
     return (
       <main className="app-shell loading-shell">
         <div className="loading-card">
-          <p className="eyebrow">SAM Control</p>
+          <p className="eyebrow">ASM Control</p>
           <h1>Cargando operacion...</h1>
           <p>Estamos leyendo maestro, asignaciones y catalogos desde la base.</p>
         </div>

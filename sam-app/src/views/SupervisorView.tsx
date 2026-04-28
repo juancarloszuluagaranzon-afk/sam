@@ -216,7 +216,6 @@ export function SupervisorView({
   const {
     userForm, setUserForm, isUserFormOpen, setIsUserFormOpen,
     editingUserId, setEditingUserId, userSearch, setUserSearch,
-    selectedUserCard, setSelectedUserCard,
     nextUserId,
   } = useUserForm()
 
@@ -260,61 +259,6 @@ export function SupervisorView({
         className={`side-overlay ${isSideMenuOpen ? 'open' : ''}`}
         onClick={() => setIsSideMenuOpen(false)}
       />
-
-      {selectedUserCard && (() => {
-        const todayBogota = (iso: string | null) =>
-          iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : ''
-        const opAssignments = assignments.filter((a) => a.operatorId === selectedUserCard.id || a.operatorName === selectedUserCard.name)
-        const relevantCard = opAssignments.filter(
-          (a) =>
-            a.status !== 'CANCELADA' &&
-            (a.dateKey === todayKey ||
-              (a.status === 'COMPLETADA' && todayBogota(a.finishedAt) === todayKey)),
-        )
-        const planned = relevantCard.reduce((s, a) => s + a.area, 0)
-        const executed = relevantCard
-          .filter((a) => a.status === 'COMPLETADA')
-          .reduce((s, a) => s + a.executedArea, 0)
-        const inProg = relevantCard.filter((a) => a.status === 'EN_PROCESO').length
-        const completion = planned ? Math.round((executed / planned) * 100) : 0
-        const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
-        return (
-          <>
-            <div className="more-sheet-overlay" onClick={() => setSelectedUserCard(null)} />
-            <div className="more-sheet user-kpi-sheet" role="dialog" aria-label={`KPI ${selectedUserCard.name}`}>
-              <div className="more-sheet__handle" />
-              <div className="user-kpi-sheet__header">
-                <span className="user-kpi-sheet__name">{selectedUserCard.name}</span>
-                <span className="user-card__role">{rolLabels[selectedUserCard.role] ?? selectedUserCard.role}</span>
-              </div>
-              <div className="user-kpi-sheet__grid">
-                <div className="user-kpi-card">
-                  <span className="user-kpi-card__label">HA PLANIF. HOY</span>
-                  <strong className="user-kpi-card__value">{planned.toFixed(2)}</strong>
-                  <span className="user-kpi-card__unit">hectáreas</span>
-                </div>
-                <div className="user-kpi-card">
-                  <span className="user-kpi-card__label">HA EJECUTADAS</span>
-                  <strong className="user-kpi-card__value">{executed.toFixed(2)}</strong>
-                  <span className="user-kpi-card__unit">hectáreas</span>
-                </div>
-                <div className="user-kpi-card">
-                  <span className="user-kpi-card__label">CUMPLIMIENTO</span>
-                  <strong className={`user-kpi-card__value ${completion >= 70 ? 'kpi-green' : completion >= 30 ? 'kpi-amber' : 'kpi-red'}`}>{completion}%</strong>
-                  <div className="progress-track" style={{ marginTop: 4 }}>
-                    <span style={{ width: `${Math.min(completion, 100)}%` }} />
-                  </div>
-                </div>
-                <div className="user-kpi-card">
-                  <span className="user-kpi-card__label">EN PROCESO</span>
-                  <strong className="user-kpi-card__value">{inProg}</strong>
-                  <span className="user-kpi-card__unit">labores activas</span>
-                </div>
-              </div>
-            </div>
-          </>
-        )
-      })()}
 
       {(session.role === 'owner' || session.role === 'supervisor') && moreMenuOpen && (
         <>
@@ -1196,8 +1140,16 @@ export function SupervisorView({
                 .map((u) => {
                   const status = operatorStatusMap.get(u.id) ?? 'disponible'
                   const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
+                  const openEdit = () => {
+                    setEditingUserId(u.id)
+                    setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
+                    setIsUserFormOpen(true)
+                    requestAnimationFrame(() => {
+                      document.querySelector('.usuarios-form-collapsible')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                    })
+                  }
                   return (
-                    <li key={u.id} className="user-card" onClick={() => setSelectedUserCard(u)} style={{ cursor: 'pointer' }}>
+                    <li key={u.id} className="user-card" onClick={openEdit} style={{ cursor: 'pointer' }}>
                       <span className="user-card__name">{u.name}</span>
                       <span className="user-card__role">{rolLabels[u.role] ?? u.role}</span>
                       {(u.role === 'operador' || u.role === 'supervisor') && (
@@ -1212,9 +1164,7 @@ export function SupervisorView({
                         className="user-card__edit-btn"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setEditingUserId(u.id)
-                          setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
-                          setIsUserFormOpen(true)
+                          openEdit()
                         }}
                       >
                         Editar

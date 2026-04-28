@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import type { UserProfile } from '../domain/sam'
 
 interface UserFormState {
   id: string
@@ -25,7 +24,6 @@ export function useUserForm() {
   const [isUserFormOpen, setIsUserFormOpen] = useState(false)
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [userSearch, setUserSearch] = useState('')
-  const [selectedUserCard, setSelectedUserCard] = useState<UserProfile | null>(null)
 
   const nextUserId = useMemo(() => {
     const nums = users
@@ -44,8 +42,6 @@ export function useUserForm() {
     setEditingUserId,
     userSearch,
     setUserSearch,
-    selectedUserCard,
-    setSelectedUserCard,
     nextUserId,
   }
 }

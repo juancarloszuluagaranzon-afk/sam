@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import type { Assignment } from '../domain/sam'
+import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
 import { createAssignment as apiCreateAssignment, loadAssignments } from '../services/samApi'
@@ -141,7 +141,7 @@ export function useFreeFieldForm(options?: Options) {
       setError('Selecciona la zona (Norte o Sur).')
       return
     }
-    const zone = freeFieldForm.zone
+    const zone: Zone = freeFieldForm.zone
 
     const maestroRows = freeFieldSuertesList
       .map((suerte) =>

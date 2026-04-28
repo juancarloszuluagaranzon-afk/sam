@@ -1,27 +1,27 @@
 :root {
-  /* Paleta corporativa */
-  --color-brand:       #1a6b3a;
-  --color-brand-dark:  #124d29;
-  --color-brand-mid:   #2d7a48;
-  --color-paper:       #f5f3ec;
+  /* Paleta corporativa — Forest Pro */
+  --color-brand:       #155b30;
+  --color-brand-dark:  #0e3b1f;
+  --color-brand-mid:   #1f7a40;
+  --color-paper:       #f5f5f3;
   --color-surface:     #ffffff;
-  --color-border:      #e0dbd0;
-  --color-ink:         #1c2418;
-  --color-ink-mid:     #4a5540;
-  --color-ink-light:   #8a9485;
+  --color-border:      #e3e2dc;
+  --color-ink:         #161a14;
+  --color-ink-mid:     #4a5040;
+  --color-ink-light:   #8a8e85;
 
-  /* Semáforo de estados */
-  --color-status-pending:   #3b5fc0;
-  --color-status-progress:  #b97500;
-  --color-status-done:      #2d7a3a;
-  --color-status-cancel:    #c0392b;
-  --color-status-run:       #7c5000;
+  /* Semáforo de estados — saturación baja, profesional */
+  --color-status-pending:   #2a4a8c;
+  --color-status-progress:  #8a5a00;
+  --color-status-done:      #155b30;
+  --color-status-cancel:    #7d2e2e;
+  --color-status-run:       #6b4500;
 
-  /* Fondos semáforo (tintado) */
-  --color-status-pending-bg:  #e8edf8;
-  --color-status-progress-bg: #fdf3dd;
-  --color-status-done-bg:     #e6f4e8;
-  --color-status-cancel-bg:   #fce8e6;
+  /* Fondos semáforo (lavados, casi neutros) */
+  --color-status-pending-bg:  #f0f3f9;
+  --color-status-progress-bg: #faf6ec;
+  --color-status-done-bg:     #eff5f0;
+  --color-status-cancel-bg:   #f9efee;
 
   /* Tipografía (system-ui para PWA offline; Inter/JetBrains Mono se añadirán via @font-face cuando se self-hosten) */
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -108,7 +108,7 @@ a {
   pointer-events: auto;
   cursor: pointer;
   font-size: 10px;
-  color: #495746;
+  color: var(--color-ink-mid);
   opacity: 0.6;
   padding: 4px;
 }
@@ -121,12 +121,12 @@ a {
   padding: 0;
   list-style: none;
   background-color: #fff;
-  border: 1px solid #d8d1c2;
+  border: 1px solid var(--color-border);
   border-radius: 8px;
   max-height: 250px;
   overflow-y: auto;
   z-index: 1000;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 .searchable-select-item {
   padding: 10px 12px;
@@ -138,15 +138,15 @@ a {
   font-size: 0.95rem;
 }
 .searchable-select-item:hover {
-  background-color: #f6f2ea;
+  background-color: var(--color-paper);
 }
 .searchable-select-item.selected {
-  background-color: #f6f2ea;
+  background-color: var(--color-paper);
   font-weight: 500;
-  color: #3f7215;
+  color: var(--color-brand);
 }
 .searchable-select-empty {
-  color: #68725f;
+  color: var(--color-ink-light);
   cursor: default;
 }
 .searchable-select-empty:hover {
@@ -154,7 +154,7 @@ a {
 }
 .searchable-select-item-right {
   font-size: 0.8em;
-  color: #68725f;
+  color: var(--color-ink-light);
 }
 .kind-badge {
   display: inline-flex;
@@ -166,16 +166,19 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-left: 0;
+  border: 1px solid transparent;
 }
 .kind-badge.libre,
 .kind-badge.campo {
-  background: #e3f0e8;
-  color: #1e5c2a;
+  background: #eff5f0;
+  color: #155b30;
+  border-color: #d8e4dc;
 }
 .kind-badge.asignada,
 .kind-badge.prog {
-  background: #e8edf8;
-  color: #2d4a9e;
+  background: #f0f3f9;
+  color: #2a4a8c;
+  border-color: #d9dfeb;
 }
 
 .zone-badge {
@@ -188,12 +191,15 @@ a {
   text-transform: uppercase;
   letter-spacing: 0.4px;
   margin-left: 4px;
+  border: 1px solid transparent;
 }
 .zone-badge.zone-norte {
-  background: #fef3c7;
-  color: #8a5a00;
+  background: #faf6ec;
+  color: #6b4500;
+  border-color: #ebe1c5;
 }
 .zone-badge.zone-sur {
-  background: #ede4f5;
-  color: #5b3b87;
+  background: #f3eef4;
+  color: #4a3568;
+  border-color: #ddd2e1;
 }

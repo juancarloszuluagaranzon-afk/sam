@@ -1,11 +1,11 @@
-import type { FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser } from '../services/samApi'
+import { createAppUser, updateAppUser, summarizeAssignments } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { WORKFLOW } from '../data/constants'
@@ -103,10 +103,15 @@ function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   return WORKFLOW.find((labor) => !completed.includes(labor)) ?? WORKFLOW[0]
 }
 
-function getStatusMeta(status: Assignment['status']) {
-  if (status === 'COMPLETADA') return { label: 'Completada', tone: 'done' as const }
-  if (status === 'EN_PROCESO') return { label: 'En uso', tone: 'progress' as const }
-  if (status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
+function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area'>) {
+  if (assignment.status === 'COMPLETADA') {
+    if (assignment.executedArea > 0 && assignment.executedArea < assignment.area) {
+      return { label: 'Parcial', tone: 'progress' as const }
+    }
+    return { label: 'Completada', tone: 'done' as const }
+  }
+  if (assignment.status === 'EN_PROCESO') return { label: 'En uso', tone: 'progress' as const }
+  if (assignment.status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
   return { label: 'Pendiente', tone: 'pending' as const }
 }
 
@@ -117,7 +122,6 @@ interface Props {
   setIsPinModalOpen: (open: boolean) => void
   pinForm: { current: string; newPin: string; confirm: string; error: string; loading: boolean }
   setPinForm: React.Dispatch<React.SetStateAction<{ current: string; newPin: string; confirm: string; error: string; loading: boolean }>>
-  laborToday: Array<{ labor: string; planned: number; executed: number; count: number }>
   recentAssignments: Assignment[]
   programmedSuerteRows: MaestroRow[]
   tableroAssignments: Assignment[]
@@ -156,7 +160,6 @@ export function SupervisorView({
   setIsPinModalOpen,
   pinForm,
   setPinForm,
-  laborToday,
   recentAssignments,
   programmedSuerteRows,
   tableroAssignments,
@@ -194,13 +197,20 @@ export function SupervisorView({
     setError, setBusy, setInfo,
   } = useAppData()
 
+  const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
+
   const {
     assignmentForm, updateAssignmentForm,
     assignmentSuertesList, toggleAssignmentSuerte,
     assignmentHaciendas, assignmentSuertes,
     prefillAssignmentForm: prefillFormState,
     createAssignment: handleCreateAssignment,
-  } = useAssignmentForm({ onAssignmentCreated: () => setSupervisorTab('labores') })
+  } = useAssignmentForm({
+    onAssignmentCreated: () => {
+      setIsCreateAssignmentOpen(false)
+      setSupervisorTab('labores')
+    },
+  })
 
   const {
     cancelAssignment: handleCancelAssignment,
@@ -221,11 +231,40 @@ export function SupervisorView({
 
   const { fileInputRef: photoInputRef, triggerUpload: triggerPhotoUpload, handleFileChange: handlePhotoChange, uploading: photoUploading } = usePhotoUpload()
 
+  const scopedAssignments = useMemo(() => {
+    if (session?.role === 'supervisor') {
+      return assignments.filter((a) => a.supervisorId === session.id)
+    }
+    return assignments
+  }, [assignments, session])
+
+  const scopedMetrics = useMemo(
+    () => summarizeAssignments(scopedAssignments, todayKey),
+    [scopedAssignments, todayKey],
+  )
+
+  const scopedLaborToday = useMemo(() => {
+    const groups = new Map<string, { planned: number; executed: number; count: number }>()
+    scopedAssignments
+      .filter((a) => a.dateKey === todayKey && a.status !== 'CANCELADA')
+      .forEach((a) => {
+        const current = groups.get(a.labor) ?? { planned: 0, executed: 0, count: 0 }
+        current.planned += a.area
+        current.count += 1
+        if (a.status === 'COMPLETADA') current.executed += a.executedArea
+        groups.set(a.labor, current)
+      })
+    return Array.from(groups.entries())
+      .map(([labor, value]) => ({ labor, ...value }))
+      .sort((a, b) => b.planned - a.planned)
+  }, [scopedAssignments, todayKey])
+
   if (!session) return null
 
   function prefillAssignmentForm(haciendaCode: string, suerte: string, labor: string) {
     prefillFormState(haciendaCode, suerte, labor)
     setSupervisorTab('asignar')
+    setIsCreateAssignmentOpen(true)
   }
 
   return (
@@ -541,11 +580,11 @@ export function SupervisorView({
 
           <div className="day-status-bar">
             <div className="day-status-item">
-              <strong>{metrics.plannedArea.toFixed(1)}</strong>
+              <strong>{metrics.plannedArea.toFixed(2)}</strong>
               <span>Ha planif.</span>
             </div>
             <div className="day-status-item day-status-item--green">
-              <strong>{metrics.executedArea.toFixed(1)}</strong>
+              <strong>{metrics.executedArea.toFixed(2)}</strong>
               <span>Ha ejecut.</span>
             </div>
             <div className={`day-status-item ${metrics.completion >= 70 ? 'day-status-item--green' : metrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
@@ -570,320 +609,121 @@ export function SupervisorView({
           <section className="kpi-grid">
             <article className="metric-panel">
               <p>HA PLANIFICADAS HOY</p>
-              <strong>{metrics.plannedArea.toFixed(1)}</strong>
+              <strong>{scopedMetrics.plannedArea.toFixed(2)}</strong>
               <span>hectareas</span>
             </article>
             <article className="metric-panel">
               <p>HA EJECUTADAS</p>
-              <strong>{metrics.executedArea.toFixed(1)}</strong>
+              <strong>{scopedMetrics.executedArea.toFixed(2)}</strong>
               <span>hectareas</span>
             </article>
             <article className="metric-panel">
               <p>CUMPLIMIENTO</p>
-              <strong className={metrics.completion < 30 ? 'danger' : ''}>
-                {metrics.completion}%
+              <strong className={scopedMetrics.completion < 30 ? 'danger' : ''}>
+                {scopedMetrics.completion}%
               </strong>
               <div className="progress-track">
-                <span style={{ width: `${Math.min(metrics.completion, 100)}%` }} />
+                <span style={{ width: `${Math.min(scopedMetrics.completion, 100)}%` }} />
               </div>
             </article>
             <article className="metric-panel">
               <p>EN PROCESO</p>
-              <strong>{metrics.inProgress}</strong>
+              <strong>{scopedMetrics.inProgress}</strong>
               <span>labores activas</span>
             </article>
           </section>
         ) : null}
 
         {supervisorTab === 'resumen' ? (
-          <>
-            <section className="dashboard-grid two-up">
-              <article className="panel-card">
-                <div className="panel-title">
-                  <h2>Operadores</h2>
-                </div>
-                <div className="list-rows">
-                  {operators.map((operator) => {
-                    const active = assignments.find(
-                      (assignment) =>
-                        assignment.operatorId === operator.id &&
-                        assignment.status === 'EN_PROCESO',
-                    )
-                    const todayBogota = (iso: string | null) =>
-                      iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : ''
-                    const relevantOp = assignments.filter(
-                      (item) =>
-                        item.operatorId === operator.id &&
-                        item.status !== 'CANCELADA' &&
-                        (item.dateKey === todayKey ||
-                          (item.status === 'COMPLETADA' && todayBogota(item.finishedAt) === todayKey)),
-                    )
-                    const planned = relevantOp.reduce((sum, item) => sum + item.area, 0)
-                    const executed = relevantOp
-                      .filter((item) => item.status === 'COMPLETADA')
-                      .reduce((sum, item) => sum + item.executedArea, 0)
-
-                    return (
-                      <div key={operator.id} className="operator-row">
-                        <div className="avatar">{initials(operator.name)}</div>
-                        <div className="row-main">
-                          <div className="operator-row__top">
-                            <strong>{operator.name}</strong>
-                            <span className={`user-status-badge user-status-badge--${active ? 'ocupado' : 'disponible'}`}>
-                              {active ? 'Ocupado' : 'Libre'}
-                            </span>
-                          </div>
-                          <span>
-                            {active
-                              ? `${active.labor} - ${active.haciendaName}`
-                              : 'Sin labor activa'}
-                          </span>
-                        </div>
-                        <strong className="row-metric">
-                          {executed.toFixed(1)}/{planned.toFixed(1)} ha
-                        </strong>
-                      </div>
-                    )
-                  })}
-                </div>
-              </article>
-
-              <article className="panel-card">
-                <div className="panel-title">
-                  <h2>Equipos</h2>
-                </div>
-                <div className="list-rows">
-                  {[...sortedEquipment].sort((a, b) => {
-                    const aActive = assignments.some(x => x.equipmentCode === a.code && x.status === 'EN_PROCESO') ? 0 : 1
-                    const bActive = assignments.some(x => x.equipmentCode === b.code && x.status === 'EN_PROCESO') ? 0 : 1
-                    return aActive - bActive
-                  }).map((item) => {
-                    const active = assignments.find(
-                      (assignment) =>
-                        assignment.equipmentCode === item.code &&
-                        assignment.status === 'EN_PROCESO',
-                    )
-                    return (
-                      <div key={item.code} className="equipment-row">
-                        <div>
-                          <strong>{item.name}</strong>
-                          <span>{active ? active.suerteCode : 'Sin labor activa'}</span>
-                        </div>
-                        <span className={`status-pill ${active ? 'progress' : 'done'}`}>
-                          {active ? 'En uso' : 'Disponible'}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </article>
-            </section>
-
-            <section className="panel-card">
-              <div className="panel-title">
-                <h2>Por Labor (Hoy)</h2>
-              </div>
-              <div className="labor-grid">
-                {laborToday.map((item) => (
-                  <article key={item.labor} className="labor-card">
-                    <p>{item.labor}</p>
-                    <strong>{item.executed.toFixed(1)}</strong>
-                    <span>
-                      / {item.planned.toFixed(1)} ha - {item.count} labores
-                    </span>
-                    <div className="progress-track">
-                      <span
-                        style={{
-                          width: `${item.planned ? Math.min((item.executed / item.planned) * 100, 100) : 0}%`,
-                        }}
-                      />
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
-          </>
+          <section className="panel-card">
+            <div className="panel-title">
+              <h2>Por Labor (Hoy)</h2>
+            </div>
+            <div className="labor-grid">
+              {scopedLaborToday.map((item) => (
+                <article key={item.labor} className="labor-card">
+                  <p>{item.labor}</p>
+                  <strong>{item.executed.toFixed(2)}</strong>
+                  <span>
+                    / {item.planned.toFixed(2)} ha - {item.count} labores
+                  </span>
+                  <div className="progress-track">
+                    <span
+                      style={{
+                        width: `${item.planned ? Math.min((item.executed / item.planned) * 100, 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </article>
+              ))}
+              {scopedLaborToday.length === 0 && (
+                <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
+                  Sin labores hoy.
+                </p>
+              )}
+            </div>
+          </section>
         ) : null}
 
         {supervisorTab === 'asignar' ? (
-          <section className="dashboard-grid two-up">
-            <article className="panel-card">
-              <div className="panel-title">
-                <h2>Crear asignacion</h2>
-              </div>
-              <form className="form-grid-block" onSubmit={handleCreateAssignment}>
-                <label>
-                  Zona
-                  <SearchableSelect
-                    value={assignmentForm.zone}
-                    onChange={(value) => updateAssignmentForm('zone', value)}
-                    placeholder="Selecciona la zona"
-                    options={[
-                      { value: 'NORTE', label: 'Zona Norte' },
-                      { value: 'SUR', label: 'Zona Sur' },
-                    ]}
-                  />
-                </label>
-                <label>
-                  Cliente
-                  <SearchableSelect
-                    value={assignmentForm.cliente}
-                    onChange={(value) => updateAssignmentForm('cliente', value)}
-                    options={[
-                      { value: 'ingenios', label: 'Ingenios' },
-                      { value: 'proveedores', label: 'Proveedores' },
-                    ]}
-                  />
-                </label>
-                <label>
-                  Ingenio
-                  <SearchableSelect
-                    value={assignmentForm.ingenioId}
-                    onChange={(value) => updateAssignmentForm('ingenioId', value)}
-                    placeholder="Selecciona un ingenio"
-                    options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
-                  />
-                </label>
-                <label>
-                  Hacienda
-                  <SearchableSelect
-                    value={assignmentForm.haciendaCode}
-                    onChange={(value) => updateAssignmentForm('haciendaCode', value)}
-                    placeholder={!assignmentForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
-                    options={assignmentHaciendas.map((item) => ({
-                      value: item.code,
-                      label: `${item.code} - ${item.name}`,
-                    }))}
-                  />
-                </label>
-                <div>
-                  <span className="field-label">Suertes</span>
-                  {assignmentForm.haciendaCode ? (
-                    <ul className="suertes-checklist">
-                      {assignmentSuertes.map((row) => {
-                        const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
-                        const remaining = assignmentForm.labor
-                          ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area)
-                          : row.area
-                        const isCompleted = assignmentForm.labor && remaining === 0
-                        return (
-                          <li key={row.suerte}>
-                            <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={assignmentSuertesList.includes(row.suerte)}
-                                onChange={() => !isCompleted && toggleAssignmentSuerte(row.suerte)}
-                                disabled={!!isCompleted}
-                              />
-                              <span className="suerte-check-code">{row.suerte}</span>
-                              {isCompleted
-                                ? <span className="suerte-check-done">Completa</span>
-                                : <span className="suerte-check-area">{formatArea(remaining)}</span>
-                              }
-                            </label>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="field-hint">Selecciona una hacienda primero</p>
-                  )}
-                  {assignmentSuertesList.length > 0 && (
-                    <p className="suertes-count">{assignmentSuertesList.length} suerte(s) seleccionada(s)</p>
-                  )}
-                </div>
-                <label>
-                  Labor
-                  <SearchableSelect
-                    value={assignmentForm.labor}
-                    onChange={(value) => updateAssignmentForm('labor', value)}
-                    options={WORKFLOW.map((labor) => {
-                      const firstSuerte = assignmentSuertesList[0]
-                      const isSuggested =
-                        assignmentForm.haciendaCode && firstSuerte
-                          ? labor === getSuggestedLabor(assignments, `${assignmentForm.haciendaCode}-${firstSuerte}`)
-                          : false
-                      return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
-                    })}
-                  />
-                </label>
-                <label>
-                  Operador
-                  <SearchableSelect
-                    value={assignmentForm.operatorId}
-                    onChange={(value) => updateAssignmentForm('operatorId', value)}
-                    options={operators.map((op) => ({ value: op.id, label: op.name }))}
-                  />
-                </label>
-                <label>
-                  Equipo
-                  <SearchableSelect
-                    value={assignmentForm.equipmentCode}
-                    onChange={(value) => updateAssignmentForm('equipmentCode', value)}
-                    options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
-                  />
-                </label>
-                <label>
-                  Operador 2 <span className="field-optional">(opcional)</span>
-                  <SearchableSelect
-                    value={assignmentForm.operatorId2}
-                    onChange={(value) => updateAssignmentForm('operatorId2', value)}
-                    options={operators.map((op) => ({ value: op.id, label: op.name }))}
-                  />
-                </label>
-                <label>
-                  Equipo 2 <span className="field-optional">(opcional)</span>
-                  <SearchableSelect
-                    value={assignmentForm.equipmentCode2}
-                    onChange={(value) => updateAssignmentForm('equipmentCode2', value)}
-                    options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
-                  />
-                </label>
-                <label>
-                  Observaciones
-                  <textarea
-                    rows={3}
-                    value={assignmentForm.notes}
-                    onChange={(event) => updateAssignmentForm('notes', event.target.value)}
-                    placeholder="Indicaciones para la labor"
-                  />
-                </label>
-                <button className="primary-button" type="submit" disabled={busy}>
-                  {busy ? 'Guardando...' : 'Crear asignacion'}
-                </button>
-              </form>
-            </article>
+          <section className="assign-tab-stack">
+            <button
+              type="button"
+              className="primary-button assign-cta"
+              onClick={() => setIsCreateAssignmentOpen(true)}
+            >
+              + Crear asignación
+            </button>
 
             <article className="panel-card">
               <div className="panel-title">
                 <h2>Ultimos movimientos</h2>
               </div>
-              <div className="list-rows">
+              <ul className="movement-list">
                 {recentAssignments.map((assignment) => {
-                  const meta = getStatusMeta(assignment.status)
+                  const meta = getStatusMeta(assignment)
                   return (
-                    <div key={assignment.id} className="movement-row">
-                      <div>
-                        <strong>
-                          {assignment.haciendaName} - {assignment.suerte}
-                        </strong>
-                        <span>
-                          {assignment.labor}
+                    <li key={assignment.id}>
+                      <button
+                        type="button"
+                        className="movement-card"
+                        onClick={() => setSelectedLabor(assignment)}
+                      >
+                        <div className="movement-card__top">
+                          <strong className="movement-card__title">
+                            {assignment.haciendaName} · {assignment.suerte}
+                          </strong>
+                          <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
+                        </div>
+                        <div className="movement-card__meta">
+                          <span className="movement-card__labor">{assignment.labor}</span>
                           {assignment.kind === 'ASIGNADA' ? (
                             <span className="kind-badge asignada">Prog.</span>
                           ) : (
                             <span className="kind-badge libre">Campo</span>
-                          )}{' '}
-                          - {assignment.operatorName || 'Sin operador'} - {assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}
-                        </span>
-                      </div>
-                      <div className="movement-side">
-                        <span className={`status-pill ${meta.tone}`}>{formatArea(assignment.area)}</span>
-                      </div>
-                    </div>
+                          )}
+                          {assignment.zone && (
+                            <span className={`zone-badge zone-${assignment.zone.toLowerCase()}`}>
+                              {assignment.zone === 'NORTE' ? 'Norte' : 'Sur'}
+                            </span>
+                          )}
+                          <span className="movement-card__area">{formatArea(assignment.area)}</span>
+                        </div>
+                        <div className="movement-card__footer">
+                          <span>{assignment.operatorName || 'Sin operador'}</span>
+                          <span className="movement-card__sep">·</span>
+                          <span>{assignment.equipmentName || assignment.equipmentCode || 'Sin equipo'}</span>
+                          <span className="movement-card__sep">·</span>
+                          <span>{assignment.dateKey}</span>
+                        </div>
+                      </button>
+                    </li>
                   )
                 })}
-              </div>
+                {recentAssignments.length === 0 && (
+                  <li className="movement-empty">Sin movimientos recientes.</li>
+                )}
+              </ul>
             </article>
           </section>
         ) : null}
@@ -946,7 +786,7 @@ export function SupervisorView({
                           <strong>{row.haciendaCode}-{row.suerte}</strong>
                           <small>{row.haciendaName}</small>
                         </td>
-                        <td className="center-cell">{row.area.toFixed(1)}</td>
+                        <td className="center-cell">{row.area.toFixed(2)}</td>
                         <td className="center-cell">{firstDate}</td>
                         <td className="center-cell tab-hide-mobile">1</td>
                         <td className="center-cell tab-hide-mobile">DOBLE</td>
@@ -955,10 +795,21 @@ export function SupervisorView({
                             (item) => item.labor.toUpperCase() === labor.toUpperCase(),
                           )
                           const status = assignment?.status ?? 'PENDIENTE'
+                          const isPartial =
+                            status === 'COMPLETADA' &&
+                            !!assignment &&
+                            assignment.executedArea > 0 &&
+                            assignment.executedArea < assignment.area
                           const isAssignable = status === 'PENDIENTE' && isSupervisorOrOwner(session.role)
                           const cellClass = [
                             'labor-cell-box',
-                            status === 'COMPLETADA' ? 'completada' : status === 'EN_PROCESO' ? 'en_proceso' : 'pendiente',
+                            isPartial
+                              ? 'parcial'
+                              : status === 'COMPLETADA'
+                                ? 'completada'
+                                : status === 'EN_PROCESO'
+                                  ? 'en_proceso'
+                                  : 'pendiente',
                             isAssignable ? 'tab-cell-assignable' : '',
                           ].join(' ').trim()
 
@@ -973,12 +824,12 @@ export function SupervisorView({
                                 {status === 'COMPLETADA' && assignment && (
                                   <span>
                                     {assignment.executedArea > 0
-                                      ? `${assignment.executedArea.toFixed(1)} ha`
-                                      : `${assignment.area.toFixed(1)} ha`}
+                                      ? `${assignment.executedArea.toFixed(2)} ha`
+                                      : `${assignment.area.toFixed(2)} ha`}
                                   </span>
                                 )}
                                 {status === 'PENDIENTE' && (
-                                  <span>{(assignment?.area ?? row.area).toFixed(1)} ha</span>
+                                  <span>{(assignment?.area ?? row.area).toFixed(2)} ha</span>
                                 )}
                               </div>
                             </td>
@@ -992,6 +843,7 @@ export function SupervisorView({
             </div>
             <div className="tablero-legend">
               <span className="tablero-legend-item completada">Ejecutada</span>
+              <span className="tablero-legend-item parcial">Parcial</span>
               <span className="tablero-legend-item en_proceso"><span className="spinner">RUN</span> En ejecucion</span>
               <span className="tablero-legend-item pendiente">Pendiente</span>
             </div>
@@ -1057,8 +909,8 @@ export function SupervisorView({
 
             <div className="report-summary-bar">
               <span>{filteredReport.length} registros</span>
-              <span>{filteredReport.reduce((s, a) => s + a.area, 0).toFixed(1)} ha plan.</span>
-              <span>{filteredReport.filter(a => a.status === 'COMPLETADA').reduce((s, a) => s + (a.executedArea || a.area), 0).toFixed(1)} ha ejec.</span>
+              <span>{filteredReport.reduce((s, a) => s + a.area, 0).toFixed(2)} ha plan.</span>
+              <span>{filteredReport.filter(a => a.status === 'COMPLETADA').reduce((s, a) => s + (a.executedArea || a.area), 0).toFixed(2)} ha ejec.</span>
             </div>
 
             <div className="report-table-wrap">
@@ -1076,7 +928,7 @@ export function SupervisorView({
                 </thead>
                 <tbody>
                   {filteredReport.slice(0, 30).map((a) => {
-                    const meta = getStatusMeta(a.status)
+                    const meta = getStatusMeta(a)
                     return (
                       <tr key={a.id}>
                         <td>{a.dateKey}</td>
@@ -1351,7 +1203,7 @@ export function SupervisorView({
 
             <ul className="labores-list">
               {filteredAssignments.map((assignment) => {
-                const meta = getStatusMeta(assignment.status)
+                const meta = getStatusMeta(assignment)
                 return (
                   <li key={assignment.id} className="labor-item labor-item--tappable" onClick={() => setSelectedLabor(assignment)}>
                     <span className="labor-title">
@@ -1567,7 +1419,7 @@ export function SupervisorView({
                         </span>
                       </div>
                       <div className="equipment-card-body">
-                        <strong>{planned.toFixed(1)} ha</strong>
+                        <strong>{planned.toFixed(2)} ha</strong>
                         <span>
                           {active
                             ? `${active.operatorName} - ${active.haciendaName} ${active.suerte}`
@@ -1583,7 +1435,7 @@ export function SupervisorView({
         ) : null}
 
         {selectedLabor && (() => {
-          const meta = getStatusMeta(selectedLabor.status)
+          const meta = getStatusMeta(selectedLabor)
           return (
             <div className="modal-overlay open" onClick={() => setSelectedLabor(null)}>
               <div className="modal-card labor-detail-card" onClick={(e) => e.stopPropagation()}>
@@ -1596,11 +1448,23 @@ export function SupervisorView({
                 </div>
 
                 <div className="labor-detail-grid">
+                  <span className="labor-label">Fecha</span>
+                  <span className="labor-value">{selectedLabor.dateKey || '—'}</span>
+
                   <span className="labor-label">Hacienda</span>
                   <span className="labor-value">{selectedLabor.haciendaName}</span>
 
                   <span className="labor-label">Suerte</span>
                   <span className="labor-value">{selectedLabor.suerte}</span>
+
+                  <span className="labor-label">Zona</span>
+                  <span className="labor-value">
+                    {selectedLabor.zone ? (
+                      <span className={`zone-badge zone-${selectedLabor.zone.toLowerCase()}`}>
+                        {selectedLabor.zone === 'NORTE' ? 'Norte' : 'Sur'}
+                      </span>
+                    ) : '—'}
+                  </span>
 
                   <span className="labor-label">Tipo</span>
                   <span className="labor-value">
@@ -1608,6 +1472,17 @@ export function SupervisorView({
                       <span className="kind-badge asignada">Programada</span>
                     ) : (
                       <span className="kind-badge libre">Campo libre</span>
+                    )}
+                  </span>
+
+                  <span className="labor-label">Aprobación</span>
+                  <span className="labor-value">
+                    {selectedLabor.approval === 'APROBADA' && '✓ Aprobada'}
+                    {selectedLabor.approval === 'PENDIENTE' && (
+                      <span className="approval-chip approval-pendiente">Por aprobar</span>
+                    )}
+                    {selectedLabor.approval === 'RECHAZADA' && (
+                      <span className="approval-chip approval-rechazada">Rechazada</span>
                     )}
                   </span>
 
@@ -1722,6 +1597,171 @@ export function SupervisorView({
         </div>
 
       </div>
+
+      {isCreateAssignmentOpen && (
+        <>
+          <div className="more-sheet-overlay" onClick={() => setIsCreateAssignmentOpen(false)} />
+          <div className="more-sheet assign-sheet" role="dialog" aria-label="Crear asignación">
+            <div className="more-sheet__handle" />
+            <div className="active-sheet__header">
+              <div>
+                <strong>Crear asignación</strong>
+                <span className="subtle-copy">Programa una labor para un operador</span>
+              </div>
+              <button
+                type="button"
+                className="active-sheet__close"
+                onClick={() => setIsCreateAssignmentOpen(false)}
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form className="form-grid-block" onSubmit={handleCreateAssignment}>
+              <label>
+                Zona
+                <SearchableSelect
+                  value={assignmentForm.zone}
+                  onChange={(value) => updateAssignmentForm('zone', value)}
+                  placeholder="Selecciona la zona"
+                  options={[
+                    { value: 'NORTE', label: 'Zona Norte' },
+                    { value: 'SUR', label: 'Zona Sur' },
+                  ]}
+                />
+              </label>
+              <label>
+                Cliente
+                <SearchableSelect
+                  value={assignmentForm.cliente}
+                  onChange={(value) => updateAssignmentForm('cliente', value)}
+                  options={[
+                    { value: 'ingenios', label: 'Ingenios' },
+                    { value: 'proveedores', label: 'Proveedores' },
+                  ]}
+                />
+              </label>
+              <label>
+                Ingenio
+                <SearchableSelect
+                  value={assignmentForm.ingenioId}
+                  onChange={(value) => updateAssignmentForm('ingenioId', value)}
+                  placeholder="Selecciona un ingenio"
+                  options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                />
+              </label>
+              <label>
+                Hacienda
+                <SearchableSelect
+                  value={assignmentForm.haciendaCode}
+                  onChange={(value) => updateAssignmentForm('haciendaCode', value)}
+                  placeholder={!assignmentForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                  options={assignmentHaciendas.map((item) => ({
+                    value: item.code,
+                    label: `${item.code} - ${item.name}`,
+                  }))}
+                />
+              </label>
+              <div>
+                <span className="field-label">Suertes</span>
+                {assignmentForm.haciendaCode ? (
+                  <ul className="suertes-checklist">
+                    {assignmentSuertes.map((row) => {
+                      const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
+                      const remaining = assignmentForm.labor
+                        ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area)
+                        : row.area
+                      const isCompleted = assignmentForm.labor && remaining === 0
+                      return (
+                        <li key={row.suerte}>
+                          <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={assignmentSuertesList.includes(row.suerte)}
+                              onChange={() => !isCompleted && toggleAssignmentSuerte(row.suerte)}
+                              disabled={!!isCompleted}
+                            />
+                            <span className="suerte-check-code">{row.suerte}</span>
+                            {isCompleted
+                              ? <span className="suerte-check-done">Completa</span>
+                              : <span className="suerte-check-area">{formatArea(remaining)}</span>
+                            }
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="field-hint">Selecciona una hacienda primero</p>
+                )}
+                {assignmentSuertesList.length > 0 && (
+                  <p className="suertes-count">{assignmentSuertesList.length} suerte(s) seleccionada(s)</p>
+                )}
+              </div>
+              <label>
+                Labor
+                <SearchableSelect
+                  value={assignmentForm.labor}
+                  onChange={(value) => updateAssignmentForm('labor', value)}
+                  options={WORKFLOW.map((labor) => {
+                    const firstSuerte = assignmentSuertesList[0]
+                    const isSuggested =
+                      assignmentForm.haciendaCode && firstSuerte
+                        ? labor === getSuggestedLabor(assignments, `${assignmentForm.haciendaCode}-${firstSuerte}`)
+                        : false
+                    return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
+                  })}
+                />
+              </label>
+              <label>
+                Operador
+                <SearchableSelect
+                  value={assignmentForm.operatorId}
+                  onChange={(value) => updateAssignmentForm('operatorId', value)}
+                  options={operators.map((op) => ({ value: op.id, label: op.name }))}
+                />
+              </label>
+              <label>
+                Equipo
+                <SearchableSelect
+                  value={assignmentForm.equipmentCode}
+                  onChange={(value) => updateAssignmentForm('equipmentCode', value)}
+                  options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
+                />
+              </label>
+              <label>
+                Operador 2 <span className="field-optional">(opcional)</span>
+                <SearchableSelect
+                  value={assignmentForm.operatorId2}
+                  onChange={(value) => updateAssignmentForm('operatorId2', value)}
+                  options={operators.map((op) => ({ value: op.id, label: op.name }))}
+                />
+              </label>
+              <label>
+                Equipo 2 <span className="field-optional">(opcional)</span>
+                <SearchableSelect
+                  value={assignmentForm.equipmentCode2}
+                  onChange={(value) => updateAssignmentForm('equipmentCode2', value)}
+                  options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
+                />
+              </label>
+              <label>
+                Observaciones
+                <textarea
+                  rows={3}
+                  value={assignmentForm.notes}
+                  onChange={(event) => updateAssignmentForm('notes', event.target.value)}
+                  placeholder="Indicaciones para la labor"
+                />
+              </label>
+              <button className="primary-button" type="submit" disabled={busy}>
+                {busy ? 'Guardando...' : 'Crear asignacion'}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </main>
   )
 }

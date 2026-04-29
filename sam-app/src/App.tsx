@@ -106,22 +106,6 @@ function AppContent() {
     return Array.from(codes.entries()).map(([code, name]) => ({ code, name }))
   }, [assignments, ingenioFilter, maestro])
 
-  const laborToday = useMemo(() => {
-    const groups = new Map<string, { planned: number; executed: number; count: number }>()
-    assignments
-      .filter((a) => a.dateKey === todayKey && a.status !== 'CANCELADA')
-      .forEach((a) => {
-        const current = groups.get(a.labor) ?? { planned: 0, executed: 0, count: 0 }
-        current.planned += a.area
-        current.count += 1
-        if (a.status === 'COMPLETADA') current.executed += a.executedArea
-        groups.set(a.labor, current)
-      })
-    return Array.from(groups.entries())
-      .map(([labor, value]) => ({ labor, ...value }))
-      .sort((a, b) => b.planned - a.planned)
-  }, [assignments, todayKey])
-
   const recentAssignments = useMemo(() => assignments.slice(0, 8), [assignments])
 
   const tableroAssignments = useMemo(() => {
@@ -277,7 +261,6 @@ function AppContent() {
         setIsPinModalOpen={setIsPinModalOpen}
         pinForm={pinForm}
         setPinForm={setPinForm}
-        laborToday={laborToday}
         recentAssignments={recentAssignments}
         programmedSuerteRows={programmedSuerteRows}
         tableroAssignments={tableroAssignments}

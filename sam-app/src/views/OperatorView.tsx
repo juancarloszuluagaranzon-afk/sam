@@ -66,10 +66,15 @@ function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   return WORKFLOW.find((labor) => !completed.includes(labor)) ?? WORKFLOW[0]
 }
 
-function getStatusMeta(status: Assignment['status']) {
-  if (status === 'COMPLETADA') return { label: 'Completada', tone: 'done' as const }
-  if (status === 'EN_PROCESO') return { label: 'En uso', tone: 'progress' as const }
-  if (status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
+function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area'>) {
+  if (assignment.status === 'COMPLETADA') {
+    if (assignment.executedArea > 0 && assignment.executedArea < assignment.area) {
+      return { label: 'Parcial', tone: 'progress' as const }
+    }
+    return { label: 'Completada', tone: 'done' as const }
+  }
+  if (assignment.status === 'EN_PROCESO') return { label: 'En uso', tone: 'progress' as const }
+  if (assignment.status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
   return { label: 'Pendiente', tone: 'pending' as const }
 }
 
@@ -112,13 +117,20 @@ export function OperatorView({
 }: Props) {
   const { session, assignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey } = useAppData()
 
+  const [isFreeFieldOpen, setIsFreeFieldOpen] = useState(false)
+
   const {
     freeFieldForm, updateFreeFieldForm,
     freeFieldSuertesList, toggleFreeFieldSuerte,
     freeFieldHaciendas, freeFieldSuertes,
     supervisors: freeFieldSupervisors,
     takeFreeField: onCreateFreeField,
-  } = useFreeFieldForm({ onFreeFieldTaken: () => setOperatorTab('activas') })
+  } = useFreeFieldForm({
+    onFreeFieldTaken: () => {
+      setIsFreeFieldOpen(false)
+      setOperatorTab('activas')
+    },
+  })
 
   const {
     finishDrafts, setFinishDrafts,
@@ -162,25 +174,18 @@ export function OperatorView({
     [operatorAssignments],
   )
 
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set())
+  const [selectedActiveAssignment, setSelectedActiveAssignment] = useState<Assignment | null>(null)
 
   useEffect(() => {
-    setExpandedCards((prev) => {
-      const next = new Set(prev)
-      activeAssignments.forEach((a) => {
-        if (a.status === 'PENDIENTE' && !next.has(a.id)) next.add(a.id)
-      })
-      return next
-    })
-  }, [activeAssignments])
+    if (!selectedActiveAssignment) return
+    const fresh = activeAssignments.find((a) => a.id === selectedActiveAssignment.id)
+    if (!fresh) {
+      setSelectedActiveAssignment(null)
+    } else if (fresh !== selectedActiveAssignment) {
+      setSelectedActiveAssignment(fresh)
+    }
+  }, [activeAssignments, selectedActiveAssignment])
 
-  function toggleCard(id: string) {
-    setExpandedCards((prev) => {
-      const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
-      return next
-    })
-  }
 
   const historyAssignments = useMemo(
     () => operatorAssignments.filter((a) => a.status === 'COMPLETADA' || a.status === 'CANCELADA'),
@@ -233,7 +238,7 @@ export function OperatorView({
     setFinishDrafts((current) => ({
       ...current,
       [assignmentId]: {
-        area: isComplete ? fullArea.toFixed(1) : (current[assignmentId]?.area ?? ''),
+        area: isComplete ? fullArea.toFixed(2) : (current[assignmentId]?.area ?? ''),
         notes: current[assignmentId]?.notes ?? '',
         horometroFinal: current[assignmentId]?.horometroFinal ?? '',
         isComplete,
@@ -394,11 +399,11 @@ export function OperatorView({
           <section className="operator-stack operator-mobile-stack">
             <div className="operator-kpi-grid">
               <article className="operator-kpi-card operator-kpi-card--neutral">
-                <strong>{operatorMetrics.todayPlanned.toFixed(1)}</strong>
+                <strong>{operatorMetrics.todayPlanned.toFixed(2)}</strong>
                 <span>ha planificadas hoy</span>
               </article>
               <article className="operator-kpi-card operator-kpi-card--green">
-                <strong>{operatorMetrics.todayExecuted.toFixed(1)}</strong>
+                <strong>{operatorMetrics.todayExecuted.toFixed(2)}</strong>
                 <span>ha ejecutadas</span>
                 <div className="operator-kpi-bar">
                   <span style={{ width: `${Math.min(operatorMetrics.completion, 100)}%` }} />
@@ -417,160 +422,28 @@ export function OperatorView({
               </article>
             </div>
             {activeAssignments.map((assignment) => {
-              const meta = getStatusMeta(assignment.status)
-              const draft = finishDrafts[assignment.id]
-              const isExpanded = expandedCards.has(assignment.id)
+              const meta = getStatusMeta(assignment)
               return (
-                <article key={assignment.id} className="panel-card active-card operator-work-card">
-                  <button
-                    type="button"
-                    className="card-collapse-header"
-                    onClick={() => toggleCard(assignment.id)}
-                  >
-                    <div>
-                      <h2>
-                        {assignment.haciendaName} - {assignment.suerte}
-                      </h2>
-                      <p className="subtle-copy">
-                        {assignment.labor}{' '}
-                        {assignment.kind === 'ASIGNADA' ? (
-                          <span className="kind-badge asignada">Prog.</span>
-                        ) : (
-                          <span className="kind-badge libre">Campo</span>
-                        )}{' '}
-                        - {formatArea(assignment.area)}
-                      </p>
-                    </div>
-                    <div className="card-collapse-right">
-                      <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
-                      <span className="card-collapse-chevron">{isExpanded ? '▲' : '▼'}</span>
-                    </div>
-                  </button>
-                  {isExpanded && (
-                  <><div className="active-meta">
-                    <span>Equipo: {assignment.equipmentName || '-'}</span>
-                    <span>Inicio: {formatTime(assignment.startedAt)}</span>
-                    {assignment.horometroInicial != null && (
-                      <span>Horometro inicial: {assignment.horometroInicial}</span>
-                    )}
+                <button
+                  key={assignment.id}
+                  type="button"
+                  className="panel-card active-card-compact"
+                  onClick={() => setSelectedActiveAssignment(assignment)}
+                >
+                  <div className="active-card-compact__main">
+                    <h2>{assignment.haciendaName} - {assignment.suerte}</h2>
+                    <p className="subtle-copy">
+                      {assignment.labor}{' '}
+                      {assignment.kind === 'ASIGNADA' ? (
+                        <span className="kind-badge asignada">Prog.</span>
+                      ) : (
+                        <span className="kind-badge libre">Campo</span>
+                      )}{' '}
+                      - {formatArea(assignment.area)}
+                    </p>
                   </div>
-                  {assignment.status === 'PENDIENTE' ? (
-                    <div className="start-grid">
-                      <label>
-                        Equipo para ejecutar
-                        <select
-                          value={
-                            startEquipmentDrafts[assignment.id] ||
-                            assignment.equipmentCode ||
-                            session.equipmentCode
-                          }
-                          onChange={(event) =>
-                            updateStartEquipmentDraft(assignment.id, event.target.value)
-                          }
-                        >
-                          <option value="">Seleccionar equipo</option>
-                          {sortedEquipment.map((item) => (
-                            <option key={item.code} value={item.code}>
-                              {item.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        Horometro inicial
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={startHorometroDrafts[assignment.id] ?? ''}
-                          onChange={(event) =>
-                            updateStartHorometroDraft(assignment.id, event.target.value)
-                          }
-                          placeholder="Ej: 4523.5"
-                        />
-                      </label>
-                      <button
-                        className="primary-button"
-                        onClick={() => void onStartAssignment(assignment)}
-                        disabled={busy}
-                      >
-                        Iniciar labor
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="finish-grid">
-                      <div className="complete-toggle-row">
-                        <div>
-                          <span className="complete-toggle-label">Labor completada al 100%</span>
-                          <span className="complete-toggle-hint">
-                            {draft?.isComplete
-                              ? `Se registran ${formatArea(assignment.area)}`
-                              : 'Ingresa el área ejecutada'}
-                          </span>
-                        </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={draft?.isComplete ?? false}
-                          className={`toggle-switch ${(draft?.isComplete ?? false) ? 'on' : ''}`}
-                          onClick={() => setFinishDraftComplete(assignment.id, !(draft?.isComplete ?? false), assignment.area)}
-                        >
-                          <span className="toggle-thumb" />
-                        </button>
-                      </div>
-
-                      {!(draft?.isComplete ?? false) && (
-                        <label>
-                          Ha ejecutadas
-                          <input
-                            type="number"
-                            min={0.1}
-                            step={0.1}
-                            max={assignment.area}
-                            value={draft?.area ?? ''}
-                            onChange={(event) =>
-                              updateFinishDraft(assignment.id, 'area', event.target.value)
-                            }
-                            placeholder={`máx. ${assignment.area.toFixed(1)}`}
-                          />
-                        </label>
-                      )}
-
-                      <label>
-                        Horometro final
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.1}
-                          value={draft?.horometroFinal ?? ''}
-                          onChange={(event) =>
-                            updateFinishDraft(assignment.id, 'horometroFinal', event.target.value)
-                          }
-                          placeholder="Ej: 4541.2"
-                        />
-                      </label>
-                      <label className="finish-notes">
-                        Observaciones
-                        <textarea
-                          rows={3}
-                          value={draft?.notes ?? ''}
-                          onChange={(event) =>
-                            updateFinishDraft(assignment.id, 'notes', event.target.value)
-                          }
-                          placeholder="Notas de cierre"
-                        />
-                      </label>
-                      <button
-                        className="primary-button"
-                        onClick={() => void onFinishAssignment(assignment)}
-                        disabled={busy}
-                      >
-                        Finalizar
-                      </button>
-                    </div>
-                  )}
-                  </>)}
-                </article>
+                  <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
+                </button>
               )
             })}
             {!activeAssignments.length ? (
@@ -579,146 +452,169 @@ export function OperatorView({
                 <p>Puedes tomar una suerte desde la pestana Campo libre.</p>
               </section>
             ) : null}
+
+            {selectedActiveAssignment && (() => {
+              const a = selectedActiveAssignment
+              const draft = finishDrafts[a.id]
+              return (
+                <>
+                  <div className="more-sheet-overlay" onClick={() => setSelectedActiveAssignment(null)} />
+                  <div className="more-sheet active-sheet" role="dialog" aria-label={`Labor ${a.labor}`}>
+                    <div className="more-sheet__handle" />
+                    <div className="active-sheet__header">
+                      <div>
+                        <strong>{a.haciendaName} - {a.suerte}</strong>
+                        <span className="subtle-copy">{a.labor} - {formatArea(a.area)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="active-sheet__close"
+                        onClick={() => setSelectedActiveAssignment(null)}
+                        aria-label="Cerrar"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    <div className="active-meta">
+                      <span>Equipo: {a.equipmentName || '-'}</span>
+                      <span>Inicio: {formatTime(a.startedAt)}</span>
+                      {a.horometroInicial != null && (
+                        <span>Horometro inicial: {a.horometroInicial}</span>
+                      )}
+                    </div>
+
+                    {a.status === 'PENDIENTE' ? (
+                      <div className="start-grid">
+                        <label>
+                          Equipo para ejecutar
+                          <select
+                            value={
+                              startEquipmentDrafts[a.id] ||
+                              a.equipmentCode ||
+                              session.equipmentCode
+                            }
+                            onChange={(event) =>
+                              updateStartEquipmentDraft(a.id, event.target.value)
+                            }
+                          >
+                            <option value="">Seleccionar equipo</option>
+                            {sortedEquipment.map((item) => (
+                              <option key={item.code} value={item.code}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Horometro inicial
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={startHorometroDrafts[a.id] ?? ''}
+                            onChange={(event) =>
+                              updateStartHorometroDraft(a.id, event.target.value)
+                            }
+                            placeholder="Ej: 4523.5"
+                          />
+                        </label>
+                        <button
+                          className="primary-button"
+                          onClick={() => void onStartAssignment(a)}
+                          disabled={busy}
+                        >
+                          Iniciar labor
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="finish-grid">
+                        <div className="complete-toggle-row">
+                          <div>
+                            <span className="complete-toggle-label">Labor completada al 100%</span>
+                            <span className="complete-toggle-hint">
+                              {draft?.isComplete
+                                ? `Se registran ${formatArea(a.area)}`
+                                : 'Ingresa el área ejecutada'}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={draft?.isComplete ?? false}
+                            className={`toggle-switch ${(draft?.isComplete ?? false) ? 'on' : ''}`}
+                            onClick={() => setFinishDraftComplete(a.id, !(draft?.isComplete ?? false), a.area)}
+                          >
+                            <span className="toggle-thumb" />
+                          </button>
+                        </div>
+
+                        {!(draft?.isComplete ?? false) && (
+                          <label>
+                            Ha ejecutadas
+                            <input
+                              type="number"
+                              min={0.1}
+                              step={0.1}
+                              max={a.area}
+                              value={draft?.area ?? ''}
+                              onChange={(event) =>
+                                updateFinishDraft(a.id, 'area', event.target.value)
+                              }
+                              placeholder={`máx. ${a.area.toFixed(2)}`}
+                            />
+                          </label>
+                        )}
+
+                        <label>
+                          Horometro final
+                          <input
+                            type="number"
+                            min={0}
+                            step={0.1}
+                            value={draft?.horometroFinal ?? ''}
+                            onChange={(event) =>
+                              updateFinishDraft(a.id, 'horometroFinal', event.target.value)
+                            }
+                            placeholder="Ej: 4541.2"
+                          />
+                        </label>
+                        <label className="finish-notes">
+                          Observaciones
+                          <textarea
+                            rows={3}
+                            value={draft?.notes ?? ''}
+                            onChange={(event) =>
+                              updateFinishDraft(a.id, 'notes', event.target.value)
+                            }
+                            placeholder="Notas de cierre"
+                          />
+                        </label>
+                        <button
+                          className="primary-button"
+                          onClick={() => void onFinishAssignment(a)}
+                          disabled={busy}
+                        >
+                          Finalizar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
           </section>
         ) : null}
 
         {operatorTab === 'campo' ? (
-          <section className="dashboard-grid two-up operator-field-layout">
-            <article className="panel-card operator-form-card">
-              <div className="panel-title">
-                <h2>Tomar suerte en campo</h2>
-              </div>
-              <form className="form-grid-block" onSubmit={onCreateFreeField}>
-                <label>
-                  Zona
-                  <SearchableSelect
-                    value={freeFieldForm.zone}
-                    onChange={(value) => updateFreeFieldForm('zone', value)}
-                    placeholder="Selecciona la zona"
-                    options={[
-                      { value: 'NORTE', label: 'Zona Norte' },
-                      { value: 'SUR', label: 'Zona Sur' },
-                    ]}
-                  />
-                </label>
-                <label>
-                  Cliente
-                  <SearchableSelect
-                    value={freeFieldForm.cliente}
-                    onChange={(value) => updateFreeFieldForm('cliente', value)}
-                    options={[
-                      { value: 'ingenios', label: 'Ingenios' },
-                      { value: 'proveedores', label: 'Proveedores' },
-                    ]}
-                  />
-                </label>
-                <label>
-                  Ingenio
-                  <SearchableSelect
-                    value={freeFieldForm.ingenioId}
-                    onChange={(value) => updateFreeFieldForm('ingenioId', value)}
-                    placeholder="Selecciona un ingenio"
-                    options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
-                  />
-                </label>
-                <label>
-                  Hacienda
-                  <SearchableSelect
-                    value={freeFieldForm.haciendaCode}
-                    onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
-                    placeholder={!freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
-                    options={freeFieldHaciendas.map((item) => ({
-                      value: item.code,
-                      label: `${item.code} - ${item.name}`,
-                    }))}
-                  />
-                </label>
-                <div>
-                  <span className="field-label">Suertes</span>
-                  {freeFieldForm.haciendaCode ? (
-                    <ul className="suertes-checklist">
-                      {freeFieldSuertes.map((row) => {
-                        const suerteCode = `${freeFieldForm.haciendaCode}-${row.suerte}`
-                        const remaining = freeFieldForm.labor
-                          ? getRemainingArea(assignments, suerteCode, freeFieldForm.labor, row.area)
-                          : row.area
-                        const isCompleted = freeFieldForm.labor && remaining === 0
-                        return (
-                          <li key={row.suerte}>
-                            <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
-                              <input
-                                type="checkbox"
-                                checked={freeFieldSuertesList.includes(row.suerte)}
-                                onChange={() => !isCompleted && toggleFreeFieldSuerte(row.suerte)}
-                                disabled={!!isCompleted}
-                              />
-                              <span className="suerte-check-code">{row.suerte}</span>
-                              {isCompleted
-                                ? <span className="suerte-check-done">Completa</span>
-                                : <span className="suerte-check-area">{formatArea(remaining)}</span>
-                              }
-                            </label>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  ) : (
-                    <p className="field-hint">Selecciona una hacienda primero</p>
-                  )}
-                  {freeFieldSuertesList.length > 0 && (
-                    <p className="suertes-count">{freeFieldSuertesList.length} suerte(s) seleccionada(s)</p>
-                  )}
-                </div>
-                <label>
-                  Labor
-                  <SearchableSelect
-                    value={freeFieldForm.labor}
-                    onChange={(value) => updateFreeFieldForm('labor', value)}
-                    options={WORKFLOW.map((labor) => {
-                      const firstSuerte = freeFieldSuertesList[0]
-                      const isSuggested =
-                        freeFieldForm.haciendaCode && firstSuerte
-                          ? labor === getSuggestedLabor(assignments, `${freeFieldForm.haciendaCode}-${firstSuerte}`)
-                          : false
-                      return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
-                    })}
-                  />
-                </label>
-                <label>
-                  Equipo
-                  <SearchableSelect
-                    value={freeFieldForm.equipmentCode || session.equipmentCode}
-                    onChange={(value) => updateFreeFieldForm('equipmentCode', value)}
-                    options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
-                  />
-                </label>
-                <label>
-                  Operador
-                  <input value={session.name} disabled />
-                </label>
-                <label>
-                  Supervisor
-                  <SearchableSelect
-                    value={freeFieldForm.supervisorId}
-                    onChange={(value) => updateFreeFieldForm('supervisorId', value)}
-                    placeholder="Selecciona el supervisor que aprobará"
-                    options={freeFieldSupervisors.map((s) => ({ value: s.id, label: s.name }))}
-                  />
-                </label>
-                <label>
-                  Observaciones
-                  <textarea
-                    rows={3}
-                    value={freeFieldForm.notes}
-                    onChange={(event) => updateFreeFieldForm('notes', event.target.value)}
-                    placeholder="Observaciones de campo"
-                  />
-                </label>
-                <button className="primary-button" type="submit" disabled={busy}>
-                  {busy ? 'Guardando...' : 'Tomar labor'}
-                </button>
-              </form>
-            </article>
+          <section className="assign-tab-stack">
+            <button
+              type="button"
+              className="primary-button assign-cta"
+              onClick={() => setIsFreeFieldOpen(true)}
+            >
+              + Tomar suerte en campo
+            </button>
 
             <article className="panel-card operator-journey-card">
               <div className="panel-title">
@@ -738,7 +634,7 @@ export function OperatorView({
                     {historyAssignments
                       .filter((item) => item.status === 'COMPLETADA')
                       .reduce((sum, item) => sum + item.executedArea, 0)
-                      .toFixed(1)}
+                      .toFixed(2)}
                   </strong>
                   <span>ha ejecutadas</span>
                 </div>
@@ -788,11 +684,11 @@ export function OperatorView({
               return (
                 <div className="operator-kpi-grid" style={{ margin: '1rem 0 1.5rem' }}>
                   <article className="operator-kpi-card operator-kpi-card--neutral">
-                    <strong>{haPlaneadas.toFixed(1)}</strong>
+                    <strong>{haPlaneadas.toFixed(2)}</strong>
                     <span>ha planificadas</span>
                   </article>
                   <article className="operator-kpi-card operator-kpi-card--green">
-                    <strong>{haEjecutadas.toFixed(1)}</strong>
+                    <strong>{haEjecutadas.toFixed(2)}</strong>
                     <span>ha ejecutadas</span>
                   </article>
                   <article className="operator-kpi-card operator-kpi-card--green">
@@ -814,7 +710,7 @@ export function OperatorView({
 
             <div className="list-rows">
               {filteredHistory.map((assignment) => {
-                const meta = getStatusMeta(assignment.status)
+                const meta = getStatusMeta(assignment)
                 return (
                   <div key={assignment.id} className="movement-row">
                     <div>
@@ -828,7 +724,7 @@ export function OperatorView({
                         ) : (
                           <span className="kind-badge libre">Campo</span>
                         )}{' '}
-                        - {assignment.executedArea.toFixed(1)} ha
+                        - {assignment.executedArea.toFixed(2)} ha
                       </span>
                     </div>
                     <div className="movement-side">
@@ -894,6 +790,160 @@ export function OperatorView({
         </div>
 
       </div>
+
+      {isFreeFieldOpen && (
+        <>
+          <div className="more-sheet-overlay" onClick={() => setIsFreeFieldOpen(false)} />
+          <div className="more-sheet assign-sheet" role="dialog" aria-label="Tomar suerte en campo">
+            <div className="more-sheet__handle" />
+            <div className="active-sheet__header">
+              <div>
+                <strong>Tomar suerte en campo</strong>
+                <span className="subtle-copy">Registra una labor que no estaba programada</span>
+              </div>
+              <button
+                type="button"
+                className="active-sheet__close"
+                onClick={() => setIsFreeFieldOpen(false)}
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form className="form-grid-block" onSubmit={onCreateFreeField}>
+              <label>
+                Zona
+                <SearchableSelect
+                  value={freeFieldForm.zone}
+                  onChange={(value) => updateFreeFieldForm('zone', value)}
+                  placeholder="Selecciona la zona"
+                  options={[
+                    { value: 'NORTE', label: 'Zona Norte' },
+                    { value: 'SUR', label: 'Zona Sur' },
+                  ]}
+                />
+              </label>
+              <label>
+                Cliente
+                <SearchableSelect
+                  value={freeFieldForm.cliente}
+                  onChange={(value) => updateFreeFieldForm('cliente', value)}
+                  options={[
+                    { value: 'ingenios', label: 'Ingenios' },
+                    { value: 'proveedores', label: 'Proveedores' },
+                  ]}
+                />
+              </label>
+              <label>
+                Ingenio
+                <SearchableSelect
+                  value={freeFieldForm.ingenioId}
+                  onChange={(value) => updateFreeFieldForm('ingenioId', value)}
+                  placeholder="Selecciona un ingenio"
+                  options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                />
+              </label>
+              <label>
+                Hacienda
+                <SearchableSelect
+                  value={freeFieldForm.haciendaCode}
+                  onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
+                  placeholder={!freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                  options={freeFieldHaciendas.map((item) => ({
+                    value: item.code,
+                    label: `${item.code} - ${item.name}`,
+                  }))}
+                />
+              </label>
+              <div>
+                <span className="field-label">Suertes</span>
+                {freeFieldForm.haciendaCode ? (
+                  <ul className="suertes-checklist">
+                    {freeFieldSuertes.map((row) => {
+                      const suerteCode = `${freeFieldForm.haciendaCode}-${row.suerte}`
+                      const remaining = freeFieldForm.labor
+                        ? getRemainingArea(assignments, suerteCode, freeFieldForm.labor, row.area)
+                        : row.area
+                      const isCompleted = freeFieldForm.labor && remaining === 0
+                      return (
+                        <li key={row.suerte}>
+                          <label className={`suerte-check-item${isCompleted ? ' suerte-check-item--done' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={freeFieldSuertesList.includes(row.suerte)}
+                              onChange={() => !isCompleted && toggleFreeFieldSuerte(row.suerte)}
+                              disabled={!!isCompleted}
+                            />
+                            <span className="suerte-check-code">{row.suerte}</span>
+                            {isCompleted
+                              ? <span className="suerte-check-done">Completa</span>
+                              : <span className="suerte-check-area">{formatArea(remaining)}</span>
+                            }
+                          </label>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                ) : (
+                  <p className="field-hint">Selecciona una hacienda primero</p>
+                )}
+                {freeFieldSuertesList.length > 0 && (
+                  <p className="suertes-count">{freeFieldSuertesList.length} suerte(s) seleccionada(s)</p>
+                )}
+              </div>
+              <label>
+                Labor
+                <SearchableSelect
+                  value={freeFieldForm.labor}
+                  onChange={(value) => updateFreeFieldForm('labor', value)}
+                  options={WORKFLOW.map((labor) => {
+                    const firstSuerte = freeFieldSuertesList[0]
+                    const isSuggested =
+                      freeFieldForm.haciendaCode && firstSuerte
+                        ? labor === getSuggestedLabor(assignments, `${freeFieldForm.haciendaCode}-${firstSuerte}`)
+                        : false
+                    return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
+                  })}
+                />
+              </label>
+              <label>
+                Equipo
+                <SearchableSelect
+                  value={freeFieldForm.equipmentCode || session.equipmentCode}
+                  onChange={(value) => updateFreeFieldForm('equipmentCode', value)}
+                  options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
+                />
+              </label>
+              <label>
+                Operador
+                <input value={session.name} disabled />
+              </label>
+              <label>
+                Supervisor
+                <SearchableSelect
+                  value={freeFieldForm.supervisorId}
+                  onChange={(value) => updateFreeFieldForm('supervisorId', value)}
+                  placeholder="Selecciona el supervisor que aprobará"
+                  options={freeFieldSupervisors.map((s) => ({ value: s.id, label: s.name }))}
+                />
+              </label>
+              <label>
+                Observaciones
+                <textarea
+                  rows={3}
+                  value={freeFieldForm.notes}
+                  onChange={(event) => updateFreeFieldForm('notes', event.target.value)}
+                  placeholder="Observaciones de campo"
+                />
+              </label>
+              <button className="primary-button" type="submit" disabled={busy}>
+                {busy ? 'Guardando...' : 'Tomar labor'}
+              </button>
+            </form>
+          </div>
+        </>
+      )}
     </main>
   )
 }

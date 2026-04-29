@@ -16,6 +16,7 @@ const INGENIOS = [
   { id: 'pichichi', nombre: 'Ingenio Pichichi' },
   { id: 'mayaguez', nombre: 'Ingenio Mayaguez' },
   { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
+  { id: 'riopaila', nombre: 'Ingenio Riopaila' },
 ]
 
 function initials(name: string) {

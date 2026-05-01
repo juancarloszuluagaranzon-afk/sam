@@ -111,7 +111,7 @@ function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 
     }
     return { label: 'Completada', tone: 'done' as const }
   }
-  if (assignment.status === 'EN_PROCESO') return { label: 'Operativo', tone: 'progress' as const }
+  if (assignment.status === 'EN_PROCESO') return { label: 'Laborando', tone: 'progress' as const }
   if (assignment.status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
   return { label: 'Pendiente', tone: 'pending' as const }
 }
@@ -1416,7 +1416,7 @@ export function SupervisorView({
                           <p>{item.code}</p>
                         </div>
                         <span className={`status-pill ${active ? 'progress' : 'done'}`}>
-                          {active ? 'Operativo' : 'Disponible'}
+                          {active ? 'Laborando' : 'Disponible'}
                         </span>
                       </div>
                       <div className="equipment-card-body">

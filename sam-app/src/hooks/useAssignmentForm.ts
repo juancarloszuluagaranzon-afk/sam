@@ -9,6 +9,18 @@ function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }
 
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'object' && err !== null) {
+    const obj = err as Record<string, unknown>
+    const msg = typeof obj.message === 'string' ? obj.message : ''
+    const code = typeof obj.code === 'string' ? ` (${obj.code})` : ''
+    if (msg) return `${msg}${code}`
+    try { return JSON.stringify(err) } catch { return String(err) }
+  }
+  return String(err)
+}
+
 function getRemainingArea(
   assignments: Assignment[],
   suerteCode: string,
@@ -300,8 +312,7 @@ export function useAssignmentForm(options?: Options) {
       options?.onAssignmentCreated?.()
     } catch (err) {
       console.error('[createAssignment]', err)
-      const detalle = err instanceof Error ? err.message : String(err)
-      setError(`No se pudo crear las asignaciones. ${detalle}`)
+      setError(`No se pudo crear las asignaciones. ${formatError(err)}`)
     } finally {
       setBusy(false)
     }

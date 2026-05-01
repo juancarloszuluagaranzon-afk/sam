@@ -9,6 +9,18 @@ function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }
 
+function formatError(err: unknown): string {
+  if (err instanceof Error) return err.message
+  if (typeof err === 'object' && err !== null) {
+    const obj = err as Record<string, unknown>
+    const msg = typeof obj.message === 'string' ? obj.message : ''
+    const code = typeof obj.code === 'string' ? ` (${obj.code})` : ''
+    if (msg) return `${msg}${code}`
+    try { return JSON.stringify(err) } catch { return String(err) }
+  }
+  return String(err)
+}
+
 function getRemainingArea(
   assignments: Assignment[],
   suerteCode: string,
@@ -280,8 +292,7 @@ export function useFreeFieldForm(options?: Options) {
       options?.onFreeFieldTaken?.()
     } catch (err) {
       console.error('[takeFreeField]', err)
-      const detalle = err instanceof Error ? err.message : String(err)
-      setError(`No se pudo registrar las labores en campo libre. ${detalle}`)
+      setError(`No se pudo registrar las labores en campo libre. ${formatError(err)}`)
     } finally {
       setBusy(false)
     }

@@ -300,7 +300,8 @@ export function useAssignmentForm(options?: Options) {
       options?.onAssignmentCreated?.()
     } catch (err) {
       console.error('[createAssignment]', err)
-      setError('No se pudo crear las asignaciones.')
+      const detalle = err instanceof Error ? err.message : String(err)
+      setError(`No se pudo crear las asignaciones. ${detalle}`)
     } finally {
       setBusy(false)
     }

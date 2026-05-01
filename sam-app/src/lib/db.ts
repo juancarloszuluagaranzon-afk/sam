@@ -59,6 +59,16 @@ class SamDb extends Dexie {
     this.version(4)
       .stores({})
       .upgrade((tx) => tx.table('maestro').clear())
+
+    // v5: Phase 1 cleanup — wipe stale assignments + outbox so cada cliente
+    // arranque sincronizado con el remoto (que solo tiene las 7 filas de hoy).
+    this.version(5)
+      .stores({})
+      .upgrade((tx) =>
+        Promise.all([tx.table('assignments').clear(), tx.table('outbox').clear()]).then(
+          () => undefined,
+        ),
+      )
   }
 }
 

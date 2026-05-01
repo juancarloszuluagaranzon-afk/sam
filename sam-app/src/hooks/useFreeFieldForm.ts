@@ -278,8 +278,10 @@ export function useFreeFieldForm(options?: Options) {
       setFreeFieldForm({ ...EMPTY_FORM, equipmentCode: savedEquipment })
       setFreeFieldSuertesList([])
       options?.onFreeFieldTaken?.()
-    } catch {
-      setError('No se pudo registrar las labores en campo libre.')
+    } catch (err) {
+      console.error('[takeFreeField]', err)
+      const detalle = err instanceof Error ? err.message : String(err)
+      setError(`No se pudo registrar las labores en campo libre. ${detalle}`)
     } finally {
       setBusy(false)
     }

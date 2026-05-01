@@ -9,7 +9,7 @@ import {
   summarizeAssignments,
 } from '../services/samApi'
 
-export const SESSION_KEY = 'sam-app-session-v1'
+export const SESSION_KEY = 'sam-app-session-v2'
 
 interface AppDataContextValue {
   session: UserProfile | null

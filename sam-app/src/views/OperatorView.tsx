@@ -5,6 +5,9 @@ import { useFreeFieldForm } from '../hooks/useFreeFieldForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
+import { DictateButton } from '../components/DictateButton'
+import { DictateInlineButton } from '../components/DictateInlineButton'
+import { parseSpokenNumber } from '../utils/voiceParser'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
@@ -509,16 +512,25 @@ export function OperatorView({
                         </label>
                         <label>
                           Horometro inicial
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.1}
-                            value={startHorometroDrafts[a.id] ?? ''}
-                            onChange={(event) =>
-                              updateStartHorometroDraft(a.id, event.target.value)
-                            }
-                            placeholder="Ej: 4523.5"
-                          />
+                          <div className="dictate-input-wrap">
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={startHorometroDrafts[a.id] ?? ''}
+                              onChange={(event) =>
+                                updateStartHorometroDraft(a.id, event.target.value)
+                              }
+                              placeholder="Ej: 4523.5"
+                            />
+                            <DictateInlineButton
+                              ariaLabel="Dictar horómetro inicial"
+                              onComplete={(text) => {
+                                const num = parseSpokenNumber(text)
+                                if (num !== null) updateStartHorometroDraft(a.id, String(num))
+                              }}
+                            />
+                          </div>
                         </label>
                         <button
                           className="primary-button"
@@ -553,35 +565,60 @@ export function OperatorView({
                         {!(draft?.isComplete ?? false) && (
                           <label>
                             Ha ejecutadas
-                            <input
-                              type="number"
-                              min={0.1}
-                              step={0.1}
-                              max={a.area}
-                              value={draft?.area ?? ''}
-                              onChange={(event) =>
-                                updateFinishDraft(a.id, 'area', event.target.value)
-                              }
-                              placeholder={`máx. ${a.area.toFixed(2)}`}
-                            />
+                            <div className="dictate-input-wrap">
+                              <input
+                                type="number"
+                                min={0.1}
+                                step={0.1}
+                                max={a.area}
+                                value={draft?.area ?? ''}
+                                onChange={(event) =>
+                                  updateFinishDraft(a.id, 'area', event.target.value)
+                                }
+                                placeholder={`máx. ${a.area.toFixed(2)}`}
+                              />
+                              <DictateInlineButton
+                                ariaLabel="Dictar hectáreas ejecutadas"
+                                onComplete={(text) => {
+                                  const num = parseSpokenNumber(text)
+                                  if (num !== null) updateFinishDraft(a.id, 'area', String(num))
+                                }}
+                              />
+                            </div>
                           </label>
                         )}
 
                         <label>
                           Horometro final
-                          <input
-                            type="number"
-                            min={0}
-                            step={0.1}
-                            value={draft?.horometroFinal ?? ''}
-                            onChange={(event) =>
-                              updateFinishDraft(a.id, 'horometroFinal', event.target.value)
-                            }
-                            placeholder="Ej: 4541.2"
-                          />
+                          <div className="dictate-input-wrap">
+                            <input
+                              type="number"
+                              min={0}
+                              step={0.1}
+                              value={draft?.horometroFinal ?? ''}
+                              onChange={(event) =>
+                                updateFinishDraft(a.id, 'horometroFinal', event.target.value)
+                              }
+                              placeholder="Ej: 4541.2"
+                            />
+                            <DictateInlineButton
+                              ariaLabel="Dictar horómetro final"
+                              onComplete={(text) => {
+                                const num = parseSpokenNumber(text)
+                                if (num !== null) updateFinishDraft(a.id, 'horometroFinal', String(num))
+                              }}
+                            />
+                          </div>
                         </label>
                         <label className="finish-notes">
-                          Observaciones
+                          <div className="dictate-field-header">
+                            <span>Observaciones</span>
+                            <DictateButton
+                              onTranscript={(text, isFinal) => {
+                                if (isFinal) updateFinishDraft(a.id, 'notes', text)
+                              }}
+                            />
+                          </div>
                           <textarea
                             rows={3}
                             value={draft?.notes ?? ''}
@@ -930,7 +967,14 @@ export function OperatorView({
                 />
               </label>
               <label>
-                Observaciones
+                <div className="dictate-field-header">
+                  <span>Observaciones</span>
+                  <DictateButton
+                    onTranscript={(text, isFinal) => {
+                      if (isFinal) updateFreeFieldForm('notes', text)
+                    }}
+                  />
+                </div>
                 <textarea
                   rows={3}
                   value={freeFieldForm.notes}

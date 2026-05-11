@@ -8,6 +8,13 @@ import { useUserForm } from '../hooks/useUserForm'
 import { createAppUser, updateAppUser, summarizeAssignments } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
+import {
+  EntityHistoryModal,
+  matchesSummaryFilter,
+  buildMonthOptions,
+  type SummaryEntity,
+  type SummaryQuincena,
+} from '../components/EntityHistoryModal'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, MaestroRow, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
@@ -259,6 +266,54 @@ export function SupervisorView({
       .map(([labor, value]) => ({ labor, ...value }))
       .sort((a, b) => b.planned - a.planned)
   }, [scopedAssignments, todayKey])
+
+  const [summaryMonth, setSummaryMonth] = useState(() => todayKey.slice(0, 7))
+  const [summaryQuincena, setSummaryQuincena] = useState<SummaryQuincena>('TODO')
+  const [selectedEntity, setSelectedEntity] = useState<SummaryEntity | null>(null)
+
+  const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
+
+  const summaryAssignments = useMemo(
+    () =>
+      scopedAssignments.filter(
+        (a) => a.status !== 'CANCELADA' && matchesSummaryFilter(a.dateKey, summaryMonth, summaryQuincena),
+      ),
+    [scopedAssignments, summaryMonth, summaryQuincena],
+  )
+
+  const summaryByOperator = useMemo(() => {
+    const groups = new Map<
+      string,
+      { id: string; name: string; planned: number; executed: number; count: number }
+    >()
+    for (const a of summaryAssignments) {
+      const id = a.operatorId || 'sin-operador'
+      const name = a.operatorName || 'Sin operador'
+      const current = groups.get(id) ?? { id, name, planned: 0, executed: 0, count: 0 }
+      current.planned += a.area
+      if (a.status === 'COMPLETADA') current.executed += a.executedArea
+      current.count += 1
+      groups.set(id, current)
+    }
+    return Array.from(groups.values()).sort((a, b) => b.executed - a.executed)
+  }, [summaryAssignments])
+
+  const summaryByEquipment = useMemo(() => {
+    const groups = new Map<
+      string,
+      { code: string; name: string; planned: number; executed: number; count: number }
+    >()
+    for (const a of summaryAssignments) {
+      const code = a.equipmentCode || 'sin-equipo'
+      const name = a.equipmentName || a.equipmentCode || 'Sin equipo'
+      const current = groups.get(code) ?? { code, name, planned: 0, executed: 0, count: 0 }
+      current.planned += a.area
+      if (a.status === 'COMPLETADA') current.executed += a.executedArea
+      current.count += 1
+      groups.set(code, current)
+    }
+    return Array.from(groups.values()).sort((a, b) => b.executed - a.executed)
+  }, [summaryAssignments])
 
   if (!session) return null
 
@@ -607,6 +662,33 @@ export function SupervisorView({
         )}
 
         {supervisorTab === 'resumen' ? (
+          <section className="summary-filters-bar">
+            <label>
+              Mes
+              <select
+                value={summaryMonth}
+                onChange={(e) => setSummaryMonth(e.target.value)}
+              >
+                {summaryMonthOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Quincena
+              <select
+                value={summaryQuincena}
+                onChange={(e) => setSummaryQuincena(e.target.value as SummaryQuincena)}
+              >
+                <option value="TODO">Todo el mes</option>
+                <option value="PRIMERA">1ra quincena (1-15)</option>
+                <option value="SEGUNDA">2da quincena (16-fin)</option>
+              </select>
+            </label>
+          </section>
+        ) : null}
+
+        {supervisorTab === 'resumen' ? (
           <section className="kpi-grid">
             <article className="metric-panel">
               <p>HA PLANIFICADAS HOY</p>
@@ -665,6 +747,88 @@ export function SupervisorView({
             </div>
           </section>
         ) : null}
+
+        {supervisorTab === 'resumen' ? (
+          <section className="panel-card">
+            <div className="panel-title">
+              <h2>Por Operador</h2>
+              <span className="subtle-copy">Toca un operador para ver el histórico</span>
+            </div>
+            <div className="entity-grid">
+              {summaryByOperator.map((op) => (
+                <button
+                  key={op.id}
+                  type="button"
+                  className="entity-card"
+                  onClick={() => setSelectedEntity({ type: 'operator', id: op.id, name: op.name })}
+                >
+                  <p className="entity-card__name">{op.name}</p>
+                  <strong>{op.executed.toFixed(2)}</strong>
+                  <span>
+                    / {op.planned.toFixed(2)} ha - {op.count} {op.count === 1 ? 'labor' : 'labores'}
+                  </span>
+                  <div className="progress-track">
+                    <span
+                      style={{
+                        width: `${op.planned ? Math.min((op.executed / op.planned) * 100, 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </button>
+              ))}
+              {summaryByOperator.length === 0 && (
+                <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
+                  Sin labores en el periodo seleccionado.
+                </p>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {supervisorTab === 'resumen' ? (
+          <section className="panel-card">
+            <div className="panel-title">
+              <h2>Por Equipo</h2>
+              <span className="subtle-copy">Toca un equipo para ver el histórico</span>
+            </div>
+            <div className="entity-grid">
+              {summaryByEquipment.map((eq) => (
+                <button
+                  key={eq.code}
+                  type="button"
+                  className="entity-card"
+                  onClick={() => setSelectedEntity({ type: 'equipment', code: eq.code, name: eq.name })}
+                >
+                  <p className="entity-card__name">{eq.name}</p>
+                  <strong>{eq.executed.toFixed(2)}</strong>
+                  <span>
+                    / {eq.planned.toFixed(2)} ha - {eq.count} {eq.count === 1 ? 'labor' : 'labores'}
+                  </span>
+                  <div className="progress-track">
+                    <span
+                      style={{
+                        width: `${eq.planned ? Math.min((eq.executed / eq.planned) * 100, 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </button>
+              ))}
+              {summaryByEquipment.length === 0 && (
+                <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
+                  Sin labores en el periodo seleccionado.
+                </p>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        <EntityHistoryModal
+          entity={selectedEntity}
+          assignments={scopedAssignments}
+          defaultMonth={summaryMonth}
+          defaultQuincena={summaryQuincena}
+          onClose={() => setSelectedEntity(null)}
+        />
 
         {supervisorTab === 'asignar' ? (
           <section className="assign-tab-stack">

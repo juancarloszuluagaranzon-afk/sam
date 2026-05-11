@@ -7,7 +7,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DictateButton } from '../components/DictateButton'
 import { DictateInlineButton } from '../components/DictateInlineButton'
-import { parseSpokenNumber } from '../utils/voiceParser'
+import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
@@ -852,47 +852,93 @@ export function OperatorView({
             <form className="form-grid-block" onSubmit={onCreateFreeField}>
               <label>
                 Zona
-                <SearchableSelect
-                  value={freeFieldForm.zone}
-                  onChange={(value) => updateFreeFieldForm('zone', value)}
-                  placeholder="Selecciona la zona"
-                  options={[
-                    { value: 'NORTE', label: 'Zona Norte' },
-                    { value: 'SUR', label: 'Zona Sur' },
-                  ]}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.zone}
+                    onChange={(value) => updateFreeFieldForm('zone', value)}
+                    placeholder="Selecciona la zona"
+                    options={[
+                      { value: 'NORTE', label: 'Zona Norte' },
+                      { value: 'SUR', label: 'Zona Sur' },
+                    ]}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar zona"
+                    onComplete={(text) => {
+                      const match = findItemByVoice(text, [
+                        { code: 'NORTE', name: 'Norte' },
+                        { code: 'SUR', name: 'Sur' },
+                      ])
+                      if (match) updateFreeFieldForm('zone', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <label>
                 Cliente
-                <SearchableSelect
-                  value={freeFieldForm.cliente}
-                  onChange={(value) => updateFreeFieldForm('cliente', value)}
-                  options={[
-                    { value: 'ingenios', label: 'Ingenios' },
-                    { value: 'proveedores', label: 'Proveedores' },
-                  ]}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.cliente}
+                    onChange={(value) => updateFreeFieldForm('cliente', value)}
+                    options={[
+                      { value: 'ingenios', label: 'Ingenios' },
+                      { value: 'proveedores', label: 'Proveedores' },
+                    ]}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar cliente"
+                    onComplete={(text) => {
+                      const match = findItemByVoice(text, [
+                        { code: 'ingenios', name: 'Ingenios' },
+                        { code: 'proveedores', name: 'Proveedores' },
+                      ])
+                      if (match) updateFreeFieldForm('cliente', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <label>
                 Ingenio
-                <SearchableSelect
-                  value={freeFieldForm.ingenioId}
-                  onChange={(value) => updateFreeFieldForm('ingenioId', value)}
-                  placeholder="Selecciona un ingenio"
-                  options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.ingenioId}
+                    onChange={(value) => updateFreeFieldForm('ingenioId', value)}
+                    placeholder="Selecciona un ingenio"
+                    options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar ingenio"
+                    onComplete={(text) => {
+                      const match = findItemByVoice(
+                        text,
+                        INGENIOS.map((ing) => ({ code: ing.id, name: ing.nombre })),
+                      )
+                      if (match) updateFreeFieldForm('ingenioId', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <label>
                 Hacienda
-                <SearchableSelect
-                  value={freeFieldForm.haciendaCode}
-                  onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
-                  placeholder={!freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
-                  options={freeFieldHaciendas.map((item) => ({
-                    value: item.code,
-                    label: `${item.code} - ${item.name}`,
-                  }))}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.haciendaCode}
+                    onChange={(value) => updateFreeFieldForm('haciendaCode', value)}
+                    placeholder={!freeFieldForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
+                    options={freeFieldHaciendas.map((item) => ({
+                      value: item.code,
+                      label: `${item.code} - ${item.name}`,
+                    }))}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar hacienda"
+                    disabled={!freeFieldForm.ingenioId}
+                    onComplete={(text) => {
+                      const match = findItemByVoice(text, freeFieldHaciendas)
+                      if (match) updateFreeFieldForm('haciendaCode', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <div>
                 <span className="field-label">Suertes</span>
@@ -932,26 +978,47 @@ export function OperatorView({
               </div>
               <label>
                 Labor
-                <SearchableSelect
-                  value={freeFieldForm.labor}
-                  onChange={(value) => updateFreeFieldForm('labor', value)}
-                  options={WORKFLOW.map((labor) => {
-                    const firstSuerte = freeFieldSuertesList[0]
-                    const isSuggested =
-                      freeFieldForm.haciendaCode && firstSuerte
-                        ? labor === getSuggestedLabor(assignments, `${freeFieldForm.haciendaCode}-${firstSuerte}`)
-                        : false
-                    return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
-                  })}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.labor}
+                    onChange={(value) => updateFreeFieldForm('labor', value)}
+                    options={WORKFLOW.map((labor) => {
+                      const firstSuerte = freeFieldSuertesList[0]
+                      const isSuggested =
+                        freeFieldForm.haciendaCode && firstSuerte
+                          ? labor === getSuggestedLabor(assignments, `${freeFieldForm.haciendaCode}-${firstSuerte}`)
+                          : false
+                      return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
+                    })}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar labor"
+                    onComplete={(text) => {
+                      const match = findItemByVoice(
+                        text,
+                        WORKFLOW.map((labor) => ({ code: labor, name: labor })),
+                      )
+                      if (match) updateFreeFieldForm('labor', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <label>
                 Equipo
-                <SearchableSelect
-                  value={freeFieldForm.equipmentCode || session.equipmentCode}
-                  onChange={(value) => updateFreeFieldForm('equipmentCode', value)}
-                  options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.equipmentCode || session.equipmentCode}
+                    onChange={(value) => updateFreeFieldForm('equipmentCode', value)}
+                    options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar equipo"
+                    onComplete={(text) => {
+                      const match = findItemByVoice(text, sortedEquipment)
+                      if (match) updateFreeFieldForm('equipmentCode', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <label>
                 Operador
@@ -959,12 +1026,24 @@ export function OperatorView({
               </label>
               <label>
                 Supervisor
-                <SearchableSelect
-                  value={freeFieldForm.supervisorId}
-                  onChange={(value) => updateFreeFieldForm('supervisorId', value)}
-                  placeholder="Selecciona el supervisor que aprobará"
-                  options={freeFieldSupervisors.map((s) => ({ value: s.id, label: s.name }))}
-                />
+                <div className="dictate-input-wrap">
+                  <SearchableSelect
+                    value={freeFieldForm.supervisorId}
+                    onChange={(value) => updateFreeFieldForm('supervisorId', value)}
+                    placeholder="Selecciona el supervisor que aprobará"
+                    options={freeFieldSupervisors.map((s) => ({ value: s.id, label: s.name }))}
+                  />
+                  <DictateInlineButton
+                    ariaLabel="Dictar supervisor"
+                    onComplete={(text) => {
+                      const match = findItemByVoice(
+                        text,
+                        freeFieldSupervisors.map((s) => ({ code: s.id, name: s.name })),
+                      )
+                      if (match) updateFreeFieldForm('supervisorId', match.code)
+                    }}
+                  />
+                </div>
               </label>
               <label>
                 <div className="dictate-field-header">

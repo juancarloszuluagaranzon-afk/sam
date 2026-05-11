@@ -38,6 +38,15 @@ export function findItemByVoice<T extends NamedItem>(text: string, items: T[]): 
     if (name && spoken.includes(name)) return item
   }
 
+  if (spoken.length >= 3) {
+    for (const item of items) {
+      const code = normalize(item.code)
+      const name = normalize(item.name)
+      if (code.length >= 3 && code.includes(spoken)) return item
+      if (name.length >= 3 && name.includes(spoken)) return item
+    }
+  }
+
   let best: { item: T; score: number } | null = null
   for (const item of items) {
     const tokens = [

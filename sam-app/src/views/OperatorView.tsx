@@ -614,8 +614,10 @@ export function OperatorView({
                           <div className="dictate-field-header">
                             <span>Observaciones</span>
                             <DictateButton
-                              onTranscript={(text, isFinal) => {
-                                if (isFinal) updateFinishDraft(a.id, 'notes', text)
+                              onComplete={(text) => {
+                                const prev = (draft?.notes ?? '').trimEnd()
+                                const next = prev ? `${prev} ${text}` : text
+                                updateFinishDraft(a.id, 'notes', next)
                               }}
                             />
                           </div>
@@ -1049,8 +1051,10 @@ export function OperatorView({
                 <div className="dictate-field-header">
                   <span>Observaciones</span>
                   <DictateButton
-                    onTranscript={(text, isFinal) => {
-                      if (isFinal) updateFreeFieldForm('notes', text)
+                    onComplete={(text) => {
+                      const prev = freeFieldForm.notes.trimEnd()
+                      const next = prev ? `${prev} ${text}` : text
+                      updateFreeFieldForm('notes', next)
                     }}
                   />
                 </div>

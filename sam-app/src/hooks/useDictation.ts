@@ -44,7 +44,11 @@ export function useDictation(lang = 'es-CO') {
 
       const recognition = new Ctor()
       recognition.lang = lang
-      recognition.continuous = true
+      // continuous=false: la sesion termina automaticamente cuando el motor
+      // detecta silencio. Esto evita duplicaciones de Chrome Android, que en
+      // modo continuous emitia el mismo final result varias veces durante una
+      // sesion larga. Si el usuario quiere dictar mas, vuelve a tocar el boton.
+      recognition.continuous = false
       recognition.interimResults = true
 
       let finalText = ''

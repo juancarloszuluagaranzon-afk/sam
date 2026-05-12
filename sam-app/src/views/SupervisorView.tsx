@@ -762,38 +762,6 @@ export function SupervisorView({
         {supervisorTab === 'resumen' ? (
           <section className="panel-card">
             <div className="panel-title">
-              <h2>Por Labor</h2>
-              <span className="subtle-copy">{summaryPeriodLabel}</span>
-            </div>
-            <div className="labor-grid">
-              {summaryLabor.map((item) => (
-                <article key={item.labor} className="labor-card">
-                  <p>{item.labor}</p>
-                  <strong>{item.executed.toFixed(2)}</strong>
-                  <span>
-                    / {item.planned.toFixed(2)} ha - {item.count} labores
-                  </span>
-                  <div className="progress-track">
-                    <span
-                      style={{
-                        width: `${item.planned ? Math.min((item.executed / item.planned) * 100, 100) : 0}%`,
-                      }}
-                    />
-                  </div>
-                </article>
-              ))}
-              {summaryLabor.length === 0 && (
-                <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
-                  Sin labores en el periodo seleccionado.
-                </p>
-              )}
-            </div>
-          </section>
-        ) : null}
-
-        {supervisorTab === 'resumen' ? (
-          <section className="panel-card">
-            <div className="panel-title">
               <h2>Por Operador</h2>
               <span className="subtle-copy">Toca un operador para ver el histórico</span>
             </div>
@@ -857,6 +825,38 @@ export function SupervisorView({
                 </button>
               ))}
               {summaryByEquipment.length === 0 && (
+                <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
+                  Sin labores en el periodo seleccionado.
+                </p>
+              )}
+            </div>
+          </section>
+        ) : null}
+
+        {supervisorTab === 'resumen' ? (
+          <section className="panel-card">
+            <div className="panel-title">
+              <h2>Por Labor</h2>
+              <span className="subtle-copy">{summaryPeriodLabel}</span>
+            </div>
+            <div className="labor-grid">
+              {summaryLabor.map((item) => (
+                <article key={item.labor} className="labor-card">
+                  <p>{item.labor}</p>
+                  <strong>{item.executed.toFixed(2)}</strong>
+                  <span>
+                    / {item.planned.toFixed(2)} ha - {item.count} labores
+                  </span>
+                  <div className="progress-track">
+                    <span
+                      style={{
+                        width: `${item.planned ? Math.min((item.executed / item.planned) * 100, 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                </article>
+              ))}
+              {summaryLabor.length === 0 && (
                 <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
                   Sin labores en el periodo seleccionado.
                 </p>

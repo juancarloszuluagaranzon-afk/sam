@@ -2,7 +2,7 @@ import { memo, useMemo, useState } from 'react'
 import type { Assignment, AssignmentStatus } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 
-export type SummaryQuincena = 'TODO' | 'PRIMERA' | 'SEGUNDA'
+export type SummaryQuincena = 'TODO' | 'PRIMERA' | 'SEGUNDA' | 'HOY'
 
 export type SummaryEntity =
   | { type: 'operator'; id: string; name: string }
@@ -12,7 +12,9 @@ export function matchesSummaryFilter(
   dateKey: string,
   month: string,
   quincena: SummaryQuincena,
+  todayKey?: string,
 ): boolean {
+  if (quincena === 'HOY') return todayKey ? dateKey === todayKey : false
   if (!dateKey.startsWith(month)) return false
   const day = Number(dateKey.slice(8, 10))
   if (quincena === 'PRIMERA') return day >= 1 && day <= 15

@@ -276,10 +276,48 @@ export function SupervisorView({
   const summaryAssignments = useMemo(
     () =>
       scopedAssignments.filter(
-        (a) => a.status !== 'CANCELADA' && matchesSummaryFilter(a.dateKey, summaryMonth, summaryQuincena),
+        (a) =>
+          a.status !== 'CANCELADA' &&
+          matchesSummaryFilter(a.dateKey, summaryMonth, summaryQuincena, todayKey),
       ),
-    [scopedAssignments, summaryMonth, summaryQuincena],
+    [scopedAssignments, summaryMonth, summaryQuincena, todayKey],
   )
+
+  const summaryMetrics = useMemo(() => {
+    const planned = summaryAssignments.reduce((s, a) => s + a.area, 0)
+    const executed = summaryAssignments
+      .filter((a) => a.status === 'COMPLETADA')
+      .reduce((s, a) => s + a.executedArea, 0)
+    const inProgress = summaryAssignments.filter((a) => a.status === 'EN_PROCESO').length
+    return {
+      plannedArea: planned,
+      executedArea: executed,
+      completion: planned ? Math.round((executed / planned) * 100) : 0,
+      inProgress,
+    }
+  }, [summaryAssignments])
+
+  const summaryLabor = useMemo(() => {
+    const groups = new Map<string, { planned: number; executed: number; count: number }>()
+    for (const a of summaryAssignments) {
+      const current = groups.get(a.labor) ?? { planned: 0, executed: 0, count: 0 }
+      current.planned += a.area
+      current.count += 1
+      if (a.status === 'COMPLETADA') current.executed += a.executedArea
+      groups.set(a.labor, current)
+    }
+    return Array.from(groups.entries())
+      .map(([labor, value]) => ({ labor, ...value }))
+      .sort((a, b) => b.planned - a.planned)
+  }, [summaryAssignments])
+
+  const summaryPeriodLabel = useMemo(() => {
+    if (summaryQuincena === 'HOY') return 'Hoy'
+    const monthLabel = summaryMonthOptions.find((opt) => opt.value === summaryMonth)?.label ?? summaryMonth
+    if (summaryQuincena === 'PRIMERA') return `${monthLabel} - 1ra quincena`
+    if (summaryQuincena === 'SEGUNDA') return `${monthLabel} - 2da quincena`
+    return monthLabel
+  }, [summaryQuincena, summaryMonth, summaryMonthOptions])
 
   const summaryByOperator = useMemo(() => {
     const groups = new Map<
@@ -634,22 +672,25 @@ export function SupervisorView({
             )}
           </nav>
 
-          <div className="day-status-bar">
-            <div className="day-status-item">
-              <strong>{metrics.plannedArea.toFixed(2)}</strong>
-              <span>Ha planif.</span>
-            </div>
-            <div className="day-status-item day-status-item--green">
-              <strong>{metrics.executedArea.toFixed(2)}</strong>
-              <span>Ha ejecut.</span>
-            </div>
-            <div className={`day-status-item ${metrics.completion >= 70 ? 'day-status-item--green' : metrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
-              <strong>{metrics.completion}%</strong>
-              <span>Cumplimiento</span>
-            </div>
-            <div className={`day-status-item ${metrics.inProgress > 0 ? 'day-status-item--amber' : ''}`}>
-              <strong>{metrics.inProgress}</strong>
-              <span>En progreso</span>
+          <div className="day-status-bar day-status-bar--large">
+            <div className="day-status-bar__heading">Hoy</div>
+            <div className="day-status-bar__items">
+              <div className="day-status-item">
+                <strong>{metrics.plannedArea.toFixed(2)}</strong>
+                <span>Ha planif.</span>
+              </div>
+              <div className="day-status-item day-status-item--green">
+                <strong>{metrics.executedArea.toFixed(2)}</strong>
+                <span>Ha ejecut.</span>
+              </div>
+              <div className={`day-status-item ${metrics.completion >= 70 ? 'day-status-item--green' : metrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
+                <strong>{metrics.completion}%</strong>
+                <span>Cumplimiento</span>
+              </div>
+              <div className={`day-status-item ${metrics.inProgress > 0 ? 'day-status-item--amber' : ''}`}>
+                <strong>{metrics.inProgress}</strong>
+                <span>En progreso</span>
+              </div>
             </div>
           </div>
         </section>
@@ -675,11 +716,12 @@ export function SupervisorView({
               </select>
             </label>
             <label>
-              Quincena
+              Periodo
               <select
                 value={summaryQuincena}
                 onChange={(e) => setSummaryQuincena(e.target.value as SummaryQuincena)}
               >
+                <option value="HOY">Solo hoy</option>
                 <option value="TODO">Todo el mes</option>
                 <option value="PRIMERA">1ra quincena (1-15)</option>
                 <option value="SEGUNDA">2da quincena (16-fin)</option>
@@ -691,27 +733,27 @@ export function SupervisorView({
         {supervisorTab === 'resumen' ? (
           <section className="kpi-grid">
             <article className="metric-panel">
-              <p>HA PLANIFICADAS HOY</p>
-              <strong>{scopedMetrics.plannedArea.toFixed(2)}</strong>
+              <p>HA PLANIFICADAS</p>
+              <strong>{summaryMetrics.plannedArea.toFixed(2)}</strong>
               <span>hectareas</span>
             </article>
             <article className="metric-panel">
               <p>HA EJECUTADAS</p>
-              <strong>{scopedMetrics.executedArea.toFixed(2)}</strong>
+              <strong>{summaryMetrics.executedArea.toFixed(2)}</strong>
               <span>hectareas</span>
             </article>
             <article className="metric-panel">
               <p>CUMPLIMIENTO</p>
-              <strong className={scopedMetrics.completion < 30 ? 'danger' : ''}>
-                {scopedMetrics.completion}%
+              <strong className={summaryMetrics.completion < 30 ? 'danger' : ''}>
+                {summaryMetrics.completion}%
               </strong>
               <div className="progress-track">
-                <span style={{ width: `${Math.min(scopedMetrics.completion, 100)}%` }} />
+                <span style={{ width: `${Math.min(summaryMetrics.completion, 100)}%` }} />
               </div>
             </article>
             <article className="metric-panel">
               <p>EN PROCESO</p>
-              <strong>{scopedMetrics.inProgress}</strong>
+              <strong>{summaryMetrics.inProgress}</strong>
               <span>labores activas</span>
             </article>
           </section>
@@ -720,10 +762,11 @@ export function SupervisorView({
         {supervisorTab === 'resumen' ? (
           <section className="panel-card">
             <div className="panel-title">
-              <h2>Por Labor (Hoy)</h2>
+              <h2>Por Labor</h2>
+              <span className="subtle-copy">{summaryPeriodLabel}</span>
             </div>
             <div className="labor-grid">
-              {scopedLaborToday.map((item) => (
+              {summaryLabor.map((item) => (
                 <article key={item.labor} className="labor-card">
                   <p>{item.labor}</p>
                   <strong>{item.executed.toFixed(2)}</strong>
@@ -739,9 +782,9 @@ export function SupervisorView({
                   </div>
                 </article>
               ))}
-              {scopedLaborToday.length === 0 && (
+              {summaryLabor.length === 0 && (
                 <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
-                  Sin labores hoy.
+                  Sin labores en el periodo seleccionado.
                 </p>
               )}
             </div>

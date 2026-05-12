@@ -2808,3 +2808,66 @@ th {
   font-size: 0.72rem;
   color: #5b5b58;
 }
+
+/* ===== Day status bar — versión grande con título "Hoy" ===== */
+
+.day-status-bar--large {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #f7f7f1 0%, #f0efe7 100%);
+  border-radius: 14px;
+  border: 1px solid #e1e1d8;
+  margin-bottom: 12px;
+}
+
+.day-status-bar__heading {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #1a6b3a;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0 2px;
+}
+
+.day-status-bar--large .day-status-bar__items {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.day-status-bar--large .day-status-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ebebe5;
+}
+
+.day-status-bar--large .day-status-item strong {
+  font-size: 1.25rem;
+  color: #2a2a28;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.day-status-bar--large .day-status-item span {
+  font-size: 0.72rem;
+  color: #5b5b58;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.day-status-bar--large .day-status-item--green strong { color: #1a6b3a; }
+.day-status-bar--large .day-status-item--amber strong { color: #b08020; }
+.day-status-bar--large .day-status-item--red strong { color: #b03030; }
+
+@media (max-width: 480px) {
+  .day-status-bar--large .day-status-bar__items {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

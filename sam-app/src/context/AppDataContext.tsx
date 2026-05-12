@@ -1,5 +1,6 @@
 import { createContext, startTransition, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
+import { db } from '../lib/db'
 import type { Assignment, Equipment, MaestroRow, UserProfile } from '../domain/sam'
 import {
   loadAppUsers,
@@ -86,6 +87,41 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   async function hydrate() {
     setLoading(true)
+
+    // Fase 1: pinta UI desde cache local de Dexie de inmediato (< 50ms).
+    // Si hay cache, la app se siente instantanea — el refresh va en fase 2.
+    let hasCache = false
+    try {
+      const [maestroCache, assignmentsCache, usersCache, equipmentCache] = await Promise.all([
+        db.maestro.toArray(),
+        db.assignments.toArray(),
+        db.users.toArray(),
+        db.equipment.toArray(),
+      ])
+      hasCache =
+        maestroCache.length > 0 ||
+        assignmentsCache.length > 0 ||
+        usersCache.length > 0 ||
+        equipmentCache.length > 0
+      if (hasCache) {
+        startTransition(() => {
+          if (maestroCache.length) setMaestro(maestroCache)
+          if (assignmentsCache.length) {
+            assignmentsCache.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+            setAssignments(assignmentsCache)
+          }
+          if (usersCache.length) setUsers(usersCache)
+          if (equipmentCache.length) setEquipment(equipmentCache)
+        })
+        setLoading(false)
+      }
+    } catch {
+      // Sin cache utilizable: seguimos al fetch sincrono.
+    }
+
+    // Fase 2: refresh desde Supabase. Si habia cache, esto corre en background
+    // sin bloquear el render — la UI ya esta visible. Si no habia cache, esta
+    // fase actua como el load original (espera a que termine).
     try {
       const [maestroResult, assignmentResult, userResult, equipmentResult] = await Promise.all([
         loadMaestro(),
@@ -100,7 +136,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setEquipment(equipmentResult.data)
       })
     } catch {
-      setError('No pudimos cargar toda la informacion operativa.')
+      if (!hasCache) setError('No pudimos cargar toda la informacion operativa.')
     } finally {
       setLoading(false)
     }

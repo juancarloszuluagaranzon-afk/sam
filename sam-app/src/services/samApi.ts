@@ -134,7 +134,10 @@ export async function loadMaestro(): Promise<{
     let allData: any[] = []
     let hasMore = true
     let page = 0
-    const limit = 1000
+    // Server-side max-rows in PostgREST caps actual response size. Si el VPS
+    // sube PGRST_DB_MAX_ROWS a 20000+, todo el maestro entra en una sola request.
+    // Si sigue capeado a 1000, este loop sigue funcionando paginando.
+    const limit = 20000
 
     while (hasMore) {
       const { data, error } = await supabase

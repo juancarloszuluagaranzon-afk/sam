@@ -137,6 +137,8 @@ interface Props {
   setTableroMonth: React.Dispatch<React.SetStateAction<string>>
   tableroZone: 'TODAS' | 'NORTE' | 'SUR'
   setTableroZone: React.Dispatch<React.SetStateAction<'TODAS' | 'NORTE' | 'SUR'>>
+  tableroIngenio: string
+  setTableroIngenio: React.Dispatch<React.SetStateAction<string>>
   filteredAssignments: Assignment[]
   filteredReport: Assignment[]
   haciendaFilterOptions: Array<{ code: string; name: string }>
@@ -175,6 +177,8 @@ export function SupervisorView({
   setTableroMonth,
   tableroZone,
   setTableroZone,
+  tableroIngenio,
+  setTableroIngenio,
   filteredAssignments,
   filteredReport,
   haciendaFilterOptions,
@@ -983,6 +987,16 @@ export function SupervisorView({
                   <option value="TODAS">Todas las zonas</option>
                   <option value="NORTE">Zona Norte</option>
                   <option value="SUR">Zona Sur</option>
+                </select>
+                <select
+                  value={tableroIngenio}
+                  onChange={(e) => setTableroIngenio(e.target.value)}
+                  aria-label="Ingenio"
+                >
+                  <option value="TODOS">Todos los ingenios</option>
+                  {INGENIOS.map((ing) => (
+                    <option key={ing.id} value={ing.id}>{ing.nombre}</option>
+                  ))}
                 </select>
               </div>
             </div>

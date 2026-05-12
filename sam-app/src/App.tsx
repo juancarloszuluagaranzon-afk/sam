@@ -59,6 +59,7 @@ function AppContent() {
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
   )
   const [tableroZone, setTableroZone] = useState<'TODAS' | 'NORTE' | 'SUR'>('TODAS')
+  const [tableroIngenio, setTableroIngenio] = useState<string>('TODOS')
 
   function saveSession(user: UserProfile | null) {
     setSession(user ? { ...user } : null)
@@ -124,12 +125,13 @@ function AppContent() {
     )
     return maestro
       .filter((row) => programmedKeys.has(`${row.haciendaCode}-${row.suerte}`))
+      .filter((row) => tableroIngenio === 'TODOS' || row.ingenio_id === tableroIngenio)
       .sort(
         (a, b) =>
           String(a.haciendaCode).localeCompare(String(b.haciendaCode)) ||
           a.suerte.localeCompare(b.suerte),
       )
-  }, [tableroAssignments, maestro])
+  }, [tableroAssignments, maestro, tableroIngenio])
 
   const filteredReport = useMemo(() => {
     return assignments
@@ -268,6 +270,8 @@ function AppContent() {
         setTableroMonth={setTableroMonth}
         tableroZone={tableroZone}
         setTableroZone={setTableroZone}
+        tableroIngenio={tableroIngenio}
+        setTableroIngenio={setTableroIngenio}
         filteredAssignments={filteredAssignments}
         filteredReport={filteredReport}
         haciendaFilterOptions={haciendaFilterOptions}

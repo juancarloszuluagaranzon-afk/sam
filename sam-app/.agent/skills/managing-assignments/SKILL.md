@@ -127,6 +127,18 @@ Empty state contextual:
 
 Reutilizable para cualquier sección con grid de cards que necesite filtro por nombre.
 
+## Filtros del Tablero — mes, zona, ingenio
+
+El tablero tiene tres filtros combinados que se aplican simultáneamente:
+
+- **Mes** (`tableroMonth`): default = mes actual America/Bogota. Filtra `tableroAssignments` por `a.dateKey.startsWith(YYYY-MM)`.
+- **Zona** (`tableroZone`): `TODAS / NORTE / SUR`. Filtra `tableroAssignments` por `a.zone`.
+- **Ingenio** (`tableroIngenio`, agregado 2026-05-11): `TODOS / risaralda / pichichi / mayaguez / san_carlos / riopaila`. Filtra `programmedSuerteRows` (no `tableroAssignments`) por `row.ingenio_id === tableroIngenio`.
+
+**Diseño:** los filtros mes/zona se aplican sobre `tableroAssignments`. El filtro de ingenio se aplica sobre `programmedSuerteRows` (las filas a renderizar). Como las celdas WORKFLOW se llenan con `tableroAssignments.find(... === suerteCode)`, filtrar las filas alcanza para que las celdas solo muestren labores de las suertes visibles. No hay inconsistencia.
+
+**Estados viven en App.tsx** y se pasan como props a SupervisorView. La lista `INGENIOS` ya está hardcodeada arriba de SupervisorView.tsx — reutilizar, no duplicar.
+
 ## Etiquetas de estado en EntityHistoryModal y AssignmentDetailModal
 
 En estos dos componentes específicos, `getStatusMeta(assignment)` usa **"Programada"** para `status === 'PENDIENTE'` (en lugar del "Pendiente" del resto de la app). Decisión textual del usuario (2026-05-11): "completada, parcial o programada" como los tres estados que quería ver en el modal histórico.

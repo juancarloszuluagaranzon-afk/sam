@@ -48,19 +48,32 @@ export function useDictation(lang = 'es-CO') {
       recognition.interimResults = true
 
       let finalText = ''
+      // Algunos navegadores (Chrome Android sobre todo) emiten varias veces
+      // el mismo result con isFinal=true cuando hay pausas. Sin este Set,
+      // result[i].transcript se sumaba dos veces y el texto aparecia duplicado.
+      const seenFinalIndices = new Set<number>()
 
       recognition.onresult = (event: any) => {
         let interim = ''
+        let finalChanged = false
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const result = event.results[i]
           if (result.isFinal) {
-            finalText += result[0].transcript
-            callbacks.onTranscript(finalText, true)
+            if (seenFinalIndices.has(i)) continue
+            seenFinalIndices.add(i)
+            const piece = String(result[0].transcript ?? '')
+            // Inserta espacio entre segmentos para que las frases no se peguen.
+            finalText = finalText ? `${finalText.replace(/\s+$/, '')} ${piece.trimStart()}` : piece
+            finalChanged = true
           } else {
             interim += result[0].transcript
           }
         }
-        if (interim) callbacks.onTranscript(finalText + interim, false)
+        if (finalChanged) callbacks.onTranscript(finalText, true)
+        if (interim) {
+          const join = finalText ? `${finalText.replace(/\s+$/, '')} ` : ''
+          callbacks.onTranscript(join + interim, false)
+        }
       }
 
       recognition.onend = () => {

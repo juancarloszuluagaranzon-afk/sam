@@ -254,6 +254,8 @@ export function SupervisorView({
   const [summaryMonth, setSummaryMonth] = useState(() => todayKey.slice(0, 7))
   const [summaryQuincena, setSummaryQuincena] = useState<SummaryQuincena>('TODO')
   const [selectedEntity, setSelectedEntity] = useState<SummaryEntity | null>(null)
+  const [summaryOperatorSearch, setSummaryOperatorSearch] = useState('')
+  const [summaryEquipmentSearch, setSummaryEquipmentSearch] = useState('')
 
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
@@ -331,6 +333,12 @@ export function SupervisorView({
     return Array.from(groups.values()).sort((a, b) => b.executed - a.executed)
   }, [summaryAssignments])
 
+  const filteredOperators = useMemo(() => {
+    const q = summaryOperatorSearch.trim().toLowerCase()
+    if (!q) return summaryByOperator
+    return summaryByOperator.filter((op) => op.name.toLowerCase().includes(q))
+  }, [summaryByOperator, summaryOperatorSearch])
+
   const summaryByEquipment = useMemo(() => {
     const groups = new Map<
       string,
@@ -347,6 +355,12 @@ export function SupervisorView({
     }
     return Array.from(groups.values()).sort((a, b) => b.executed - a.executed)
   }, [summaryAssignments])
+
+  const filteredEquipment = useMemo(() => {
+    const q = summaryEquipmentSearch.trim().toLowerCase()
+    if (!q) return summaryByEquipment
+    return summaryByEquipment.filter((eq) => eq.name.toLowerCase().includes(q))
+  }, [summaryByEquipment, summaryEquipmentSearch])
 
   if (!session) return null
 
@@ -760,8 +774,15 @@ export function SupervisorView({
               <h2>Por Operador</h2>
               <span className="subtle-copy">Toca un operador para ver el histórico</span>
             </div>
+            <input
+              className="user-search-input"
+              type="search"
+              placeholder="Buscar operador..."
+              value={summaryOperatorSearch}
+              onChange={(e) => setSummaryOperatorSearch(e.target.value)}
+            />
             <div className="entity-grid">
-              {summaryByOperator.map((op) => (
+              {filteredOperators.map((op) => (
                 <button
                   key={op.id}
                   type="button"
@@ -782,9 +803,11 @@ export function SupervisorView({
                   </div>
                 </button>
               ))}
-              {summaryByOperator.length === 0 && (
+              {filteredOperators.length === 0 && (
                 <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
-                  Sin labores en el periodo seleccionado.
+                  {summaryOperatorSearch.trim()
+                    ? 'Sin coincidencias.'
+                    : 'Sin labores en el periodo seleccionado.'}
                 </p>
               )}
             </div>
@@ -797,8 +820,15 @@ export function SupervisorView({
               <h2>Por Equipo</h2>
               <span className="subtle-copy">Toca un equipo para ver el histórico</span>
             </div>
+            <input
+              className="user-search-input"
+              type="search"
+              placeholder="Buscar equipo..."
+              value={summaryEquipmentSearch}
+              onChange={(e) => setSummaryEquipmentSearch(e.target.value)}
+            />
             <div className="entity-grid">
-              {summaryByEquipment.map((eq) => (
+              {filteredEquipment.map((eq) => (
                 <button
                   key={eq.code}
                   type="button"
@@ -819,9 +849,11 @@ export function SupervisorView({
                   </div>
                 </button>
               ))}
-              {summaryByEquipment.length === 0 && (
+              {filteredEquipment.length === 0 && (
                 <p className="muted-text" style={{ gridColumn: '1 / -1' }}>
-                  Sin labores en el periodo seleccionado.
+                  {summaryEquipmentSearch.trim()
+                    ? 'Sin coincidencias.'
+                    : 'Sin labores en el periodo seleccionado.'}
                 </p>
               )}
             </div>

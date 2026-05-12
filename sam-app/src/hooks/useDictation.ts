@@ -48,30 +48,34 @@ export function useDictation(lang = 'es-CO') {
       recognition.interimResults = true
 
       let finalText = ''
-      // Algunos navegadores (Chrome Android sobre todo) emiten varias veces
-      // el mismo result con isFinal=true cuando hay pausas. Sin este Set,
-      // result[i].transcript se sumaba dos veces y el texto aparecia duplicado.
-      const seenFinalIndices = new Set<number>()
 
+      // Reconstruye el transcript final desde cero en cada evento iterando
+      // TODOS los results (no solo desde resultIndex), y deduplica segmentos
+      // finales consecutivos identicos. Chrome Android emite a veces el mismo
+      // result en posiciones distintas durante una sesion con continuous=true,
+      // lo cual hacia que el texto se duplicara con la estrategia anterior
+      // basada en indices.
       recognition.onresult = (event: any) => {
+        const segments: string[] = []
         let interim = ''
-        let finalChanged = false
-        for (let i = event.resultIndex; i < event.results.length; i++) {
+        for (let i = 0; i < event.results.length; i++) {
           const result = event.results[i]
+          const piece = String(result[0]?.transcript ?? '').trim()
+          if (!piece) continue
           if (result.isFinal) {
-            if (seenFinalIndices.has(i)) continue
-            seenFinalIndices.add(i)
-            const piece = String(result[0].transcript ?? '')
-            // Inserta espacio entre segmentos para que las frases no se peguen.
-            finalText = finalText ? `${finalText.replace(/\s+$/, '')} ${piece.trimStart()}` : piece
-            finalChanged = true
+            if (segments[segments.length - 1] !== piece) {
+              segments.push(piece)
+            }
           } else {
-            interim += result[0].transcript
+            interim += interim ? ' ' + piece : piece
           }
         }
-        if (finalChanged) callbacks.onTranscript(finalText, true)
+        const nextFinal = segments.join(' ')
+        const finalChanged = nextFinal !== finalText
+        finalText = nextFinal
+        if (finalChanged && nextFinal) callbacks.onTranscript(nextFinal, true)
         if (interim) {
-          const join = finalText ? `${finalText.replace(/\s+$/, '')} ` : ''
+          const join = nextFinal ? `${nextFinal} ` : ''
           callbacks.onTranscript(join + interim, false)
         }
       }

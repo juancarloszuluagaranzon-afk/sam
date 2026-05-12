@@ -201,7 +201,7 @@ export function SupervisorView({
   const {
     session,
     isOnline, outboxCount, busy, error, info,
-    operators, users, assignments, maestro, todayKey, metrics, sortedEquipment, operatorStatusMap,
+    operators, users, assignments, maestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
   } = useAppData()
 
@@ -250,22 +250,6 @@ export function SupervisorView({
     () => summarizeAssignments(scopedAssignments, todayKey),
     [scopedAssignments, todayKey],
   )
-
-  const scopedLaborToday = useMemo(() => {
-    const groups = new Map<string, { planned: number; executed: number; count: number }>()
-    scopedAssignments
-      .filter((a) => a.dateKey === todayKey && a.status !== 'CANCELADA')
-      .forEach((a) => {
-        const current = groups.get(a.labor) ?? { planned: 0, executed: 0, count: 0 }
-        current.planned += a.area
-        current.count += 1
-        if (a.status === 'COMPLETADA') current.executed += a.executedArea
-        groups.set(a.labor, current)
-      })
-    return Array.from(groups.entries())
-      .map(([labor, value]) => ({ labor, ...value }))
-      .sort((a, b) => b.planned - a.planned)
-  }, [scopedAssignments, todayKey])
 
   const [summaryMonth, setSummaryMonth] = useState(() => todayKey.slice(0, 7))
   const [summaryQuincena, setSummaryQuincena] = useState<SummaryQuincena>('TODO')

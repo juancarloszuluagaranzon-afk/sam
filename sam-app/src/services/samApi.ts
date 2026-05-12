@@ -15,7 +15,7 @@ import type {
 import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
 
-type Source = 'supabase' | 'fallback'
+type Source = 'supabase' | 'fallback' | 'cache'
 
 function dayKey(value: string | null | undefined) {
   if (!value) {

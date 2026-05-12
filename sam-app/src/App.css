@@ -2809,6 +2809,129 @@ th {
   color: #5b5b58;
 }
 
+/* Variante clickeable: movement-row como <button> con reset y hover */
+button.movement-row--clickable {
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+button.movement-row--clickable:hover {
+  border-color: #1a6b3a;
+  box-shadow: 0 2px 8px rgba(26, 107, 58, 0.12);
+  transform: translateY(-1px);
+}
+
+button.movement-row--clickable:active {
+  transform: translateY(0);
+}
+
+/* ===== AssignmentDetailModal ===== */
+
+.assignment-detail-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.assignment-detail-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.assignment-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.assignment-detail-section .eyebrow {
+  margin: 0;
+}
+
+.assignment-detail-labor {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #2a2a28;
+}
+
+.assignment-detail-areas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 12px;
+  background: #f4f6f1;
+  border-radius: 10px;
+}
+
+.assignment-detail-areas > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: center;
+}
+
+.assignment-detail-areas strong {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1a6b3a;
+}
+
+.assignment-detail-areas span {
+  font-size: 0.72rem;
+  color: #5b5b58;
+}
+
+.assignment-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 14px;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .assignment-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.assignment-detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.assignment-detail-row dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #7a7a76;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.assignment-detail-row dd {
+  margin: 0;
+  font-size: 0.92rem;
+  color: #2a2a28;
+}
+
+.assignment-detail-notes {
+  margin: 0;
+  padding: 10px 12px;
+  background: #fdfcf6;
+  border: 1px solid #eee9d4;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #2a2a28;
+  white-space: pre-wrap;
+}
+
 /* ===== Day status bar — versión grande con título "Hoy" ===== */
 
 .day-status-bar--large {

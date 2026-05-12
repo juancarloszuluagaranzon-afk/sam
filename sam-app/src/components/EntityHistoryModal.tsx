@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from 'react'
-import type { Assignment, AssignmentStatus } from '../domain/sam'
+import type { Assignment } from '../domain/sam'
 import { formatTime } from '../services/samApi'
+import { AssignmentDetailModal } from './AssignmentDetailModal'
 
 export type SummaryQuincena = 'TODO' | 'PRIMERA' | 'SEGUNDA' | 'HOY'
 
@@ -40,11 +41,16 @@ function formatArea(value: number) {
   return `${value.toFixed(1)} ha`
 }
 
-function getStatusMeta(status: AssignmentStatus) {
-  if (status === 'COMPLETADA') return { label: 'Completada', tone: 'done' as const }
-  if (status === 'EN_PROCESO') return { label: 'Laborando', tone: 'progress' as const }
-  if (status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
-  return { label: 'Pendiente', tone: 'pending' as const }
+function getStatusMeta(a: Assignment) {
+  if (a.status === 'COMPLETADA') {
+    if (a.executedArea > 0 && a.executedArea < a.area) {
+      return { label: 'Parcial', tone: 'progress' as const }
+    }
+    return { label: 'Completada', tone: 'done' as const }
+  }
+  if (a.status === 'EN_PROCESO') return { label: 'Laborando', tone: 'progress' as const }
+  if (a.status === 'CANCELADA') return { label: 'Cancelada', tone: 'cancel' as const }
+  return { label: 'Programada', tone: 'pending' as const }
 }
 
 interface EntityHistoryModalProps {
@@ -64,6 +70,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
 }: EntityHistoryModalProps) {
   const [month, setMonth] = useState(defaultMonth)
   const [quincena, setQuincena] = useState<SummaryQuincena>(defaultQuincena)
+  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
 
   const monthOptions = useMemo(() => buildMonthOptions(defaultMonth), [defaultMonth])
 
@@ -147,10 +154,15 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
             <p className="muted-text">Sin labores en el periodo seleccionado.</p>
           )}
           {filtered.map((a) => {
-            const meta = getStatusMeta(a.status)
+            const meta = getStatusMeta(a)
             const display = a.status === 'COMPLETADA' && a.executedArea > 0 ? a.executedArea : a.area
             return (
-              <div key={a.id} className="movement-row">
+              <button
+                key={a.id}
+                type="button"
+                className="movement-row movement-row--clickable"
+                onClick={() => setSelectedAssignment(a)}
+              >
                 <div>
                   <strong>{a.haciendaName} - {a.suerte}</strong>
                   <span>
@@ -163,14 +175,20 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
                   </span>
                 </div>
                 <div className="movement-side">
-                  <span className={`status-pill ${meta.tone}`}>{formatArea(display)}</span>
+                  <span className={`status-pill ${meta.tone}`}>
+                    {meta.label} · {formatArea(display)}
+                  </span>
                   {a.finishedAt && <small>{formatTime(a.finishedAt)}</small>}
                 </div>
-              </div>
+              </button>
             )
           })}
         </div>
       </div>
+      <AssignmentDetailModal
+        assignment={selectedAssignment}
+        onClose={() => setSelectedAssignment(null)}
+      />
     </div>
   )
 })

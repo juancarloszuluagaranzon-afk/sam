@@ -676,19 +676,19 @@ export function SupervisorView({
             <div className="day-status-bar__heading">Hoy</div>
             <div className="day-status-bar__items">
               <div className="day-status-item">
-                <strong>{metrics.plannedArea.toFixed(2)}</strong>
+                <strong>{scopedMetrics.plannedArea.toFixed(2)}</strong>
                 <span>Ha planif.</span>
               </div>
               <div className="day-status-item day-status-item--green">
-                <strong>{metrics.executedArea.toFixed(2)}</strong>
+                <strong>{scopedMetrics.executedArea.toFixed(2)}</strong>
                 <span>Ha ejecut.</span>
               </div>
-              <div className={`day-status-item ${metrics.completion >= 70 ? 'day-status-item--green' : metrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
-                <strong>{metrics.completion}%</strong>
+              <div className={`day-status-item ${scopedMetrics.completion >= 70 ? 'day-status-item--green' : scopedMetrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
+                <strong>{scopedMetrics.completion}%</strong>
                 <span>Cumplimiento</span>
               </div>
-              <div className={`day-status-item ${metrics.inProgress > 0 ? 'day-status-item--amber' : ''}`}>
-                <strong>{metrics.inProgress}</strong>
+              <div className={`day-status-item ${scopedMetrics.inProgress > 0 ? 'day-status-item--amber' : ''}`}>
+                <strong>{scopedMetrics.inProgress}</strong>
                 <span>En progreso</span>
               </div>
             </div>

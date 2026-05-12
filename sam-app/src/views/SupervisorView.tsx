@@ -275,11 +275,22 @@ export function SupervisorView({
 
   const summaryAssignments = useMemo(
     () =>
-      scopedAssignments.filter(
-        (a) =>
-          a.status !== 'CANCELADA' &&
-          matchesSummaryFilter(a.dateKey, summaryMonth, summaryQuincena, todayKey),
-      ),
+      scopedAssignments.filter((a) => {
+        if (a.status === 'CANCELADA') return false
+        if (summaryQuincena === 'HOY') {
+          // Match summarizeAssignments carry-over logic: include labors created today
+          // OR completed today even if scheduled earlier.
+          if (a.dateKey === todayKey) return true
+          if (a.status === 'COMPLETADA' && a.finishedAt) {
+            const finDay = new Date(a.finishedAt).toLocaleDateString('en-CA', {
+              timeZone: 'America/Bogota',
+            })
+            if (finDay === todayKey) return true
+          }
+          return false
+        }
+        return matchesSummaryFilter(a.dateKey, summaryMonth, summaryQuincena, todayKey)
+      }),
     [scopedAssignments, summaryMonth, summaryQuincena, todayKey],
   )
 

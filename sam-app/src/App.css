@@ -2809,6 +2809,19 @@ th {
   color: #5b5b58;
 }
 
+/* En mobile, override del media query @900px global (linea 1424)
+   que hace stack vertical de .movement-row. En el histórico queremos
+   mantener el layout de 2 columnas (info izquierda + pill/hora derecha)
+   también en mobile. Especificidad .entity-history-list .movement-row
+   (0,2,0) > .movement-row (0,1,0) para ganar la cascada. */
+@media (max-width: 900px) {
+  .entity-history-list .movement-row {
+    flex-direction: row;
+    align-items: center;
+    text-align: left;
+  }
+}
+
 /* Variante clickeable: movement-row como <button> con reset y hover */
 button.movement-row--clickable {
   width: 100%;

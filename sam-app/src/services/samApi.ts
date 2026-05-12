@@ -126,17 +126,56 @@ function mapAssignmentPayload(input: CreateAssignmentInput) {
   }
 }
 
+// Version barata del maestro: count + max(updated_at). Se compara con la
+// version cacheada localmente para evitar la descarga completa de ~15K filas
+// cuando el maestro no cambia (caso comun). Si la BD no tiene updated_at,
+// devuelve null y el caller hace fetch completo como fallback.
+async function getMaestroVersion(): Promise<string | null> {
+  try {
+    const [countRes, latestRes] = await Promise.all([
+      supabase
+        .from('maestro_risaralda')
+        .select('*', { count: 'exact', head: true })
+        .eq('activo', true),
+      supabase
+        .from('maestro_risaralda')
+        .select('updated_at')
+        .eq('activo', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    if (countRes.error || latestRes.error) return null
+    const count = countRes.count ?? 0
+    const latest = (latestRes.data as { updated_at?: string } | null)?.updated_at ?? ''
+    return `${count}-${latest}`
+  } catch {
+    return null
+  }
+}
+
 export async function loadMaestro(): Promise<{
   data: MaestroRow[]
   source: Source
 }> {
+  const cached = await db.maestro.toArray()
+  const localVersion = (await db.meta.get('maestro_version'))?.value
+
   try {
+    // Chequeo de version barato (~2 queries chicas, <100ms). Si la version no
+    // cambio respecto a lo cacheado y tenemos cache, NO bajamos el maestro
+    // completo. Se devuelve el cache de Dexie tal cual.
+    const serverVersion = await getMaestroVersion()
+    if (serverVersion && serverVersion === localVersion && cached.length > 0) {
+      return { data: cached, source: 'cache' }
+    }
+
     let allData: any[] = []
     let hasMore = true
     let page = 0
-    // Server-side max-rows in PostgREST caps actual response size. Si el VPS
-    // sube PGRST_DB_MAX_ROWS a 20000+, todo el maestro entra en una sola request.
-    // Si sigue capeado a 1000, este loop sigue funcionando paginando.
+    // Server-side max-rows en PostgREST capa el response. Si el VPS sube
+    // PGRST_DB_MAX_ROWS a 20000+, todo el maestro entra en una sola request.
+    // Si sigue capeado a 1000, este loop sigue paginando sin regresion.
     const limit = 20000
 
     while (hasMore) {
@@ -163,19 +202,31 @@ export async function loadMaestro(): Promise<{
     }
 
     if (!allData.length) throw new Error('empty')
-    const data = allData
 
-    const mapped: MaestroRow[] = data.map((row) => ({
-      haciendaCode: String(row.hacienda),
-      haciendaName: row.nombre_hacienda,
-      suerte: row.suerte,
-      area: Number(row.area_neta),
-      ingenio_id: String(row.ingenio_id ?? 'risaralda'),
-    }))
-    void db.maestro.clear().then(() => db.maestro.bulkPut(mapped))
+    const mapped: MaestroRow[] = allData
+      .filter((row) => row.hacienda != null && row.suerte != null && row.suerte !== '')
+      .map((row) => ({
+        haciendaCode: String(row.hacienda),
+        haciendaName: row.nombre_hacienda,
+        suerte: row.suerte,
+        area: Number(row.area_neta),
+        ingenio_id: String(row.ingenio_id ?? 'risaralda'),
+      }))
+
+    void (async () => {
+      try {
+        await db.maestro.clear()
+        await db.maestro.bulkPut(mapped)
+        if (serverVersion) {
+          await db.meta.put({ key: 'maestro_version', value: serverVersion })
+        }
+      } catch {
+        // ignore write errors
+      }
+    })()
+
     return { data: mapped, source: 'supabase' }
   } catch {
-    const cached = await db.maestro.toArray()
     if (cached.length) return { data: cached, source: 'fallback' }
     return { data: LOCAL_MAESTRO, source: 'fallback' }
   }
@@ -185,7 +236,35 @@ export async function loadAssignments(): Promise<{
   data: Assignment[]
   source: Source
 }> {
+  const cached = await db.assignments.toArray()
+  const lastSync = (await db.meta.get('assignments_last_sync'))?.value
+  const now = new Date().toISOString()
+
   try {
+    // Delta sync: si tenemos cache + ultimo sync, solo descargamos las
+    // asignaciones creadas o actualizadas desde la ultima sincronizacion.
+    // En el caso comun (nada nuevo) la respuesta es []. En el caso normal
+    // (1-5 cambios) son unos pocos KB en vez de toda la tabla.
+    if (lastSync && cached.length > 0) {
+      const { data, error } = await supabase
+        .from('asignaciones')
+        .select('*')
+        .or(`updated_at.gt.${lastSync},created_at.gt.${lastSync}`)
+        .order('created_at', { ascending: false })
+
+      if (error) throw error
+
+      const deltas = (data ?? []).map((row) => mapAssignment(row as Record<string, unknown>))
+      if (deltas.length > 0) {
+        await db.assignments.bulkPut(deltas)
+      }
+      const all = await db.assignments.toArray()
+      all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+      void db.meta.put({ key: 'assignments_last_sync', value: now })
+      return { data: all, source: 'supabase' }
+    }
+
+    // Sync completo (primera carga o cache vacio)
     const { data, error } = await supabase
       .from('asignaciones')
       .select('*')
@@ -194,11 +273,17 @@ export async function loadAssignments(): Promise<{
     if (error || !data) throw error ?? new Error('empty')
 
     const mapped = data.map((row) => mapAssignment(row as Record<string, unknown>))
-    void db.assignments.clear().then(() => db.assignments.bulkPut(mapped))
-    void db.meta.put({ key: 'assignments_synced_at', value: new Date().toISOString() })
+    void (async () => {
+      try {
+        await db.assignments.clear()
+        await db.assignments.bulkPut(mapped)
+        await db.meta.put({ key: 'assignments_last_sync', value: now })
+      } catch {
+        // ignore write errors
+      }
+    })()
     return { data: mapped, source: 'supabase' }
   } catch {
-    const cached = await db.assignments.toArray()
     cached.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
     return { data: cached, source: 'fallback' }
   }

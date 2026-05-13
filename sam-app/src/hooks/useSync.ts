@@ -93,10 +93,21 @@ export function useSync({
     }
     document.addEventListener('visibilitychange', onVisible)
 
+    // Poll periodico de asignaciones mientras la app esta visible. Mantiene
+    // sincronizado lo que hace el supervisor desde otro dispositivo (PC vs
+    // movil) sin que el usuario tenga que cerrar y abrir la app. Es barato:
+    // delta sync solo trae las filas tocadas desde el ultimo sync.
+    const POLL_INTERVAL_MS = 30000
+    const pollId = window.setInterval(() => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine) return
+      void loadAssignments().then((r) => onAssignmentsReloaded(r.data))
+    }, POLL_INTERVAL_MS)
+
     return () => {
       window.removeEventListener('online', onOnline)
       window.removeEventListener('offline', onOffline)
       document.removeEventListener('visibilitychange', onVisible)
+      window.clearInterval(pollId)
     }
   }, [syncOutbox, onAssignmentsReloaded, onMaestroReloaded])
 

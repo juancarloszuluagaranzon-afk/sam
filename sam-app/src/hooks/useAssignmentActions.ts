@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import type { Assignment } from '../domain/sam'
 import { db } from '../lib/db'
-import { loadAssignments, updateAssignment } from '../services/samApi'
+import { updateAssignment } from '../services/samApi'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
 
@@ -26,9 +26,9 @@ export function useAssignmentActions() {
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
   const [startHorometroDrafts, setStartHorometroDrafts] = useState<Record<string, string>>({})
 
-  async function refreshAssignments() {
-    const result = await loadAssignments()
-    setAssignments(result.data)
+  function mergeUpdated(updated: Assignment) {
+    setAssignments((current) => current.map((a) => (a.id === updated.id ? updated : a)))
+    void db.assignments.put(updated)
   }
 
   async function startAssignment(assignment: Assignment) {
@@ -95,8 +95,8 @@ export function useAssignmentActions() {
         setOutboxCount((c) => c + 1)
         setInfo(`Labor iniciada (sin conexion, se sincronizara al recuperar senal).`)
       } else {
-        await updateAssignment(assignment.id, startPayload)
-        await refreshAssignments()
+        const updated = await updateAssignment(assignment.id, startPayload)
+        mergeUpdated(updated)
         setInfo(`Labor iniciada: ${assignment.labor}.`)
       }
       setStartEquipmentDrafts((current) => {
@@ -178,8 +178,8 @@ export function useAssignmentActions() {
         setOutboxCount((c) => c + 1)
         setInfo(`Labor finalizada (sin conexion, se sincronizara al recuperar senal).`)
       } else {
-        await updateAssignment(assignment.id, finishPayload)
-        await refreshAssignments()
+        const updated = await updateAssignment(assignment.id, finishPayload)
+        mergeUpdated(updated)
         setInfo(`Labor finalizada: ${assignment.labor}.`)
       }
       setFinishDrafts((current) => {
@@ -237,8 +237,8 @@ export function useAssignmentActions() {
           `Labor ${decision === 'APROBADA' ? 'aprobada' : 'rechazada'} (sin conexion, se sincronizara al recuperar senal).`,
         )
       } else {
-        await updateAssignment(assignment.id, payload)
-        await refreshAssignments()
+        const updated = await updateAssignment(assignment.id, payload)
+        mergeUpdated(updated)
         setInfo(
           `Labor ${decision === 'APROBADA' ? 'aprobada' : 'rechazada'}: ${assignment.labor}.`,
         )
@@ -282,9 +282,9 @@ export function useAssignmentActions() {
         setOutboxCount((c) => c + 1)
         setInfo(`Asignacion cancelada localmente. Se sincronizara al recuperar senal.`)
       } else {
-        await updateAssignment(assignment.id, { status: 'CANCELADA' })
+        const updated = await updateAssignment(assignment.id, { status: 'CANCELADA' })
+        mergeUpdated(updated)
         setInfo(`Asignacion cancelada: ${assignment.labor}.`)
-        await refreshAssignments()
       }
     } catch {
       setError('No se pudo cancelar la asignacion.')

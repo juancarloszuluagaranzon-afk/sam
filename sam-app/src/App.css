@@ -3057,3 +3057,80 @@ button.movement-row--clickable:active {
   resize: vertical;
   min-height: 70px;
 }
+
+/* =====================================================================
+   Modales: responsive y close X siempre visible
+   ===================================================================== */
+
+/* El overlay agrega padding alrededor para que el modal nunca toque los
+   bordes del viewport, especialmente en moviles. Tambien le permite hacer
+   scroll vertical si el modal es muy alto (raro pero defensivo). */
+.modal-overlay {
+  padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Base del modal: cap de ancho razonable, altura limitada con scroll
+   interno, y el header puede ser sticky. */
+.modal-card {
+  width: 100%;
+  max-width: min(480px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding: 1.25rem;
+  box-sizing: border-box;
+}
+
+/* En pantallas muy chicas, padding aun menor para aprovechar espacio. */
+@media (max-width: 380px) {
+  .modal-overlay { padding: 8px; }
+  .modal-card { padding: 1rem; max-height: calc(100vh - 16px); }
+}
+
+/* Modales mas anchos: dejan que el cap base haga su trabajo y solo suben
+   el limite superior. */
+.labor-detail-card { max-width: min(560px, calc(100vw - 32px)); }
+.assignment-detail-card { max-width: min(560px, calc(100vw - 32px)); }
+.entity-history-card { max-width: min(640px, calc(100vw - 32px)); }
+
+/* Header con el X: sticky al tope del modal y fondo blanco para que el
+   boton de cerrar siempre quede visible aunque el contenido del modal
+   sea muy alto y el usuario haga scroll dentro. */
+.labor-detail-header {
+  position: sticky;
+  top: 0;
+  background: #fff;
+  z-index: 2;
+  padding: 4px 0 8px;
+  margin: -4px 0 0;
+}
+
+/* El boton X no se debe encoger ni cortar nunca. */
+.modal-close-btn {
+  flex-shrink: 0;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+/* Footer pegajoso al fondo: igual que el header pero abajo, asi los
+   botones Guardar/Cancelar/Cancelar labor siempre quedan accesibles. */
+.modal-footer {
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding: 12px 0 4px;
+  margin: 8px 0 -4px;
+  z-index: 2;
+  flex-wrap: wrap;
+}
+
+/* Inputs dentro del modal: que respeten el ancho disponible. */
+.modal-card input,
+.modal-card select,
+.modal-card textarea {
+  max-width: 100%;
+  box-sizing: border-box;
+}

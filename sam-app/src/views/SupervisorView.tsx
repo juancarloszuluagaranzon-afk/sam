@@ -265,6 +265,15 @@ export function SupervisorView({
   const [summaryOperatorSearch, setSummaryOperatorSearch] = useState('')
   const [summaryEquipmentSearch, setSummaryEquipmentSearch] = useState('')
 
+  const [editingLabor, setEditingLabor] = useState(false)
+  const [editLaborDraft, setEditLaborDraft] = useState({
+    executedArea: '',
+    horometroInicial: '',
+    horometroFinal: '',
+    notes: '',
+    equipmentCode: '',
+  })
+
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
   const summaryAssignments = useMemo(
@@ -1693,113 +1702,234 @@ export function SupervisorView({
 
         {selectedLabor && (() => {
           const meta = getStatusMeta(selectedLabor)
+          const closeModal = () => {
+            setEditingLabor(false)
+            setSelectedLabor(null)
+          }
           return (
-            <div className="modal-overlay open" onClick={() => setSelectedLabor(null)}>
+            <div className="modal-overlay open" onClick={closeModal}>
               <div className="modal-card labor-detail-card" onClick={(e) => e.stopPropagation()}>
                 <div className="labor-detail-header">
                   <div>
                     <h3>{selectedLabor.labor}</h3>
                     <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
                   </div>
-                  <button className="modal-close-btn" onClick={() => setSelectedLabor(null)} aria-label="Cerrar">✕</button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {canEditAssignments && !editingLabor && (
+                      <button
+                        type="button"
+                        className="inline-button"
+                        onClick={() => {
+                          setEditLaborDraft({
+                            executedArea: selectedLabor.executedArea ? String(selectedLabor.executedArea) : '',
+                            horometroInicial: selectedLabor.horometroInicial != null ? String(selectedLabor.horometroInicial) : '',
+                            horometroFinal: selectedLabor.horometroFinal != null ? String(selectedLabor.horometroFinal) : '',
+                            notes: selectedLabor.notes ?? '',
+                            equipmentCode: selectedLabor.equipmentCode ?? '',
+                          })
+                          setEditingLabor(true)
+                        }}
+                      >
+                        Editar
+                      </button>
+                    )}
+                    <button className="modal-close-btn" onClick={closeModal} aria-label="Cerrar">✕</button>
+                  </div>
                 </div>
 
-                <div className="labor-detail-grid">
-                  <span className="labor-label">Fecha</span>
-                  <span className="labor-value">{selectedLabor.dateKey || '—'}</span>
+                {!editingLabor ? (
+                  <div className="labor-detail-grid">
+                    <span className="labor-label">Fecha</span>
+                    <span className="labor-value">{selectedLabor.dateKey || '—'}</span>
 
-                  <span className="labor-label">Hacienda</span>
-                  <span className="labor-value">{selectedLabor.haciendaName}</span>
+                    <span className="labor-label">Hacienda</span>
+                    <span className="labor-value">{selectedLabor.haciendaName}</span>
 
-                  <span className="labor-label">Suerte</span>
-                  <span className="labor-value">{selectedLabor.suerte}</span>
+                    <span className="labor-label">Suerte</span>
+                    <span className="labor-value">{selectedLabor.suerte}</span>
 
-                  <span className="labor-label">Zona</span>
-                  <span className="labor-value">
-                    {selectedLabor.zone ? (
-                      <span className={`zone-badge zone-${selectedLabor.zone.toLowerCase()}`}>
-                        {selectedLabor.zone === 'NORTE' ? 'Norte' : 'Sur'}
-                      </span>
-                    ) : '—'}
-                  </span>
+                    <span className="labor-label">Zona</span>
+                    <span className="labor-value">
+                      {selectedLabor.zone ? (
+                        <span className={`zone-badge zone-${selectedLabor.zone.toLowerCase()}`}>
+                          {selectedLabor.zone === 'NORTE' ? 'Norte' : 'Sur'}
+                        </span>
+                      ) : '—'}
+                    </span>
 
-                  <span className="labor-label">Tipo</span>
-                  <span className="labor-value">
-                    {selectedLabor.kind === 'ASIGNADA' ? (
-                      <span className="kind-badge asignada">Programada</span>
-                    ) : (
-                      <span className="kind-badge libre">Campo libre</span>
+                    <span className="labor-label">Tipo</span>
+                    <span className="labor-value">
+                      {selectedLabor.kind === 'ASIGNADA' ? (
+                        <span className="kind-badge asignada">Programada</span>
+                      ) : (
+                        <span className="kind-badge libre">Campo libre</span>
+                      )}
+                    </span>
+
+                    <span className="labor-label">Aprobación</span>
+                    <span className="labor-value">
+                      {selectedLabor.approval === 'APROBADA' && '✓ Aprobada'}
+                      {selectedLabor.approval === 'PENDIENTE' && (
+                        <span className="approval-chip approval-pendiente">Por aprobar</span>
+                      )}
+                      {selectedLabor.approval === 'RECHAZADA' && (
+                        <span className="approval-chip approval-rechazada">Rechazada</span>
+                      )}
+                    </span>
+
+                    <span className="labor-label">Operador</span>
+                    <span className="labor-value">{selectedLabor.operatorName || '—'}</span>
+
+                    <span className="labor-label">Equipo</span>
+                    <span className="labor-value">{selectedLabor.equipmentName || '—'}</span>
+
+                    <span className="labor-label">Área plan.</span>
+                    <span className="labor-area">{formatArea(selectedLabor.area)}</span>
+
+                    {selectedLabor.executedArea > 0 && (
+                      <>
+                        <span className="labor-label">Área ejec.</span>
+                        <span className="labor-area">{formatArea(selectedLabor.executedArea)}</span>
+                      </>
                     )}
-                  </span>
 
-                  <span className="labor-label">Aprobación</span>
-                  <span className="labor-value">
-                    {selectedLabor.approval === 'APROBADA' && '✓ Aprobada'}
-                    {selectedLabor.approval === 'PENDIENTE' && (
-                      <span className="approval-chip approval-pendiente">Por aprobar</span>
+                    <span className="labor-label">Inicio</span>
+                    <span className="labor-value">{formatTime(selectedLabor.startedAt)}</span>
+
+                    <span className="labor-label">Fin</span>
+                    <span className="labor-value">{formatTime(selectedLabor.finishedAt)}</span>
+
+                    {selectedLabor.horometroInicial !== null && (
+                      <>
+                        <span className="labor-label">Horóm. ini.</span>
+                        <span className="labor-value">{selectedLabor.horometroInicial} h</span>
+                      </>
                     )}
-                    {selectedLabor.approval === 'RECHAZADA' && (
-                      <span className="approval-chip approval-rechazada">Rechazada</span>
+
+                    {selectedLabor.horometroFinal !== null && (
+                      <>
+                        <span className="labor-label">Horóm. fin.</span>
+                        <span className="labor-value">{selectedLabor.horometroFinal} h</span>
+                      </>
                     )}
-                  </span>
 
-                  <span className="labor-label">Operador</span>
-                  <span className="labor-value">{selectedLabor.operatorName || '—'}</span>
+                    {selectedLabor.notes && (
+                      <>
+                        <span className="labor-label">Notas</span>
+                        <span className="labor-value">{selectedLabor.notes}</span>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <div className="labor-detail-edit">
+                    <label className="assignment-detail-field">
+                      <span>Hectáreas ejecutadas</span>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={editLaborDraft.executedArea}
+                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, executedArea: e.target.value }))}
+                      />
+                      <small>Planificadas: {selectedLabor.area.toFixed(2)} ha</small>
+                    </label>
 
-                  <span className="labor-label">Equipo</span>
-                  <span className="labor-value">{selectedLabor.equipmentName || '—'}</span>
+                    <div className="assignment-detail-field-grid">
+                      <label className="assignment-detail-field">
+                        <span>Horómetro inicial</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={editLaborDraft.horometroInicial}
+                          onChange={(e) => setEditLaborDraft((d) => ({ ...d, horometroInicial: e.target.value }))}
+                        />
+                      </label>
+                      <label className="assignment-detail-field">
+                        <span>Horómetro final</span>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.1}
+                          value={editLaborDraft.horometroFinal}
+                          onChange={(e) => setEditLaborDraft((d) => ({ ...d, horometroFinal: e.target.value }))}
+                        />
+                      </label>
+                    </div>
 
-                  <span className="labor-label">Área plan.</span>
-                  <span className="labor-area">{formatArea(selectedLabor.area)}</span>
+                    <label className="assignment-detail-field">
+                      <span>Equipo</span>
+                      <select
+                        value={editLaborDraft.equipmentCode}
+                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, equipmentCode: e.target.value }))}
+                      >
+                        <option value="">Sin equipo</option>
+                        {sortedEquipment.map((eq) => (
+                          <option key={eq.code} value={eq.code}>{eq.name}</option>
+                        ))}
+                      </select>
+                    </label>
 
-                  {selectedLabor.executedArea > 0 && (
-                    <>
-                      <span className="labor-label">Área ejec.</span>
-                      <span className="labor-area">{formatArea(selectedLabor.executedArea)}</span>
-                    </>
-                  )}
+                    <label className="assignment-detail-field">
+                      <span>Observaciones</span>
+                      <textarea
+                        rows={3}
+                        value={editLaborDraft.notes}
+                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, notes: e.target.value }))}
+                        className="assignment-detail-notes-input"
+                        placeholder="Notas / observaciones"
+                      />
+                    </label>
+                  </div>
+                )}
 
-                  <span className="labor-label">Inicio</span>
-                  <span className="labor-value">{formatTime(selectedLabor.startedAt)}</span>
-
-                  <span className="labor-label">Fin</span>
-                  <span className="labor-value">{formatTime(selectedLabor.finishedAt)}</span>
-
-                  {selectedLabor.horometroInicial !== null && (
-                    <>
-                      <span className="labor-label">Horóm. ini.</span>
-                      <span className="labor-value">{selectedLabor.horometroInicial} h</span>
-                    </>
-                  )}
-
-                  {selectedLabor.horometroFinal !== null && (
-                    <>
-                      <span className="labor-label">Horóm. fin.</span>
-                      <span className="labor-value">{selectedLabor.horometroFinal} h</span>
-                    </>
-                  )}
-
-                  {selectedLabor.notes && (
-                    <>
-                      <span className="labor-label">Notas</span>
-                      <span className="labor-value">{selectedLabor.notes}</span>
-                    </>
-                  )}
-                </div>
-
-                {selectedLabor.status === 'PENDIENTE' && (
+                {editingLabor ? (
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="inline-button"
+                      onClick={() => setEditingLabor(false)}
+                      disabled={busy}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={busy}
+                      onClick={async () => {
+                        const execNum = Number(editLaborDraft.executedArea)
+                        const hiNum = editLaborDraft.horometroInicial.trim() === '' ? null : Number(editLaborDraft.horometroInicial)
+                        const hfNum = editLaborDraft.horometroFinal.trim() === '' ? null : Number(editLaborDraft.horometroFinal)
+                        const ok = await handleEditAssignment(selectedLabor, {
+                          executedArea: isNaN(execNum) ? selectedLabor.executedArea : execNum,
+                          horometroInicial: hiNum,
+                          horometroFinal: hfNum,
+                          notes: editLaborDraft.notes,
+                          equipmentCode: editLaborDraft.equipmentCode,
+                        })
+                        if (ok) {
+                          setEditingLabor(false)
+                          setSelectedLabor(null)
+                        }
+                      }}
+                    >
+                      {busy ? 'Guardando...' : 'Guardar cambios'}
+                    </button>
+                  </div>
+                ) : selectedLabor.status === 'PENDIENTE' ? (
                   <div className="modal-footer">
                     <button
                       className="cancel-btn"
                       onClick={() => {
                         void handleCancelAssignment(selectedLabor)
-                        setSelectedLabor(null)
+                        closeModal()
                       }}
                     >
                       Cancelar labor
                     </button>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           )

@@ -245,11 +245,18 @@ export async function loadAssignments(): Promise<{
     // asignaciones creadas o actualizadas desde la ultima sincronizacion.
     // En el caso comun (nada nuevo) la respuesta es []. En el caso normal
     // (1-5 cambios) son unos pocos KB en vez de toda la tabla.
+    //
+    // Usamos un buffer de 10 segundos retroactivo (gte en vez de gt sobre
+    // lastSync - 10s) para protegernos de: (a) precision de timestamp en
+    // Postgres vs JS, (b) skew de reloj entre cliente y servidor, (c)
+    // latencia entre el UPDATE y la lectura. Costa pocos rows duplicados
+    // en cada delta (bulkPut es idempotente sobre primary key).
     if (lastSync && cached.length > 0) {
+      const sinceTime = new Date(new Date(lastSync).getTime() - 10000).toISOString()
       const { data, error } = await supabase
         .from('asignaciones')
         .select('*')
-        .or(`updated_at.gt.${lastSync},created_at.gt.${lastSync}`)
+        .or(`updated_at.gte.${sinceTime},created_at.gte.${sinceTime}`)
         .order('created_at', { ascending: false })
 
       if (error) throw error

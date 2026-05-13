@@ -228,7 +228,11 @@ export function SupervisorView({
     cancelAssignment: handleCancelAssignment,
     approveAssignment: handleApproveAssignment,
     rejectAssignment: handleRejectAssignment,
+    editAssignment: handleEditAssignment,
   } = useAssignmentActions()
+
+  const canEditAssignments =
+    session?.role === 'supervisor' || session?.role === 'owner' || session?.role === 'administracion'
 
   const {
     equipmentForm, updateEquipmentForm, isEquipmentFormOpen, setIsEquipmentFormOpen,
@@ -902,6 +906,10 @@ export function SupervisorView({
           defaultMonth={summaryMonth}
           defaultQuincena={summaryQuincena}
           onClose={() => setSelectedEntity(null)}
+          canEdit={canEditAssignments}
+          equipment={sortedEquipment}
+          onSaveAssignment={handleEditAssignment}
+          busy={busy}
         />
 
         {supervisorTab === 'asignar' ? (

@@ -293,6 +293,71 @@ export function useAssignmentActions() {
     }
   }
 
+  type EditPatch = {
+    executedArea?: number
+    horometroInicial?: number | null
+    horometroFinal?: number | null
+    notes?: string
+    equipmentCode?: string
+    equipmentName?: string
+  }
+
+  async function editAssignment(assignment: Assignment, patch: EditPatch) {
+    // Validacion basica
+    if (patch.executedArea !== undefined) {
+      if (isNaN(patch.executedArea) || patch.executedArea < 0) {
+        setError('El area ejecutada debe ser un numero >= 0.')
+        return false
+      }
+    }
+    if (patch.horometroInicial != null && isNaN(patch.horometroInicial)) {
+      setError('El horometro inicial debe ser un numero valido.')
+      return false
+    }
+    if (patch.horometroFinal != null && isNaN(patch.horometroFinal)) {
+      setError('El horometro final debe ser un numero valido.')
+      return false
+    }
+
+    setBusy(true)
+    setError('')
+
+    // Resolver nombre de equipo si solo se pasa codigo
+    const finalPatch: EditPatch = { ...patch }
+    if (patch.equipmentCode !== undefined && patch.equipmentName === undefined) {
+      const eq = equipment.find((e) => e.code === patch.equipmentCode)
+      if (eq) finalPatch.equipmentName = eq.name
+    }
+
+    try {
+      if (!isOnline) {
+        await db.outbox.add({
+          type: 'UPDATE',
+          assignmentId: assignment.id,
+          updatePayload: finalPatch,
+          queuedAt: new Date().toISOString(),
+          status: 'pending',
+        })
+        setAssignments((current) =>
+          current.map((a) => (a.id === assignment.id ? { ...a, ...finalPatch } : a)),
+        )
+        void db.assignments.update(assignment.id, finalPatch as Partial<Assignment>)
+        setOutboxCount((c) => c + 1)
+        setInfo(`Cambios guardados localmente. Se sincronizaran al recuperar senal.`)
+      } else {
+        await updateAssignment(assignment.id, finalPatch)
+        await refreshAssignments()
+        setInfo(`Asignacion actualizada.`)
+      }
+      return true
+    } catch {
+      setError('No se pudo actualizar la asignacion.')
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return {
     finishDrafts,
     setFinishDrafts,
@@ -305,5 +370,6 @@ export function useAssignmentActions() {
     cancelAssignment,
     approveAssignment,
     rejectAssignment,
+    editAssignment,
   }
 }

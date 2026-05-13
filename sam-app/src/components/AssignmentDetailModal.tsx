@@ -1,10 +1,23 @@
-import { memo } from 'react'
-import type { Assignment } from '../domain/sam'
+import { memo, useEffect, useState } from 'react'
+import type { Assignment, Equipment } from '../domain/sam'
 import { formatTime } from '../services/samApi'
+
+interface EditPatch {
+  executedArea?: number
+  horometroInicial?: number | null
+  horometroFinal?: number | null
+  notes?: string
+  equipmentCode?: string
+  equipmentName?: string
+}
 
 interface Props {
   assignment: Assignment | null
   onClose: () => void
+  canEdit?: boolean
+  equipment?: Equipment[]
+  onSave?: (assignment: Assignment, patch: EditPatch) => Promise<boolean>
+  busy?: boolean
 }
 
 function getStatusMeta(a: Assignment) {
@@ -44,7 +57,31 @@ function Row({ label, value }: { label: string; value: string | number | null | 
 export const AssignmentDetailModal = memo(function AssignmentDetailModal({
   assignment,
   onClose,
+  canEdit,
+  equipment,
+  onSave,
+  busy,
 }: Props) {
+  const [editing, setEditing] = useState(false)
+  const [executedArea, setExecutedArea] = useState('')
+  const [horometroInicial, setHorometroInicial] = useState('')
+  const [horometroFinal, setHorometroFinal] = useState('')
+  const [notes, setNotes] = useState('')
+  const [equipmentCode, setEquipmentCode] = useState('')
+
+  useEffect(() => {
+    if (!assignment) {
+      setEditing(false)
+      return
+    }
+    setExecutedArea(assignment.executedArea ? String(assignment.executedArea) : '')
+    setHorometroInicial(assignment.horometroInicial != null ? String(assignment.horometroInicial) : '')
+    setHorometroFinal(assignment.horometroFinal != null ? String(assignment.horometroFinal) : '')
+    setNotes(assignment.notes ?? '')
+    setEquipmentCode(assignment.equipmentCode ?? '')
+    setEditing(false)
+  }, [assignment])
+
   if (!assignment) return null
 
   const a = assignment
@@ -61,6 +98,28 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
       : a.approval === 'RECHAZADA'
       ? 'Rechazada'
       : null
+
+  const showEditButton = canEdit && onSave && !editing
+
+  async function handleSave() {
+    if (!onSave) return
+    const patch: EditPatch = {}
+    const exec = Number(executedArea)
+    if (!isNaN(exec) && exec !== a.executedArea) patch.executedArea = exec
+    const hi = horometroInicial.trim() === '' ? null : Number(horometroInicial)
+    if (hi !== a.horometroInicial) patch.horometroInicial = hi
+    const hf = horometroFinal.trim() === '' ? null : Number(horometroFinal)
+    if (hf !== a.horometroFinal) patch.horometroFinal = hf
+    if (notes !== (a.notes ?? '')) patch.notes = notes
+    if (equipmentCode !== a.equipmentCode) patch.equipmentCode = equipmentCode
+
+    if (Object.keys(patch).length === 0) {
+      setEditing(false)
+      return
+    }
+    const ok = await onSave(a, patch)
+    if (ok) setEditing(false)
+  }
 
   return (
     <div
@@ -89,6 +148,16 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
           <span className={`kind-badge ${a.kind === 'ASIGNADA' ? 'asignada' : 'libre'}`}>
             {a.kind === 'ASIGNADA' ? 'Programada' : 'Campo libre'}
           </span>
+          {showEditButton && (
+            <button
+              type="button"
+              className="inline-button"
+              onClick={() => setEditing(true)}
+              style={{ marginLeft: 'auto' }}
+            >
+              Editar
+            </button>
+          )}
         </div>
 
         <section className="assignment-detail-section">
@@ -98,33 +167,64 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
 
         <section className="assignment-detail-section">
           <p className="eyebrow">Áreas</p>
-          <div className="assignment-detail-areas">
-            <div>
-              <strong>{a.executedArea.toFixed(2)}</strong>
-              <span>ha ejecutadas</span>
-            </div>
-            <div>
-              <strong>{a.area.toFixed(2)}</strong>
-              <span>ha planificadas</span>
-            </div>
-            <div>
-              <strong>{a.area > 0 ? `${completion}%` : '-'}</strong>
-              <span>cumplimiento</span>
-            </div>
-          </div>
-          {a.area > 0 && (
-            <div className="progress-track">
-              <span style={{ width: `${Math.min(completion, 100)}%` }} />
-            </div>
+          {editing ? (
+            <label className="assignment-detail-field">
+              <span>Hectáreas ejecutadas</span>
+              <input
+                type="number"
+                min={0}
+                step={0.01}
+                value={executedArea}
+                onChange={(e) => setExecutedArea(e.target.value)}
+              />
+              <small>Planificadas: {a.area.toFixed(2)} ha</small>
+            </label>
+          ) : (
+            <>
+              <div className="assignment-detail-areas">
+                <div>
+                  <strong>{a.executedArea.toFixed(2)}</strong>
+                  <span>ha ejecutadas</span>
+                </div>
+                <div>
+                  <strong>{a.area.toFixed(2)}</strong>
+                  <span>ha planificadas</span>
+                </div>
+                <div>
+                  <strong>{a.area > 0 ? `${completion}%` : '-'}</strong>
+                  <span>cumplimiento</span>
+                </div>
+              </div>
+              {a.area > 0 && (
+                <div className="progress-track">
+                  <span style={{ width: `${Math.min(completion, 100)}%` }} />
+                </div>
+              )}
+            </>
           )}
         </section>
 
         <section className="assignment-detail-section">
           <p className="eyebrow">Personas y equipo</p>
-          <dl className="assignment-detail-grid">
-            <Row label="Operador" value={a.operatorName} />
-            <Row label="Equipo" value={a.equipmentName || a.equipmentCode} />
-          </dl>
+          {editing ? (
+            <>
+              <Row label="Operador" value={a.operatorName} />
+              <label className="assignment-detail-field">
+                <span>Equipo</span>
+                <select value={equipmentCode} onChange={(e) => setEquipmentCode(e.target.value)}>
+                  <option value="">Sin equipo</option>
+                  {(equipment ?? []).map((eq) => (
+                    <option key={eq.code} value={eq.code}>{eq.name}</option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : (
+            <dl className="assignment-detail-grid">
+              <Row label="Operador" value={a.operatorName} />
+              <Row label="Equipo" value={a.equipmentName || a.equipmentCode} />
+            </dl>
+          )}
         </section>
 
         <section className="assignment-detail-section">
@@ -137,18 +237,43 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
           </dl>
         </section>
 
-        {horometroDiff !== null && (
-          <section className="assignment-detail-section">
-            <p className="eyebrow">Horómetros</p>
+        <section className="assignment-detail-section">
+          <p className="eyebrow">Horómetros</p>
+          {editing ? (
+            <div className="assignment-detail-field-grid">
+              <label className="assignment-detail-field">
+                <span>Inicial</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={horometroInicial}
+                  onChange={(e) => setHorometroInicial(e.target.value)}
+                />
+              </label>
+              <label className="assignment-detail-field">
+                <span>Final</span>
+                <input
+                  type="number"
+                  min={0}
+                  step={0.1}
+                  value={horometroFinal}
+                  onChange={(e) => setHorometroFinal(e.target.value)}
+                />
+              </label>
+            </div>
+          ) : horometroDiff !== null ? (
             <dl className="assignment-detail-grid">
               <Row label="Inicial" value={a.horometroInicial} />
               <Row label="Final" value={a.horometroFinal} />
               <Row label="Trabajado" value={horometroDiff.toFixed(1)} />
             </dl>
-          </section>
-        )}
+          ) : (
+            <p className="muted-text">Sin horómetros registrados.</p>
+          )}
+        </section>
 
-        {(a.zone || a.cliente) && (
+        {(a.zone || a.cliente) && !editing && (
           <section className="assignment-detail-section">
             <p className="eyebrow">Contexto</p>
             <dl className="assignment-detail-grid">
@@ -158,18 +283,49 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
           </section>
         )}
 
-        {approvalLabel && (
+        {approvalLabel && !editing && (
           <section className="assignment-detail-section">
             <p className="eyebrow">Aprobación</p>
             <p>{approvalLabel}</p>
           </section>
         )}
 
-        {a.notes && a.notes.trim() && (
-          <section className="assignment-detail-section">
-            <p className="eyebrow">Notas</p>
+        <section className="assignment-detail-section">
+          <p className="eyebrow">Notas</p>
+          {editing ? (
+            <textarea
+              rows={3}
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Observaciones"
+              className="assignment-detail-notes-input"
+            />
+          ) : a.notes && a.notes.trim() ? (
             <p className="assignment-detail-notes">{a.notes}</p>
-          </section>
+          ) : (
+            <p className="muted-text">Sin notas.</p>
+          )}
+        </section>
+
+        {editing && (
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="inline-button"
+              onClick={() => setEditing(false)}
+              disabled={busy}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="primary-button"
+              onClick={() => void handleSave()}
+              disabled={busy}
+            >
+              {busy ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
         )}
       </div>
     </div>

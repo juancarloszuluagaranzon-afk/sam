@@ -1,7 +1,16 @@
 import { memo, useMemo, useState } from 'react'
-import type { Assignment } from '../domain/sam'
+import type { Assignment, Equipment } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 import { AssignmentDetailModal } from './AssignmentDetailModal'
+
+interface EditPatch {
+  executedArea?: number
+  horometroInicial?: number | null
+  horometroFinal?: number | null
+  notes?: string
+  equipmentCode?: string
+  equipmentName?: string
+}
 
 export type SummaryQuincena = 'TODO' | 'PRIMERA' | 'SEGUNDA' | 'HOY'
 
@@ -59,6 +68,10 @@ interface EntityHistoryModalProps {
   defaultMonth: string
   defaultQuincena: SummaryQuincena
   onClose: () => void
+  canEdit?: boolean
+  equipment?: Equipment[]
+  onSaveAssignment?: (assignment: Assignment, patch: EditPatch) => Promise<boolean>
+  busy?: boolean
 }
 
 export const EntityHistoryModal = memo(function EntityHistoryModal({
@@ -67,6 +80,10 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
   defaultMonth,
   defaultQuincena,
   onClose,
+  canEdit,
+  equipment,
+  onSaveAssignment,
+  busy,
 }: EntityHistoryModalProps) {
   const [month, setMonth] = useState(defaultMonth)
   const [quincena, setQuincena] = useState<SummaryQuincena>(defaultQuincena)
@@ -188,6 +205,10 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
       <AssignmentDetailModal
         assignment={selectedAssignment}
         onClose={() => setSelectedAssignment(null)}
+        canEdit={canEdit}
+        equipment={equipment}
+        onSave={onSaveAssignment}
+        busy={busy}
       />
     </div>
   )

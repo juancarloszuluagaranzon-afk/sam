@@ -3007,3 +3007,53 @@ button.movement-row--clickable:active {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ===== AssignmentDetailModal — modo edición ===== */
+
+.assignment-detail-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #2a2a28;
+}
+
+.assignment-detail-field > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #5b5b58;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.assignment-detail-field input,
+.assignment-detail-field select {
+  padding: 10px 12px;
+  border: 1px solid #d6d6cf;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 1rem;
+}
+
+.assignment-detail-field small {
+  font-size: 0.72rem;
+  color: #5b5b58;
+}
+
+.assignment-detail-field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.assignment-detail-notes-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d6d6cf;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.95rem;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 70px;
+}

@@ -345,8 +345,8 @@ export function useAssignmentActions() {
         setOutboxCount((c) => c + 1)
         setInfo(`Cambios guardados localmente. Se sincronizaran al recuperar senal.`)
       } else {
-        await updateAssignment(assignment.id, finalPatch)
-        await refreshAssignments()
+        const updated = await updateAssignment(assignment.id, finalPatch)
+        mergeUpdated(updated)
         setInfo(`Asignacion actualizada.`)
       }
       return true

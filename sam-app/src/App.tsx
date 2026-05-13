@@ -3,6 +3,7 @@ import { AppDataProvider, SESSION_KEY, useAppData } from './context/AppDataConte
 import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
+import { UpdateBanner } from './components/UpdateBanner'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
 import { appLogin, appChangePin } from './services/samApi'
@@ -322,6 +323,7 @@ function App() {
   return (
     <AppDataProvider>
       <AppContent />
+      <UpdateBanner />
     </AppDataProvider>
   )
 }

@@ -2,7 +2,7 @@ import { memo, useRef } from 'react'
 import { useDictation } from '../hooks/useDictation'
 
 interface DictateButtonProps {
-  onTranscript: (text: string, isFinal: boolean) => void
+  onTranscript?: (text: string, isFinal: boolean) => void
   onComplete?: (finalText: string) => void
   onError?: (error: string) => void
   disabled?: boolean
@@ -30,7 +30,7 @@ export const DictateButton = memo(function DictateButton({
     start({
       onTranscript: (text, isFinal) => {
         if (isFinal) finalTextRef.current = text
-        onTranscript(text, isFinal)
+        onTranscript?.(text, isFinal)
       },
       onEnd: (finalText) => {
         const text = finalText || finalTextRef.current

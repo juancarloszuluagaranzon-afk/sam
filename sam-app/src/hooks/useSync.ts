@@ -7,6 +7,7 @@ import {
   loadMaestro,
   updateAssignment,
 } from '../services/samApi'
+import { supabase } from '../lib/supabase'
 
 interface UseSyncParams {
   onAssignmentsReloaded: (data: Assignment[]) => void
@@ -93,11 +94,36 @@ export function useSync({
     }
     document.addEventListener('visibilitychange', onVisible)
 
-    // Poll periodico de asignaciones mientras la app esta visible. Mantiene
-    // sincronizado lo que hace el supervisor desde otro dispositivo (PC vs
-    // movil) sin que el usuario tenga que cerrar y abrir la app. Es barato:
-    // delta sync solo trae las filas tocadas desde el ultimo sync.
-    const POLL_INTERVAL_MS = 30000
+    // Realtime: cuando cualquier cliente toca la tabla asignaciones, el
+    // servidor empuja el evento via websocket a todos los conectados. Cada
+    // cliente recarga sus asignaciones de inmediato. Reemplaza el feedback
+    // perezoso del poll cada 30s cuando hay multiples dispositivos abiertos.
+    //
+    // El delta sync de loadAssignments hace que la recarga sea barata
+    // (solo trae las filas tocadas en los ultimos segundos).
+    let realtimeDebounce: number | null = null
+    const channel = supabase
+      .channel('asignaciones-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'asignaciones' },
+        () => {
+          // Debounce: si llegan varios eventos en rafaga (sync de outbox que
+          // dispara 5 INSERTs por ejemplo), agrupamos en un solo refresh.
+          if (realtimeDebounce !== null) window.clearTimeout(realtimeDebounce)
+          realtimeDebounce = window.setTimeout(() => {
+            realtimeDebounce = null
+            if (!navigator.onLine) return
+            void loadAssignments().then((r) => onAssignmentsReloaded(r.data))
+          }, 500)
+        },
+      )
+      .subscribe()
+
+    // Poll periodico como fallback defensivo: si Realtime se cae o no
+    // estamos conectados al websocket, igual mantenemos sync. Cada 60s
+    // (menos agresivo que antes porque ya tenemos Realtime como primario).
+    const POLL_INTERVAL_MS = 60000
     const pollId = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
       void loadAssignments().then((r) => onAssignmentsReloaded(r.data))
@@ -108,6 +134,8 @@ export function useSync({
       window.removeEventListener('offline', onOffline)
       document.removeEventListener('visibilitychange', onVisible)
       window.clearInterval(pollId)
+      if (realtimeDebounce !== null) window.clearTimeout(realtimeDebounce)
+      void supabase.removeChannel(channel)
     }
   }, [syncOutbox, onAssignmentsReloaded, onMaestroReloaded])
 

@@ -1235,8 +1235,19 @@ export function SupervisorView({
 
         {session.role === 'owner' && supervisorTab === 'usuarios' ? (
           <section className="panel-card">
-            <div className="panel-title">
+            <div className="panel-title users-panel-title">
               <h2>Usuarios</h2>
+              <button
+                type="button"
+                className="primary-button users-new-btn"
+                onClick={() => {
+                  setEditingUserId(null)
+                  setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                  setIsUserFormOpen(true)
+                }}
+              >
+                + Nuevo usuario
+              </button>
             </div>
 
             <input
@@ -1262,9 +1273,6 @@ export function SupervisorView({
                     setEditingUserId(u.id)
                     setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
                     setIsUserFormOpen(true)
-                    requestAnimationFrame(() => {
-                      document.querySelector('.usuarios-form-collapsible')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    })
                   }
                   return (
                     <li key={u.id} className="user-card" onClick={openEdit} style={{ cursor: 'pointer' }}>
@@ -1291,23 +1299,29 @@ export function SupervisorView({
                   )
                 })}
             </ul>
+          </section>
+        ) : null}
 
-            <div className="usuarios-form-collapsible">
-              <button
-                className="usuarios-form-toggle"
-                onClick={() => {
-                  if (isUserFormOpen && editingUserId) {
-                    setEditingUserId(null)
-                    setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
-                  }
-                  setIsUserFormOpen((v) => !v)
-                }}
-              >
-                <span>{editingUserId ? `Editando: ${userForm.nombreCompleto}` : '+ Nuevo usuario'}</span>
-                <span className={`chevron ${isUserFormOpen ? 'chevron--up' : ''}`}>▾</span>
-              </button>
-
-              {isUserFormOpen && (
+        {session.role === 'owner' && isUserFormOpen && (() => {
+          const closeUserModal = () => {
+            setIsUserFormOpen(false)
+            setEditingUserId(null)
+            setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+          }
+          return (
+            <div className="modal-overlay open" onClick={closeUserModal}>
+              <div className="modal-card user-modal-card" onClick={(e) => e.stopPropagation()}>
+                <div className="labor-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <h3 style={{ margin: 0 }}>{editingUserId ? 'Editar usuario' : 'Nuevo usuario'}</h3>
+                  <button
+                    type="button"
+                    className="modal-close-btn"
+                    onClick={closeUserModal}
+                    aria-label="Cerrar"
+                  >
+                    ×
+                  </button>
+                </div>
                 <form
                   className="user-form"
                   onSubmit={async (e) => {
@@ -1331,9 +1345,7 @@ export function SupervisorView({
                         await createAppUser({ ...userForm, id: userForm.id || nextUserId })
                         setInfo(`Usuario ${userForm.nombreCompleto} creado.`)
                       }
-                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
-                      setEditingUserId(null)
-                      setIsUserFormOpen(false)
+                      closeUserModal()
                     } catch (err: unknown) {
                       setError(err instanceof Error ? err.message : 'Error al guardar usuario')
                     } finally {
@@ -1356,6 +1368,7 @@ export function SupervisorView({
                       onChange={(e) => setUserForm((f) => ({ ...f, nombreCompleto: e.target.value }))}
                       placeholder="Nombre y apellido"
                       required
+                      autoFocus
                     />
                   </label>
                   <label>
@@ -1393,29 +1406,23 @@ export function SupervisorView({
                       options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
-                  <div className="user-form__actions">
+                  <div className="modal-footer user-form__actions">
+                    <button
+                      type="button"
+                      className="inline-button"
+                      onClick={closeUserModal}
+                    >
+                      Cancelar
+                    </button>
                     <button className="primary-button" type="submit" disabled={busy}>
                       {busy ? 'Guardando...' : editingUserId ? 'Guardar cambios' : 'Crear usuario'}
                     </button>
-                    {editingUserId && (
-                      <button
-                        type="button"
-                        className="inline-button"
-                        onClick={() => {
-                          setEditingUserId(null)
-                          setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
-                          setIsUserFormOpen(false)
-                        }}
-                      >
-                        Cancelar
-                      </button>
-                    )}
                   </div>
                 </form>
-              )}
+              </div>
             </div>
-          </section>
-        ) : null}
+          )
+        })()}
 
         {supervisorTab === 'labores' ? (
           <section className="panel-card">

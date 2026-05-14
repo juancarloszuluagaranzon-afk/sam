@@ -2198,26 +2198,40 @@ th {
 .user-form__actions .inline-button {
   flex-shrink: 0;
 }
-.usuarios-form-collapsible {
-  border-top: 1px solid #e3e2dc;
-  padding-top: 1rem;
-}
-.usuarios-form-toggle {
-  width: 100%;
+/* Header de la seccion Usuarios: titulo a la izquierda, boton + Nuevo a la
+   derecha. En pantallas chicas el boton baja debajo del titulo. */
+.users-panel-title {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: none;
-  border: 1px solid #cfcec7;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #4a5040;
-  cursor: pointer;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.usuarios-form-toggle:hover {
-  background: #f4f3f0;
+.users-new-btn {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .users-new-btn {
+    width: 100%;
+  }
+}
+
+/* Modal de crear/editar usuario: ancho similar al de labor-detail para que
+   los campos respiren en escritorio sin volverse incomodo en movil. */
+.user-modal-card {
+  max-width: min(520px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.user-modal-card .user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
 }
 .chevron {
   transition: transform 0.2s;

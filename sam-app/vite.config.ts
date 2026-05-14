@@ -72,6 +72,17 @@ export default defineConfig({
         // Cachear aquí causa que las respuestas paginadas (Range header) colisionen con la
         // misma URL cacheada y devuelvan datos incompletos.
         runtimeCaching: [],
+        // Cuando hay una version nueva del SW: actívala YA (skipWaiting) y toma el control
+        // de todos los clientes abiertos (clientsClaim). Sin esto, devices con la app abierta
+        // por dias siguen con bundle viejo hasta que cierran y abren. Combinado con
+        // UpdateBanner, el flujo es:
+        //   1. Vercel deploya bundle nuevo.
+        //   2. SW de cada cliente lo detecta (cada 5min via registration.update()).
+        //   3. SW nuevo se instala + activa + claim instantáneo.
+        //   4. UpdateBanner aparece -> usuario toca "Actualizar" -> reload con codigo nuevo.
+        //   5. Si ignora, auto-fallback a los 30s.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

@@ -69,6 +69,20 @@ class SamDb extends Dexie {
           () => undefined,
         ),
       )
+
+    // v6: borrar meta (en particular assignments_last_sync) ademas de assignments
+    // y outbox. Sin esto, dispositivos con cache stale y lastSync viejo hacian
+    // delta sync incompleto y NO veian asignaciones creadas para ellos por el
+    // supervisor. Forzar full sync al proximo load garantiza estado consistente.
+    this.version(6)
+      .stores({})
+      .upgrade((tx) =>
+        Promise.all([
+          tx.table('assignments').clear(),
+          tx.table('outbox').clear(),
+          tx.table('meta').clear(),
+        ]).then(() => undefined),
+      )
   }
 }
 

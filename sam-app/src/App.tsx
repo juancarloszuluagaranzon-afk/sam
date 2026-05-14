@@ -6,7 +6,8 @@ import { OperatorView } from './views/OperatorView'
 import { UpdateBanner } from './components/UpdateBanner'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
-import { appLogin, appChangePin } from './services/samApi'
+import { appLogin, appChangePin, loadAssignments } from './services/samApi'
+import { db } from './lib/db'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -18,7 +19,7 @@ function AppContent() {
   const {
     session, setSession,
     maestro,
-    assignments,
+    assignments, setAssignments,
     users,
     loading, busy, setBusy,
     error, setError,
@@ -175,6 +176,21 @@ function AppContent() {
     setError('')
     try {
       const user = await appLogin(userId, pin)
+
+      // Al loguear un usuario, invalidamos el cache local de asignaciones y
+      // forzamos full sync desde Supabase. Sin esto un device con cache stale
+      // (de otra sesion previa o de un bundle anterior) puede ocultarle al
+      // operario asignaciones que el supervisor acaba de crearle.
+      try {
+        await db.assignments.clear()
+        await db.meta.delete('assignments_last_sync')
+        const fresh = await loadAssignments()
+        setAssignments(fresh.data)
+      } catch {
+        // Si falla el resync (offline, etc.) seguimos: el useSync hara
+        // delta sync apenas vuelva la conexion.
+      }
+
       saveSession(user)
       setInfo(`Sesion iniciada para ${user.name}.`)
       if (isSupervisorOrOwner(user.role)) {

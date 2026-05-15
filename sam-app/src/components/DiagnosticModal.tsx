@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { db } from '../lib/db'
 import { loadAssignments } from '../services/samApi'
 import { SUPABASE_URL } from '../data/constants'
+import { supabase } from '../lib/supabase'
 import type { Assignment, UserProfile } from '../domain/sam'
 
 // Pantalla de diagnostico para que el usuario y soporte puedan ver de un
@@ -57,23 +58,30 @@ export function DiagnosticModal({
       (a) => (a.operatorId || '').toUpperCase() === session.id.toUpperCase(),
     ).length
 
-    // Ping al healthz del backend. Usamos timeout corto para no colgar el
-    // modal si el VPS esta muerto.
+    // Ping al backend: usamos el supabase client contra la tabla asignaciones
+    // (HEAD + count, 0 bytes de payload). Esto va por el MISMO path que el
+    // resto de la app — Caddy -> Kong -> PostgREST -> Postgres con la apikey
+    // del cliente — asi que cubre auth, gateway y BD a la vez.
+    //
+    // Originalmente pingueabamos /healthz directo en Caddy, pero ese endpoint
+    // no tiene CORS habilitado y el navegador rechazaba la peticion con
+    // "Failed to fetch" aunque el backend estuviera sano (falso positivo).
     let backendStatus: 'ok' | 'fail' = 'fail'
     let backendLatencyMs: number | null = null
     let backendError: string | null = null
-    const ctrl = new AbortController()
-    const timeout = window.setTimeout(() => ctrl.abort(), 5000)
     const t0 = performance.now()
     try {
-      const res = await fetch(`${SUPABASE_URL}/healthz`, { signal: ctrl.signal })
+      const { error: pingError } = await supabase
+        .from('asignaciones')
+        .select('id', { count: 'exact', head: true })
       backendLatencyMs = Math.round(performance.now() - t0)
-      if (res.ok) backendStatus = 'ok'
-      else backendError = `HTTP ${res.status}`
+      if (pingError) {
+        backendError = pingError.message
+      } else {
+        backendStatus = 'ok'
+      }
     } catch (err) {
       backendError = err instanceof Error ? err.message : 'desconocido'
-    } finally {
-      window.clearTimeout(timeout)
     }
 
     setState({

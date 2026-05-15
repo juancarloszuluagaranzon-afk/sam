@@ -281,15 +281,22 @@ export async function loadAssignments(): Promise<{
     if (error || !data) throw error ?? new Error('empty')
 
     const mapped = data.map((row) => mapAssignment(row as Record<string, unknown>))
-    void (async () => {
-      try {
-        await db.assignments.clear()
-        await db.assignments.bulkPut(mapped)
-        await db.meta.put({ key: 'assignments_last_sync', value: now })
-      } catch {
-        // ignore write errors
-      }
-    })()
+    // Persistimos el cache ANTES de retornar. Antes esto era fire-and-forget
+    // para no bloquear la UI, pero introducia una race: cualquier lector que
+    // consultara Dexie inmediatamente despues (ej. la pantalla de diagnostico
+    // tras "Forzar sync") leia el cache aun vacio y se mostraba "0 totales,
+    // ultima sync: nunca" pese a que el fetch habia traido cientos de filas.
+    // El await agrega ~50-100ms para tablas de 200 filas, irrelevante para
+    // la UX porque el caller ya tiene los datos del state mientras espera.
+    try {
+      await db.assignments.clear()
+      await db.assignments.bulkPut(mapped)
+      await db.meta.put({ key: 'assignments_last_sync', value: now })
+    } catch {
+      // No bloqueamos el retorno por fallos de escritura local: el caller
+      // igual recibe los datos. La proxima sincronizacion intentara escribir
+      // de nuevo.
+    }
     return { data: mapped, source: 'supabase', error: null }
   } catch (err) {
     // El fetch a Supabase fallo. Devolvemos lo que tengamos en cache y

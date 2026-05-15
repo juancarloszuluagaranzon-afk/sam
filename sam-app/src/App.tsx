@@ -199,8 +199,27 @@ function AppContent() {
       } else {
         setOperatorTab('activas')
       }
-    } catch {
-      setError('Credenciales invalidas. Revisa el usuario y el PIN.')
+    } catch (err) {
+      // Distinguir "credenciales malas" (BD respondio, hash no coincide) de
+      // "no se pudo contactar al servidor" (timeout, DNS, VPS caido). Antes
+      // mostrabamos "credenciales invalidas" para CUALQUIER error y eso hacia
+      // que un VPS caido pareciera un problema de PIN — los operadores se
+      // confundian y reportaban "no funciona mi clave" cuando el servidor
+      // estaba muerto.
+      const msg = err instanceof Error ? err.message.toLowerCase() : ''
+      const isNetworkError =
+        msg.includes('fetch') ||
+        msg.includes('network') ||
+        msg.includes('timeout') ||
+        msg.includes('failed to fetch') ||
+        msg.includes('load failed')
+      if (isNetworkError || !navigator.onLine) {
+        setError(
+          'No pudimos contactar al servidor. Revisa tu conexion e intenta de nuevo en un momento.',
+        )
+      } else {
+        setError('Credenciales invalidas. Revisa el usuario y el PIN.')
+      }
     } finally {
       setBusy(false)
     }

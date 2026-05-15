@@ -1,47 +1,105 @@
 # SAM Control - React App
 
-Esta es la aplicación principal (SAM v2) desarrollada sobre **React 15** (vía Vite) y **Supabase**. Está diseñada para funcionar en dispositivos móviles de campo, incluso en condiciones de baja conectividad.
+Aplicación principal de SAM/AgroMorales. PWA para 30 operadores de campo,
+funciona en condiciones de baja conectividad gracias a Dexie (IndexedDB)
+y outbox de cambios pendientes.
 
-## Tecnologías Utilizadas
+## Stack
 
-- **Framework**: React 19 + Vite 6
-- **Tipado**: TypeScript 5
-- **Backend**: Supabase (PostgreSQL + PostgREST)
-- **Estilos**: Vanilla CSS (CSS Moderno con variables y Flexbox)
-- **Iconos**: SVG inline para rendimiento y personalización.
++ **Framework**: React 19 + Vite 8 + TypeScript 5
++ **PWA**: `vite-plugin-pwa` con Workbox (`skipWaiting + clientsClaim`)
++ **Backend**: Supabase **self-host** en VPS Hostinger (Caddy reverse proxy)
++ **URL backend**: <https://supabase.surcoapp.tech>
++ **Deploy front**: Vercel (auto en push a `main`)
++ **Cache offline**: Dexie (IndexedDB), `src/lib/db.ts`
 
-## Arquitectura de la Aplicación
-
-La aplicación se organiza siguiendo una estructura modular ligera:
-
-- `src/components/`: Componentes UI reutilizables (Botones, Tarjetas, Modales).
-- `src/data/`: Constantes y configuración global.
-- `src/domain/`: Definiciones de interfaces y lógica de negocio.
-- `src/lib/`: Configuración de servicios externos (Supabase).
-- `src/utils/`: Funciones de utilidad (Formateo de fechas, Cálculos de área).
-
-## Funcionalidades Críticas
-
-### 1. Autenticación con PIN
-Utiliza un sistema de login basado en los IDs de usuario y un PIN de 4 dígitos. El PIN se valida mediante un RPC (`app_login`) en Supabase que compara hashes MD5 con salt personalizado.
-
-### 2. Flujo de Trabajo (Workflow)
-El sistema gestiona una secuencia forzada de labores agrícolas:
-`DESPEJE` -> `REPIQUE` -> `RENCALLE` -> `SUBSUELO` -> `TRIPLE` -> `FERTILIZACION` -> `ZANJAS`
-
-### 3. Dashboard de KPIs
-Muestra en tiempo real:
-- **Área Total Asignada** vs **Área Realizada**.
-- **Eficiencia por Hacienda**.
-- **Estado de las labores** (Pendiente, En Proceso, Completada).
-
-## Comandos de Desarrollo
+## Comandos
 
 ```bash
 npm install     # Instalar dependencias
-npm run dev     # Iniciar servidor local
-npm run build   # Generar build de producción
+npm run dev     # Servidor de desarrollo (localhost:5173)
+npm run build   # Build de producción (genera dist/)
+npx tsc -b      # Solo type-check (lo que valida Vercel antes del bundle)
 ```
 
+## Autenticación
+
+Login por ID (ej. `U020`) + PIN numérico. El PIN se hashea con
+`md5(pin || ':sam-piloto')` y se compara contra `app_usuarios.pin_hash`.
+
+Funciones SQL canónicas: `app_login`, `app_create_user`, `app_update_user`,
+`app_delete_user`. Migración en
+`supabase/migrations/20260514120000_user_crud_md5.sql`.
+
+**No** uses `crypt`/`gen_salt`/`bcrypt` — el cliente valida con md5 puro y
+romperás el login.
+
 ---
-*Este módulo es parte del ecosistema SAM.*
+
+## Deploy y verificación post-deploy
+
+Push a `main` → Vercel construye → ~2 min → live. **Verificar siempre**:
+
+1. **Antes de pushear**: que el build local pase limpio:
+
+   ```bash
+   npx tsc -b && npm run build
+   ```
+
+   Si TS o el bundle fallan, NO pushees.
+
+2. Después del push, anota el SHA:
+
+   ```bash
+   git rev-parse --short HEAD
+   ```
+
+3. Abre la URL pública (ventana **incógnito** para evitar cache).
+
+4. Loguéate → menú lateral (☰) → al final muestra `Version <SHA>`.
+
+5. **El SHA del menú debe coincidir con el SHA del paso 2.** Si no:
+
+   + Mira <https://vercel.com/dashboard> — ¿el deploy terminó en `Ready`?
+   + ¿Cache del navegador? `Ctrl+Shift+R`.
+   + ¿PWA con SW viejo? Cerrar app completamente + reabrir (el
+     `UpdateBanner` aparece o `skipWaiting` activa el nuevo SW).
+
+### Verificar env vars de Vercel
+
+Si la app en Vercel se comporta distinto al `npm run dev` local, casi
+siempre es que `VITE_SUPABASE_URL` o `VITE_SUPABASE_ANON_KEY` apuntan
+distinto.
+
+```bash
+npx vercel env ls
+```
+
+Deben coincidir con `.env` local:
+
+```text
+VITE_SUPABASE_URL=https://supabase.surcoapp.tech
+VITE_SUPABASE_ANON_KEY=<misma key que /opt/supabase/docker/.env ANON_KEY>
+```
+
+Si difieren: Vercel dashboard → Settings → Environment Variables → editar →
+**Redeploy** desde la pestaña Deployments (no se aplican solas).
+
+---
+
+## Que NO hacer
+
++ **No mockear Supabase** en tests sin avisar (usamos integración contra BD real).
++ **No `--no-verify`** en commits (los hooks existen por algo).
++ **No quitar `skipWaiting` / `clientsClaim`** del SW — sincronizan la flota tras un deploy.
++ **No agregar runtimeCaching** del SW para endpoints Supabase — colisiona con Range headers.
++ **No cambiar `VITE_SUPABASE_URL`** sin actualizar Vercel también.
+
+## Documentación operacional
+
++ Topología, backups, monitoreo, incidentes: [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
++ Reglas de proyecto para Claude/IA: [`../CLAUDE.md`](../CLAUDE.md)
+
+---
+
+*Parte del ecosistema SAM (AgroMorales).*

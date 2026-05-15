@@ -3149,6 +3149,28 @@ button.movement-row--clickable:active {
   box-sizing: border-box;
 }
 
+/* Version del bundle, mostrada al final del side-drawer. Sirve para que
+   soporte/usuario validen a simple vista que el dispositivo esta corriendo
+   el commit correcto. Si difiere de lo que ven en Vercel/GitHub, saben que
+   tienen que actualizar (cerrar+reabrir o tocar el UpdateBanner). */
+.side-version-badge {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e3e2dc;
+  font-size: 0.75rem;
+  color: #8a8c82;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+.side-version-badge code {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  background: #f4f3f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #4a5040;
+  font-size: 0.78rem;
+}
+
 /* ===== UpdateBanner: aviso de nueva version disponible ===== */
 
 .update-banner {

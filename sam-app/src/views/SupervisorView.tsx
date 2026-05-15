@@ -522,6 +522,9 @@ export function SupervisorView({
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>
+        <div className="side-version-badge" title={`Build: ${__APP_BUILD_TIME__}`}>
+          Version <code>{__APP_VERSION__}</code>
+        </div>
       </aside>
 
       {!isOnline && (

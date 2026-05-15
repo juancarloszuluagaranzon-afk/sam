@@ -1,9 +1,34 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { execSync } from 'node:child_process'
+
+// Sello de version inyectado al bundle. Lo mostramos en el side-drawer asi
+// que el usuario y soporte pueden verificar a simple vista que el dispositivo
+// esta corriendo el bundle correcto, sin tener que adivinar.
+//
+// - APP_VERSION: SHA corto del commit. En Vercel se inyecta automatico via
+//   process.env.VERCEL_GIT_COMMIT_SHA; localmente usamos git rev-parse.
+// - APP_BUILD_TIME: ISO timestamp del build.
+function getCommitSha(): string {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) {
+    return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)
+  }
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'unknown'
+  }
+}
+const APP_VERSION = getCommitSha()
+const APP_BUILD_TIME = new Date().toISOString()
 
 // https://vite.dev/config/
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(APP_VERSION),
+    __APP_BUILD_TIME__: JSON.stringify(APP_BUILD_TIME),
+  },
   plugins: [
     react(),
     VitePWA({

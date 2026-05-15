@@ -8,6 +8,7 @@ import { useUserForm } from '../hooks/useUserForm'
 import { createAppUser, updateAppUser, summarizeAssignments } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
+import { DiagnosticModal } from '../components/DiagnosticModal'
 import {
   EntityHistoryModal,
   matchesSummaryFilter,
@@ -205,11 +206,12 @@ export function SupervisorView({
   const {
     session,
     isOnline, outboxCount, busy, error, info,
-    operators, users, assignments, maestro, todayKey, sortedEquipment, operatorStatusMap,
+    operators, users, assignments, setAssignments, maestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
   } = useAppData()
 
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
+  const [isDiagOpen, setIsDiagOpen] = useState(false)
 
   const {
     assignmentForm, updateAssignmentForm,
@@ -519,6 +521,13 @@ export function SupervisorView({
         >
           Cambiar PIN
         </button>
+        <button
+          className="primary-button outline"
+          onClick={() => { setIsSideMenuOpen(false); setIsDiagOpen(true) }}
+          style={{ marginBottom: '8px' }}
+        >
+          Diagnóstico
+        </button>
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>
@@ -526,6 +535,17 @@ export function SupervisorView({
           Version <code>{__APP_VERSION__}</code>
         </div>
       </aside>
+
+      {isDiagOpen && (
+        <DiagnosticModal
+          session={session}
+          assignmentsInState={assignments}
+          isOnline={isOnline}
+          outboxCount={outboxCount}
+          onClose={() => setIsDiagOpen(false)}
+          onAssignmentsReloaded={setAssignments}
+        />
+      )}
 
       {!isOnline && (
         <div className="offline-banner">

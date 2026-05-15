@@ -22,6 +22,19 @@ npm run build   # Build de producción (genera dist/)
 npx tsc -b      # Solo type-check (lo que valida Vercel antes del bundle)
 ```
 
+## Setup tras clonar el repo (una vez)
+
+Activar el pre-push hook que bloquea pushes con TypeScript o build roto:
+
+```bash
+# Desde la raíz del repo (carpeta sam/, no sam-app/)
+git config core.hooksPath .githooks
+```
+
+Si rompes algo y `git push` falla con `pre-push`, arregla el error y vuelve
+a pushear. Solo úsate `git push --no-verify` en emergencias reales — el hook
+existe porque hoy un build roto llegaba a Vercel silenciosamente.
+
 ## Autenticación
 
 Login por ID (ej. `U020`) + PIN numérico. El PIN se hashea con

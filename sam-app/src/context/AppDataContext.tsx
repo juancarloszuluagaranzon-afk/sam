@@ -34,6 +34,11 @@ interface AppDataContextValue {
   isOnline: boolean
   outboxCount: number
   setOutboxCount: React.Dispatch<React.SetStateAction<number>>
+  // Mensaje no-null cuando un fetch a Supabase fallo estando online. La UI
+  // muestra un banner rojo persistente hasta que la siguiente sync exitosa
+  // lo limpia.
+  syncError: string | null
+  retrySync: () => void
   supervisors: UserProfile[]
   operators: UserProfile[]
   todayKey: string
@@ -54,12 +59,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   const { isOnline, outboxCount, setOutboxCount } = useSync({
     onAssignmentsReloaded: setAssignments,
     onMaestroReloaded: setMaestro,
     onInfo: setInfo,
+    onSyncError: setSyncError,
   })
+
+  const retrySync = () => {
+    void loadAssignments().then((result) => {
+      setAssignments(result.data)
+      setSyncError(result.error)
+    })
+  }
 
   useEffect(() => {
     const saved = window.localStorage.getItem(SESSION_KEY)
@@ -134,6 +148,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setAssignments(assignmentResult.data)
         setUsers(userResult.data)
         setEquipment(equipmentResult.data)
+        // Si el resync de asignaciones cayo en fallback con error, exponemos
+        // el mensaje para que la UI muestre banner. El catch externo solo
+        // dispara si Promise.all rechaza, lo cual no sucede aqui porque
+        // loadAssignments captura sus propios errores.
+        setSyncError(assignmentResult.error)
       })
     } catch {
       if (!hasCache) setError('No pudimos cargar toda la informacion operativa.')
@@ -188,6 +207,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         error, setError,
         info, setInfo,
         isOnline, outboxCount, setOutboxCount,
+        syncError, retrySync,
         supervisors, operators, todayKey, metrics, operatorStatusMap, sortedEquipment,
       }}
     >

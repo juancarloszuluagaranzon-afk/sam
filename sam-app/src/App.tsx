@@ -25,6 +25,7 @@ function AppContent() {
     error, setError,
     setInfo,
     todayKey,
+    syncError, retrySync, isOnline,
   } = useAppData()
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false)
@@ -271,9 +272,27 @@ function AppContent() {
     )
   }
 
+  const syncErrorBanner = syncError && isOnline ? (
+    <div className="sync-error-banner" role="alert">
+      <span>
+        <strong>No pudimos cargar tus asignaciones.</strong>{' '}
+        Estás viendo el cache local. {syncError}
+      </span>
+      <button
+        type="button"
+        className="sync-error-retry"
+        onClick={retrySync}
+      >
+        Reintentar
+      </button>
+    </div>
+  ) : null
+
   if (isSupervisorOrOwner(session.role)) {
     return (
-      <SupervisorView
+      <>
+        {syncErrorBanner}
+        <SupervisorView
         isSideMenuOpen={isSideMenuOpen}
         setIsSideMenuOpen={setIsSideMenuOpen}
         isPinModalOpen={isPinModalOpen}
@@ -312,11 +331,14 @@ function AppContent() {
         handleChangePin={handleChangePin}
         handleDownloadReport={handleDownloadReport}
       />
+      </>
     )
   }
 
   return (
-    <OperatorView
+    <>
+      {syncErrorBanner}
+      <OperatorView
       operatorTab={operatorTab}
       setOperatorTab={setOperatorTab}
       isSideMenuOpen={isSideMenuOpen}
@@ -332,6 +354,7 @@ function AppContent() {
       handleChangePin={handleChangePin}
       onSaveSession={saveSession}
     />
+    </>
   )
 }
 

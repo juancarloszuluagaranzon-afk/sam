@@ -7,6 +7,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DictateButton } from '../components/DictateButton'
 import { DictateInlineButton } from '../components/DictateInlineButton'
+import { DiagnosticModal } from '../components/DiagnosticModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
@@ -119,7 +120,8 @@ export function OperatorView({
   handleChangePin,
   onSaveSession,
 }: Props) {
-  const { session, assignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey } = useAppData()
+  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey } = useAppData()
+  const [isDiagOpen, setIsDiagOpen] = useState(false)
 
   const [isFreeFieldOpen, setIsFreeFieldOpen] = useState(false)
 
@@ -334,6 +336,13 @@ export function OperatorView({
         >
           Cambiar PIN
         </button>
+        <button
+          className="primary-button outline"
+          onClick={() => { setIsSideMenuOpen(false); setIsDiagOpen(true) }}
+          style={{ marginBottom: '8px' }}
+        >
+          Diagnóstico
+        </button>
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>
@@ -341,6 +350,17 @@ export function OperatorView({
           Version <code>{__APP_VERSION__}</code>
         </div>
       </aside>
+
+      {isDiagOpen && session && (
+        <DiagnosticModal
+          session={session}
+          assignmentsInState={assignments}
+          isOnline={isOnline}
+          outboxCount={outboxCount}
+          onClose={() => setIsDiagOpen(false)}
+          onAssignmentsReloaded={setAssignments}
+        />
+      )}
 
       {!isOnline && (
         <div className="offline-banner">

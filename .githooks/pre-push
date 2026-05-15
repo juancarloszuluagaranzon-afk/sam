@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# pre-push: bloquea el push si el build/type-check de sam-app falla.
+#
+# Sin este hook, codigo roto puede llegar a Vercel y el usuario solo se
+# entera al abrir la app. El hook tarda ~3-10s y atrapa el 90% de los
+# errores que romperian produccion (TypeScript invalido, fallas de Vite).
+#
+# Activacion (una vez por clon):
+#   git config core.hooksPath .githooks
+#
+# Skip manual SOLO en emergencia:
+#   git push --no-verify    (mejor: arregla el error y pushea limpio)
+
+set -e
+
+# Si no hay sam-app/ no hacemos nada (clon parcial, no es el repo esperado)
+if [ ! -d "sam-app" ]; then
+  echo "[pre-push] sam-app/ no existe — skip"
+  exit 0
+fi
+
+echo "[pre-push] Validando que sam-app compile antes de pushear…"
+cd sam-app
+
+if ! npx --no-install tsc -b 2>&1; then
+  echo
+  echo "  ❌ TypeScript no compila. Arregla los errores antes de pushear."
+  echo "     (override solo en emergencia: git push --no-verify)"
+  exit 1
+fi
+
+if ! npm run build > /tmp/sam-build.log 2>&1; then
+  echo
+  echo "  ❌ Vite build fallo. Detalle:"
+  tail -20 /tmp/sam-build.log
+  echo
+  echo "     (override solo en emergencia: git push --no-verify)"
+  exit 1
+fi
+
+echo "[pre-push] OK — build limpio. Permitiendo push."
+exit 0

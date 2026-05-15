@@ -235,6 +235,7 @@ export async function loadMaestro(): Promise<{
 export async function loadAssignments(): Promise<{
   data: Assignment[]
   source: Source
+  error: string | null
 }> {
   const cached = await db.assignments.toArray()
   const lastSync = (await db.meta.get('assignments_last_sync'))?.value
@@ -268,7 +269,7 @@ export async function loadAssignments(): Promise<{
       const all = await db.assignments.toArray()
       all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
       void db.meta.put({ key: 'assignments_last_sync', value: now })
-      return { data: all, source: 'supabase' }
+      return { data: all, source: 'supabase', error: null }
     }
 
     // Sync completo (primera carga o cache vacio)
@@ -289,10 +290,20 @@ export async function loadAssignments(): Promise<{
         // ignore write errors
       }
     })()
-    return { data: mapped, source: 'supabase' }
-  } catch {
+    return { data: mapped, source: 'supabase', error: null }
+  } catch (err) {
+    // El fetch a Supabase fallo. Devolvemos lo que tengamos en cache y
+    // exponemos el error para que la UI muestre un banner. Si el caller
+    // esta online y el cache esta vacio, "data: []" se confunde con "no
+    // hay asignaciones" — el `error` permite distinguir esos casos.
     cached.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
-    return { data: cached, source: 'fallback' }
+    const message =
+      err instanceof Error
+        ? err.message
+        : typeof err === 'object' && err !== null && 'message' in err
+          ? String((err as { message: unknown }).message)
+          : 'No pudimos conectarnos al servidor'
+    return { data: cached, source: 'fallback', error: message }
   }
 }
 

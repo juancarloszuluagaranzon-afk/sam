@@ -13,6 +13,10 @@ interface UseSyncParams {
   onAssignmentsReloaded: (data: Assignment[]) => void
   onMaestroReloaded: (data: MaestroRow[]) => void
   onInfo: (message: string) => void
+  // Llamado tras cada loadAssignments. Mensaje no-null = el fetch fallo y
+  // estamos sirviendo desde cache; null = fetch OK. La UI usa esto para
+  // mostrar el banner "no pudimos cargar tus asignaciones".
+  onSyncError: (message: string | null) => void
 }
 
 interface UseSyncResult {
@@ -26,6 +30,7 @@ export function useSync({
   onAssignmentsReloaded,
   onMaestroReloaded,
   onInfo,
+  onSyncError,
 }: UseSyncParams): UseSyncResult {
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [outboxCount, setOutboxCount] = useState(0)
@@ -67,9 +72,10 @@ export function useSync({
       setOutboxCount(0)
       const result = await loadAssignments()
       onAssignmentsReloaded(result.data)
+      onSyncError(result.error)
       onInfo(`${synced} accion${synced !== 1 ? 'es sincronizadas' : ' sincronizada'} con el servidor.`)
     }
-  }, [onAssignmentsReloaded, onInfo])
+  }, [onAssignmentsReloaded, onInfo, onSyncError])
 
   useEffect(() => {
     // Check pending outbox on startup
@@ -89,7 +95,10 @@ export function useSync({
 
     const onVisible = () => {
       if (document.visibilityState === 'visible' && navigator.onLine) {
-        void loadAssignments().then((r) => onAssignmentsReloaded(r.data))
+        void loadAssignments().then((r) => {
+          onAssignmentsReloaded(r.data)
+          onSyncError(r.error)
+        })
       }
     }
     document.addEventListener('visibilitychange', onVisible)
@@ -114,7 +123,10 @@ export function useSync({
           realtimeDebounce = window.setTimeout(() => {
             realtimeDebounce = null
             if (!navigator.onLine) return
-            void loadAssignments().then((r) => onAssignmentsReloaded(r.data))
+            void loadAssignments().then((r) => {
+              onAssignmentsReloaded(r.data)
+              onSyncError(r.error)
+            })
           }, 500)
         },
       )
@@ -126,7 +138,10 @@ export function useSync({
     const POLL_INTERVAL_MS = 60000
     const pollId = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
-      void loadAssignments().then((r) => onAssignmentsReloaded(r.data))
+      void loadAssignments().then((r) => {
+        onAssignmentsReloaded(r.data)
+        onSyncError(r.error)
+      })
     }, POLL_INTERVAL_MS)
 
     return () => {
@@ -137,7 +152,7 @@ export function useSync({
       if (realtimeDebounce !== null) window.clearTimeout(realtimeDebounce)
       void supabase.removeChannel(channel)
     }
-  }, [syncOutbox, onAssignmentsReloaded, onMaestroReloaded])
+  }, [syncOutbox, onAssignmentsReloaded, onMaestroReloaded, onSyncError])
 
   return { isOnline, outboxCount, setOutboxCount, syncOutbox }
 }

@@ -3149,6 +3149,125 @@ button.movement-row--clickable:active {
   box-sizing: border-box;
 }
 
+/* Banner persistente cuando el fetch a Supabase fallo estando online. La
+   app sigue funcionando con cache, pero el usuario VE que algo paso en
+   lugar de tragarse el error en silencio (causa #1 del bug de demo). */
+.sync-error-banner {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #f4cfcf;
+  color: #5e1010;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.88rem;
+  border-bottom: 2px solid #c98484;
+  flex-wrap: wrap;
+}
+.sync-error-banner strong {
+  font-weight: 700;
+}
+.sync-error-retry {
+  background: #8b1a1a;
+  color: #fff;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.sync-error-retry:hover {
+  background: #6b1414;
+}
+
+/* Modal de diagnostico: ancho generoso para que los pills queden en una
+   linea, scroll si el contenido crece. */
+.diagnostic-card {
+  max-width: min(560px, calc(100vw - 32px));
+}
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 8px 16px;
+  margin: 12px 0;
+  font-size: 0.9rem;
+}
+.diagnostic-grid dt {
+  color: #6b6d63;
+  font-weight: 500;
+  padding-top: 2px;
+}
+.diagnostic-grid dd {
+  margin: 0;
+  color: #2a2f25;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.diagnostic-grid dd code {
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  background: #f4f3f0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #1a6b3a;
+  font-size: 0.85rem;
+}
+.diagnostic-hint {
+  color: #8a8c82;
+  font-size: 0.78rem;
+}
+.diagnostic-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.diagnostic-pill--ok {
+  background: #d3eedb;
+  color: #1a6b3a;
+}
+.diagnostic-pill--warn {
+  background: #faedc7;
+  color: #8a6914;
+}
+.diagnostic-pill--fail {
+  background: #f4cfcf;
+  color: #8b1a1a;
+}
+.diagnostic-action-msg {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  background: #f4f3f0;
+  border-left: 3px solid #1a6b3a;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #2a2f25;
+}
+.diagnostic-actions {
+  justify-content: space-between;
+}
+@media (max-width: 480px) {
+  .diagnostic-grid {
+    grid-template-columns: 1fr;
+    gap: 4px 0;
+  }
+  .diagnostic-grid dt {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+}
+
 /* Version del bundle, mostrada al final del side-drawer. Sirve para que
    soporte/usuario validen a simple vista que el dispositivo esta corriendo
    el commit correcto. Si difiere de lo que ven en Vercel/GitHub, saben que

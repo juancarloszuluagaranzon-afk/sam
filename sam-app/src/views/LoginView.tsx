@@ -1,5 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
-import SearchableSelect from '../components/SearchableSelect'
+import { useMemo, useRef, useState, type FormEvent } from 'react'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import type { UserProfile } from '../domain/sam'
 
@@ -17,18 +16,64 @@ function roleLabel(role: UserProfile['role']): string {
   return 'Operador'
 }
 
-export function LoginView({ users, onLogin, loading, error }: Props) {
-  const [userId, setUserId] = useState(() => users[0]?.id ?? '')
-  const [pin, setPin] = useState('')
+// Resuelve el texto que el usuario tecleo al ID del usuario que mejor coincida.
+// Acepta: el ID directo ("U001"), el nombre completo ("Cristhian Morales"),
+// o un fragmento del nombre que sea unico. Si nada matchea, devolvemos el
+// input tal cual para que el RPC del servidor falle con el error normal de
+// "credenciales invalidas" en lugar de quedarnos varados aqui.
+function resolveUserId(input: string, users: UserProfile[]): string {
+  const trimmed = input.trim()
+  if (!trimmed) return ''
+  const upper = trimmed.toUpperCase()
+  const lower = trimmed.toLowerCase()
 
-  const loginOptions = useMemo(
-    () => users.map((u) => ({ value: u.id, label: `${u.name} - ${roleLabel(u.role)}` })),
-    [users],
-  )
+  // Match exacto por ID (insensitive)
+  const byId = users.find((u) => u.id.toUpperCase() === upper)
+  if (byId) return byId.id
+
+  // Match exacto por nombre completo (insensitive)
+  const byName = users.find((u) => u.name.toLowerCase() === lower)
+  if (byName) return byName.id
+
+  // Match parcial unico por nombre (si exactamente UNA persona contiene el texto)
+  const partial = users.filter((u) => u.name.toLowerCase().includes(lower))
+  if (partial.length === 1) return partial[0].id
+
+  // Fallback: dejamos pasar lo que sea para que el servidor sea quien
+  // valide. Si users esta vacio (fetch fallido) esto permite igual entrar
+  // tecleando el ID a mano.
+  return trimmed
+}
+
+export function LoginView({ users, onLogin, loading, error }: Props) {
+  const [input, setInput] = useState('')
+  const [pin, setPin] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const suggestions = useMemo(() => {
+    const q = input.trim().toLowerCase()
+    if (!q) return users.slice(0, 10)
+    return users
+      .filter(
+        (u) =>
+          u.name.toLowerCase().includes(q) ||
+          u.id.toLowerCase().includes(q),
+      )
+      .slice(0, 10)
+  }, [input, users])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    setShowSuggestions(false)
+    const userId = resolveUserId(input, users)
     await onLogin(userId, pin)
+  }
+
+  function pickUser(u: UserProfile) {
+    setInput(u.name)
+    setShowSuggestions(false)
+    inputRef.current?.blur()
   }
 
   return (
@@ -42,23 +87,62 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
         <form className="login-card" onSubmit={handleSubmit}>
           <p className="eyebrow">Ingreso</p>
           <h2>Acceso</h2>
+
           <label>
-            Usuario
-            <SearchableSelect
-              value={userId}
-              onChange={setUserId}
-              options={loginOptions}
-              placeholder="Selecciona o busca tu usuario"
-            />
+            Usuario <span className="field-optional">(nombre o código)</span>
+            <div className="login-typeahead">
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={(e) => {
+                  setInput(e.target.value)
+                  setShowSuggestions(true)
+                }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => {
+                  // Pequeno delay para que el click en una sugerencia
+                  // alcance a registrarse antes de ocultar la lista.
+                  window.setTimeout(() => setShowSuggestions(false), 150)
+                }}
+                placeholder="Ej: Cristhian Morales o U001"
+                autoComplete="off"
+                autoCapitalize="words"
+              />
+              {showSuggestions && suggestions.length > 0 && (
+                <ul className="login-suggestions">
+                  {suggestions.map((u) => (
+                    <li
+                      key={u.id}
+                      onMouseDown={(e) => {
+                        e.preventDefault()
+                        pickUser(u)
+                      }}
+                    >
+                      <span className="login-suggestion-name">{u.name}</span>
+                      <span className="login-suggestion-meta">
+                        {u.id} · {roleLabel(u.role)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </label>
+
           <label>
             PIN
             <input
+              type="password"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={pin}
               onChange={(event) => setPin(event.target.value)}
               placeholder="Ingresa tu PIN"
+              autoComplete="off"
             />
           </label>
+
           {error ? <div className="feedback error">{error}</div> : null}
           <button className="primary-button" type="submit" disabled={loading}>
             {loading ? 'Entrando...' : 'Ingresar'}

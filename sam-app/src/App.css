@@ -3149,6 +3149,52 @@ button.movement-row--clickable:active {
   box-sizing: border-box;
 }
 
+/* Login: input de texto libre con sugerencias debajo. Reemplaza al
+   SearchableSelect que requeria seleccionar de la lista (un usuario que
+   tecleaba sin seleccionar enviaba userId vacio y veia "credenciales
+   invalidas"). Ahora aceptamos id o nombre y resolvemos en submit. */
+.login-typeahead {
+  position: relative;
+}
+.login-typeahead input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.login-suggestions {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  background: #fff;
+  border: 1px solid #cfcec7;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 20;
+}
+.login-suggestions li {
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.login-suggestions li:hover {
+  background: #f4f3f0;
+}
+.login-suggestion-name {
+  font-weight: 600;
+  color: #2a2f25;
+}
+.login-suggestion-meta {
+  font-size: 0.78rem;
+  color: #8a8c82;
+}
+
 /* Banner persistente cuando el fetch a Supabase fallo estando online. La
    app sigue funcionando con cache, pero el usuario VE que algo paso en
    lugar de tragarse el error en silencio (causa #1 del bug de demo). */

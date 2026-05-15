@@ -9,13 +9,6 @@ interface Props {
   error: string
 }
 
-function roleLabel(role: UserProfile['role']): string {
-  if (role === 'owner') return 'Propietario'
-  if (role === 'supervisor') return 'Supervisor'
-  if (role === 'administracion') return 'Administración'
-  return 'Operador'
-}
-
 // Resuelve el texto que el usuario tecleo al ID del usuario que mejor coincida.
 // Acepta: el ID directo ("U001"), el nombre completo ("Cristhian Morales"),
 // o un fragmento del nombre que sea unico. Si nada matchea, devolvemos el
@@ -89,7 +82,7 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
           <h2>Acceso</h2>
 
           <label>
-            Usuario <span className="field-optional">(nombre o código)</span>
+            Usuario
             <div className="login-typeahead">
               <input
                 ref={inputRef}
@@ -120,9 +113,6 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
                       }}
                     >
                       <span className="login-suggestion-name">{u.name}</span>
-                      <span className="login-suggestion-meta">
-                        {u.id} · {roleLabel(u.role)}
-                      </span>
                     </li>
                   ))}
                 </ul>

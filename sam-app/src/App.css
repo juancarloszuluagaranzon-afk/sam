@@ -3177,11 +3177,8 @@ button.movement-row--clickable:active {
   z-index: 20;
 }
 .login-suggestions li {
-  padding: 10px 14px;
+  padding: 12px 14px;
   cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
 }
 .login-suggestions li:hover {
   background: #f4f3f0;
@@ -3189,10 +3186,6 @@ button.movement-row--clickable:active {
 .login-suggestion-name {
   font-weight: 600;
   color: #2a2f25;
-}
-.login-suggestion-meta {
-  font-size: 0.78rem;
-  color: #8a8c82;
 }
 
 /* Banner persistente cuando el fetch a Supabase fallo estando online. La

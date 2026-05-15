@@ -94,11 +94,53 @@ Si difieren: Vercel dashboard → Settings → Environment Variables → editar 
 + **No quitar `skipWaiting` / `clientsClaim`** del SW — sincronizan la flota tras un deploy.
 + **No agregar runtimeCaching** del SW para endpoints Supabase — colisiona con Range headers.
 + **No cambiar `VITE_SUPABASE_URL`** sin actualizar Vercel también.
++ **No usar `crypt`/`gen_salt`/`bcrypt`** para PINs — el cliente valida con md5.
 
-## Documentación operacional
+---
 
-+ Topología, backups, monitoreo, incidentes: [`docs/RUNBOOK.md`](docs/RUNBOOK.md)
-+ Reglas de proyecto para Claude/IA: [`../CLAUDE.md`](../CLAUDE.md)
+## Reglas duras (han causado bugs si se rompen)
+
+1. **PINs con `md5(pin || ':sam-piloto')`**. `app_create_user`, `app_update_user`,
+   `app_login` DEBEN usar md5. Migración canónica:
+   `supabase/migrations/20260514120000_user_crud_md5.sql`.
+
+2. **Realtime requiere publication**. Para sync push entre dispositivos, en el VPS:
+
+   ```sql
+   ALTER PUBLICATION supabase_realtime ADD TABLE public.<nombre>;
+   ALTER TABLE public.<nombre> REPLICA IDENTITY FULL;
+   ```
+
+   Verificar: `SELECT * FROM pg_publication_tables WHERE pubname = 'supabase_realtime';`.
+
+3. **Cache Dexie nunca es la verdad**. Al loguearse un usuario, se limpia
+   `db.assignments` y se borra `assignments_last_sync` para forzar full sync
+   (ver `src/App.tsx`). Cambios de schema en Dexie van en una versión nueva
+   dentro de `src/lib/db.ts` con upgrade que limpia las tablas afectadas.
+
+4. **Delta sync = `lastSync - 10s` retroactivo** para protegerse de precisión
+   de timestamp y skew de reloj cliente/servidor. No lo bajes.
+
+5. **RLS activo en `asignaciones`** con policies permisivas para `anon` y
+   `authenticated` (SELECT/INSERT/UPDATE, `qual = true`). Tablas nuevas
+   accesibles desde el front necesitan policies equivalentes o reciben `[]`
+   silenciosamente.
+
+6. **Tras DDL → `NOTIFY pgrst, 'reload schema';`** o el cambio no aparece
+   en la API hasta reinicio del container PostgREST.
+
+---
+
+## URLs y referencias
+
+| Recurso              | URL / comando                                        |
+|----------------------|------------------------------------------------------|
+| Supabase público     | <https://supabase.surcoapp.tech>                     |
+| Health check         | <https://supabase.surcoapp.tech/healthz>             |
+| Repo GitHub          | <https://github.com/juancarloszuluagaranzon-afk/sam> |
+| Runbook operacional  | [`docs/RUNBOOK.md`](docs/RUNBOOK.md)                 |
+| SSH VPS              | `ssh root@srv1657782`                                |
+| Supabase Cloud (BK)  | <https://efwgncsjrqzvistqyfqc.supabase.co> (rollback)|
 
 ---
 

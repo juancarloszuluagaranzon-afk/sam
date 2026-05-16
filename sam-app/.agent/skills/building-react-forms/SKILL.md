@@ -135,6 +135,10 @@ setError('Mensaje de error.')
 ```
 
 ## Gotchas
+
+- **[2026-05-15]** En el LoginView las sugerencias se truncaban con `.slice(0, 10)` y SAM tiene 30+ operadores, los que quedaban fuera no aparecían → solución: en listas que pueden tener N items reales, no usar slice (o usar slice mayor que el total posible) y dejar que el scroll interno del dropdown (`max-height + overflow-y: auto`) maneje el overflow. Ordenar alfabéticamente con `localeCompare('es', { sensitivity: 'base' })` para que el usuario ubique su entrada visualmente.
+- **[2026-05-15]** En LoginView usabamos `SearchableSelect`, pero un operador que tecleaba sin seleccionar dejaba `userId` vacío → el RPC `app_login` respondía error y la app mostraba "Credenciales inválidas" confundiendo al usuario → solución: usar input de texto libre + `resolveUserId(input, users)` que matchea id exacto, nombre exacto, o nombre parcial único antes de llamar al RPC. Si nada matchea, dejar pasar el input crudo para que el servidor sea quien rechace.
+- **[2026-05-15]** El catch del handleLogin trataba CUALQUIER error como "Credenciales inválidas", incluyendo errores de red (timeout, fetch failed) → cuando el VPS estaba caído los operadores creían que su PIN estaba mal → solución: distinguir `isNetworkError` (msg incluye fetch/network/timeout/`failed to fetch` o `!navigator.onLine`) y mostrar "No pudimos contactar al servidor" en ese caso. Reservar "Credenciales inválidas" SOLO cuando el servidor respondió rechazando.
 - **[2026-04-10]** SearchableSelect requires string values but was passed numeric IDs, causing TypeScript error TS2322 → solución: Always cast IDs or codes to String() when mapping them to options for SearchableSelect
 - **[2026-04-10]** Custom dropdown options (SearchableSelect) were transparent and clicks didn't register (no deja elegir) → solución: Used explicit hex colors instead of undefined CSS variables for dropdown background, and changed onClick to onMouseDown with e.preventDefault() on the <li> options to prevent focus loss.
 

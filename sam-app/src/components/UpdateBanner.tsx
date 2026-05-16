@@ -1,7 +1,12 @@
 import { useEffect } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 
-const CHECK_INTERVAL_MS = 5 * 60 * 1000
+// Polling agresivo + auto-fallback corto para que TODOS los dispositivos
+// converjan a la misma version rapido tras un deploy. Antes era 5min /
+// 30s; bajamos a 2min / 15s asi un push a main llega a la flota en menos
+// de 3 minutos sin que nadie tenga que hacer nada.
+const CHECK_INTERVAL_MS = 2 * 60 * 1000
+const AUTO_APPLY_DELAY_MS = 15000
 
 export function UpdateBanner() {
   const {
@@ -27,7 +32,7 @@ export function UpdateBanner() {
     if (!needRefresh) return
     const id = window.setTimeout(() => {
       void updateServiceWorker(true)
-    }, 30000)
+    }, AUTO_APPLY_DELAY_MS)
     return () => window.clearTimeout(id)
   }, [needRefresh, updateServiceWorker])
 

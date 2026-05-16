@@ -318,6 +318,53 @@ echo "Exit code: $?"
 
 ---
 
+### Síntoma: NADIE puede loguearse, todos ven "Credenciales inválidas"
+
+**Diagnóstico**: probablemente el VPS no responde desde fuera, no es problema de PINs.
+
+```bash
+# 1. Desde tu PC (NO desde el VPS):
+curl -m 8 https://supabase.surcoapp.tech/healthz
+# Si da timeout o connection refused → backend inalcanzable desde Internet
+# Si responde HTTP 200 OK → backend OK, problema en el cliente o credenciales
+
+# 2. Desde el terminal web del panel de Hostinger (cuando SSH tampoco entra):
+curl -s -o /dev/null -w "HTTP %{http_code}\n" http://localhost:8000/rest/v1/
+# Si responde 401 → Supabase está sano internamente → el bloqueo es de red
+
+# 3. Verificar firewall del VPS interno:
+ufw status verbose
+iptables -L INPUT -n --line-numbers | head -25
+# Si UFW inactive e INPUT policy ACCEPT sin reglas → NO es el firewall del VPS
+# El bloqueo está afuera (panel Hostinger)
+```
+
+**Causa típica**: en el panel Hostinger → VPS → Firewall hay un conjunto de
+reglas que dice "Drop Any Any" como última regla y solo abre puertos
+específicos. Si se activa un nuevo conjunto que solo permite un puerto,
+todos los demás (22, 80, 443) quedan bloqueados.
+
+**Fix**: en el panel Hostinger → Firewall → editar las reglas. Asegurar que
+existan estas Accept antes de cualquier Drop:
+
+| Action | Protocolo | Puerto | Origen                    |
+|--------|-----------|--------|---------------------------|
+| Accept | TCP       | 22     | Any (SSH)                 |
+| Accept | TCP       | 80     | Any (HTTP, Let's Encrypt) |
+| Accept | TCP       | 443    | Any (HTTPS, Supabase)     |
+| Accept | TCP       | 18789  | Any (n8n, si aplica)      |
+| Drop   | Any       | Any    | Any (catch-all final)     |
+
+**IMPORTANTE**: tras editar, click en **"Synchronize"** (botón amarillo) o
+los cambios NO se aplican al servidor.
+
+**Detección del incidente**: si los operadores reportan "no puedo entrar"
+y desde el celular se ve mensaje "**No pudimos contactar al servidor**" en
+vez de "Credenciales inválidas", confirmado que es de red. La app ya
+distingue ambos errores.
+
+---
+
 ## Operaciones rutinarias
 
 ### Crear un usuario nuevo (sin pasar por la UI)

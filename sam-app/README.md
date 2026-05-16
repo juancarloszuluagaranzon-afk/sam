@@ -49,6 +49,88 @@ romperás el login.
 
 ---
 
+## Instalación en celulares de operadores
+
+Hay dos formas equivalentes; ambas reciben actualizaciones automáticas desde Vercel.
+
+### Opción A — PWA (sin instalar nada)
+
+1. El operador abre en Chrome la URL pública de la app.
+2. Toca **⋮ (3 puntos arriba)** → **"Agregar a pantalla de inicio"** o **"Instalar app"**.
+3. Confirma. Queda como app en el escritorio.
+
+Funciona en cualquier celular con Chrome moderno. La limitación es que algunos
+operadores no encuentran la opción en navegadores no-Chrome (Brave, Samsung
+Internet) o si Chrome ya rechazó el prompt.
+
+### Opción B — APK distribuido por WhatsApp (recomendado para flota)
+
+Para instalar en los 30 celulares sin que cada operador tenga que buscar el
+menú, se genera un **APK con PWABuilder** que envuelve la PWA en un paquete
+Android nativo (TWA — Trusted Web Activity).
+
+**Características importantes del APK:**
+
++ **No empaqueta el código**: el APK es solo un envoltorio. El JS/CSS/HTML
+  se sigue cargando desde Vercel en tiempo real.
++ **Las actualizaciones llegan igual que a la PWA**: cada 2 minutos el SW
+  chequea si hay versión nueva en Vercel y aparece el `UpdateBanner`. Si
+  el operador no toca "Actualizar", a los 15 segundos se aplica solo.
++ **Cero instalaciones manuales tras updates**: nunca hay que reenviar el
+  APK por nuevas versiones del código. Solo se regenera el APK si cambia
+  el icono, el nombre, o el dominio.
+
+**Generación del APK (proceso humano, ~10 min):**
+
+1. Ir a <https://www.pwabuilder.com>
+2. Pegar la URL pública de Vercel y "Start"
+3. PWABuilder analiza el manifest y ofrece "Package for Stores"
+4. Elegir **Android** → genera APK firmado
+5. Descargar el ZIP, que incluye el APK y un archivo `assetlinks.json`
+6. Subir `assetlinks.json` a `sam-app/public/.well-known/assetlinks.json`
+   en este repo y pushear. Vercel lo sirve y el TWA queda sin barra de URL.
+7. Distribuir el APK por WhatsApp. Operador toca el archivo → "Permitir
+   instalar de fuentes desconocidas" → instala.
+
+**Cuándo hay que regenerar el APK:**
+
++ Si cambia el dominio público (compra de dominio propio).
++ Si cambia el icono, nombre o color en el manifest.
++ Si Google Chrome cambia el formato TWA (raro).
+
+En cualquier otro caso, los cambios de código llegan automáticamente.
+
+---
+
+## Flujo de actualizaciones (cómo llegan los cambios a los usuarios)
+
+```text
+1. push a main (GitHub)
+        │
+2. Vercel build automatico (~2 min)
+        │
+3. SW de cada cliente chequea cada 2 min si hay version nueva
+        │
+4. UpdateBanner verde aparece abajo
+        │
+5. Operador toca "Actualizar" → reload con bundle nuevo
+   (si ignora 15s → auto-fallback)
+        │
+6. Toda la flota converge a la misma version en < 3 min
+```
+
+Mecanismos que aseguran que **todos vean la misma versión**:
+
++ `skipWaiting + clientsClaim` en el SW (activación inmediata del bundle nuevo).
++ Polling cada 2 minutos + chequeo al recuperar foco (visibilitychange).
++ Auto-fallback de 15s si el operador no toca el banner.
++ Dexie v6 limpia cache automáticamente al actualizar a un schema nuevo.
++ Reset del cache de asignaciones en cada login.
++ Sello de versión `<SHA>` visible en el menú lateral (sirve para soporte:
+  "qué versión tienes?" se resuelve en 2 segundos).
+
+---
+
 ## Deploy y verificación post-deploy
 
 Push a `main` → Vercel construye → ~2 min → live. **Verificar siempre**:

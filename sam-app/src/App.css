@@ -3172,8 +3172,9 @@ button.movement-row--clickable:active {
   border: 1px solid #cfcec7;
   border-radius: 10px;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-  max-height: 240px;
+  max-height: 320px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 20;
 }
 .login-suggestions li {

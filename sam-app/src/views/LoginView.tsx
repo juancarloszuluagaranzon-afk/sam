@@ -45,15 +45,18 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   const suggestions = useMemo(() => {
+    // Ordenamos alfabeticamente por nombre asi los operadores ubican su
+    // entrada rapido en lugar de tener que adivinar el orden.
+    const sorted = [...users].sort((a, b) =>
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
+    )
     const q = input.trim().toLowerCase()
-    if (!q) return users.slice(0, 10)
-    return users
-      .filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.id.toLowerCase().includes(q),
-      )
-      .slice(0, 10)
+    if (!q) return sorted
+    return sorted.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        u.id.toLowerCase().includes(q),
+    )
   }, [input, users])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

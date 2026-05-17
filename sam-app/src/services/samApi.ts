@@ -258,6 +258,23 @@ export async function loadMaestro(): Promise<{
   }
 }
 
+// IDs de asignaciones con un cambio local pendiente de enviar (outbox
+// status='pending', type='UPDATE'). Los usamos en loadAssignments para NO
+// sobrescribir esas filas con la version del servidor: si lo hicieramos,
+// el cambio offline desapareceria visualmente en el siguiente sync hasta
+// que syncOutbox lo envie y vuelva a traerlo. Aunque eventualmente convergen,
+// el "parpadeo" confunde al operador. Esta proteccion lo elimina.
+async function getPendingOutboxIds(): Promise<Set<string>> {
+  const pending = await db.outbox.where('status').equals('pending').toArray()
+  const ids = new Set<string>()
+  for (const item of pending) {
+    if (item.type === 'UPDATE' && item.assignmentId) {
+      ids.add(item.assignmentId)
+    }
+  }
+  return ids
+}
+
 export async function loadAssignments(): Promise<{
   data: Assignment[]
   source: Source
@@ -289,8 +306,16 @@ export async function loadAssignments(): Promise<{
       if (error) throw error
 
       const deltas = (data ?? []).map((row) => mapAssignment(row as Record<string, unknown>))
-      if (deltas.length > 0) {
-        await db.assignments.bulkPut(deltas)
+      // No sobrescribir filas con cambios locales pendientes en outbox: la
+      // version del servidor todavia no incluye esos cambios (estan en cola
+      // de envio), asi que aplicarla "borra" temporalmente el cambio del
+      // operador hasta que syncOutbox lo reenvie. Filtramos esas filas y
+      // dejamos que la version local sobreviva en db.assignments.
+      const pendingIds = await getPendingOutboxIds()
+      const safeDeltas =
+        pendingIds.size > 0 ? deltas.filter((d) => !pendingIds.has(d.id)) : deltas
+      if (safeDeltas.length > 0) {
+        await db.assignments.bulkPut(safeDeltas)
       }
       const all = await db.assignments.toArray()
       all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
@@ -307,6 +332,18 @@ export async function loadAssignments(): Promise<{
     if (error || !data) throw error ?? new Error('empty')
 
     const mapped = data.map((row) => mapAssignment(row as Record<string, unknown>))
+
+    // Antes de clear()+bulkPut(), rescatamos las filas locales con cambios
+    // pendientes en outbox. Sin esto, un full sync (ej. al login o al forzar
+    // sync desde Diagnostico) destruiria el cambio offline del operador
+    // hasta que syncOutbox lo reenvie. Las re-aplicamos despues del bulkPut
+    // para que sobrevivan en el cache y en el return de esta funcion.
+    const pendingIds = await getPendingOutboxIds()
+    const localPendingRows =
+      pendingIds.size > 0
+        ? await db.assignments.where('id').anyOf([...pendingIds]).toArray()
+        : []
+
     // Persistimos el cache ANTES de retornar. Antes esto era fire-and-forget
     // para no bloquear la UI, pero introducia una race: cualquier lector que
     // consultara Dexie inmediatamente despues (ej. la pantalla de diagnostico
@@ -317,13 +354,23 @@ export async function loadAssignments(): Promise<{
     try {
       await db.assignments.clear()
       await db.assignments.bulkPut(mapped)
+      // Re-aplica las filas con cambios locales pendientes ENCIMA del fetch
+      // del servidor. bulkPut sobre el mismo PK (id) sobreescribe.
+      if (localPendingRows.length > 0) {
+        await db.assignments.bulkPut(localPendingRows)
+      }
       await db.meta.put({ key: 'assignments_last_sync', value: now })
     } catch {
       // No bloqueamos el retorno por fallos de escritura local: el caller
       // igual recibe los datos. La proxima sincronizacion intentara escribir
       // de nuevo.
     }
-    return { data: mapped, source: 'supabase', error: null }
+
+    // Para el state de React, devolver tambien la version local pendiente
+    // en vez de la del servidor, asi la UI no parpadea.
+    const localById = new Map(localPendingRows.map((r) => [r.id, r]))
+    const finalData = mapped.map((row) => localById.get(row.id) ?? row)
+    return { data: finalData, source: 'supabase', error: null }
   } catch (err) {
     // El fetch a Supabase fallo. Devolvemos lo que tengamos en cache y
     // exponemos el error para que la UI muestre un banner. Si el caller

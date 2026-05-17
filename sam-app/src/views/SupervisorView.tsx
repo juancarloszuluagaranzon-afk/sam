@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, summarizeAssignments } from '../services/samApi'
+import { createAppUser, updateAppUser, summarizeAssignments, getIngenioName } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
@@ -940,6 +940,7 @@ export function SupervisorView({
           onClose={() => setSelectedEntity(null)}
           canEdit={canEditAssignments}
           equipment={sortedEquipment}
+          maestro={maestro}
           onSaveAssignment={handleEditAssignment}
           busy={busy}
         />
@@ -1771,6 +1772,9 @@ export function SupervisorView({
                   <div className="labor-detail-grid">
                     <span className="labor-label">Fecha</span>
                     <span className="labor-value">{selectedLabor.dateKey || '—'}</span>
+
+                    <span className="labor-label">Ingenio</span>
+                    <span className="labor-value">{getIngenioName(selectedLabor, maestro) ?? '—'}</span>
 
                     <span className="labor-label">Hacienda</span>
                     <span className="labor-value">{selectedLabor.haciendaName}</span>

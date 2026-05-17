@@ -61,6 +61,32 @@ function normalizeZone(value: string | null | undefined): Zone | null {
   return null
 }
 
+// Mapeo legible para los IDs del maestro. Si en el futuro se agregan ingenios
+// nuevos, agregarlos aqui asi el modal muestra el nombre formateado en vez
+// del id crudo (ej "san_carlos").
+const INGENIO_NAMES: Record<string, string> = {
+  risaralda: 'Ingenio Risaralda',
+  pichichi: 'Ingenio Pichichi',
+  mayaguez: 'Ingenio Mayagüez',
+  san_carlos: 'Ingenio San Carlos',
+  riopaila: 'Ingenio Riopaila',
+}
+
+// Resuelve el ingenio de una asignacion cruzando con el maestro por
+// haciendaCode + suerte. Devuelve el nombre legible si lo encuentra, o null
+// si la suerte no esta en el maestro (caso raro pero posible: suerte vieja
+// que fue removida o asignacion creada en campo libre con un codigo manual).
+export function getIngenioName(
+  assignment: { haciendaCode: string; suerte: string },
+  maestro: MaestroRow[],
+): string | null {
+  const row = maestro.find(
+    (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
+  )
+  if (!row) return null
+  return INGENIO_NAMES[row.ingenio_id] ?? row.ingenio_id
+}
+
 function mapAssignment(row: Record<string, unknown>): Assignment {
   const suerteCode = String(row.suerte_codigo ?? '')
   const parts = suerteCode.includes('-') ? suerteCode.split('-') : []

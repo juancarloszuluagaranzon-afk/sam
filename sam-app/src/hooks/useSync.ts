@@ -133,9 +133,12 @@ export function useSync({
       .subscribe()
 
     // Poll periodico como fallback defensivo: si Realtime se cae o no
-    // estamos conectados al websocket, igual mantenemos sync. Cada 60s
-    // (menos agresivo que antes porque ya tenemos Realtime como primario).
-    const POLL_INTERVAL_MS = 60000
+    // estamos conectados al websocket, igual mantenemos sync. Cada 30s.
+    // Es silencioso (delta sync ~pocos KB, solo trae filas que cambiaron
+    // desde lastSync-10s) y el usuario no ve absolutamente nada salvo si
+    // hay datos nuevos en la lista. Costo: 30 dispositivos * 1 req/30s =
+    // ~60 req/min al VPS, despreciable.
+    const POLL_INTERVAL_MS = 30000
     const pollId = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
       void loadAssignments().then((r) => {

@@ -1,6 +1,6 @@
 import { memo, useEffect, useState } from 'react'
-import type { Assignment, Equipment } from '../domain/sam'
-import { formatTime } from '../services/samApi'
+import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
+import { formatTime, getIngenioName } from '../services/samApi'
 
 interface EditPatch {
   executedArea?: number
@@ -16,6 +16,9 @@ interface Props {
   onClose: () => void
   canEdit?: boolean
   equipment?: Equipment[]
+  // Maestro pasa para resolver el ingenio de la suerte. Si no se pasa, no se
+  // muestra el ingenio (no falla, solo lo omite).
+  maestro?: MaestroRow[]
   onSave?: (assignment: Assignment, patch: EditPatch) => Promise<boolean>
   busy?: boolean
 }
@@ -59,6 +62,7 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
   onClose,
   canEdit,
   equipment,
+  maestro,
   onSave,
   busy,
 }: Props) {
@@ -273,15 +277,20 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
           )}
         </section>
 
-        {(a.zone || a.cliente) && !editing && (
-          <section className="assignment-detail-section">
-            <p className="eyebrow">Contexto</p>
-            <dl className="assignment-detail-grid">
-              <Row label="Zona" value={a.zone} />
-              <Row label="Cliente" value={a.cliente} />
-            </dl>
-          </section>
-        )}
+        {(() => {
+          const ingenio = maestro ? getIngenioName(a, maestro) : null
+          if (editing || (!a.zone && !a.cliente && !ingenio)) return null
+          return (
+            <section className="assignment-detail-section">
+              <p className="eyebrow">Contexto</p>
+              <dl className="assignment-detail-grid">
+                <Row label="Ingenio" value={ingenio} />
+                <Row label="Zona" value={a.zone} />
+                <Row label="Cliente" value={a.cliente} />
+              </dl>
+            </section>
+          )
+        })()}
 
         {approvalLabel && !editing && (
           <section className="assignment-detail-section">

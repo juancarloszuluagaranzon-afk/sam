@@ -1,5 +1,5 @@
 import { memo, useMemo, useState } from 'react'
-import type { Assignment, Equipment } from '../domain/sam'
+import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 import { AssignmentDetailModal } from './AssignmentDetailModal'
 
@@ -70,6 +70,8 @@ interface EntityHistoryModalProps {
   onClose: () => void
   canEdit?: boolean
   equipment?: Equipment[]
+  // Maestro para que el AssignmentDetailModal pueda resolver el ingenio.
+  maestro?: MaestroRow[]
   onSaveAssignment?: (assignment: Assignment, patch: EditPatch) => Promise<boolean>
   busy?: boolean
 }
@@ -82,6 +84,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
   onClose,
   canEdit,
   equipment,
+  maestro,
   onSaveAssignment,
   busy,
 }: EntityHistoryModalProps) {
@@ -207,6 +210,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
         onClose={() => setSelectedAssignment(null)}
         canEdit={canEdit}
         equipment={equipment}
+        maestro={maestro}
         onSave={onSaveAssignment}
         busy={busy}
       />

@@ -670,6 +670,22 @@ export function summarizeAssignments(
   }
 }
 
+// Fecha "efectiva" para agrupación por quincena / mes (Resumen, Historial, Tablero).
+// Una labor asignada el 14-may pero TERMINADA el 16-may debe contar como del 16-may
+// para el cliente: lo importante operacionalmente es CUÁNDO se ejecutó, no cuándo se planeó.
+//
+//   COMPLETADA → fecha_fin
+//   EN_PROCESO → fecha_inicio
+//   PENDIENTE / CANCELADA → created_at (no hay ejecución todavía / fue cancelada)
+//
+// El display "Programada en X" sigue mostrando `dateKey` (= creación) intacto en otras
+// partes de la UI. Esta función solo se usa donde se quiere agrupar por "ejecución".
+export function executionDateKey(a: Assignment): string {
+  if (a.status === 'COMPLETADA' && a.finishedAt) return dayKey(a.finishedAt)
+  if (a.status === 'EN_PROCESO' && a.startedAt) return dayKey(a.startedAt)
+  return a.dateKey
+}
+
 export function formatTime(value: string | null) {
   if (!value) return '-'
 

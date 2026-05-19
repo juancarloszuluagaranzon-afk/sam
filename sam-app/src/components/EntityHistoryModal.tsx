@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
-import { formatTime } from '../services/samApi'
+import { formatTime, executionDateKey } from '../services/samApi'
 import { AssignmentDetailModal } from './AssignmentDetailModal'
 
 interface EditPatch {
@@ -101,7 +101,10 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
         if (entity.type === 'operator' && a.operatorId !== entity.id) return false
         if (entity.type === 'equipment' && a.equipmentCode !== entity.code) return false
         if (a.status === 'CANCELADA') return false
-        return matchesSummaryFilter(a.dateKey, month, quincena)
+        // Agrupar por fecha de EJECUCIÓN (fecha_fin / fecha_inicio según estado),
+        // no por fecha de asignación. Una labor del 14-may ejecutada el 16-may cuenta
+        // para la 2da quincena.
+        return matchesSummaryFilter(executionDateKey(a), month, quincena)
       })
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
   }, [entity, assignments, month, quincena])

@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, summarizeAssignments, getIngenioName } from '../services/samApi'
+import { createAppUser, updateAppUser, summarizeAssignments, getIngenioName, executionDateKey } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
@@ -294,7 +294,9 @@ export function SupervisorView({
           }
           return false
         }
-        return matchesSummaryFilter(a.dateKey, summaryMonth, summaryQuincena, todayKey)
+        // Para PRIMERA/SEGUNDA quincena, agrupar por fecha de EJECUCIÓN, no de asignación:
+        // una labor asignada el 14-may pero terminada el 16-may cuenta para la 2da quincena.
+        return matchesSummaryFilter(executionDateKey(a), summaryMonth, summaryQuincena, todayKey)
       }),
     [scopedAssignments, summaryMonth, summaryQuincena, todayKey],
   )

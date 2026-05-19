@@ -11,7 +11,7 @@ import { DiagnosticModal } from '../components/DiagnosticModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime } from '../services/samApi'
+import { formatTime, executionDateKey } from '../services/samApi'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -219,7 +219,11 @@ export function OperatorView({
       endLimit = new Date(year, month, 0)
     }
     return historyAssignments.filter((a) => {
-      const [y, m, d] = a.dateKey.split('-').map(Number)
+      // Agrupar por fecha de EJECUCIÓN, no de asignación. Una labor asignada el 14-may
+      // pero terminada el 16-may aparece en la Q2 de mayo, no en la Q1.
+      const key = executionDateKey(a)
+      if (!key) return false
+      const [y, m, d] = key.split('-').map(Number)
       const date = new Date(y, m - 1, d)
       return date >= startLimit && date <= endLimit
     })

@@ -87,6 +87,18 @@ export function getIngenioName(
   return INGENIO_NAMES[row.ingenio_id] ?? row.ingenio_id
 }
 
+// Devuelve el ingenio_id crudo (ej 'pichichi') para filtrar por ID; útil cuando
+// el selector usa el id como value y necesitamos comparar contra las filas.
+export function getAssignmentIngenioId(
+  assignment: { haciendaCode: string; suerte: string },
+  maestro: MaestroRow[],
+): string | null {
+  const row = maestro.find(
+    (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
+  )
+  return row ? row.ingenio_id : null
+}
+
 function mapAssignment(row: Record<string, unknown>): Assignment {
   const suerteCode = String(row.suerte_codigo ?? '')
   const parts = suerteCode.includes('-') ? suerteCode.split('-') : []

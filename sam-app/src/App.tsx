@@ -4,10 +4,13 @@ import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { UpdateBanner } from './components/UpdateBanner'
+import { matchesSummaryFilter, type SummaryQuincena } from './components/EntityHistoryModal'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
-import { appLogin, appChangePin, loadAssignments } from './services/samApi'
+import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getAssignmentIngenioId } from './services/samApi'
 import { db } from './lib/db'
+
+export type ReportPeriod = 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -52,11 +55,13 @@ function AppContent() {
   const [haciendaFilter, setHaciendaFilter] = useState('TODAS')
   const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
   const [reportFilters, setReportFilters] = useState({
+    period: 'MES' as ReportPeriod,
     desde: '',
     hasta: '',
     estado: 'TODAS',
     haciendaCode: '',
     operatorId: 'TODOS',
+    ingenioId: 'TODOS',
   })
   const [tableroMonth, setTableroMonth] = useState(() =>
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
@@ -137,17 +142,36 @@ function AppContent() {
   }, [tableroAssignments, maestro, tableroIngenio])
 
   const filteredReport = useMemo(() => {
+    // El reporte agrupa por fecha de EJECUCIÓN (fecha_fin para COMPLETADA,
+    // fecha_inicio para EN_PROCESO, created_at como fallback). Ver executionDateKey.
+    const currentMonth = todayKey.slice(0, 7)
     return assignments
       .filter((a) => {
-        if (reportFilters.desde && a.dateKey < reportFilters.desde) return false
-        if (reportFilters.hasta && a.dateKey > reportFilters.hasta) return false
+        const execDate = executionDateKey(a)
+        // Filtro de período: CUSTOM usa desde/hasta manuales, los demás usan
+        // matchesSummaryFilter (misma lógica que el Resumen).
+        if (reportFilters.period === 'CUSTOM') {
+          if (reportFilters.desde && execDate < reportFilters.desde) return false
+          if (reportFilters.hasta && execDate > reportFilters.hasta) return false
+        } else {
+          const quincena: SummaryQuincena =
+            reportFilters.period === 'HOY' ? 'HOY' :
+            reportFilters.period === 'PRIMERA' ? 'PRIMERA' :
+            reportFilters.period === 'SEGUNDA' ? 'SEGUNDA' :
+            'TODO' // MES = todo el mes actual
+          if (!matchesSummaryFilter(execDate, currentMonth, quincena, todayKey)) return false
+        }
         if (reportFilters.estado !== 'TODAS' && a.status !== reportFilters.estado) return false
         if (reportFilters.haciendaCode && a.haciendaCode !== reportFilters.haciendaCode) return false
         if (reportFilters.operatorId !== 'TODOS' && a.operatorId !== reportFilters.operatorId) return false
+        if (reportFilters.ingenioId !== 'TODOS') {
+          const ingId = getAssignmentIngenioId(a, maestro)
+          if (ingId !== reportFilters.ingenioId) return false
+        }
         return true
       })
-      .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
-  }, [assignments, reportFilters])
+      .sort((a, b) => executionDateKey(b).localeCompare(executionDateKey(a)))
+  }, [assignments, reportFilters, todayKey, maestro])
 
   const handleChangePin = async (e: FormEvent) => {
     e.preventDefault()
@@ -232,7 +256,8 @@ function AppContent() {
     try {
       const { utils, writeFile } = await import('xlsx')
       const rows = filteredReport.map((a) => ({
-        'Fecha': a.dateKey,
+        'Fecha (ejecución)': executionDateKey(a),
+        'Fecha asignación': a.dateKey,
         'Hacienda': a.haciendaName,
         'Suerte': a.suerte,
         'Código Suerte': a.suerteCode,
@@ -240,6 +265,8 @@ function AppContent() {
         'Área Plan. (ha)': a.area,
         'Área Ejec. (ha)': a.executedArea > 0 ? a.executedArea : '',
         'Estado': a.status,
+        'Cliente': a.cliente === 'ingenios' ? 'Ingenio' : a.cliente === 'proveedores' ? 'Proveedor' : '—',
+        'Ingenio': getIngenioName(a, maestro) ?? '—',
         'Operador': a.operatorName,
         'Supervisor': a.supervisorId,
         'Equipo': a.equipmentName,
@@ -247,7 +274,6 @@ function AppContent() {
         'Fin': a.finishedAt ?? '',
         'Horometro Ini': a.horometroInicial ?? '',
         'Horometro Fin': a.horometroFinal ?? '',
-        'Cliente': a.cliente ?? '',
         'Zona': a.zone ?? '',
         'Tipo': a.kind,
         'Aprobación': a.approval,

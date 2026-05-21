@@ -157,8 +157,8 @@ interface Props {
   setIngenioFilter: (v: string) => void
   haciendaFilter: string
   setHaciendaFilter: (v: string) => void
-  reportFilters: { desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string }
-  setReportFilters: React.Dispatch<React.SetStateAction<{ desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string }>>
+  reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }
+  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }>>
   onSaveSession: (user: UserProfile | null) => void
   handleChangePin: (e: FormEvent) => Promise<void>
   handleDownloadReport: () => Promise<void>
@@ -1151,21 +1151,38 @@ export function SupervisorView({
             <div className="report-filters">
               <div className="report-filter-row">
                 <label className="report-filter-label">
-                  Desde
-                  <input
-                    type="date"
-                    value={reportFilters.desde}
-                    onChange={(e) => setReportFilters((f) => ({ ...f, desde: e.target.value }))}
-                  />
+                  Período
+                  <select
+                    value={reportFilters.period}
+                    onChange={(e) => setReportFilters((f) => ({ ...f, period: e.target.value as 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES' }))}
+                  >
+                    <option value="HOY">Hoy</option>
+                    <option value="PRIMERA">1ra quincena (1-15)</option>
+                    <option value="SEGUNDA">2da quincena (16-fin)</option>
+                    <option value="MES">Mes actual</option>
+                    <option value="CUSTOM">Personalizado</option>
+                  </select>
                 </label>
-                <label className="report-filter-label">
-                  Hasta
-                  <input
-                    type="date"
-                    value={reportFilters.hasta}
-                    onChange={(e) => setReportFilters((f) => ({ ...f, hasta: e.target.value }))}
-                  />
-                </label>
+                {reportFilters.period === 'CUSTOM' && (
+                  <>
+                    <label className="report-filter-label">
+                      Desde
+                      <input
+                        type="date"
+                        value={reportFilters.desde}
+                        onChange={(e) => setReportFilters((f) => ({ ...f, desde: e.target.value }))}
+                      />
+                    </label>
+                    <label className="report-filter-label">
+                      Hasta
+                      <input
+                        type="date"
+                        value={reportFilters.hasta}
+                        onChange={(e) => setReportFilters((f) => ({ ...f, hasta: e.target.value }))}
+                      />
+                    </label>
+                  </>
+                )}
               </div>
               <div className="report-filter-row">
                 <select
@@ -1177,6 +1194,15 @@ export function SupervisorView({
                   <option value="EN_PROCESO">En proceso</option>
                   <option value="COMPLETADA">Completada</option>
                   <option value="CANCELADA">Cancelada</option>
+                </select>
+                <select
+                  value={reportFilters.ingenioId}
+                  onChange={(e) => setReportFilters((f) => ({ ...f, ingenioId: e.target.value }))}
+                >
+                  <option value="TODOS">Todos los ingenios</option>
+                  {INGENIOS.map((ing) => (
+                    <option key={ing.id} value={ing.id}>{ing.nombre}</option>
+                  ))}
                 </select>
                 <select
                   value={reportFilters.haciendaCode}
@@ -1209,11 +1235,13 @@ export function SupervisorView({
               <table className="report-table">
                 <thead>
                   <tr>
-                    <th>Fecha</th>
+                    <th>Fecha ejec.</th>
                     <th>Hacienda</th>
                     <th>Suerte</th>
                     <th>Labor</th>
                     <th>Área</th>
+                    <th>Cliente</th>
+                    <th>Ingenio</th>
                     <th>Estado</th>
                     <th>Operador</th>
                   </tr>
@@ -1221,9 +1249,13 @@ export function SupervisorView({
                 <tbody>
                   {filteredReport.slice(0, 30).map((a) => {
                     const meta = getStatusMeta(a)
+                    const clienteLabel =
+                      a.cliente === 'ingenios' ? 'Ingenio' :
+                      a.cliente === 'proveedores' ? 'Proveedor' : '—'
+                    const ingenioLabel = getIngenioName(a, maestro) ?? '—'
                     return (
                       <tr key={a.id}>
-                        <td>{a.dateKey}</td>
+                        <td>{executionDateKey(a)}</td>
                         <td>{a.haciendaName}</td>
                         <td>{a.suerte}</td>
                         <td>{a.labor}</td>
@@ -1232,6 +1264,8 @@ export function SupervisorView({
                             ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
                             : formatArea(a.area)}
                         </td>
+                        <td>{clienteLabel}</td>
+                        <td>{ingenioLabel}</td>
                         <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
                         <td>{a.operatorName}</td>
                       </tr>

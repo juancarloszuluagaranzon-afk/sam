@@ -60,10 +60,12 @@ function AppContent() {
     view: 'labor' as 'labor' | 'maquina',
     desde: '',
     hasta: '',
-    estado: 'TODAS',
+    // sentinels vacíos = "todos"; con SearchableSelect el placeholder item
+    // borra a ''. Las comparaciones en filteredReport usan truthy check.
+    estado: '',
     haciendaCode: '',
-    operatorId: 'TODOS',
-    ingenioId: 'TODOS',
+    operatorId: '',
+    ingenioId: '',
   })
   const [tableroMonth, setTableroMonth] = useState(() =>
     new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
@@ -163,10 +165,10 @@ function AppContent() {
             'TODO' // MES = todo el mes actual
           if (!matchesSummaryFilter(execDate, currentMonth, quincena, todayKey)) return false
         }
-        if (reportFilters.estado !== 'TODAS' && a.status !== reportFilters.estado) return false
+        if (reportFilters.estado && a.status !== reportFilters.estado) return false
         if (reportFilters.haciendaCode && a.haciendaCode !== reportFilters.haciendaCode) return false
-        if (reportFilters.operatorId !== 'TODOS' && a.operatorId !== reportFilters.operatorId) return false
-        if (reportFilters.ingenioId !== 'TODOS') {
+        if (reportFilters.operatorId && a.operatorId !== reportFilters.operatorId) return false
+        if (reportFilters.ingenioId) {
           const ingId = getAssignmentIngenioId(a, maestro)
           if (ingId !== reportFilters.ingenioId) return false
         }

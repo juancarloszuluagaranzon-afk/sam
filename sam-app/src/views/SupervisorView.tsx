@@ -1195,43 +1195,35 @@ export function SupervisorView({
                 )}
               </div>
               <div className="report-filter-row">
-                <select
+                <SearchableSelect
                   value={reportFilters.estado}
-                  onChange={(e) => setReportFilters((f) => ({ ...f, estado: e.target.value }))}
-                >
-                  <option value="TODAS">Todos los estados</option>
-                  <option value="PENDIENTE">Pendiente</option>
-                  <option value="EN_PROCESO">En proceso</option>
-                  <option value="COMPLETADA">Completada</option>
-                  <option value="CANCELADA">Cancelada</option>
-                </select>
-                <select
+                  onChange={(v) => setReportFilters((f) => ({ ...f, estado: v }))}
+                  placeholder="Todos los estados"
+                  options={[
+                    { value: 'PENDIENTE', label: 'Pendiente' },
+                    { value: 'EN_PROCESO', label: 'En proceso' },
+                    { value: 'COMPLETADA', label: 'Completada' },
+                    { value: 'CANCELADA', label: 'Cancelada' },
+                  ]}
+                />
+                <SearchableSelect
                   value={reportFilters.ingenioId}
-                  onChange={(e) => setReportFilters((f) => ({ ...f, ingenioId: e.target.value }))}
-                >
-                  <option value="TODOS">Todos los ingenios</option>
-                  {INGENIOS.map((ing) => (
-                    <option key={ing.id} value={ing.id}>{ing.nombre}</option>
-                  ))}
-                </select>
-                <select
+                  onChange={(v) => setReportFilters((f) => ({ ...f, ingenioId: v }))}
+                  placeholder="Todos los ingenios"
+                  options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                />
+                <SearchableSelect
                   value={reportFilters.haciendaCode}
-                  onChange={(e) => setReportFilters((f) => ({ ...f, haciendaCode: e.target.value }))}
-                >
-                  <option value="">Todas las haciendas</option>
-                  {haciendaFilterOptions.map((h) => (
-                    <option key={h.code} value={h.code}>{h.name}</option>
-                  ))}
-                </select>
-                <select
+                  onChange={(v) => setReportFilters((f) => ({ ...f, haciendaCode: v }))}
+                  placeholder="Todas las haciendas"
+                  options={haciendaFilterOptions.map((h) => ({ value: h.code, label: h.name }))}
+                />
+                <SearchableSelect
                   value={reportFilters.operatorId}
-                  onChange={(e) => setReportFilters((f) => ({ ...f, operatorId: e.target.value }))}
-                >
-                  <option value="TODOS">Todos los operadores</option>
-                  {operators.map((op) => (
-                    <option key={op.id} value={op.id}>{op.name}</option>
-                  ))}
-                </select>
+                  onChange={(v) => setReportFilters((f) => ({ ...f, operatorId: v }))}
+                  placeholder="Todos los operadores"
+                  options={operators.map((op) => ({ value: op.id, label: op.name, rightLabel: op.id }))}
+                />
               </div>
             </div>
 

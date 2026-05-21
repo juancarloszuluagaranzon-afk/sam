@@ -157,8 +157,8 @@ interface Props {
   setIngenioFilter: (v: string) => void
   haciendaFilter: string
   setHaciendaFilter: (v: string) => void
-  reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }
-  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }>>
+  reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }
+  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }>>
   onSaveSession: (user: UserProfile | null) => void
   handleChangePin: (e: FormEvent) => Promise<void>
   handleDownloadReport: () => Promise<void>
@@ -1163,6 +1163,16 @@ export function SupervisorView({
                     <option value="CUSTOM">Personalizado</option>
                   </select>
                 </label>
+                <label className="report-filter-label">
+                  Vista
+                  <select
+                    value={reportFilters.view}
+                    onChange={(e) => setReportFilters((f) => ({ ...f, view: e.target.value as 'labor' | 'maquina' }))}
+                  >
+                    <option value="labor">Por labor</option>
+                    <option value="maquina">Por máquina</option>
+                  </select>
+                </label>
                 {reportFilters.period === 'CUSTOM' && (
                   <>
                     <label className="report-filter-label">
@@ -1268,57 +1278,163 @@ export function SupervisorView({
               )
             })()}
 
-            <div className="report-table-wrap">
-              <table className="report-table">
-                <thead>
-                  <tr>
-                    <th>Fecha ejec.</th>
-                    <th>Hacienda</th>
-                    <th>Suerte</th>
-                    <th>Labor</th>
-                    <th>Área</th>
-                    <th>Cliente</th>
-                    <th>Ingenio</th>
-                    <th>Estado</th>
-                    <th>Operador</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredReport.slice(0, 30).map((a) => {
-                    const meta = getStatusMeta(a)
-                    const clienteLabel =
-                      a.cliente === 'ingenios' ? 'Ingenio' :
-                      a.cliente === 'proveedores' ? 'Proveedor' : '—'
-                    const ingenioLabel = getIngenioName(a, maestro) ?? '—'
-                    return (
-                      <tr key={a.id}>
-                        <td>{executionDateKey(a)}</td>
-                        <td>{a.haciendaName}</td>
-                        <td>{a.suerte}</td>
-                        <td>{a.labor}</td>
-                        <td className="num-cell">
-                          {a.status === 'COMPLETADA'
-                            ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
-                            : formatArea(a.area)}
-                        </td>
-                        <td>{clienteLabel}</td>
-                        <td>{ingenioLabel}</td>
-                        <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
-                        <td>{a.operatorName}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-              {filteredReport.length > 30 && (
-                <p className="report-overflow-note">
-                  Mostrando 30 de {filteredReport.length}. Descarga el Excel para el listado completo.
-                </p>
-              )}
-              {filteredReport.length === 0 && (
-                <p className="report-empty">Sin registros para los filtros seleccionados.</p>
-              )}
-            </div>
+            {reportFilters.view === 'labor' ? (
+              <div className="report-table-wrap">
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha ejec.</th>
+                      <th>Hacienda</th>
+                      <th>Suerte</th>
+                      <th>Labor</th>
+                      <th>Área</th>
+                      <th>Cliente</th>
+                      <th>Ingenio</th>
+                      <th>Estado</th>
+                      <th>Operador</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredReport.slice(0, 30).map((a) => {
+                      const meta = getStatusMeta(a)
+                      const clienteLabel =
+                        a.cliente === 'ingenios' ? 'Ingenio' :
+                        a.cliente === 'proveedores' ? 'Proveedor' : '—'
+                      const ingenioLabel = getIngenioName(a, maestro) ?? '—'
+                      return (
+                        <tr key={a.id}>
+                          <td>{executionDateKey(a)}</td>
+                          <td>{a.haciendaName}</td>
+                          <td>{a.suerte}</td>
+                          <td>{a.labor}</td>
+                          <td className="num-cell">
+                            {a.status === 'COMPLETADA'
+                              ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
+                              : formatArea(a.area)}
+                          </td>
+                          <td>{clienteLabel}</td>
+                          <td>{ingenioLabel}</td>
+                          <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
+                          <td>{a.operatorName}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                {filteredReport.length > 30 && (
+                  <p className="report-overflow-note">
+                    Mostrando 30 de {filteredReport.length}. Descarga el Excel para el listado completo.
+                  </p>
+                )}
+                {filteredReport.length === 0 && (
+                  <p className="report-empty">Sin registros para los filtros seleccionados.</p>
+                )}
+              </div>
+            ) : (
+              // Vista "Por máquina": agrupa filteredReport por equipo y muestra
+              // un bloque por máquina con horómetros y horas trabajadas.
+              (() => {
+                type MachineGroup = {
+                  code: string
+                  name: string
+                  labors: Assignment[]
+                  totalHoras: number
+                  totalAreaPlan: number
+                  totalAreaEjec: number
+                }
+                const groups = new Map<string, MachineGroup>()
+                for (const a of filteredReport) {
+                  const code = a.equipmentCode || '(sin equipo)'
+                  const name = a.equipmentName || code
+                  let g = groups.get(code)
+                  if (!g) {
+                    g = { code, name, labors: [], totalHoras: 0, totalAreaPlan: 0, totalAreaEjec: 0 }
+                    groups.set(code, g)
+                  }
+                  g.labors.push(a)
+                  if (a.status !== 'CANCELADA') {
+                    g.totalAreaPlan += a.area
+                    if (a.status === 'COMPLETADA') {
+                      g.totalAreaEjec += a.executedArea > 0 ? a.executedArea : a.area
+                    }
+                  }
+                  if (a.horometroInicial != null && a.horometroFinal != null && a.horometroFinal > a.horometroInicial) {
+                    g.totalHoras += a.horometroFinal - a.horometroInicial
+                  }
+                }
+                const list = Array.from(groups.values()).sort((x, y) => x.name.localeCompare(y.name))
+                if (list.length === 0) {
+                  return <p className="report-empty">Sin registros para los filtros seleccionados.</p>
+                }
+                return (
+                  <div className="report-by-machine">
+                    {list.map((g) => (
+                      <section key={g.code} className="machine-group" style={{ marginBottom: 18, border: '1px solid #d9dbd0', borderRadius: 8, overflow: 'hidden' }}>
+                        <header style={{ background: '#1a6b3a', color: '#fff', padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <strong style={{ fontSize: 15 }}>{g.name}</strong>
+                          <span style={{ fontSize: 13, opacity: 0.95 }}>
+                            {g.totalHoras.toFixed(1)} h trabajadas · {g.totalAreaPlan.toFixed(2)} ha plan. · {g.totalAreaEjec.toFixed(2)} ha ejec. · {g.labors.length} labor{g.labors.length !== 1 ? 'es' : ''}
+                          </span>
+                        </header>
+                        <div className="report-table-wrap" style={{ background: '#fff' }}>
+                          <table className="report-table">
+                            <thead>
+                              <tr>
+                                <th>Fecha ejec.</th>
+                                <th>Hacienda</th>
+                                <th>Suerte</th>
+                                <th>Labor</th>
+                                <th>Hor. Ini</th>
+                                <th>Hor. Fin</th>
+                                <th>Horas</th>
+                                <th>Área</th>
+                                <th>Cliente</th>
+                                <th>Ingenio</th>
+                                <th>Estado</th>
+                                <th>Operador</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {g.labors.map((a) => {
+                                const meta = getStatusMeta(a)
+                                const clienteLabel =
+                                  a.cliente === 'ingenios' ? 'Ingenio' :
+                                  a.cliente === 'proveedores' ? 'Proveedor' : '—'
+                                const ingenioLabel = getIngenioName(a, maestro) ?? '—'
+                                const hi = a.horometroInicial
+                                const hf = a.horometroFinal
+                                const hrsRaw = (hi != null && hf != null && hf > hi) ? (hf - hi) : null
+                                const hrs = hrsRaw != null ? hrsRaw.toFixed(1) : '—'
+                                return (
+                                  <tr key={a.id}>
+                                    <td>{executionDateKey(a)}</td>
+                                    <td>{a.haciendaName}</td>
+                                    <td>{a.suerte}</td>
+                                    <td>{a.labor}</td>
+                                    <td className="num-cell">{hi != null ? hi.toFixed(1) : '—'}</td>
+                                    <td className="num-cell">{hf != null ? hf.toFixed(1) : '—'}</td>
+                                    <td className="num-cell">{hrs}</td>
+                                    <td className="num-cell">
+                                      {a.status === 'COMPLETADA'
+                                        ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
+                                        : formatArea(a.area)}
+                                    </td>
+                                    <td>{clienteLabel}</td>
+                                    <td>{ingenioLabel}</td>
+                                    <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
+                                    <td>{a.operatorName}</td>
+                                  </tr>
+                                )
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )
+              })()
+            )}
 
             <button
               className="btn-primary report-download-btn"

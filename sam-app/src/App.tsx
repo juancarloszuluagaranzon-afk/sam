@@ -57,6 +57,7 @@ function AppContent() {
   const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
   const [reportFilters, setReportFilters] = useState({
     period: 'MES' as ReportPeriod,
+    view: 'labor' as 'labor' | 'maquina',
     desde: '',
     hasta: '',
     estado: 'TODAS',

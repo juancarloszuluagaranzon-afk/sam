@@ -1225,11 +1225,48 @@ export function SupervisorView({
               </div>
             </div>
 
-            <div className="report-summary-bar">
-              <span>{filteredReport.length} registros</span>
-              <span>{filteredReport.reduce((s, a) => s + a.area, 0).toFixed(2)} ha plan.</span>
-              <span>{filteredReport.filter(a => a.status === 'COMPLETADA').reduce((s, a) => s + (a.executedArea || a.area), 0).toFixed(2)} ha ejec.</span>
-            </div>
+            {(() => {
+              // KPIs del reporte segmentados por los filtros activos (período +
+              // estado + ingenio + hacienda + operador). Misma fórmula que la
+              // franja "Hoy" del toolbar: excluye CANCELADA del planificado,
+              // toma executedArea (con fallback a area) para los COMPLETADA.
+              const activos = filteredReport.filter((a) => a.status !== 'CANCELADA')
+              const planif = activos.reduce((s, a) => s + a.area, 0)
+              const ejec = activos
+                .filter((a) => a.status === 'COMPLETADA')
+                .reduce((s, a) => s + (a.executedArea > 0 ? a.executedArea : a.area), 0)
+              const cumpl = planif ? Math.round((ejec / planif) * 100) : 0
+              const enProc = activos.filter((a) => a.status === 'EN_PROCESO').length
+              const periodLabel =
+                reportFilters.period === 'HOY' ? 'Hoy' :
+                reportFilters.period === 'PRIMERA' ? '1ra quincena' :
+                reportFilters.period === 'SEGUNDA' ? '2da quincena' :
+                reportFilters.period === 'MES' ? 'Mes actual' :
+                'Personalizado'
+              return (
+                <div className="day-status-bar day-status-bar--large">
+                  <div className="day-status-bar__heading">{periodLabel} · {filteredReport.length} registros</div>
+                  <div className="day-status-bar__items">
+                    <div className="day-status-item">
+                      <strong>{planif.toFixed(2)}</strong>
+                      <span>Ha planif.</span>
+                    </div>
+                    <div className="day-status-item day-status-item--green">
+                      <strong>{ejec.toFixed(2)}</strong>
+                      <span>Ha ejecut.</span>
+                    </div>
+                    <div className={`day-status-item ${cumpl >= 70 ? 'day-status-item--green' : cumpl >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
+                      <strong>{cumpl}%</strong>
+                      <span>Cumplimiento</span>
+                    </div>
+                    <div className={`day-status-item ${enProc > 0 ? 'day-status-item--amber' : ''}`}>
+                      <strong>{enProc}</strong>
+                      <span>En proceso</span>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             <div className="report-table-wrap">
               <table className="report-table">

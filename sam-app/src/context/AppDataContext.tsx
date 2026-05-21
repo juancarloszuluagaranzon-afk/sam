@@ -1,4 +1,4 @@
-import { createContext, startTransition, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
 import type { Assignment, Equipment, MaestroRow, UserProfile } from '../domain/sam'
@@ -39,6 +39,10 @@ interface AppDataContextValue {
   // lo limpia.
   syncError: string | null
   retrySync: () => void
+  // Borra `assignments_last_sync` y hace full reload de assignments. Misma
+  // accion que el boton "Forzar sync ahora" del DiagnosticModal — pero
+  // disponible globalmente (la usa el pull-to-refresh tambien).
+  forceSync: () => Promise<number>
   supervisors: UserProfile[]
   operators: UserProfile[]
   todayKey: string
@@ -74,6 +78,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setSyncError(result.error)
     })
   }
+
+  const forceSync = useCallback(async (): Promise<number> => {
+    try {
+      await db.meta.delete('assignments_last_sync')
+    } catch {
+      // ignore delete failures — el siguiente load igual fuerza full sync si no encuentra meta
+    }
+    try {
+      const result = await loadAssignments()
+      setAssignments(result.data)
+      setSyncError(result.error)
+      return result.data.length
+    } catch {
+      return 0
+    }
+  }, [])
 
   useEffect(() => {
     const saved = window.localStorage.getItem(SESSION_KEY)
@@ -207,7 +227,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         error, setError,
         info, setInfo,
         isOnline, outboxCount, setOutboxCount,
-        syncError, retrySync,
+        syncError, retrySync, forceSync,
         supervisors, operators, todayKey, metrics, operatorStatusMap, sortedEquipment,
       }}
     >

@@ -4,6 +4,7 @@ import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { UpdateBanner } from './components/UpdateBanner'
+import { PullToRefresh } from './components/PullToRefresh'
 import { matchesSummaryFilter, type SummaryQuincena } from './components/EntityHistoryModal'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
@@ -408,6 +409,7 @@ function App() {
     <AppDataProvider>
       <AppContent />
       <UpdateBanner />
+      <PullToRefresh />
     </AppDataProvider>
   )
 }

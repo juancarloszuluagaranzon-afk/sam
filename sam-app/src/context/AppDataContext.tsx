@@ -120,6 +120,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [error])
 
   async function hydrate() {
+    // Si la carga viene de un RELOAD del navegador (F5 / Ctrl+R / botón circular),
+    // borramos el watermark de delta sync para forzar full reload de asignaciones
+    // en la fase 2. Sin esto, el reload normal sirve el bundle cacheado del SW
+    // y aplica delta sync, que NO detecta filas borradas en el servidor — al
+    // usuario le parece que "el reload no actualiza nada". El mismo efecto que
+    // Diagnóstico → "Forzar sync ahora" pero gratis al pulsar el botón
+    // circular del navegador.
+    try {
+      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
+      const isReload = navEntries.length > 0 && navEntries[0].type === 'reload'
+      if (isReload) {
+        await db.meta.delete('assignments_last_sync')
+      }
+    } catch {
+      // Performance API ausente (browser viejo) — saltar; el resto del flujo igual funciona
+    }
+
     setLoading(true)
 
     // Fase 1: pinta UI desde cache local de Dexie de inmediato (< 50ms).

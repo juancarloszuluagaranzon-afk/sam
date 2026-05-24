@@ -2,8 +2,14 @@
   min-height: 100vh;
   background:
     radial-gradient(circle at top left, rgba(235, 191, 102, 0.2), transparent 24%),
-    linear-gradient(180deg, #fafaf7 0%, #ededeb 100%);
-  color: #161a14;
+    linear-gradient(180deg, var(--color-bg-app-1) 0%, var(--color-bg-app-2) 100%);
+  color: var(--color-ink);
+}
+
+:root[data-theme="dark"] .app-shell {
+  background:
+    radial-gradient(circle at top left, rgba(31, 122, 64, 0.12), transparent 24%),
+    linear-gradient(180deg, var(--color-bg-app-1) 0%, var(--color-bg-app-2) 100%);
 }
 
 .loading-shell,
@@ -23,10 +29,10 @@
 .metric-panel,
 .labor-card,
 .equipment-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid #e3e2dc;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
   border-radius: 24px;
-  box-shadow: 0 14px 30px rgba(55, 49, 26, 0.08);
+  box-shadow: 0 14px 30px var(--color-shadow-card);
 }
 
 .loading-card {
@@ -386,7 +392,7 @@
 .side-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(14, 18, 12, 0.34);
+  background: var(--color-overlay);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.2s ease;
@@ -404,15 +410,16 @@
   right: -320px;
   width: min(320px, 88vw);
   height: 100vh;
-  background: #fff;
-  border-left: 1px solid #e3e2dc;
-  box-shadow: -10px 0 24px rgba(31, 24, 10, 0.12);
+  background: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -10px 0 24px var(--color-shadow-card);
   z-index: 210;
   padding: 14px;
   display: grid;
   grid-auto-rows: min-content;
   gap: 14px;
   transition: right 0.2s ease;
+  color: var(--color-ink);
 }
 
 .side-drawer.open {
@@ -427,10 +434,10 @@
 }
 
 .side-user-card {
-  border: 1px solid #e3e2dc;
+  border: 1px solid var(--color-border);
   border-radius: 14px;
   padding: 12px;
-  background: #fafaf7;
+  background: var(--color-bg-soft);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -458,14 +465,14 @@
 .side-user-info strong {
   display: block;
   font-size: 1rem;
-  color: #1a1a1a;
+  color: var(--color-ink);
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .side-user-card p {
   margin: 4px 0 0;
-  color: #65715f;
+  color: var(--color-ink-mid);
   font-size: 0.92rem;
 }
 
@@ -1089,9 +1096,9 @@ textarea {
   width: 100%;
   padding: 13px 15px;
   border-radius: 14px;
-  border: 1px solid #cfcec7;
-  background: #fff;
-  color: #161a14;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-input);
+  color: var(--color-ink);
 }
 
 textarea {
@@ -1124,11 +1131,11 @@ th,
 td {
   padding: 14px 12px;
   text-align: left;
-  border-bottom: 1px solid #e3e2dc;
+  border-bottom: 1px solid var(--color-border);
 }
 
 th {
-  color: #68725f;
+  color: var(--color-ink-mid);
   font-size: 0.83rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -1978,7 +1985,7 @@ th {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(14, 18, 12, 0.5);
+  background: var(--color-overlay);
   z-index: 100;
   display: flex;
   align-items: center;
@@ -1994,12 +2001,13 @@ th {
 }
 
 .modal-card {
-  background: #fff;
+  background: var(--color-bg-elevated);
+  color: var(--color-ink);
   padding: 1.5rem;
   border-radius: 20px;
   width: 90%;
   max-width: 400px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 12px 40px var(--color-shadow-card);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -2037,7 +2045,7 @@ th {
 .labor-detail-header h3 {
   margin: 0 0 6px;
   font-size: 1.15rem;
-  color: #161a14;
+  color: var(--color-ink);
 }
 
 .modal-close-btn {
@@ -2046,8 +2054,8 @@ th {
   height: 32px;
   border-radius: 50%;
   border: 0;
-  background: #ededeb;
-  color: #4a5040;
+  background: var(--color-bg-muted);
+  color: var(--color-ink-mid);
   font-size: 0.9rem;
   cursor: pointer;
   display: grid;
@@ -2056,7 +2064,7 @@ th {
 }
 
 .modal-close-btn:hover {
-  background: #dad9d3;
+  background: var(--color-bg-chip);
 }
 
 .labor-detail-grid {
@@ -3116,7 +3124,7 @@ button.movement-row--clickable:active {
 .labor-detail-header {
   position: sticky;
   top: 0;
-  background: #fff;
+  background: var(--color-bg-elevated);
   z-index: 2;
   padding: 4px 0 8px;
   margin: -4px 0 0;
@@ -3134,7 +3142,7 @@ button.movement-row--clickable:active {
 .modal-footer {
   position: sticky;
   bottom: 0;
-  background: #fff;
+  background: var(--color-bg-elevated);
   padding: 12px 0 4px;
   margin: 8px 0 -4px;
   z-index: 2;
@@ -3168,10 +3176,10 @@ button.movement-row--clickable:active {
   list-style: none;
   margin: 0;
   padding: 4px 0;
-  background: #fff;
-  border: 1px solid #cfcec7;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 10px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 20px var(--color-shadow-soft);
   max-height: 320px;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -3180,13 +3188,14 @@ button.movement-row--clickable:active {
 .login-suggestions li {
   padding: 12px 14px;
   cursor: pointer;
+  color: var(--color-ink);
 }
 .login-suggestions li:hover {
-  background: #f4f3f0;
+  background: var(--color-bg-soft);
 }
 .login-suggestion-name {
   font-weight: 600;
-  color: #2a2f25;
+  color: var(--color-ink);
 }
 
 /* Banner persistente cuando el fetch a Supabase fallo estando online. La
@@ -3408,3 +3417,564 @@ button.movement-row--clickable:active {
   .update-banner__content { width: 100%; }
   .update-banner__actions { width: 100%; justify-content: flex-end; }
 }
+
+/* ============================================================
+   THEME TOGGLE — botón circular en menú lateral
+   ============================================================ */
+.theme-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 4px 4px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  background: var(--color-bg-soft);
+  margin-bottom: 8px;
+}
+
+.theme-toggle-row__label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--color-ink);
+}
+
+.theme-toggle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.18s ease, transform 0.15s ease, border-color 0.18s ease;
+  padding: 0;
+  color: var(--color-ink-mid);
+}
+
+.theme-toggle:hover {
+  transform: scale(1.06);
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+
+.theme-toggle:active {
+  transform: scale(0.96);
+}
+
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* ============================================================
+   OVERRIDES TEMA OSCURO
+   Reglas que ataca selectores cuyos colores en App.css están
+   hardcoded a blancos/grises claros. Se aplican solo cuando
+   <html data-theme="dark">.
+   ============================================================ */
+:root[data-theme="dark"] {
+  /* Tabla / superficies neutras */
+}
+
+:root[data-theme="dark"] .panel-card,
+:root[data-theme="dark"] .toolbar-card,
+:root[data-theme="dark"] .metric-panel,
+:root[data-theme="dark"] .labor-card,
+:root[data-theme="dark"] .equipment-card,
+:root[data-theme="dark"] .login-card,
+:root[data-theme="dark"] .loading-card {
+  background: var(--color-bg-card);
+  border-color: var(--color-border);
+}
+
+/* Fondos blancos sueltos → superficie elevada */
+:root[data-theme="dark"] .metric-card,
+:root[data-theme="dark"] .equipment-row,
+:root[data-theme="dark"] .equipment-detail,
+:root[data-theme="dark"] .labor-row,
+:root[data-theme="dark"] .active-card,
+:root[data-theme="dark"] .assignment-row,
+:root[data-theme="dark"] .movement-row,
+:root[data-theme="dark"] .day-status-bar,
+:root[data-theme="dark"] .day-status-item,
+:root[data-theme="dark"] .summary-card,
+:root[data-theme="dark"] .summary-row,
+:root[data-theme="dark"] .tab-nav,
+:root[data-theme="dark"] .floating-nav,
+:root[data-theme="dark"] .tablero-cell,
+:root[data-theme="dark"] .tablero-row,
+:root[data-theme="dark"] .form-row,
+:root[data-theme="dark"] .form-section,
+:root[data-theme="dark"] .stat-card,
+:root[data-theme="dark"] .approval-card,
+:root[data-theme="dark"] .history-card {
+  background: var(--color-bg-elevated);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+/* Fondos grisáceos (#fafaf7, #f4f3f0, #f4f4ef) → soft bg */
+:root[data-theme="dark"] .field-row,
+:root[data-theme="dark"] .equipment-field,
+:root[data-theme="dark"] .empty-state,
+:root[data-theme="dark"] .login-typeahead .login-suggestions li:hover,
+:root[data-theme="dark"] .filter-chip,
+:root[data-theme="dark"] .chip-row,
+:root[data-theme="dark"] .summary-section {
+  background: var(--color-bg-soft);
+  color: var(--color-ink);
+}
+
+/* Chips/muted (#ededeb, #dad9d3) */
+:root[data-theme="dark"] .role-pill,
+:root[data-theme="dark"] .info-chip,
+:root[data-theme="dark"] .filter-chip:not(.active),
+:root[data-theme="dark"] .tab-nav button:not(.active) {
+  background: var(--color-bg-muted);
+  color: var(--color-ink-mid);
+}
+
+/* Inputs / búsqueda — además del fix base */
+:root[data-theme="dark"] .user-search-input,
+:root[data-theme="dark"] .searchable-select-input,
+:root[data-theme="dark"] input[type="search"],
+:root[data-theme="dark"] input[type="text"],
+:root[data-theme="dark"] input[type="number"],
+:root[data-theme="dark"] input[type="password"],
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder {
+  color: var(--color-ink-light);
+}
+
+/* Texto en negro hardcoded (#161a14, #1a1a1a, #2a2a28, #2a2f25) */
+:root[data-theme="dark"] .field-label,
+:root[data-theme="dark"] .labor-detail-header h3,
+:root[data-theme="dark"] .summary-title,
+:root[data-theme="dark"] .summary-card strong,
+:root[data-theme="dark"] .summary-card h4,
+:root[data-theme="dark"] .panel-card h2,
+:root[data-theme="dark"] .panel-card h3,
+:root[data-theme="dark"] .day-status-item strong,
+:root[data-theme="dark"] .stat-card strong,
+:root[data-theme="dark"] .equipment-detail strong,
+:root[data-theme="dark"] .login-suggestion-name {
+  color: var(--color-ink);
+}
+
+/* Texto secundario gris medio (#4a5040, #5b5b58, #65715f, #68725f, #7a8070, #7a8275, #6b6d63) */
+:root[data-theme="dark"] .summary-card p,
+:root[data-theme="dark"] .summary-meta,
+:root[data-theme="dark"] .day-status-item span,
+:root[data-theme="dark"] .stat-card span,
+:root[data-theme="dark"] .diagnostic-grid dt,
+:root[data-theme="dark"] .diagnostic-hint,
+:root[data-theme="dark"] .panel-card p,
+:root[data-theme="dark"] .field-help,
+:root[data-theme="dark"] .form-help,
+:root[data-theme="dark"] .equipment-meta,
+:root[data-theme="dark"] .labor-meta {
+  color: var(--color-ink-mid);
+}
+
+/* Diagnostic code → ajustar fondo */
+:root[data-theme="dark"] .diagnostic-grid dd code {
+  background: var(--color-bg-muted);
+  color: var(--color-brand-mid);
+}
+
+/* SearchableSelect dropdown */
+:root[data-theme="dark"] .searchable-select-options {
+  background-color: var(--color-bg-elevated);
+  border-color: var(--color-border);
+  box-shadow: 0 4px 12px var(--color-shadow-card);
+}
+:root[data-theme="dark"] .searchable-select-item {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .searchable-select-item:hover,
+:root[data-theme="dark"] .searchable-select-item.selected {
+  background-color: var(--color-bg-soft);
+}
+:root[data-theme="dark"] .searchable-select-item.selected {
+  color: var(--color-brand-mid);
+}
+
+/* Version badge */
+:root[data-theme="dark"] .side-version-badge {
+  background: var(--color-bg-soft);
+  color: var(--color-ink-mid);
+  border-color: var(--color-border);
+}
+
+/* Update banner mantiene su verde corporativo — solo ajustamos
+   el secundario blanco que se vuelve botón muy brillante en dark */
+:root[data-theme="dark"] .update-banner__primary {
+  background: var(--color-bg-elevated);
+  color: var(--color-brand-mid);
+}
+:root[data-theme="dark"] .update-banner__primary:hover {
+  background: var(--color-bg-soft);
+}
+
+/* Kind / zone badges en dark — colores más saturados para legibilidad */
+:root[data-theme="dark"] .kind-badge.libre,
+:root[data-theme="dark"] .kind-badge.campo {
+  background: #1c3a26;
+  color: #7fdca0;
+  border-color: #2e5a3e;
+}
+:root[data-theme="dark"] .kind-badge.asignada,
+:root[data-theme="dark"] .kind-badge.prog {
+  background: #1a2a4d;
+  color: #a0c0ff;
+  border-color: #2c4280;
+}
+:root[data-theme="dark"] .zone-badge.zone-norte {
+  background: #3a2e15;
+  color: #e8c878;
+  border-color: #5a4825;
+}
+:root[data-theme="dark"] .zone-badge.zone-sur {
+  background: #2d1f3d;
+  color: #d0a8ee;
+  border-color: #4a3563;
+}
+
+/* Status chips/pills en dark — colores vivos */
+:root[data-theme="dark"] .status-chip--pending,
+:root[data-theme="dark"] .status-pill--pending {
+  color: #a0c0ff;
+  background: #1c2845;
+}
+:root[data-theme="dark"] .status-chip--progress,
+:root[data-theme="dark"] .status-pill--progress {
+  color: #e8c878;
+  background: #3a2e12;
+}
+:root[data-theme="dark"] .status-chip--done,
+:root[data-theme="dark"] .status-pill--done {
+  color: #7fdca0;
+  background: #18331f;
+}
+:root[data-theme="dark"] .status-chip--cancel,
+:root[data-theme="dark"] .status-pill--cancel {
+  color: #ee9090;
+  background: #3a1f1f;
+}
+
+/* Tabs (la nav superior con Labores/Usuarios/Equipos/Resumen/Asignar/Más) */
+:root[data-theme="dark"] .tab-nav button,
+:root[data-theme="dark"] .floating-nav button {
+  color: var(--color-ink-mid);
+  background: transparent;
+}
+:root[data-theme="dark"] .tab-nav button:hover,
+:root[data-theme="dark"] .floating-nav button:hover {
+  color: var(--color-ink);
+  background: var(--color-bg-soft);
+}
+:root[data-theme="dark"] .tab-nav button.active,
+:root[data-theme="dark"] .floating-nav button.active {
+  color: var(--color-brand-mid);
+  background: var(--color-bg-soft);
+}
+
+/* KPI cards de "HOY" — los números coloreados ya tienen clase propia
+   (.kpi-green/.kpi-amber/.kpi-red), solo necesitan saturación extra */
+:root[data-theme="dark"] .kpi-green { color: #4dd17d; }
+:root[data-theme="dark"] .kpi-amber { color: #e8b54a; }
+:root[data-theme="dark"] .kpi-red   { color: #ee8a8a; }
+
+/* Header "HOY" / "Labores" / "REENCALLE" — labels en verde más vivo */
+:root[data-theme="dark"] .panel-card h2,
+:root[data-theme="dark"] .panel-card h3,
+:root[data-theme="dark"] .section-title {
+  color: var(--color-ink);
+}
+
+/* Sub-labels en verde (REENCALLE, REPIQUE, etc) — más saturados */
+:root[data-theme="dark"] .labor-meta,
+:root[data-theme="dark"] .labor-name {
+  color: var(--color-brand-mid);
+}
+
+/* Offline banner (gris cálido en light → ámbar tenue en dark) */
+:root[data-theme="dark"] .offline-banner {
+  background: #3a2e15;
+  color: #e8c878;
+}
+
+/* Cards principales con borde más visible y leve sombra interior
+   para resaltar la elevación */
+:root[data-theme="dark"] .panel-card,
+:root[data-theme="dark"] .toolbar-card,
+:root[data-theme="dark"] .metric-panel {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  box-shadow: 0 4px 16px var(--color-shadow-card),
+              inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+/* Contador "18" / badges numéricos junto a títulos */
+:root[data-theme="dark"] .count-badge,
+:root[data-theme="dark"] .section-count {
+  background: var(--color-bg-chip);
+  color: var(--color-ink);
+}
+
+/* Filtros desplegables ("Todos los estados", "Todas las haciendas") */
+:root[data-theme="dark"] .filter-row select,
+:root[data-theme="dark"] .filter-select,
+:root[data-theme="dark"] .panel-card select {
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+/* Botón Cancelar en outline rojo */
+:root[data-theme="dark"] .primary-button.danger,
+:root[data-theme="dark"] .primary-button.outline.danger,
+:root[data-theme="dark"] .cancel-btn {
+  color: #ee9090;
+  border-color: #6e3030;
+  background: transparent;
+}
+:root[data-theme="dark"] .primary-button.danger:hover,
+:root[data-theme="dark"] .primary-button.outline.danger:hover,
+:root[data-theme="dark"] .cancel-btn:hover {
+  background: #3a1f1f;
+}
+
+/* ============================================================
+   OVERRIDES MASIVOS — vistas Usuarios / Equipos / Resumen / Tablero
+   Cubren clases específicas que tenían background blanco
+   hardcoded y quedaban inservibles en dark.
+   ============================================================ */
+
+/* ─── USER CARDS (vista Usuarios) ─── */
+:root[data-theme="dark"] .user-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .user-card__name {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .user-card__role,
+:root[data-theme="dark"] .user-card__meta {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .user-card__edit-btn {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .user-card__edit-btn:hover {
+  background: var(--color-bg-soft);
+  color: var(--color-ink);
+}
+
+/* Chips de rol y estado de usuario */
+:root[data-theme="dark"] .role-chip--operador      { background: #1a2a4d; color: #a0c0ff; }
+:root[data-theme="dark"] .role-chip--supervisor    { background: #2d1f3d; color: #d0a8ee; }
+:root[data-theme="dark"] .role-chip--administracion{ background: #18331f; color: #7fdca0; }
+:root[data-theme="dark"] .role-chip--owner         { background: #3a2e15; color: #e8c878; }
+:root[data-theme="dark"] .user-status-badge--disponible {
+  background: #18331f; color: #7fdca0;
+}
+:root[data-theme="dark"] .user-status-badge--ocupado {
+  background: #3a2e15; color: #e8c878;
+}
+
+/* ─── EQUIPMENT CARDS (vista Equipos) ─── */
+:root[data-theme="dark"] .equipment-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .equipment-card-body strong,
+:root[data-theme="dark"] .equipment-card strong {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .equipment-card p,
+:root[data-theme="dark"] .equipment-card span {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .equipment-card-head h3 {
+  color: var(--color-ink);
+}
+
+/* ─── NÚMEROS GRANDES (KPIs en Equipos, Labores, Resumen) ─── */
+:root[data-theme="dark"] .metric-panel strong,
+:root[data-theme="dark"] .labor-card strong,
+:root[data-theme="dark"] .equipment-card-body strong,
+:root[data-theme="dark"] .journey-stats strong {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .metric-panel p,
+:root[data-theme="dark"] .labor-card p,
+:root[data-theme="dark"] .metric-panel span,
+:root[data-theme="dark"] .labor-card span,
+:root[data-theme="dark"] .row-main span,
+:root[data-theme="dark"] .movement-row span,
+:root[data-theme="dark"] .subtle-copy,
+:root[data-theme="dark"] .muted-text {
+  color: var(--color-ink-mid);
+}
+
+/* Labels (HA PLANIFICADAS, etc) tipo eyebrow */
+:root[data-theme="dark"] label {
+  color: var(--color-ink-mid);
+}
+
+/* ─── RESUMEN: filtros bar + entity cards ─── */
+:root[data-theme="dark"] .summary-filters-bar {
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+}
+:root[data-theme="dark"] .summary-filters-bar label {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .summary-filters-bar select,
+:root[data-theme="dark"] .entity-history-filters select {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+:root[data-theme="dark"] .entity-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .entity-card:hover {
+  border-color: var(--color-brand-mid);
+  box-shadow: 0 2px 8px rgba(42, 144, 80, 0.25);
+}
+:root[data-theme="dark"] .entity-card__name {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .entity-card strong {
+  color: var(--color-brand-mid);
+}
+:root[data-theme="dark"] .entity-card > span {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .entity-card .progress-track {
+  background: var(--color-bg-muted);
+}
+:root[data-theme="dark"] .entity-card .progress-track > span {
+  background: var(--color-brand-mid);
+}
+
+:root[data-theme="dark"] .entity-kpi-card {
+  background: var(--color-bg-soft);
+}
+:root[data-theme="dark"] .entity-kpi-card strong {
+  color: var(--color-brand-mid);
+}
+:root[data-theme="dark"] .entity-kpi-card span {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .entity-history-filters label {
+  color: var(--color-ink-mid);
+}
+
+/* Progress bar global */
+:root[data-theme="dark"] .progress-track {
+  background: var(--color-bg-muted);
+}
+
+/* ─── TABLERO: celdas WORKFLOW ─── */
+:root[data-theme="dark"] .tablero-table th,
+:root[data-theme="dark"] .tablero-table td {
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .tablero-table th {
+  color: var(--color-ink-mid);
+  background: var(--color-bg-soft);
+}
+
+:root[data-theme="dark"] .labor-cell-box {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .labor-cell-box.pendiente {
+  background: #3a1f1f;
+  color: #ee9090;
+  border-color: #5a2a2a;
+}
+:root[data-theme="dark"] .labor-cell-box.en_proceso {
+  background: #3a2e12;
+  color: #e8c878;
+  border-color: #5a4825;
+}
+:root[data-theme="dark"] .labor-cell-box.completada {
+  background: #18331f;
+  color: #7fdca0;
+  border-color: #2e5a3e;
+}
+:root[data-theme="dark"] .labor-cell-box.parcial {
+  background: #3a2e12;
+  color: #f0c870;
+  border-color: #5a4825;
+}
+:root[data-theme="dark"] .labor-cell-box.tab-cell-assignable:hover {
+  background: #4d2828;
+  border-color: #7d3030;
+  color: #f5b0b0;
+}
+
+/* Filtros del tablero (mes/zona/ingenio) y filas */
+:root[data-theme="dark"] .tablero-filters .base-input,
+:root[data-theme="dark"] .tablero-filters select,
+:root[data-theme="dark"] .tablero-filters input[type="month"] {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+/* Fila izquierda del tablero (SUERTE / HA / INICIO / DIAS / ROT) */
+:root[data-theme="dark"] .tablero-table tbody td {
+  background: var(--color-bg-elevated);
+}
+:root[data-theme="dark"] .tablero-table tbody tr:nth-child(even) td {
+  background: var(--color-bg-soft);
+}
+:root[data-theme="dark"] .tablero-table tbody td:first-child,
+:root[data-theme="dark"] .tablero-table tbody td:nth-child(2),
+:root[data-theme="dark"] .tablero-table tbody td:nth-child(3),
+:root[data-theme="dark"] .tablero-table tbody td:nth-child(4),
+:root[data-theme="dark"] .tablero-table tbody td:nth-child(5) {
+  color: var(--color-ink-mid);
+}
+
+/* Leyenda del tablero */
+:root[data-theme="dark"] .tablero-legend,
+:root[data-theme="dark"] .tablero-legend-item {
+  color: var(--color-ink-mid);
+}
+
+/* ─── DICTATE INLINE BTN — mantener el rojo grabando ─── */
+/* (no se toca, ya tiene colores propios) */
+
+/* ─── SELECT NATIVOS: forzar dropdown oscuro en navegadores que lo soportan ─── */
+:root[data-theme="dark"] select option {
+  background: var(--color-bg-elevated);
+  color: var(--color-ink);
+}
+
+/* ─── Track de progreso amber/red mantiene gradiente (es semáforo) ─── */
+
+/* ─── PROGRESS TRACK alternativo en cards ─── */
+:root[data-theme="dark"] .progress-track span {
+  /* mantiene gradient para indicar severidad — solo se aclara
+     ligeramente el fondo cuando el progress no aplica */
+}
+

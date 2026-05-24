@@ -1,4 +1,5 @@
 :root {
+  color-scheme: light;
   /* Paleta corporativa — Forest Pro */
   --color-brand:       #155b30;
   --color-brand-dark:  #0e3b1f;
@@ -9,6 +10,21 @@
   --color-ink:         #161a14;
   --color-ink-mid:     #4a5040;
   --color-ink-light:   #8a8e85;
+
+  /* Tokens semánticos extendidos (Tema light) */
+  --color-bg-app-1:    #fafaf7;
+  --color-bg-app-2:    #ededeb;
+  --color-bg-card:     rgba(255, 255, 255, 0.92);
+  --color-bg-elevated: #ffffff;
+  --color-bg-input:    #ffffff;
+  --color-bg-soft:     #fafaf7;
+  --color-bg-muted:    #ededeb;
+  --color-bg-chip:     #dad9d3;
+  --color-divider:     #e3e2dc;
+  --color-ink-on-brand:#ffffff;
+  --color-overlay:     rgba(14, 18, 12, 0.45);
+  --color-shadow-card: rgba(55, 49, 26, 0.08);
+  --color-shadow-soft: rgba(0, 0, 0, 0.08);
 
   /* Semáforo de estados — saturación baja, profesional */
   --color-status-pending:   #2a4a8c;
@@ -202,4 +218,57 @@ a {
   background: #f3eef4;
   color: #4a3568;
   border-color: #ddd2e1;
+}
+
+/* ============================================================
+   TEMA OSCURO
+   Se activa con <html data-theme="dark"> — toggle vía
+   src/hooks/useTheme.ts y src/components/ThemeToggle.tsx.
+   El verde corporativo (--color-brand) se mantiene; solo se
+   invierten superficies, tinta y bordes.
+   ============================================================ */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* Paleta dark con pasos visibles: fondo profundo → card elevada → input
+     un escalón más arriba. Inspirada en GitHub Dark / Material Dark. */
+  --color-paper:       #0d1117;
+  --color-surface:     #1f2630;
+  --color-border:      #3a434e;
+  --color-ink:         #f0f0e8;
+  --color-ink-mid:     #b8c0b0;
+  --color-ink-light:   #7a8278;
+
+  --color-bg-app-1:    #0a0e12;
+  --color-bg-app-2:    #0d1117;
+  --color-bg-card:     rgba(34, 41, 50, 0.95);
+  --color-bg-elevated: #232a35;
+  --color-bg-input:    #2a3240;
+  --color-bg-soft:     #1a2028;
+  --color-bg-muted:    #2d3540;
+  --color-bg-chip:     #3a434e;
+  --color-divider:     #2a3138;
+  --color-overlay:     rgba(0, 0, 0, 0.7);
+  --color-shadow-card: rgba(0, 0, 0, 0.55);
+  --color-shadow-soft: rgba(0, 0, 0, 0.4);
+
+  /* Brand más vivo sobre fondo oscuro (mantiene jerarquía) */
+  --color-brand:       #2a9050;
+  --color-brand-dark:  #1f7a40;
+  --color-brand-mid:   #3aa860;
+
+  /* Fondos semáforo con un toque más saturado para que se lean */
+  --color-status-pending:     #6b9bff;
+  --color-status-progress:    #e8b54a;
+  --color-status-done:        #4dd17d;
+  --color-status-cancel:      #ee8a8a;
+  --color-status-pending-bg:  #1c2845;
+  --color-status-progress-bg: #3a2e12;
+  --color-status-done-bg:     #18331f;
+  --color-status-cancel-bg:   #3a1f1f;
+}
+
+:root[data-theme="dark"] body {
+  background:
+    radial-gradient(circle at top left, rgba(42, 144, 80, 0.18), transparent 28%),
+    linear-gradient(180deg, #0a0e12 0%, #0d1117 100%);
 }

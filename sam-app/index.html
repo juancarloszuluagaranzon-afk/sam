@@ -10,6 +10,26 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="SAM" />
     <title>SAM Control</title>
+    <script>
+      // Anti-flash de tema: aplica data-theme antes de que React monte
+      // para que la primera pintura ya tenga colores correctos. Mantener
+      // en sync con la clave en src/hooks/useTheme.ts.
+      (function () {
+        try {
+          var stored = window.localStorage.getItem('sam:theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+              ? 'dark'
+              : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          /* localStorage bloqueado: arrancamos en light */
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

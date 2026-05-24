@@ -9,6 +9,7 @@ import { createAppUser, updateAppUser, summarizeAssignments, getIngenioName, exe
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
+import { ThemeToggle } from '../components/ThemeToggle'
 import {
   EntityHistoryModal,
   matchesSummaryFilter,
@@ -530,6 +531,7 @@ export function SupervisorView({
         >
           Diagnóstico
         </button>
+        <ThemeToggle />
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>

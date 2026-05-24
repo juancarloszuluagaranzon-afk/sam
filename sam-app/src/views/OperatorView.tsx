@@ -8,6 +8,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import { DictateButton } from '../components/DictateButton'
 import { DictateInlineButton } from '../components/DictateInlineButton'
 import { DiagnosticModal } from '../components/DiagnosticModal'
+import { ThemeToggle } from '../components/ThemeToggle'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
@@ -347,6 +348,7 @@ export function OperatorView({
         >
           Diagnóstico
         </button>
+        <ThemeToggle />
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>

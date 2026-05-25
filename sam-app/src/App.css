@@ -3419,8 +3419,42 @@ button.movement-row--clickable:active {
 }
 
 /* ============================================================
-   THEME TOGGLE — botón circular en menú lateral
+   THEME TOGGLE
+   Dos variantes:
+   - header: botón translúcido sobre la barra verde corporativa
+   - sidebar: fila etiquetada "Tema" dentro del menú lateral
    ============================================================ */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.18s ease, transform 0.15s ease, border-color 0.18s ease;
+}
+.theme-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+.theme-toggle:active {
+  transform: scale(0.94);
+}
+
+/* ── Variante HEADER: sobre la barra verde ── */
+.theme-toggle--header {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #fff;
+}
+.theme-toggle--header:hover {
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Variante SIDEBAR: fila etiquetada en menú lateral ── */
 .theme-toggle-row {
   display: flex;
   align-items: center;
@@ -3431,41 +3465,23 @@ button.movement-row--clickable:active {
   background: var(--color-bg-soft);
   margin-bottom: 8px;
 }
-
 .theme-toggle-row__label {
   font-weight: 600;
   font-size: 0.95rem;
   color: var(--color-ink);
 }
-
-.theme-toggle {
+.theme-toggle--sidebar {
   width: 44px;
   height: 44px;
   border-radius: 50%;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.18s ease, transform 0.15s ease, border-color 0.18s ease;
-  padding: 0;
   color: var(--color-ink-mid);
 }
-
-.theme-toggle:hover {
+.theme-toggle--sidebar:hover {
   transform: scale(1.06);
   border-color: var(--color-brand);
   color: var(--color-brand);
-}
-
-.theme-toggle:active {
-  transform: scale(0.96);
-}
-
-.theme-toggle svg {
-  width: 20px;
-  height: 20px;
 }
 
 /* ============================================================

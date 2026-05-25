@@ -3,28 +3,46 @@ import { useTheme } from '../hooks/useTheme'
 /**
  * Botón circular para alternar entre tema claro y oscuro.
  *
- * Diseño: en tema light muestra una luna (sugiere "cambiar a dark");
- * en tema dark muestra un sol (sugiere "cambiar a light").
- * Se renderiza solo dentro del menú lateral, junto a Cambiar PIN /
- * Diagnóstico. El estado real lo maneja el hook `useTheme`.
+ * Variante `header` (default): se renderiza en la barra verde superior,
+ * con fondo translúcido sobre el brand, icono blanco. Es el mismo
+ * estilo visual que el botón hamburguesa.
+ *
+ * Variante `sidebar`: se renderiza dentro del menú lateral con una
+ * fila etiquetada "Tema" — mantenida por si se quiere volver a usar.
  */
-export function ThemeToggle() {
+export function ThemeToggle({ variant = 'header' }: { variant?: 'header' | 'sidebar' }) {
   const { theme, toggle } = useTheme()
   const isDark = theme === 'dark'
+  const label = isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'
+  const Icon = isDark ? SunIcon : MoonIcon
+
+  if (variant === 'sidebar') {
+    return (
+      <div className="theme-toggle-row">
+        <span className="theme-toggle-row__label">Tema</span>
+        <button
+          type="button"
+          className="theme-toggle theme-toggle--sidebar"
+          onClick={toggle}
+          title="Tema"
+          aria-label={label}
+        >
+          <Icon />
+        </button>
+      </div>
+    )
+  }
 
   return (
-    <div className="theme-toggle-row">
-      <span className="theme-toggle-row__label">Tema</span>
-      <button
-        type="button"
-        className="theme-toggle"
-        onClick={toggle}
-        title="Tema"
-        aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
-      >
-        {isDark ? <SunIcon /> : <MoonIcon />}
-      </button>
-    </div>
+    <button
+      type="button"
+      className="theme-toggle theme-toggle--header"
+      onClick={toggle}
+      title="Tema"
+      aria-label={label}
+    >
+      <Icon />
+    </button>
   )
 }
 

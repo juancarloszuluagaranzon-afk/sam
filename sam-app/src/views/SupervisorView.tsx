@@ -417,6 +417,9 @@ export function SupervisorView({
             </div>
           </div>
         </div>
+        <div className="topbar-actions">
+          <ThemeToggle />
+        </div>
       </header>
 
       <div
@@ -531,7 +534,6 @@ export function SupervisorView({
         >
           Diagnóstico
         </button>
-        <ThemeToggle />
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>

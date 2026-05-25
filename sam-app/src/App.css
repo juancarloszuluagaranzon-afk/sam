@@ -3978,3 +3978,194 @@ button.movement-row--clickable:active {
      ligeramente el fondo cuando el progress no aplica */
 }
 
+/* ============================================================
+   OVERRIDES OPERADOR — vistas Activas / Campo / Historial
+   El operador tiene clases propias (operator-kpi-card,
+   journey-stats, movement-row, active-card-compact) con
+   fondos crema/blancos hardcoded. Alta especificidad
+   para ganar la cascada.
+   ============================================================ */
+
+/* KPI cards en Activas e Historial */
+:root[data-theme="dark"] .operator-kpi-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .operator-kpi-card strong {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .operator-kpi-card span {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .operator-kpi-bar {
+  background: var(--color-bg-muted);
+}
+
+/* Border-left + color del KPI según semaforo — más saturados */
+:root[data-theme="dark"] .operator-kpi-card--neutral {
+  border-left-color: #6b7268;
+}
+:root[data-theme="dark"] .operator-kpi-card--green {
+  border-left-color: #4dd17d;
+  color: #4dd17d;
+}
+:root[data-theme="dark"] .operator-kpi-card--amber {
+  border-left-color: #e8b54a;
+  color: #e8b54a;
+}
+:root[data-theme="dark"] .operator-kpi-card--red {
+  border-left-color: #ee8a8a;
+  color: #ee8a8a;
+}
+
+/* "Tu jornada" — los tres bloques activas/cerradas/ha ejecutadas */
+:root[data-theme="dark"] .journey-stats div {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .journey-stats strong {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .journey-stats span {
+  color: var(--color-ink-mid);
+}
+
+/* Filas del Historial (movement-row) */
+:root[data-theme="dark"] .movement-row {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .movement-row strong {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .movement-row span {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .movement-side small {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] button.movement-row--clickable:hover {
+  border-color: var(--color-brand-mid);
+  box-shadow: 0 2px 8px rgba(42, 144, 80, 0.25);
+}
+
+/* active-card-compact (cards de labores activas) */
+:root[data-theme="dark"] .active-card-compact {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .active-card-compact:hover,
+:root[data-theme="dark"] .active-card-compact:active {
+  background: var(--color-bg-soft);
+  border-color: var(--color-brand-mid);
+}
+:root[data-theme="dark"] .active-card-compact__main h2 {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .active-card-compact__main .subtle-copy {
+  color: var(--color-ink-mid);
+}
+
+/* base-input (filtros mes/periodo del Historial del operador) */
+:root[data-theme="dark"] .base-input,
+:root[data-theme="dark"] select.base-input {
+  background: var(--color-bg-input);
+  border-color: var(--color-border);
+  color: var(--color-ink);
+}
+
+/* operator-journey-card y operator-history-card (paneles padres) */
+:root[data-theme="dark"] .operator-journey-card,
+:root[data-theme="dark"] .operator-history-card {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-border);
+}
+
+/* more-sheet (bottom sheet de detalle de labor activa, modal "Tomar suerte en campo") */
+:root[data-theme="dark"] .more-sheet,
+:root[data-theme="dark"] .active-sheet,
+:root[data-theme="dark"] .assign-sheet {
+  background: var(--color-bg-elevated);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .more-sheet-overlay {
+  background: var(--color-overlay);
+}
+:root[data-theme="dark"] .more-sheet__handle {
+  background: var(--color-bg-chip);
+}
+:root[data-theme="dark"] .active-sheet__header h2,
+:root[data-theme="dark"] .active-sheet__header strong {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .active-sheet__close {
+  background: var(--color-bg-muted);
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .active-sheet__close:hover {
+  background: var(--color-bg-chip);
+  color: var(--color-ink);
+}
+
+/* Toggle switch "Labor completada al 100%" */
+:root[data-theme="dark"] .toggle-switch {
+  background: var(--color-bg-chip);
+}
+:root[data-theme="dark"] .toggle-switch.on {
+  background: var(--color-brand);
+}
+:root[data-theme="dark"] .toggle-thumb {
+  background: var(--color-bg-elevated);
+}
+:root[data-theme="dark"] .complete-toggle-label {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .complete-toggle-hint {
+  color: var(--color-ink-mid);
+}
+
+/* Feedback (error/success boxes) */
+:root[data-theme="dark"] .feedback.error,
+:root[data-theme="dark"] .detail-error {
+  background: #3a1f1f;
+  color: #ee9090;
+  border-color: #5a2a2a;
+}
+:root[data-theme="dark"] .feedback.success {
+  background: #18331f;
+  color: #7fdca0;
+  border-color: #2e5a3e;
+}
+
+/* Suertes-checklist (modal "Tomar suerte en campo") */
+:root[data-theme="dark"] .suertes-checklist {
+  background: var(--color-bg-soft);
+  border-color: var(--color-border);
+}
+:root[data-theme="dark"] .suertes-checklist li:hover {
+  background: var(--color-bg-muted);
+}
+
+/* Dictate input wrap */
+:root[data-theme="dark"] .dictate-input-wrap {
+  background: transparent;
+}
+:root[data-theme="dark"] .dictate-field-header {
+  color: var(--color-ink-mid);
+}
+
+/* Start/Finish grids */
+:root[data-theme="dark"] .start-grid,
+:root[data-theme="dark"] .finish-grid,
+:root[data-theme="dark"] .complete-toggle-row {
+  color: var(--color-ink);
+}
+
+/* Modal de cambio de PIN (Operador y Supervisor) — .field y inputs ya cubiertos
+   pero los labels grandes pueden quedar oscuros */
+:root[data-theme="dark"] .field label,
+:root[data-theme="dark"] .field .field-label {
+  color: var(--color-ink-mid);
+}
+

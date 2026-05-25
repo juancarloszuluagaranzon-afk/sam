@@ -326,6 +326,8 @@
   gap: 6px;
   max-height: 85vh;
   overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
 }
 @media (min-width: 600px) {
   .more-sheet {
@@ -1164,6 +1166,19 @@ th {
   grid-template-columns: minmax(0, 1fr) 220px;
   gap: 14px;
   align-items: end;
+}
+
+/* Dentro de los bottom sheets (active-sheet, assign-sheet, more-sheet)
+   el ancho es 440px en desktop. Forzamos los grids de start/finish a
+   1 columna para que no desborden ni se encima labels.
+   Mobile ya estaba en 1 col por el media query global @900px. */
+.active-sheet .start-grid,
+.active-sheet .finish-grid,
+.assign-sheet .start-grid,
+.assign-sheet .finish-grid,
+.more-sheet .start-grid,
+.more-sheet .finish-grid {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .operator-tab-nav {
@@ -4184,9 +4199,15 @@ button.movement-row--clickable:active {
 
 /* Start/Finish grids */
 :root[data-theme="dark"] .start-grid,
-:root[data-theme="dark"] .finish-grid,
-:root[data-theme="dark"] .complete-toggle-row {
+:root[data-theme="dark"] .finish-grid {
   color: var(--color-ink);
+}
+
+/* Complete-toggle-row: el fondo crema (#f4f3f0) hacia bg-soft dark */
+:root[data-theme="dark"] .complete-toggle-row {
+  background: var(--color-bg-soft);
+  color: var(--color-ink);
+  border: 1px solid var(--color-border);
 }
 
 /* Modal de cambio de PIN (Operador y Supervisor) — .field y inputs ya cubiertos

@@ -3649,26 +3649,37 @@ button.movement-row--clickable:active {
   border-color: #4a3563;
 }
 
-/* Status chips/pills en dark — colores vivos */
+/* Status chips/pills en dark — colores vivos y con buen contraste.
+   Las clases reales en la app son `.status-pill.done/progress/pending/cancel`
+   (con un solo punto). Mantenemos también los `--variant` por si algún
+   componente futuro usa BEM. */
 :root[data-theme="dark"] .status-chip--pending,
-:root[data-theme="dark"] .status-pill--pending {
-  color: #a0c0ff;
-  background: #1c2845;
+:root[data-theme="dark"] .status-pill--pending,
+:root[data-theme="dark"] .status-pill.pending {
+  color: #cfdfff;
+  background: #2a3d6e;
+  border: 1px solid #3d5292;
 }
 :root[data-theme="dark"] .status-chip--progress,
-:root[data-theme="dark"] .status-pill--progress {
-  color: #e8c878;
-  background: #3a2e12;
+:root[data-theme="dark"] .status-pill--progress,
+:root[data-theme="dark"] .status-pill.progress {
+  color: #ffe28a;
+  background: #5a4318;
+  border: 1px solid #806020;
 }
 :root[data-theme="dark"] .status-chip--done,
-:root[data-theme="dark"] .status-pill--done {
-  color: #7fdca0;
-  background: #18331f;
+:root[data-theme="dark"] .status-pill--done,
+:root[data-theme="dark"] .status-pill.done {
+  color: #a8f0bf;
+  background: #1f4a2e;
+  border: 1px solid #2e6e44;
 }
 :root[data-theme="dark"] .status-chip--cancel,
-:root[data-theme="dark"] .status-pill--cancel {
-  color: #ee9090;
-  background: #3a1f1f;
+:root[data-theme="dark"] .status-pill--cancel,
+:root[data-theme="dark"] .status-pill.cancel {
+  color: #ffb0b0;
+  background: #5a2828;
+  border: 1px solid #803a3a;
 }
 
 /* Tabs (la nav superior con Labores/Usuarios/Equipos/Resumen/Asignar/Más) */

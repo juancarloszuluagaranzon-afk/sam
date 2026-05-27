@@ -2,7 +2,7 @@
 
 Cheat-sheet para mantener y operar SAM en producción. Cuando algo se rompe, busca el síntoma en el índice y sigue los pasos. Cuando hagas un cambio recurrente, añádelo aquí.
 
-> **Última revisión**: 2026-05-14
+> **Última revisión**: 2026-05-27
 > **Mantenedores**: Iván García (ivan.garcia0969@gmail.com), socio (juancarloszuluagaranzon-afk).
 
 ---
@@ -61,6 +61,8 @@ Cheat-sheet para mantener y operar SAM en producción. Cuando algo se rompe, bus
 **Esquema de PIN**: `md5(pin || ':sam-piloto')`. NO usa bcrypt/pgcrypto. La función `app_login` compara directamente con ese hash.
 
 **Roles válidos** (CHECK constraint en `app_usuarios.rol`): `supervisor`, `operador`, `owner`, `administracion`.
+
+**Estados de asignación válidos** (CHECK constraint en `asignaciones.estado`): `PENDIENTE`, `EN_PROCESO`, `COMPLETADA`, `CANCELADA`, `PARCIAL`. El estado `PARCIAL` se usa cuando el operario finaliza con `area_realizada < area_asignada` — la labor sigue activa y puede continuarse.
 
 ---
 
@@ -457,6 +459,29 @@ Alternativa: hacer un commit "trivial" (cambiar un comentario) y pushear — eso
 
 ## Procedimientos de cambio
 
+### Aplicar una migración SQL nueva (`supabase/migrations/*.sql`)
+
+Cuando el frontend incluye un cambio que toca DDL/CHECK constraint/función, el archivo `.sql` queda en el repo pero NO se aplica solo. Hay que ejecutarlo manualmente. Dos rutas:
+
+**A — Vía Supabase Studio (recomendado, sin SSH):**
+
+1. Abre <https://supabase.surcoapp.tech> y login con credenciales del dashboard.
+2. Menú izquierdo → **SQL Editor** → **New query**.
+3. Copia el SQL **puro** del archivo de migración (sin `ssh`, sin `docker exec`, sin `EOF`).
+4. **Run** (Ctrl+Enter). Debe responder `Success. No rows returned`.
+5. **Verificar** con una query específica al constraint/función afectada.
+
+**B — Vía SSH + docker exec (alternativa):**
+
+```bash
+ssh root@2.24.89.123
+docker exec -i supabase-db psql -U postgres -d postgres < /opt/supabase/migrations/<archivo>.sql
+```
+
+Si la migración modifica un CHECK constraint, **siempre** incluir `NOTIFY pgrst, 'reload schema';` al final — sin eso, PostgREST puede seguir rechazando valores nuevos hasta reinicio del container.
+
+**Coordinación con el deploy:** aplicar la migración **antes** del push del código que la requiere. Si el frontend ya está en producción con un valor que el CHECK rechaza, las operaciones de UPDATE/INSERT fallan con error 23514.
+
 ### Cambiar la `anon_key` (rotación de seguridad)
 
 ⚠ Operación con downtime de ~1 min. Hacerlo en hora muerta (madrugada).
@@ -573,6 +598,12 @@ systemctl reload sshd
 
 | Fecha | Cambio | Por |
 |---|---|---|
+| 2026-05-27 | Validación: no duplicar asignaciones activas (suerte + labor + operario) | Iván + Claude |
+| 2026-05-27 | Supervisor puede reasignar operario desde modal de detalle de Labores | Iván + Claude |
+| 2026-05-27 | Dictado: mensajes en español + botón siempre visible (deshabilitado si no soportado) | Iván + Claude |
+| 2026-05-27 | Migración `20260527160000_status_parcial.sql` aplicada en VPS (CHECK + PARCIAL) | Iván + Claude |
+| 2026-05-27 | Estado PARCIAL para que el faltante siga activo (operario continúa al día siguiente) | Iván + Claude |
+| 2026-05-27 | Toggle tema claro/oscuro en barra verde del header con persistencia | Iván + Claude |
 | 2026-05-14 | Item 1 backups automáticos diarios | Iván + Claude |
 | 2026-05-14 | Item 2 UptimeRobot monitoreando VPS + Vercel | Iván + Claude |
 | 2026-05-14 | Item 3 este runbook | Iván + Claude |

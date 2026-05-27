@@ -14,13 +14,61 @@ description: >
 
 ```
 PENDIENTE → EN_PROCESO → COMPLETADA
-                       ↘ CANCELADA
-PENDIENTE → CANCELADA
+                      ↘  PARCIAL (sigue activa) → EN_PROCESO → COMPLETADA
+                      ↘  CANCELADA
+PENDIENTE / PARCIAL → CANCELADA
 ```
 
-- Solo el **supervisor u owner** puede crear y cancelar asignaciones
-- Solo el **operador** puede iniciar (`EN_PROCESO`) y finalizar (`COMPLETADA`)
-- Una asignación `COMPLETADA` o `CANCELADA` es inmutable desde la UI
+- Solo el **supervisor u owner** puede crear y cancelar asignaciones (cancelar también aplica a PARCIAL)
+- Solo el **operador** puede iniciar (`EN_PROCESO`) y finalizar (→ `COMPLETADA` o `PARCIAL`)
+- `COMPLETADA` y `CANCELADA` son inmutables desde la UI
+- `PARCIAL` **sigue activa**: el operario original puede continuar al día siguiente, otro operario la puede tomar en campo, o el supervisor la puede reasignar desde el modal de detalle de Labores
+
+## Estado PARCIAL — reglas operativas
+
+Cuando un operario finaliza con `executedArea < area` planificada, el `finishAssignment` decide:
+- `executedArea + ε >= area` → `COMPLETADA` (toggle "100%" o el área ingresada cubre el total)
+- `executedArea < area` → `PARCIAL` (la labor sigue activa)
+
+Migración SQL canónica: `supabase/migrations/20260527160000_status_parcial.sql` — extiende el CHECK constraint de `estado` para incluir `'PARCIAL'`. Aplicada en VPS via Studio SQL Editor (2026-05-27).
+
+Filtros del operador (`operatorAssignments` en `OperatorView.tsx`):
+- **Activas** = PENDIENTE + EN_PROCESO + **PARCIAL**
+- **Historial** = COMPLETADA + CANCELADA (NO PARCIAL — sigue activa)
+
+Al abrir una PARCIAL en el sheet de finalizar, un `useEffect` pre-llena `finishDraft.area` con el `executedArea` previo. Banner amarillo `.partial-progress-banner` muestra "Acumulado previo: X.XX ha de Y.YY ha".
+
+## Métricas con PARCIAL
+
+`summarizeAssignments` (samApi.ts) y todas las agregaciones por operador/equipo/labor del Resumen suman `executedArea` de **COMPLETADA + PARCIAL**. El área hecha cuenta aunque la labor siga abierta. `inProgress` sigue contando solo EN_PROCESO. `completed` (conteo) sigue contando solo COMPLETADA.
+
+`executionDateKey` trata PARCIAL como COMPLETADA (agrupa por `finishedAt`).
+
+`getRemainingArea` resta el `executedArea` de COMPLETADA + PARCIAL del área del maestro — evita oversubscribir trabajo si otro operario toma la PARCIAL.
+
+## Reasignación de operario (supervisor)
+
+Desde **Labores → click en la card → Editar**: aparece un `SearchableSelect` "Operador (reasignar)". Al cambiar:
+- Se actualiza `operador_id` + `operador_nombre` en DB (mapeo en `samApi.updateAssignment`)
+- El status NO cambia (PARCIAL sigue PARCIAL, PENDIENTE sigue PENDIENTE)
+- El `executedArea` previo se preserva — el nuevo operario ve la labor con el banner de continuación
+- Hint contextual en el form si reasigna una PARCIAL: "El nuevo operario verá esta labor como parcial con X.XX ha ya hechas."
+
+`editAssignment` en `useAssignmentActions.ts` valida que el operario destino NO tenga ya una activa con el mismo `suerteCode + labor` antes de aceptar el cambio.
+
+`UpdateAssignmentInput` (domain/sam.ts) acepta `operatorId` y `operatorName`.
+
+## Validación de duplicados (suerte + labor + operario activos)
+
+Tres puntos de chequeo:
+
+1. **`useAssignmentForm.createAssignment`** (supervisor asigna): chequea contra operador 1 y operador 2 si está presente.
+2. **`useFreeFieldForm.takeFreeField`** (operario toma en campo): chequea contra sí mismo.
+3. **`useAssignmentActions.editAssignment`** (supervisor reasigna): chequea cuando `patch.operatorId` cambia.
+
+"Activa" = PENDIENTE + EN_PROCESO + PARCIAL. COMPLETADA y CANCELADA no bloquean (se puede reprogramar la misma labor en otro ciclo).
+
+**Permitido a propósito:** asignar la misma labor en la misma suerte a operarios distintos (el supervisor puede repartir trabajo entre dos operarios para acelerar).
 
 ## WORKFLOW — Secuencia de labores
 
@@ -146,6 +194,14 @@ En estos dos componentes específicos, `getStatusMeta(assignment)` usa **"Progra
 La regla "Parcial" (`COMPLETADA && executedArea > 0 && executedArea < area`) es idéntica a la de SupervisorView/OperatorView — solo cambia el label de PENDIENTE.
 
 ## Gotchas
+
+- **[2026-05-27]** Antes de agregar PARCIAL, el código usaba "Parcial" solo como **label visual** cuando `status === 'COMPLETADA' && executedArea < area`. Al migrar al status real PARCIAL, dejé el fallback legacy en `getStatusMeta` (4 archivos: `OperatorView`, `SupervisorView`, `AssignmentDetailModal`, `EntityHistoryModal`) para que asignaciones históricas cerradas con executed < area sigan mostrándose con label "Parcial". El nuevo `if (a.status === 'PARCIAL')` va PRIMERO, el legacy `if (a.status === 'COMPLETADA' && executedArea < area)` va después. NO eliminar el fallback hasta que se confirme que no quedan filas legacy en DB.
+
+- **[2026-05-27]** Al extender `AssignmentStatus` con `'PARCIAL'`, hay que tocar **TODOS** los `status === 'COMPLETADA'` que cuentan area ejecutada y agregarles `|| status === 'PARCIAL'`. Lugares: `summarizeAssignments`, `summaryMetrics`, `summaryLabor/ByOperator/ByEquipment`, `getRemainingArea` (en 3 archivos: useAssignmentForm, useFreeFieldForm, OperatorView, SupervisorView), `executionDateKey`, EntityHistoryModal `executed`, los displays de `formatArea` en Reporte y Tablero. **NO incluir PARCIAL** en `historyAssignments` (sigue activa) ni en el conteo `completed` (eso cuenta cierres definitivos).
+
+- **[2026-05-27]** El supervisor edita asignaciones desde un modal **propio** en `SupervisorView.tsx` (línea ~1928), NO el `AssignmentDetailModal` compartido. Si agregas un campo editable nuevo (como hice con `operatorId`), hay que tocar: (a) el state `editLaborDraft`, (b) el pre-llenado al entrar a editar, (c) la UI del form, (d) el handler `onClick` del botón "Guardar cambios" para incluir el campo en el patch.
+
+- **[2026-05-27]** Validación de duplicados activos: `hasActiveDuplicate(assignments, suerteCode, labor, operatorId)` definida idénticamente en dos archivos (`useAssignmentForm.ts` y `useFreeFieldForm.ts`) + verificación inline en `editAssignment` (`useAssignmentActions.ts`). Decisión consciente de NO centralizar todavía — cada hook usa su propio scope y refactor de las 3 rutas a la vez tiene riesgo. Si cambias la regla (ej: incluir COMPLETADA), actualiza los tres lugares.
 
 - **[2026-05-11]** Modales anidados: el `<div className="modal-overlay">` del modal interno es DOM-hijo del overlay del modal padre. Click en backdrop del interno burbujea al padre y dispara ambos `onClose` (cierran los dos modales). → En el onClick del overlay interno: `(e) => { e.stopPropagation(); onClose() }`. El `stopPropagation` en el `.modal-card` NO basta porque solo protege el content, no el backdrop.
 

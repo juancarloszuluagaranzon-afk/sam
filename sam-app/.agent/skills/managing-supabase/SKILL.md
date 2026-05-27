@@ -53,8 +53,23 @@ La DB puede tener valores legacy. Siempre normaliza:
 'EN_PROGRESO' | 'EN PROGRESO' | 'EN_PROCESO' → 'EN_PROCESO'
 'FINALIZADO' | 'COMPLETADA' → 'COMPLETADA'
 'CANCELADA' → 'CANCELADA'
+'PARCIAL' → 'PARCIAL'
 default → 'PENDIENTE'
 ```
+
+## CHECK constraint del estado de asignaciones
+
+Vive en `public.asignaciones.asignaciones_estado_check`. Valores válidos actuales:
+
+```
+PENDIENTE, EN_PROCESO, COMPLETADA, CANCELADA, PARCIAL
+```
+
+Al agregar un nuevo valor de status, **NO** olvidar:
+1. Crear migración SQL en `supabase/migrations/YYYYMMDDHHMMSS_*.sql` con `DROP CONSTRAINT IF EXISTS` + `ADD CONSTRAINT` (idempotente) + `NOTIFY pgrst, 'reload schema';`
+2. Aplicar en VPS via Supabase Studio (SQL Editor) — más fácil que `docker exec` y no requiere SSH/password root
+3. Verificar con: `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conname = 'asignaciones_estado_check';`
+4. Si el frontend ya está deployado con el valor nuevo y el CHECK aún no se actualizó en DB, los UPDATE/INSERT fallarán con error 23514. **Aplicar la migración SIEMPRE antes de hacer push del código que usa el valor nuevo.**
 
 ## RPC de login
 
@@ -90,6 +105,10 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-05-27]** Para agregar campos editables nuevos al `updateAssignment` (samApi.ts), recordar el mapeo camelCase → snake_case del DB: `operatorId → operador_id`, `operatorName → operador_nombre`, `equipmentCode → equipo_codigo`, etc. El `UpdateAssignmentInput` (domain/sam.ts) debe declarar el campo Y `updateAssignment` debe agregar la línea `if (input.X !== undefined) payload.x_snake = input.X`. Si solo agregas a uno de los dos lados, TypeScript no se queja pero el campo nunca llega a la DB.
+
+- **[2026-05-27]** El comando para verificar un CHECK constraint en Studio: `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'public.asignaciones'::regclass AND conname = 'asignaciones_estado_check';`. El resultado se trunca visualmente en la tabla del SQL Editor. Para confirmar inclusión de un valor específico sin truncado, usar: `SELECT CASE WHEN pg_get_constraintdef(oid) LIKE '%PARCIAL%' THEN 'OK' ELSE 'FALTA' END FROM pg_constraint WHERE conname = 'asignaciones_estado_check';`.
+
 - **[2026-04-16]** Al importar CSVs masivos (12k+ filas) en Supabase, la operación puede truncarse silenciosamente por timeouts o límites de payload, dejando registros faltantes (ej: faltaban 231 filas de pichichi). → solución: Verificar siempre el conteo total por categoría (ingenio_id) contra el CSV original y completar los huecos mediante scripts de SQL que generen INSERTs por lotes.
 - **[2026-04-16]** Al generar scripts de ayuda en Node.js para Windows (PowerShell), la redirección `node script.js > output.sql` puede usar encoding UTF-16LE por defecto, causando errores de lectura. → solución: Escribir el archivo directamente desde el script usando `fs.writeFileSync(file, content, 'utf8')` y usar la extensión `.cjs` si el proyecto es ESM.
 - **[2026-04-13]** Cambios hechos localmente no se ven en Vercel de inmediato → solución: Asegurarse siempre de hacer commit y push de las correciones al repositorio (branch main) para que Vercel haga el redespliegue automático y refleje los cambios en producción.

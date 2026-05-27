@@ -224,6 +224,26 @@ Si difieren: Vercel dashboard → Settings → Environment Variables → editar 
 6. **Tras DDL → `NOTIFY pgrst, 'reload schema';`** o el cambio no aparece
    en la API hasta reinicio del container PostgREST.
 
+7. **Estados de `asignaciones.estado`**: `PENDIENTE`, `EN_PROCESO`,
+   `COMPLETADA`, `CANCELADA`, `PARCIAL`. Al agregar un nuevo valor
+   actualizar el CHECK constraint con la migración correspondiente
+   ANTES de pushear código que lo use, o los UPDATE fallarán con
+   error 23514. Migración canónica del PARCIAL:
+   `supabase/migrations/20260527160000_status_parcial.sql`.
+
+8. **PARCIAL sigue activa**: una asignación con `executedArea < area`
+   se marca PARCIAL (no COMPLETADA) y aparece en "Activas" del operario
+   para que la continúe. Las métricas (`summarizeAssignments` y
+   agregaciones del Resumen) suman `executedArea` de COMPLETADA +
+   PARCIAL — lo hecho es hecho. Filtros que cuentan cierres (historial,
+   `completed` count) NO deben incluir PARCIAL.
+
+9. **No duplicar activas**: el sistema bloquea crear dos asignaciones
+   activas (PENDIENTE / EN_PROCESO / PARCIAL) con el mismo trio
+   `suerte + labor + operario`. Si quieres acelerar una labor con
+   varios operarios, asigna a operarios distintos en la misma suerte
+   (eso sí está permitido).
+
 ---
 
 ## URLs y referencias

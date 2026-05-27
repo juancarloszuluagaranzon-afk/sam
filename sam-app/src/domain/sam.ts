@@ -119,4 +119,6 @@ export interface UpdateAssignmentInput {
   approval?: ApprovalStatus
   approvedBy?: string | null
   approvedAt?: string | null
+  operatorId?: string
+  operatorName?: string
 }

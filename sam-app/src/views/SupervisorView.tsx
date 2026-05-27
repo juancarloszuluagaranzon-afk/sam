@@ -281,6 +281,7 @@ export function SupervisorView({
     horometroFinal: '',
     notes: '',
     equipmentCode: '',
+    operatorId: '',
   })
 
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
@@ -1951,6 +1952,7 @@ export function SupervisorView({
                             horometroFinal: selectedLabor.horometroFinal != null ? String(selectedLabor.horometroFinal) : '',
                             notes: selectedLabor.notes ?? '',
                             equipmentCode: selectedLabor.equipmentCode ?? '',
+                            operatorId: selectedLabor.operatorId ?? '',
                           })
                           setEditingLabor(true)
                         }}
@@ -2086,6 +2088,21 @@ export function SupervisorView({
                     </div>
 
                     <label className="assignment-detail-field">
+                      <span>Operador (reasignar)</span>
+                      <SearchableSelect
+                        value={editLaborDraft.operatorId}
+                        onChange={(value) => setEditLaborDraft((d) => ({ ...d, operatorId: value }))}
+                        options={operators.map((op) => ({ value: op.id, label: op.name, rightLabel: op.id }))}
+                        placeholder="Buscar operador..."
+                      />
+                      {selectedLabor.status === 'PARCIAL' && editLaborDraft.operatorId !== (selectedLabor.operatorId ?? '') && (
+                        <small style={{ color: 'var(--color-status-progress)', marginTop: 4 }}>
+                          El nuevo operario verá esta labor como parcial con {selectedLabor.executedArea.toFixed(2)} ha ya hechas. Podrá continuarla desde "Activas".
+                        </small>
+                      )}
+                    </label>
+
+                    <label className="assignment-detail-field">
                       <span>Equipo</span>
                       <select
                         value={editLaborDraft.equipmentCode}
@@ -2129,12 +2146,23 @@ export function SupervisorView({
                         const execNum = Number(editLaborDraft.executedArea)
                         const hiNum = editLaborDraft.horometroInicial.trim() === '' ? null : Number(editLaborDraft.horometroInicial)
                         const hfNum = editLaborDraft.horometroFinal.trim() === '' ? null : Number(editLaborDraft.horometroFinal)
+                        // Si el operador cambia, resolvemos su nombre desde el catalogo
+                        // para mantener operador_id y operador_nombre consistentes.
+                        const newOperatorId = editLaborDraft.operatorId
+                        const operatorChanged = newOperatorId !== (selectedLabor.operatorId ?? '')
+                        const newOperatorName = operatorChanged
+                          ? (operators.find((op) => op.id === newOperatorId)?.name ?? '')
+                          : undefined
                         const ok = await handleEditAssignment(selectedLabor, {
                           executedArea: isNaN(execNum) ? selectedLabor.executedArea : execNum,
                           horometroInicial: hiNum,
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
+                          ...(operatorChanged ? {
+                            operatorId: newOperatorId,
+                            operatorName: newOperatorName,
+                          } : {}),
                         })
                         if (ok) {
                           setEditingLabor(false)
@@ -2145,7 +2173,7 @@ export function SupervisorView({
                       {busy ? 'Guardando...' : 'Guardar cambios'}
                     </button>
                   </div>
-                ) : selectedLabor.status === 'PENDIENTE' ? (
+                ) : selectedLabor.status === 'PENDIENTE' || selectedLabor.status === 'PARCIAL' ? (
                   <div className="modal-footer">
                     <button
                       className="cancel-btn"

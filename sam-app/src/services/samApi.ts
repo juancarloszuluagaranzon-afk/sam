@@ -627,6 +627,8 @@ export async function updateAssignment(
   if (input.approval !== undefined) payload.aprobacion = input.approval
   if (input.approvedBy !== undefined) payload.aprobada_por = input.approvedBy
   if (input.approvedAt !== undefined) payload.aprobada_en = input.approvedAt
+  if (input.operatorId !== undefined) payload.operador_id = input.operatorId
+  if (input.operatorName !== undefined) payload.operador_nombre = input.operatorName
 
   const { data, error } = await supabase
     .from('asignaciones')

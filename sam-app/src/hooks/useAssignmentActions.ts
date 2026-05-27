@@ -318,6 +318,9 @@ export function useAssignmentActions() {
     notes?: string
     equipmentCode?: string
     equipmentName?: string
+    operatorId?: string
+    operatorName?: string
+    status?: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA' | 'CANCELADA' | 'PARCIAL'
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {

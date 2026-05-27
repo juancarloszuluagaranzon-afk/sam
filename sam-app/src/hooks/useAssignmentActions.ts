@@ -14,6 +14,7 @@ export function useAssignmentActions() {
   const {
     session,
     equipment,
+    assignments,
     setAssignments,
     isOnline,
     setOutboxCount,
@@ -338,6 +339,28 @@ export function useAssignmentActions() {
     if (patch.horometroFinal != null && isNaN(patch.horometroFinal)) {
       setError('El horometro final debe ser un numero valido.')
       return false
+    }
+
+    // Reasignacion: si el operator cambia, validar que el nuevo operario
+    // no tenga ya una asignacion activa en la misma suerte + labor (de
+    // lo contrario quedarian dos cards "Pendiente" identicas en su
+    // pestaña Activas).
+    if (patch.operatorId !== undefined && patch.operatorId !== assignment.operatorId) {
+      const normalizedLabor = assignment.labor.trim().toUpperCase()
+      const conflict = assignments.find(
+        (a) =>
+          a.id !== assignment.id &&
+          a.suerteCode === assignment.suerteCode &&
+          a.labor.trim().toUpperCase() === normalizedLabor &&
+          a.operatorId === patch.operatorId &&
+          (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
+      )
+      if (conflict) {
+        setError(
+          `Ese operario ya tiene una asignacion activa de "${assignment.labor}" en la suerte ${assignment.suerte}. Reasigna o cancela esa antes de mover esta.`,
+        )
+        return false
+      }
     }
 
     setBusy(true)

@@ -43,6 +43,28 @@ function generateTempId() {
   return `offline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+/**
+ * True si ya existe una asignacion ACTIVA (PENDIENTE / EN_PROCESO /
+ * PARCIAL) con el mismo trio suerteCode + labor + operatorId. Evita
+ * que el operario tome dos veces en campo la misma labor en la misma
+ * suerte; debe continuar la existente desde "Activas".
+ */
+function hasActiveDuplicate(
+  assignments: Assignment[],
+  suerteCode: string,
+  labor: string,
+  operatorId: string,
+): boolean {
+  if (!operatorId) return false
+  return assignments.some(
+    (a) =>
+      a.suerteCode === suerteCode &&
+      normalizeText(a.labor) === normalizeText(labor) &&
+      a.operatorId === operatorId &&
+      (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
+  )
+}
+
 const EMPTY_FORM: AssignmentFormState = {
   haciendaCode: '',
   suerte: '',
@@ -176,6 +198,24 @@ export function useFreeFieldForm(options?: Options) {
     if (suertesCompletas.length > 0) {
       setError(
         `La labor "${freeFieldForm.labor}" ya está completamente ejecutada en: ${suertesCompletas.map((r) => r.suerte).join(', ')}. No hay área pendiente.`,
+      )
+      return
+    }
+
+    // No permitir tomar dos veces la misma labor en la misma suerte para
+    // el mismo operario: debe continuar la activa desde "Activas" en
+    // lugar de crear una nueva.
+    const duplicateSuertes = maestroRows.filter((row) =>
+      hasActiveDuplicate(
+        assignments,
+        `${row.haciendaCode}-${row.suerte}`,
+        freeFieldForm.labor,
+        operator.id,
+      ),
+    )
+    if (duplicateSuertes.length > 0) {
+      setError(
+        `Ya tienes una labor "${freeFieldForm.labor}" activa en: ${duplicateSuertes.map((r) => r.suerte).join(', ')}. Continuala desde "Activas".`,
       )
       return
     }

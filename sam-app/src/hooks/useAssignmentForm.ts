@@ -41,6 +41,32 @@ function getRemainingArea(
   return Math.max(0, totalArea - executed)
 }
 
+/**
+ * True si ya existe una asignacion ACTIVA (PENDIENTE / EN_PROCESO /
+ * PARCIAL) con el mismo trio suerteCode + labor + operatorId.
+ *
+ * Cierres (COMPLETADA, CANCELADA) NO bloquean — la labor puede volver
+ * a planearse en otra fecha o ciclo. Lo que bloqueamos es duplicar
+ * trabajo activo: dos cards "Pendiente" identicas en la pestaña
+ * Activas del operario, que ademas confunden al supervisor al revisar
+ * el tablero.
+ */
+function hasActiveDuplicate(
+  assignments: Assignment[],
+  suerteCode: string,
+  labor: string,
+  operatorId: string,
+): boolean {
+  if (!operatorId) return false
+  return assignments.some(
+    (a) =>
+      a.suerteCode === suerteCode &&
+      normalizeText(a.labor) === normalizeText(labor) &&
+      a.operatorId === operatorId &&
+      (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
+  )
+}
+
 function generateTempId() {
   return `offline-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
@@ -193,6 +219,29 @@ export function useAssignmentForm(options?: Options) {
     if (suertesCompletas.length > 0) {
       setError(
         `La labor "${assignmentForm.labor}" ya está completamente ejecutada en: ${suertesCompletas.map((r) => r.suerte).join(', ')}. Solo se puede programar si hay área pendiente.`,
+      )
+      return
+    }
+
+    // No permitir duplicar una asignacion activa del mismo trio
+    // suerte + labor + operador. Cubrimos los dos pares (operador 1
+    // y operador 2 si esta presente).
+    const duplicateSuertes: { suerte: string; operatorName: string }[] = []
+    for (const row of maestroRows) {
+      const suerteCode = `${row.haciendaCode}-${row.suerte}`
+      if (hasActiveDuplicate(assignments, suerteCode, assignmentForm.labor, operator.id)) {
+        duplicateSuertes.push({ suerte: row.suerte, operatorName: operator.name })
+      }
+      if (operator2 && hasActiveDuplicate(assignments, suerteCode, assignmentForm.labor, operator2.id)) {
+        duplicateSuertes.push({ suerte: row.suerte, operatorName: operator2.name })
+      }
+    }
+    if (duplicateSuertes.length > 0) {
+      const detalle = duplicateSuertes
+        .map((d) => `suerte ${d.suerte} a ${d.operatorName}`)
+        .join('; ')
+      setError(
+        `Ya existe una asignacion activa de "${assignmentForm.labor}" para ${detalle}. Reasigna la existente desde Labores en lugar de crear una nueva.`,
       )
       return
     }

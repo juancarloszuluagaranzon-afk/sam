@@ -24,6 +24,9 @@ interface Props {
 }
 
 function getStatusMeta(a: Assignment) {
+  if (a.status === 'PARCIAL') {
+    return { label: 'Parcial', tone: 'progress' as const }
+  }
   if (a.status === 'COMPLETADA') {
     if (a.executedArea > 0 && a.executedArea < a.area) {
       return { label: 'Parcial', tone: 'progress' as const }

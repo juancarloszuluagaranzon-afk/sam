@@ -32,7 +32,10 @@ function getRemainingArea(
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
-        a.status === 'COMPLETADA',
+        // Una PARCIAL ya "consumio" su executedArea de la suerte aunque
+        // siga activa: si no contamos eso, otro operario podria asignarse
+        // la totalidad nuevamente y duplicar area.
+        (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
     )
     .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
   return Math.max(0, totalArea - executed)

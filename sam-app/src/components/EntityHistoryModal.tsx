@@ -51,6 +51,9 @@ function formatArea(value: number) {
 }
 
 function getStatusMeta(a: Assignment) {
+  if (a.status === 'PARCIAL') {
+    return { label: 'Parcial', tone: 'progress' as const }
+  }
   if (a.status === 'COMPLETADA') {
     if (a.executedArea > 0 && a.executedArea < a.area) {
       return { label: 'Parcial', tone: 'progress' as const }
@@ -112,8 +115,10 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
   if (!entity) return null
 
   const planned = filtered.reduce((sum, a) => sum + a.area, 0)
+  // PARCIAL aporta a "executed" porque la hectarea hecha es hectarea
+  // hecha. "completed" solo cuenta cierres definitivos.
   const executed = filtered
-    .filter((a) => a.status === 'COMPLETADA')
+    .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
     .reduce((sum, a) => sum + a.executedArea, 0)
   const completed = filtered.filter((a) => a.status === 'COMPLETADA').length
   const completion = planned ? Math.round((executed / planned) * 100) : 0
@@ -178,7 +183,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
           )}
           {filtered.map((a) => {
             const meta = getStatusMeta(a)
-            const display = a.status === 'COMPLETADA' && a.executedArea > 0 ? a.executedArea : a.area
+            const display = (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.executedArea > 0 ? a.executedArea : a.area
             return (
               <button
                 key={a.id}

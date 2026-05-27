@@ -42,6 +42,7 @@ function normalizeStatus(value: string | null | undefined): AssignmentStatus {
     return 'COMPLETADA'
   }
   if (normalized === 'CANCELADA') return 'CANCELADA'
+  if (normalized === 'PARCIAL') return 'PARCIAL'
 
   return 'PENDIENTE'
 }
@@ -661,16 +662,19 @@ export function summarizeAssignments(
   assignments: Assignment[],
   targetDate: string,
 ): DashboardMetrics {
-  // Include assignments created today OR completed today (prior-day carryovers).
+  // Include assignments created today OR completed/parcial today (prior-day carryovers).
   const relevant = assignments.filter(
     (a) =>
       a.status !== 'CANCELADA' &&
       (a.dateKey === targetDate ||
-        (a.status === 'COMPLETADA' && dayKey(a.finishedAt) === targetDate)),
+        ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') &&
+          dayKey(a.finishedAt) === targetDate)),
   )
   const plannedArea = relevant.reduce((sum, a) => sum + a.area, 0)
+  // PARCIAL aun esta activa, pero el area ya ejecutada cuenta para el
+  // avance del dia (lo hecho es hecho aunque la labor siga abierta).
   const executedArea = relevant
-    .filter((a) => a.status === 'COMPLETADA')
+    .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
     .reduce((sum, a) => sum + a.executedArea, 0)
   const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
 
@@ -693,7 +697,7 @@ export function summarizeAssignments(
 // El display "Programada en X" sigue mostrando `dateKey` (= creación) intacto en otras
 // partes de la UI. Esta función solo se usa donde se quiere agrupar por "ejecución".
 export function executionDateKey(a: Assignment): string {
-  if (a.status === 'COMPLETADA' && a.finishedAt) return dayKey(a.finishedAt)
+  if ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.finishedAt) return dayKey(a.finishedAt)
   if (a.status === 'EN_PROCESO' && a.startedAt) return dayKey(a.startedAt)
   return a.dateKey
 }

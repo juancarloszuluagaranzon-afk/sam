@@ -94,7 +94,7 @@ function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: 
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
-        a.status === 'COMPLETADA',
+        (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
     )
     .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
   return Math.max(0, totalArea - executed)
@@ -114,7 +114,13 @@ function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
 }
 
 function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area'>) {
+  if (assignment.status === 'PARCIAL') {
+    return { label: 'Parcial', tone: 'progress' as const }
+  }
   if (assignment.status === 'COMPLETADA') {
+    // Compatibilidad con filas legacy: una COMPLETADA con executedArea
+    // menor al area planificada se etiqueta "Parcial" (antes era el
+    // unico mecanismo, ahora coexiste con el status real PARCIAL).
     if (assignment.executedArea > 0 && assignment.executedArea < assignment.area) {
       return { label: 'Parcial', tone: 'progress' as const }
     }
@@ -287,7 +293,7 @@ export function SupervisorView({
           // Match summarizeAssignments carry-over logic: include labors created today
           // OR completed today even if scheduled earlier.
           if (a.dateKey === todayKey) return true
-          if (a.status === 'COMPLETADA' && a.finishedAt) {
+          if ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.finishedAt) {
             const finDay = new Date(a.finishedAt).toLocaleDateString('en-CA', {
               timeZone: 'America/Bogota',
             })
@@ -304,8 +310,10 @@ export function SupervisorView({
 
   const summaryMetrics = useMemo(() => {
     const planned = summaryAssignments.reduce((s, a) => s + a.area, 0)
+    // PARCIAL aporta a executed igual que COMPLETADA — refleja lo
+    // realmente hecho en el periodo.
     const executed = summaryAssignments
-      .filter((a) => a.status === 'COMPLETADA')
+      .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
       .reduce((s, a) => s + a.executedArea, 0)
     const inProgress = summaryAssignments.filter((a) => a.status === 'EN_PROCESO').length
     return {
@@ -322,7 +330,7 @@ export function SupervisorView({
       const current = groups.get(a.labor) ?? { planned: 0, executed: 0, count: 0 }
       current.planned += a.area
       current.count += 1
-      if (a.status === 'COMPLETADA') current.executed += a.executedArea
+      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
       groups.set(a.labor, current)
     }
     return Array.from(groups.entries())
@@ -348,7 +356,7 @@ export function SupervisorView({
       const name = a.operatorName || 'Sin operador'
       const current = groups.get(id) ?? { id, name, planned: 0, executed: 0, count: 0 }
       current.planned += a.area
-      if (a.status === 'COMPLETADA') current.executed += a.executedArea
+      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
       current.count += 1
       groups.set(id, current)
     }
@@ -371,7 +379,7 @@ export function SupervisorView({
       const name = a.equipmentName || a.equipmentCode || 'Sin equipo'
       const current = groups.get(code) ?? { code, name, planned: 0, executed: 0, count: 0 }
       current.planned += a.area
-      if (a.status === 'COMPLETADA') current.executed += a.executedArea
+      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
       current.count += 1
       groups.set(code, current)
     }
@@ -1092,10 +1100,11 @@ export function SupervisorView({
                           )
                           const status = assignment?.status ?? 'PENDIENTE'
                           const isPartial =
-                            status === 'COMPLETADA' &&
-                            !!assignment &&
-                            assignment.executedArea > 0 &&
-                            assignment.executedArea < assignment.area
+                            status === 'PARCIAL' ||
+                            (status === 'COMPLETADA' &&
+                              !!assignment &&
+                              assignment.executedArea > 0 &&
+                              assignment.executedArea < assignment.area)
                           const isAssignable = status === 'PENDIENTE' && isSupervisorOrOwner(session.role)
                           const cellClass = [
                             'labor-cell-box',
@@ -1117,7 +1126,7 @@ export function SupervisorView({
                                 title={isAssignable ? `Asignar ${labor}` : undefined}
                               >
                                 {status === 'EN_PROCESO' && <span className="spinner">RUN</span>}
-                                {status === 'COMPLETADA' && assignment && (
+                                {(status === 'COMPLETADA' || status === 'PARCIAL') && assignment && (
                                   <span>
                                     {assignment.executedArea > 0
                                       ? `${assignment.executedArea.toFixed(2)} ha`
@@ -1239,7 +1248,7 @@ export function SupervisorView({
               const activos = filteredReport.filter((a) => a.status !== 'CANCELADA')
               const planif = activos.reduce((s, a) => s + a.area, 0)
               const ejec = activos
-                .filter((a) => a.status === 'COMPLETADA')
+                .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
                 .reduce((s, a) => s + (a.executedArea > 0 ? a.executedArea : a.area), 0)
               const cumpl = planif ? Math.round((ejec / planif) * 100) : 0
               const enProc = activos.filter((a) => a.status === 'EN_PROCESO').length
@@ -1304,7 +1313,7 @@ export function SupervisorView({
                           <td>{a.suerte}</td>
                           <td>{a.labor}</td>
                           <td className="num-cell">
-                            {a.status === 'COMPLETADA'
+                            {a.status === 'COMPLETADA' || a.status === 'PARCIAL'
                               ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
                               : formatArea(a.area)}
                           </td>
@@ -1350,7 +1359,7 @@ export function SupervisorView({
                   g.labors.push(a)
                   if (a.status !== 'CANCELADA') {
                     g.totalAreaPlan += a.area
-                    if (a.status === 'COMPLETADA') {
+                    if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') {
                       g.totalAreaEjec += a.executedArea > 0 ? a.executedArea : a.area
                     }
                   }
@@ -1411,7 +1420,7 @@ export function SupervisorView({
                                     <td className="num-cell">{hf != null ? hf.toFixed(1) : '—'}</td>
                                     <td className="num-cell">{hrs}</td>
                                     <td className="num-cell">
-                                      {a.status === 'COMPLETADA'
+                                      {a.status === 'COMPLETADA' || a.status === 'PARCIAL'
                                         ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
                                         : formatArea(a.area)}
                                     </td>
@@ -1712,7 +1721,7 @@ export function SupervisorView({
                       <span className="labor-area">
                         {(() => {
                           const maestroRow = maestro.find((r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte)
-                          const displayed = assignment.status === 'COMPLETADA' && assignment.executedArea > 0
+                          const displayed = (assignment.status === 'COMPLETADA' || assignment.status === 'PARCIAL') && assignment.executedArea > 0
                             ? assignment.executedArea
                             : assignment.area
                           return maestroRow

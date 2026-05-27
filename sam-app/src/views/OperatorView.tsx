@@ -54,13 +54,16 @@ function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: 
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
-        a.status === 'COMPLETADA',
+        // PARCIAL aporta tambien al area ejecutada de la suerte
+        (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
     )
     .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
   return Math.max(0, totalArea - executed)
 }
 
 function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
+  // Solo COMPLETADA cuenta como "labor cerrada" para sugerir la siguiente.
+  // Una PARCIAL todavia esta abierta y deberia ser la sugerida si existe.
   const completed = assignments
     .filter(
       (a) =>
@@ -73,7 +76,13 @@ function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
 }
 
 function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area'>) {
+  if (assignment.status === 'PARCIAL') {
+    return { label: 'Parcial', tone: 'progress' as const }
+  }
   if (assignment.status === 'COMPLETADA') {
+    // Compatibilidad: filas historicas que se cerraron como COMPLETADA
+    // antes de la migracion a status PARCIAL siguen mostrandose con su
+    // label correcto.
     if (assignment.executedArea > 0 && assignment.executedArea < assignment.area) {
       return { label: 'Parcial', tone: 'progress' as const }
     }
@@ -166,10 +175,16 @@ export function OperatorView({
     const relevant = operatorAssignments.filter(
       (a) =>
         a.status !== 'CANCELADA' &&
-        (a.dateKey === todayKey || (a.status === 'COMPLETADA' && todayBogota(a.finishedAt) === todayKey)),
+        (a.dateKey === todayKey ||
+          ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') &&
+            todayBogota(a.finishedAt) === todayKey)),
     )
     const todayPlanned = relevant.reduce((sum, a) => sum + a.area, 0)
-    const todayExecuted = relevant.filter((a) => a.status === 'COMPLETADA').reduce((sum, a) => sum + a.executedArea, 0)
+    // Las PARCIAL siguen activas pero el area que ya se hizo cuenta como
+    // ejecutada — el supervisor quiere ver el avance real, no solo lo cerrado.
+    const todayExecuted = relevant
+      .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
+      .reduce((sum, a) => sum + a.executedArea, 0)
     const completion = todayPlanned ? Math.round((todayExecuted / todayPlanned) * 100) : 0
     const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
     const pending = relevant.filter((a) => a.status === 'PENDIENTE').length
@@ -177,7 +192,10 @@ export function OperatorView({
   }, [operatorAssignments, todayKey])
 
   const activeAssignments = useMemo(
-    () => operatorAssignments.filter((a) => a.status === 'PENDIENTE' || a.status === 'EN_PROCESO'),
+    () =>
+      operatorAssignments.filter(
+        (a) => a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL',
+      ),
     [operatorAssignments],
   )
 
@@ -192,6 +210,29 @@ export function OperatorView({
       setSelectedActiveAssignment(fresh)
     }
   }, [activeAssignments, selectedActiveAssignment])
+
+  // Cuando el operario abre una PARCIAL para continuarla, pre-llenar el
+  // input "Ha ejecutadas" con el total acumulado previo. Asi solo tiene
+  // que ajustarlo hacia arriba con lo que hizo en esta sesion. No
+  // sobreescribe si ya hay un draft en curso del propio operario.
+  useEffect(() => {
+    if (!selectedActiveAssignment) return
+    if (selectedActiveAssignment.status !== 'PARCIAL') return
+    if (selectedActiveAssignment.executedArea <= 0) return
+    setFinishDrafts((current) => {
+      const existing = current[selectedActiveAssignment.id]
+      if (existing && existing.area !== '') return current
+      return {
+        ...current,
+        [selectedActiveAssignment.id]: {
+          area: selectedActiveAssignment.executedArea.toFixed(2),
+          notes: existing?.notes ?? '',
+          horometroFinal: existing?.horometroFinal ?? '',
+          isComplete: existing?.isComplete ?? false,
+        },
+      }
+    })
+  }, [selectedActiveAssignment, setFinishDrafts])
 
 
   const historyAssignments = useMemo(
@@ -573,6 +614,15 @@ export function OperatorView({
                       </div>
                     ) : (
                       <div className="finish-grid">
+                        {a.status === 'PARCIAL' && a.executedArea > 0 && (
+                          <div className="partial-progress-banner">
+                            <strong>Continuando labor parcial</strong>
+                            <span>
+                              Acumulado previo: {formatArea(a.executedArea)} de {formatArea(a.area)}.
+                              Ajusta el total con lo hecho hasta ahora.
+                            </span>
+                          </div>
+                        )}
                         <div className="complete-toggle-row">
                           <div>
                             <span className="complete-toggle-label">Labor completada al 100%</span>

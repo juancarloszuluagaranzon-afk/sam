@@ -7,6 +7,7 @@ export type AssignmentStatus =
   | 'EN_PROCESO'
   | 'COMPLETADA'
   | 'CANCELADA'
+  | 'PARCIAL'
 
 export type ApprovalStatus = 'PENDIENTE' | 'APROBADA' | 'RECHAZADA'
 

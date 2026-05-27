@@ -146,13 +146,27 @@ export function useAssignmentActions() {
     setBusy(true)
     setError('')
 
+    // Decision de status:
+    //   - isComplete=true (toggle "100%") o executedArea >= area → COMPLETADA
+    //   - executedArea < area → PARCIAL (sigue activa, operario u otro
+    //     pueden continuarla luego). Capamos a un epsilon para evitar
+    //     PARCIAL por redondeo.
+    const eps = 0.001
+    const isFullyDone = isComplete || executedArea + eps >= assignment.area
+    const finalStatus: 'COMPLETADA' | 'PARCIAL' = isFullyDone ? 'COMPLETADA' : 'PARCIAL'
+
     const finishPayload = {
-      status: 'COMPLETADA' as const,
+      status: finalStatus,
       finishedAt: new Date().toISOString(),
       executedArea,
       notes: draft?.notes ?? assignment.notes,
       horometroFinal,
     }
+
+    const successMessage =
+      finalStatus === 'COMPLETADA'
+        ? `Labor finalizada: ${assignment.labor}.`
+        : `Labor guardada como parcial: ${assignment.labor} (sigue activa para continuar).`
 
     try {
       if (!isOnline) {
@@ -166,21 +180,25 @@ export function useAssignmentActions() {
         setAssignments((current) =>
           current.map((a) =>
             a.id === assignment.id
-              ? { ...a, status: 'COMPLETADA', finishedAt: finishPayload.finishedAt, executedArea }
+              ? { ...a, status: finalStatus, finishedAt: finishPayload.finishedAt, executedArea }
               : a,
           ),
         )
         void db.assignments.update(assignment.id, {
-          status: 'COMPLETADA',
+          status: finalStatus,
           finishedAt: finishPayload.finishedAt,
           executedArea,
         })
         setOutboxCount((c) => c + 1)
-        setInfo(`Labor finalizada (sin conexion, se sincronizara al recuperar senal).`)
+        setInfo(
+          finalStatus === 'COMPLETADA'
+            ? `Labor finalizada (sin conexion, se sincronizara al recuperar senal).`
+            : `Labor parcial guardada (sin conexion, se sincronizara al recuperar senal).`,
+        )
       } else {
         const updated = await updateAssignment(assignment.id, finishPayload)
         mergeUpdated(updated)
-        setInfo(`Labor finalizada: ${assignment.labor}.`)
+        setInfo(successMessage)
       }
       setFinishDrafts((current) => {
         const next = { ...current }

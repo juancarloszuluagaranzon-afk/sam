@@ -12,11 +12,39 @@ type SpeechRecognitionInstance = {
 }
 
 function getRecognitionCtor(): (new () => SpeechRecognitionInstance) | null {
+  if (typeof window === 'undefined') return null
   const w = window as unknown as {
     webkitSpeechRecognition?: new () => SpeechRecognitionInstance
     SpeechRecognition?: new () => SpeechRecognitionInstance
   }
   return w.webkitSpeechRecognition ?? w.SpeechRecognition ?? null
+}
+
+/**
+ * Traduce los codigos de error del Web Speech API a mensajes en español
+ * que el operario entiende. Los codigos vienen del SpeechRecognitionErrorEvent
+ * (ver https://developer.mozilla.org/en-US/docs/Web/API/SpeechRecognitionErrorEvent/error)
+ */
+export function dictationErrorMessage(code: string): string {
+  switch (code) {
+    case 'not-allowed':
+    case 'service-not-allowed':
+      return 'Permiso de microfono denegado. Habilitalo desde el navegador (icono junto a la URL).'
+    case 'audio-capture':
+      return 'No se detecto un microfono. Conecta o habilita el microfono del dispositivo.'
+    case 'no-speech':
+      return 'No se escucho nada. Acerca el microfono y vuelve a intentar.'
+    case 'network':
+      return 'Sin red para el dictado. Necesitas conexion a Internet para que funcione.'
+    case 'aborted':
+      return 'Dictado cancelado.'
+    case 'not-supported':
+      return 'Tu navegador no soporta dictado por voz. Usa Chrome o Edge.'
+    case 'start-failed':
+      return 'No se pudo iniciar el dictado. Intenta de nuevo.'
+    default:
+      return `Error de dictado (${code}).`
+  }
 }
 
 interface DictationCallbacks {
@@ -27,12 +55,11 @@ interface DictationCallbacks {
 
 export function useDictation(lang = 'es-CO') {
   const [listening, setListening] = useState(false)
-  const [supported, setSupported] = useState(false)
+  // supported se calcula sincronicamente para que el boton aparezca en
+  // el primer render. Antes se setea en un useEffect que causaba flicker
+  // null -> boton al cargar.
+  const [supported] = useState(() => getRecognitionCtor() !== null)
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
-
-  useEffect(() => {
-    setSupported(getRecognitionCtor() !== null)
-  }, [])
 
   const start = useCallback(
     (callbacks: DictationCallbacks) => {

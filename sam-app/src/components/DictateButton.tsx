@@ -1,5 +1,5 @@
 import { memo, useRef } from 'react'
-import { useDictation } from '../hooks/useDictation'
+import { dictationErrorMessage, useDictation } from '../hooks/useDictation'
 
 interface DictateButtonProps {
   onTranscript?: (text: string, isFinal: boolean) => void
@@ -19,7 +19,36 @@ export const DictateButton = memo(function DictateButton({
   const { listening, supported, start, stop } = useDictation('es-CO')
   const finalTextRef = useRef('')
 
-  if (!supported) return null
+  if (!supported) {
+    return (
+      <button
+        type="button"
+        className="dictate-btn"
+        disabled
+        aria-label="Dictado no disponible en este navegador"
+        title="Dictado no disponible. Usa Chrome o Edge actualizado."
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="9" y="2" width="6" height="12" rx="3" />
+          <path d="M5 10v2a7 7 0 0 0 14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+          <line x1="2" y1="2" x2="22" y2="22" />
+        </svg>
+        <span>No disp.</span>
+      </button>
+    )
+  }
 
   const handleClick = () => {
     if (listening) {
@@ -36,7 +65,10 @@ export const DictateButton = memo(function DictateButton({
         const text = finalText || finalTextRef.current
         if (text) onComplete?.(text)
       },
-      onError: (err) => onError?.(err),
+      onError: (err) => {
+        if (onError) onError(err)
+        else console.warn('[dictado]', dictationErrorMessage(err))
+      },
     })
   }
 

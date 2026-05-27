@@ -7,6 +7,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DictateButton } from '../components/DictateButton'
 import { DictateInlineButton } from '../components/DictateInlineButton'
+import { dictationErrorMessage } from '../hooks/useDictation'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
@@ -130,7 +131,7 @@ export function OperatorView({
   handleChangePin,
   onSaveSession,
 }: Props) {
-  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey } = useAppData()
+  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError } = useAppData()
   const [isDiagOpen, setIsDiagOpen] = useState(false)
 
   const [isFreeFieldOpen, setIsFreeFieldOpen] = useState(false)
@@ -272,6 +273,13 @@ export function OperatorView({
   }, [historyAssignments, historyMonth, historyPeriod])
 
   if (!session) return null
+
+  // Callback compartido para todos los botones de dictado: muestra al
+  // operario un mensaje en español si el dictado falla (permiso denegado,
+  // sin microfono, etc) en lugar de fallar en silencio.
+  const handleDictateError = (err: string) => {
+    setError(dictationErrorMessage(err))
+  }
 
   function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal', value: string) {
     setFinishDrafts((current) => ({
@@ -601,6 +609,7 @@ export function OperatorView({
                                 const num = parseSpokenNumber(text)
                                 if (num !== null) updateStartHorometroDraft(a.id, String(num))
                               }}
+                              onError={handleDictateError}
                             />
                           </div>
                         </label>
@@ -664,6 +673,7 @@ export function OperatorView({
                                   const num = parseSpokenNumber(text)
                                   if (num !== null) updateFinishDraft(a.id, 'area', String(num))
                                 }}
+                                onError={handleDictateError}
                               />
                             </div>
                           </label>
@@ -688,6 +698,7 @@ export function OperatorView({
                                 const num = parseSpokenNumber(text)
                                 if (num !== null) updateFinishDraft(a.id, 'horometroFinal', String(num))
                               }}
+                              onError={handleDictateError}
                             />
                           </div>
                         </label>
@@ -700,6 +711,7 @@ export function OperatorView({
                                 const next = prev ? `${prev} ${text}` : text
                                 updateFinishDraft(a.id, 'notes', next)
                               }}
+                              onError={handleDictateError}
                             />
                           </div>
                           <textarea
@@ -1137,6 +1149,7 @@ export function OperatorView({
                       const next = prev ? `${prev} ${text}` : text
                       updateFreeFieldForm('notes', next)
                     }}
+                    onError={handleDictateError}
                   />
                 </div>
                 <textarea

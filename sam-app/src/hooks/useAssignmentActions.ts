@@ -120,17 +120,41 @@ export function useAssignmentActions() {
   async function finishAssignment(assignment: Assignment) {
     const draft = finishDrafts[assignment.id]
     const isComplete = draft?.isComplete ?? false
-    const executedArea = isComplete ? assignment.area : Number(draft?.area ?? '')
+    const isPartialContinuation =
+      assignment.status === 'PARCIAL' && assignment.executedArea > 0
+    // El input del operario significa cosas distintas segun el estado:
+    //   - PARCIAL: el delta de ESTA sesion (se suma al executedArea previo)
+    //   - PENDIENTE/EN_PROCESO: el total ejecutado (reemplaza el previo)
+    // Toggle "completada al 100%" siempre completa hasta area total.
+    const remainingArea = Math.max(0, assignment.area - assignment.executedArea)
+    const sessionMax = isPartialContinuation ? remainingArea : assignment.area
+    const sessionDraftValue = Number(draft?.area ?? '')
 
-    if (!executedArea || executedArea <= 0) {
+    let executedArea: number
+    if (isComplete) {
+      executedArea = assignment.area
+    } else if (isPartialContinuation) {
+      executedArea = assignment.executedArea + sessionDraftValue
+    } else {
+      executedArea = sessionDraftValue
+    }
+
+    if (!sessionDraftValue && !isComplete) {
       setError('Ingresa las hectareas ejecutadas antes de finalizar.')
       return
     }
-    if (!isComplete && executedArea > assignment.area) {
+    if (!isComplete && sessionDraftValue > sessionMax) {
+      const cap = formatArea(sessionMax)
       setError(
-        `El area ejecutada no puede superar el area de la suerte (${formatArea(assignment.area)}).`,
+        isPartialContinuation
+          ? `Lo ejecutado en esta sesion no puede superar el restante (${cap}).`
+          : `El area ejecutada no puede superar el area de la suerte (${cap}).`,
       )
       return
+    }
+    // Defensa final: el total acumulado nunca debe exceder el area planificada
+    if (executedArea > assignment.area) {
+      executedArea = assignment.area
     }
 
     const horometroFinalRaw = draft?.horometroFinal ?? ''

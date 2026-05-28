@@ -2339,6 +2339,45 @@ th {
   color: #155b30;
 }
 
+/* Resumen ambar de avance en la card de Activas cuando la labor es
+   PARCIAL: muestra "X hechas · Falta Y" para que el operario vea de
+   un vistazo cuanto le queda sin abrir el sheet. */
+.partial-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0 0;
+  padding: 6px 10px;
+  background: #faf6ec;
+  border: 1px solid #ebe1c5;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #6b4500;
+}
+.partial-summary__done {
+  color: #8a5a00;
+}
+.partial-summary__sep {
+  opacity: 0.5;
+}
+.partial-summary__remaining {
+  color: #6b4500;
+  font-weight: 700;
+}
+:root[data-theme="dark"] .partial-summary {
+  background: #3a2e12;
+  border-color: #5a4825;
+  color: #e8c878;
+}
+:root[data-theme="dark"] .partial-summary__done {
+  color: #f0c870;
+}
+:root[data-theme="dark"] .partial-summary__remaining {
+  color: #ffe28a;
+}
+
 /* Banner que aparece cuando una labor PARCIAL se retoma: muestra
    cuanto se llevaba antes de esta sesion. */
 .partial-progress-banner {

@@ -213,20 +213,25 @@ export function OperatorView({
   }, [activeAssignments, selectedActiveAssignment])
 
   // Cuando el operario abre una PARCIAL para continuarla, pre-llenar el
-  // input "Ha ejecutadas" con el total acumulado previo. Asi solo tiene
-  // que ajustarlo hacia arriba con lo que hizo en esta sesion. No
-  // sobreescribe si ya hay un draft en curso del propio operario.
+  // input con el AREA RESTANTE (no el acumulado previo). El operario
+  // ingresa "cuanto hizo en esta sesion"; si hizo todo lo que falta,
+  // simplemente confirma. Al finalizar, el valor se SUMA al executedArea
+  // previo (logica en useAssignmentActions.finishAssignment).
   useEffect(() => {
     if (!selectedActiveAssignment) return
     if (selectedActiveAssignment.status !== 'PARCIAL') return
     if (selectedActiveAssignment.executedArea <= 0) return
+    const remaining = Math.max(
+      0,
+      selectedActiveAssignment.area - selectedActiveAssignment.executedArea,
+    )
     setFinishDrafts((current) => {
       const existing = current[selectedActiveAssignment.id]
       if (existing && existing.area !== '') return current
       return {
         ...current,
         [selectedActiveAssignment.id]: {
-          area: selectedActiveAssignment.executedArea.toFixed(2),
+          area: remaining.toFixed(2),
           notes: existing?.notes ?? '',
           horometroFinal: existing?.horometroFinal ?? '',
           isComplete: existing?.isComplete ?? false,
@@ -515,6 +520,8 @@ export function OperatorView({
             </div>
             {activeAssignments.map((assignment) => {
               const meta = getStatusMeta(assignment)
+              const isPartial = assignment.status === 'PARCIAL' && assignment.executedArea > 0
+              const remaining = Math.max(0, assignment.area - assignment.executedArea)
               return (
                 <button
                   key={assignment.id}
@@ -533,6 +540,17 @@ export function OperatorView({
                       )}{' '}
                       - {formatArea(assignment.area)}
                     </p>
+                    {isPartial && (
+                      <p className="partial-summary">
+                        <span className="partial-summary__done">
+                          {formatArea(assignment.executedArea)} hechas
+                        </span>
+                        <span className="partial-summary__sep">·</span>
+                        <span className="partial-summary__remaining">
+                          Falta {formatArea(remaining)}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
                 </button>
@@ -556,7 +574,14 @@ export function OperatorView({
                     <div className="active-sheet__header">
                       <div>
                         <strong>{a.haciendaName} - {a.suerte}</strong>
-                        <span className="subtle-copy">{a.labor} - {formatArea(a.area)}</span>
+                        <span className="subtle-copy">
+                          {a.labor} - {formatArea(a.area)}
+                          {a.status === 'PARCIAL' && a.executedArea > 0 && (
+                            <> · <strong style={{ color: 'var(--color-status-progress)' }}>
+                              Falta {formatArea(Math.max(0, a.area - a.executedArea))}
+                            </strong></>
+                          )}
+                        </span>
                       </div>
                       <button
                         type="button"
@@ -629,14 +654,21 @@ export function OperatorView({
                           Iniciar labor
                         </button>
                       </div>
-                    ) : (
+                    ) : (() => {
+                      const isPartialContinuation = a.status === 'PARCIAL' && a.executedArea > 0
+                      const remainingArea = Math.max(0, a.area - a.executedArea)
+                      const sessionMax = isPartialContinuation ? remainingArea : a.area
+                      const completeRegistraStr = isPartialContinuation
+                        ? `Se registra el faltante (${formatArea(remainingArea)})`
+                        : `Se registran ${formatArea(a.area)}`
+                      return (
                       <div className="finish-grid">
-                        {a.status === 'PARCIAL' && a.executedArea > 0 && (
+                        {isPartialContinuation && (
                           <div className="partial-progress-banner">
                             <strong>Continuando labor parcial</strong>
                             <span>
                               Acumulado previo: {formatArea(a.executedArea)} de {formatArea(a.area)}.
-                              Ajusta el total con lo hecho hasta ahora.
+                              Faltan {formatArea(remainingArea)}. Ingresa cuánto hiciste en esta sesión.
                             </span>
                           </div>
                         )}
@@ -645,8 +677,10 @@ export function OperatorView({
                             <span className="complete-toggle-label">Labor completada al 100%</span>
                             <span className="complete-toggle-hint">
                               {draft?.isComplete
-                                ? `Se registran ${formatArea(a.area)}`
-                                : 'Ingresa el área ejecutada'}
+                                ? completeRegistraStr
+                                : isPartialContinuation
+                                  ? 'Ingresa lo ejecutado en esta sesión'
+                                  : 'Ingresa el área ejecutada'}
                             </span>
                           </div>
                           <button
@@ -654,7 +688,7 @@ export function OperatorView({
                             role="switch"
                             aria-checked={draft?.isComplete ?? false}
                             className={`toggle-switch ${(draft?.isComplete ?? false) ? 'on' : ''}`}
-                            onClick={() => setFinishDraftComplete(a.id, !(draft?.isComplete ?? false), a.area)}
+                            onClick={() => setFinishDraftComplete(a.id, !(draft?.isComplete ?? false), sessionMax)}
                           >
                             <span className="toggle-thumb" />
                           </button>
@@ -662,18 +696,18 @@ export function OperatorView({
 
                         {!(draft?.isComplete ?? false) && (
                           <label>
-                            Ha ejecutadas
+                            {isPartialContinuation ? 'Ha ejecutadas en esta sesión' : 'Ha ejecutadas'}
                             <div className="dictate-input-wrap">
                               <input
                                 type="number"
                                 min={0.1}
                                 step={0.1}
-                                max={a.area}
+                                max={sessionMax}
                                 value={draft?.area ?? ''}
                                 onChange={(event) =>
                                   updateFinishDraft(a.id, 'area', event.target.value)
                                 }
-                                placeholder={`máx. ${a.area.toFixed(2)}`}
+                                placeholder={`máx. ${sessionMax.toFixed(2)}`}
                               />
                               <DictateInlineButton
                                 ariaLabel="Dictar hectáreas ejecutadas"
@@ -739,7 +773,8 @@ export function OperatorView({
                           Finalizar
                         </button>
                       </div>
-                    )}
+                      )
+                    })()}
                   </div>
                 </>
               )

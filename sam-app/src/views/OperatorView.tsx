@@ -64,9 +64,15 @@ function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: 
 
 /**
  * Calcula el avance "a nivel de suerte+labor" para una asignacion del
- * operario. Si varios operarios estan trabajando la misma suerte+labor
- * (caso de trabajo dividido), todos comparten un mismo "remaining" — lo
- * hecho por el companero ya consume el area planificada.
+ * operario en su CICLO ACTUAL. Si varios operarios estan trabajando la
+ * misma suerte+labor PROGRAMADA EL MISMO DIA (mismo dateKey), comparten
+ * un mismo "remaining" — lo hecho por el companero consume el area
+ * planificada del ciclo.
+ *
+ * Filtra por mismo dateKey para no mezclar historico de ciclos pasados:
+ * si en marzo se hizo DESPEJE en la suerte (COMPLETADA) y en mayo se
+ * programa otro DESPEJE, son CICLOS DISTINTOS — el viejo no consume
+ * area del nuevo.
  *
  * Sincronizado en tiempo real via Realtime: cuando otro operario notifica
  * 5 ha y la suerte total son 10, este operario ve "Falta 5 ha" sin recargar.
@@ -76,6 +82,7 @@ function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[])
     (a) =>
       a.suerteCode === assignment.suerteCode &&
       normalizeText(a.labor) === normalizeText(assignment.labor) &&
+      a.dateKey === assignment.dateKey &&
       (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
   )
   const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)

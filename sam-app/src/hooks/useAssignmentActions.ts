@@ -121,9 +121,12 @@ export function useAssignmentActions() {
     const draft = finishDrafts[assignment.id]
     const isComplete = draft?.isComplete ?? false
 
-    // Avance agregado de la suerte+labor entre TODOS los operarios que
-    // trabajan la misma suerte. Si OP-A ya hizo 5 de 10 ha, cuando OP-B
-    // finaliza solo puede registrar hasta 5 ha (el restante real).
+    // Avance agregado de la suerte+labor en el MISMO CICLO (mismo dateKey)
+    // entre todos los operarios que trabajan dicha suerte. Si OP-A ya hizo
+    // 5 de 10 ha hoy, cuando OP-B finaliza solo puede registrar hasta 5 ha.
+    // Filtramos por dateKey para no mezclar historico de meses pasados —
+    // si la suerte ya tuvo DESPEJE en marzo y hoy se programa otro
+    // DESPEJE, son ciclos distintos.
     const normalizedLabor = assignment.labor.trim().toUpperCase()
     const suerteExecutedOthers = assignments
       .filter(
@@ -131,6 +134,7 @@ export function useAssignmentActions() {
           a.id !== assignment.id &&
           a.suerteCode === assignment.suerteCode &&
           a.labor.trim().toUpperCase() === normalizedLabor &&
+          a.dateKey === assignment.dateKey &&
           (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
       )
       .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)

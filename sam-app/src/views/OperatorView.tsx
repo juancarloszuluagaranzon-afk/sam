@@ -62,6 +62,36 @@ function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: 
   return Math.max(0, totalArea - executed)
 }
 
+/**
+ * Calcula el avance "a nivel de suerte+labor" para una asignacion del
+ * operario. Si varios operarios estan trabajando la misma suerte+labor
+ * (caso de trabajo dividido), todos comparten un mismo "remaining" — lo
+ * hecho por el companero ya consume el area planificada.
+ *
+ * Sincronizado en tiempo real via Realtime: cuando otro operario notifica
+ * 5 ha y la suerte total son 10, este operario ve "Falta 5 ha" sin recargar.
+ */
+function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[]) {
+  const sameSuerteLabor = allAssignments.filter(
+    (a) =>
+      a.suerteCode === assignment.suerteCode &&
+      normalizeText(a.labor) === normalizeText(assignment.labor) &&
+      (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
+  )
+  const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
+  const ownExecuted = assignment.executedArea ?? 0
+  const sharedExecuted = Math.max(0, executedTotal - ownExecuted)
+  const remaining = Math.max(0, assignment.area - executedTotal)
+  return {
+    executedTotal,
+    sharedExecuted,
+    ownExecuted,
+    remaining,
+    hasProgress: executedTotal > 0,
+    hasSharedProgress: sharedExecuted > 0,
+  }
+}
+
 function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   // Solo COMPLETADA cuenta como "labor cerrada" para sugerir la siguiente.
   // Una PARCIAL todavia esta abierta y deberia ser la sugerida si existe.
@@ -212,33 +242,28 @@ export function OperatorView({
     }
   }, [activeAssignments, selectedActiveAssignment])
 
-  // Cuando el operario abre una PARCIAL para continuarla, pre-llenar el
-  // input con el AREA RESTANTE (no el acumulado previo). El operario
-  // ingresa "cuanto hizo en esta sesion"; si hizo todo lo que falta,
-  // simplemente confirma. Al finalizar, el valor se SUMA al executedArea
-  // previo (logica en useAssignmentActions.finishAssignment).
+  // Cuando el operario abre una labor con avance (propio O compartido con
+  // otro operario), pre-llenar el input con el AREA RESTANTE de la suerte.
+  // El operario ingresa "cuanto hizo en esta sesion". Al finalizar el valor
+  // se SUMA al executedArea previo (logica en finishAssignment).
   useEffect(() => {
     if (!selectedActiveAssignment) return
-    if (selectedActiveAssignment.status !== 'PARCIAL') return
-    if (selectedActiveAssignment.executedArea <= 0) return
-    const remaining = Math.max(
-      0,
-      selectedActiveAssignment.area - selectedActiveAssignment.executedArea,
-    )
+    const progress = getSuerteProgress(selectedActiveAssignment, assignments)
+    if (!progress.hasProgress) return
     setFinishDrafts((current) => {
       const existing = current[selectedActiveAssignment.id]
       if (existing && existing.area !== '') return current
       return {
         ...current,
         [selectedActiveAssignment.id]: {
-          area: remaining.toFixed(2),
+          area: progress.remaining.toFixed(2),
           notes: existing?.notes ?? '',
           horometroFinal: existing?.horometroFinal ?? '',
           isComplete: existing?.isComplete ?? false,
         },
       }
     })
-  }, [selectedActiveAssignment, setFinishDrafts])
+  }, [selectedActiveAssignment, assignments, setFinishDrafts])
 
 
   // Historial incluye COMPLETADA + CANCELADA + PARCIAL. Las PARCIAL aparecen
@@ -519,9 +544,15 @@ export function OperatorView({
               </article>
             </div>
             {activeAssignments.map((assignment) => {
-              const meta = getStatusMeta(assignment)
-              const isPartial = assignment.status === 'PARCIAL' && assignment.executedArea > 0
-              const remaining = Math.max(0, assignment.area - assignment.executedArea)
+              const progress = getSuerteProgress(assignment, assignments)
+              // Status derivado: si DB dice PENDIENTE pero otro operario ya
+              // avanzo en la suerte+labor, el operario lo ve como Parcial
+              // (refleja la realidad del campo aunque su row siga PENDIENTE).
+              const derivedStatus =
+                assignment.status === 'PENDIENTE' && progress.hasSharedProgress
+                  ? 'PARCIAL'
+                  : assignment.status
+              const meta = getStatusMeta({ ...assignment, status: derivedStatus })
               return (
                 <button
                   key={assignment.id}
@@ -539,18 +570,15 @@ export function OperatorView({
                         <span className="kind-badge libre">Campo</span>
                       )}{' '}
                       - {formatArea(assignment.area)}
+                      {progress.hasProgress && (
+                        <>
+                          {' · '}
+                          <span className="partial-inline">
+                            {formatArea(progress.executedTotal)} realizadas · Falta {formatArea(progress.remaining)}
+                          </span>
+                        </>
+                      )}
                     </p>
-                    {isPartial && (
-                      <p className="partial-summary">
-                        <span className="partial-summary__done">
-                          {formatArea(assignment.executedArea)} hechas
-                        </span>
-                        <span className="partial-summary__sep">·</span>
-                        <span className="partial-summary__remaining">
-                          Falta {formatArea(remaining)}
-                        </span>
-                      </p>
-                    )}
                   </div>
                   <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
                 </button>
@@ -576,9 +604,9 @@ export function OperatorView({
                         <strong>{a.haciendaName} - {a.suerte}</strong>
                         <span className="subtle-copy">
                           {a.labor} - {formatArea(a.area)}
-                          {a.status === 'PARCIAL' && a.executedArea > 0 && (
+                          {getSuerteProgress(a, assignments).hasProgress && (
                             <> · <strong style={{ color: 'var(--color-status-progress)' }}>
-                              Falta {formatArea(Math.max(0, a.area - a.executedArea))}
+                              Falta {formatArea(getSuerteProgress(a, assignments).remaining)}
                             </strong></>
                           )}
                         </span>
@@ -655,21 +683,25 @@ export function OperatorView({
                         </button>
                       </div>
                     ) : (() => {
-                      const isPartialContinuation = a.status === 'PARCIAL' && a.executedArea > 0
-                      const remainingArea = Math.max(0, a.area - a.executedArea)
+                      const progress = getSuerteProgress(a, assignments)
+                      const isPartialContinuation = progress.hasProgress
+                      const remainingArea = progress.remaining
                       const sessionMax = isPartialContinuation ? remainingArea : a.area
                       const completeRegistraStr = isPartialContinuation
                         ? `Se registra el faltante (${formatArea(remainingArea)})`
                         : `Se registran ${formatArea(a.area)}`
+                      const bannerText = progress.hasSharedProgress
+                        ? `Otro operario ya realizó ${formatArea(progress.sharedExecuted)}${progress.ownExecuted > 0 ? ` y tú ${formatArea(progress.ownExecuted)}` : ''}. Faltan ${formatArea(remainingArea)} de ${formatArea(a.area)}. Ingresa cuánto hiciste en esta sesión.`
+                        : `Acumulado previo: ${formatArea(a.executedArea)} de ${formatArea(a.area)}. Faltan ${formatArea(remainingArea)}. Ingresa cuánto hiciste en esta sesión.`
+                      const bannerTitle = progress.hasSharedProgress
+                        ? 'Labor compartida con otro operario'
+                        : 'Continuando labor parcial'
                       return (
                       <div className="finish-grid">
                         {isPartialContinuation && (
                           <div className="partial-progress-banner">
-                            <strong>Continuando labor parcial</strong>
-                            <span>
-                              Acumulado previo: {formatArea(a.executedArea)} de {formatArea(a.area)}.
-                              Faltan {formatArea(remainingArea)}. Ingresa cuánto hiciste en esta sesión.
-                            </span>
+                            <strong>{bannerTitle}</strong>
+                            <span>{bannerText}</span>
                           </div>
                         )}
                         <div className="complete-toggle-row">

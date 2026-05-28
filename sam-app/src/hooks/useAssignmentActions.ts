@@ -120,39 +120,64 @@ export function useAssignmentActions() {
   async function finishAssignment(assignment: Assignment) {
     const draft = finishDrafts[assignment.id]
     const isComplete = draft?.isComplete ?? false
-    const isPartialContinuation =
-      assignment.status === 'PARCIAL' && assignment.executedArea > 0
-    // El input del operario significa cosas distintas segun el estado:
-    //   - PARCIAL: el delta de ESTA sesion (se suma al executedArea previo)
-    //   - PENDIENTE/EN_PROCESO: el total ejecutado (reemplaza el previo)
-    // Toggle "completada al 100%" siempre completa hasta area total.
-    const remainingArea = Math.max(0, assignment.area - assignment.executedArea)
-    const sessionMax = isPartialContinuation ? remainingArea : assignment.area
-    const sessionDraftValue = Number(draft?.area ?? '')
 
-    let executedArea: number
-    if (isComplete) {
-      executedArea = assignment.area
-    } else if (isPartialContinuation) {
-      executedArea = assignment.executedArea + sessionDraftValue
-    } else {
-      executedArea = sessionDraftValue
-    }
+    // Avance agregado de la suerte+labor entre TODOS los operarios que
+    // trabajan la misma suerte. Si OP-A ya hizo 5 de 10 ha, cuando OP-B
+    // finaliza solo puede registrar hasta 5 ha (el restante real).
+    const normalizedLabor = assignment.labor.trim().toUpperCase()
+    const suerteExecutedOthers = assignments
+      .filter(
+        (a) =>
+          a.id !== assignment.id &&
+          a.suerteCode === assignment.suerteCode &&
+          a.labor.trim().toUpperCase() === normalizedLabor &&
+          (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
+      )
+      .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
+    const ownExecuted = assignment.executedArea ?? 0
+    const suerteRemaining = Math.max(
+      0,
+      assignment.area - (suerteExecutedOthers + ownExecuted),
+    )
+
+    // isOwnContinuation: el operario ya habia registrado avance propio
+    // antes (asignacion en estado PARCIAL con executedArea > 0). En ese
+    // caso el input del form es el DELTA de esta sesion (se suma al previo).
+    // Si no, el input es el aporte total de esta sesion (reemplaza).
+    const isOwnContinuation = ownExecuted > 0
+    const sessionMax = suerteRemaining
+    const sessionDraftValue = Number(draft?.area ?? '')
 
     if (!sessionDraftValue && !isComplete) {
       setError('Ingresa las hectareas ejecutadas antes de finalizar.')
       return
     }
-    if (!isComplete && sessionDraftValue > sessionMax) {
+    if (!isComplete && sessionDraftValue > sessionMax + 0.001) {
       const cap = formatArea(sessionMax)
       setError(
-        isPartialContinuation
-          ? `Lo ejecutado en esta sesion no puede superar el restante (${cap}).`
-          : `El area ejecutada no puede superar el area de la suerte (${cap}).`,
+        suerteExecutedOthers > 0
+          ? `Otro operario ya avanzo en esta suerte. Solo puedes registrar hasta ${cap}.`
+          : isOwnContinuation
+            ? `Lo ejecutado en esta sesion no puede superar el restante (${cap}).`
+            : `El area ejecutada no puede superar el area de la suerte (${cap}).`,
       )
       return
     }
-    // Defensa final: el total acumulado nunca debe exceder el area planificada
+
+    // Calculo del executedArea propio final:
+    //   - toggle 100%: completa la suerte aportando todo el restante
+    //   - continuando su propia parcial: suma al previo
+    //   - primer aporte: el draft es el total propio
+    let executedArea: number
+    if (isComplete) {
+      executedArea = ownExecuted + sessionMax
+    } else if (isOwnContinuation) {
+      executedArea = ownExecuted + sessionDraftValue
+    } else {
+      executedArea = sessionDraftValue
+    }
+    // Defensa final: el executedArea propio nunca debe exceder el area
+    // planificada de SU asignacion (cap individual).
     if (executedArea > assignment.area) {
       executedArea = assignment.area
     }
@@ -172,12 +197,17 @@ export function useAssignmentActions() {
     setError('')
 
     // Decision de status:
-    //   - isComplete=true (toggle "100%") o executedArea >= area → COMPLETADA
-    //   - executedArea < area → PARCIAL (sigue activa, operario u otro
-    //     pueden continuarla luego). Capamos a un epsilon para evitar
-    //     PARCIAL por redondeo.
+    //   - isComplete=true (toggle "100%") → COMPLETADA (operario decide cerrar)
+    //   - executedArea propio >= area planificada → COMPLETADA
+    //   - suerte completa por trabajo conjunto (this + others >= area)
+    //     → COMPLETADA: cualquier operario que aporte para cerrar la suerte
+    //     queda con su asignacion COMPLETADA, aunque su parte propia sea
+    //     menor al area planificada individual.
+    //   - en otro caso → PARCIAL (sigue activa).
     const eps = 0.001
-    const isFullyDone = isComplete || executedArea + eps >= assignment.area
+    const suerteFullyDone = suerteExecutedOthers + executedArea + eps >= assignment.area
+    const isFullyDone =
+      isComplete || executedArea + eps >= assignment.area || suerteFullyDone
     const finalStatus: 'COMPLETADA' | 'PARCIAL' = isFullyDone ? 'COMPLETADA' : 'PARCIAL'
 
     const finishPayload = {

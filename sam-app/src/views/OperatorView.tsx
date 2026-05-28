@@ -236,8 +236,16 @@ export function OperatorView({
   }, [selectedActiveAssignment, setFinishDrafts])
 
 
+  // Historial incluye COMPLETADA + CANCELADA + PARCIAL. Las PARCIAL aparecen
+  // tambien en "Activas" (siguen abiertas), pero el operario necesita ver
+  // su avance en el historial para entender cuanto lleva hecho del mes.
+  // Los KPIs (ha ejecutadas, eficiencia) suman PARCIAL; el conteo
+  // "completadas" sigue contando solo cierres definitivos.
   const historyAssignments = useMemo(
-    () => operatorAssignments.filter((a) => a.status === 'COMPLETADA' || a.status === 'CANCELADA'),
+    () =>
+      operatorAssignments.filter(
+        (a) => a.status === 'COMPLETADA' || a.status === 'CANCELADA' || a.status === 'PARCIAL',
+      ),
     [operatorAssignments],
   )
 
@@ -759,13 +767,19 @@ export function OperatorView({
                   <span>activas</span>
                 </div>
                 <div>
-                  <strong>{historyAssignments.length}</strong>
+                  <strong>
+                    {
+                      historyAssignments.filter(
+                        (a) => a.status === 'COMPLETADA' || a.status === 'CANCELADA',
+                      ).length
+                    }
+                  </strong>
                   <span>cerradas</span>
                 </div>
                 <div>
                   <strong>
                     {historyAssignments
-                      .filter((item) => item.status === 'COMPLETADA')
+                      .filter((item) => item.status === 'COMPLETADA' || item.status === 'PARCIAL')
                       .reduce((sum, item) => sum + item.executedArea, 0)
                       .toFixed(2)}
                   </strong>
@@ -810,9 +824,19 @@ export function OperatorView({
             </div>
 
             {(() => {
+              // Para los KPIs del Historial:
+              //   - "ha planificadas" y "ha ejecutadas" suman COMPLETADA + PARCIAL
+              //     (la PARCIAL ya tiene area trabajada que cuenta para el avance).
+              //   - "completadas" (count) cuenta solo COMPLETADA (cierres definitivos).
+              //   - "en curso" (count) cuenta PARCIAL (visibilidad de lo que falta).
+              //   - "eficiencia" = ejecutadas / planificadas sobre el mismo set.
+              const conAvance = filteredHistory.filter(
+                (a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL',
+              )
               const completadas = filteredHistory.filter((a) => a.status === 'COMPLETADA')
-              const haPlaneadas = completadas.reduce((sum, a) => sum + a.area, 0)
-              const haEjecutadas = completadas.reduce((sum, a) => sum + a.executedArea, 0)
+              const parciales = filteredHistory.filter((a) => a.status === 'PARCIAL')
+              const haPlaneadas = conAvance.reduce((sum, a) => sum + a.area, 0)
+              const haEjecutadas = conAvance.reduce((sum, a) => sum + a.executedArea, 0)
               const eficiencia = haPlaneadas ? Math.round((haEjecutadas / haPlaneadas) * 100) : 0
               return (
                 <div className="operator-kpi-grid" style={{ margin: '1rem 0 1.5rem' }}>
@@ -826,7 +850,10 @@ export function OperatorView({
                   </article>
                   <article className="operator-kpi-card operator-kpi-card--green">
                     <strong>{completadas.length}</strong>
-                    <span>{completadas.length === 1 ? 'completada' : 'completadas'}</span>
+                    <span>
+                      {completadas.length === 1 ? 'completada' : 'completadas'}
+                      {parciales.length > 0 ? ` (+${parciales.length} parcial${parciales.length > 1 ? 'es' : ''})` : ''}
+                    </span>
                   </article>
                   <article className={`operator-kpi-card ${eficiencia >= 70 ? 'operator-kpi-card--green' : eficiencia >= 30 ? 'operator-kpi-card--amber' : 'operator-kpi-card--red'}`}>
                     <strong>{haPlaneadas ? `${eficiencia}%` : '-'}</strong>

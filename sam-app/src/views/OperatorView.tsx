@@ -231,10 +231,24 @@ export function OperatorView({
 
   const activeAssignments = useMemo(
     () =>
-      operatorAssignments.filter(
-        (a) => a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL',
-      ),
-    [operatorAssignments],
+      operatorAssignments
+        .filter(
+          (a) => a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL',
+        )
+        // Si la suerte ya esta completa por trabajo conjunto en el mismo ciclo
+        // (remaining = 0 a nivel global de la suerte), no hay nada que el
+        // operario pueda hacer aqui — la asignacion sigue en DB con su
+        // executedArea propio pero no debe aparecer en Activas. El operario
+        // la vera en Historial con su aporte (5.00 ha) y el sistema preserva
+        // la atribucion. Aplica tanto a PARCIAL propia como a PENDIENTE puras
+        // (operario asignado que no aporto pero la suerte ya cerro).
+        .filter((a) => {
+          const progress = getSuerteProgress(a, assignments)
+          // Si la propia esta EN_PROCESO la dejamos siempre (operario adentro)
+          if (a.status === 'EN_PROCESO') return true
+          return progress.remaining > 0
+        }),
+    [operatorAssignments, assignments],
   )
 
   const [selectedActiveAssignment, setSelectedActiveAssignment] = useState<Assignment | null>(null)

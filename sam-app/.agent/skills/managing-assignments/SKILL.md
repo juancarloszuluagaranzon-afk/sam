@@ -70,6 +70,69 @@ Tres puntos de chequeo:
 
 **Permitido a propósito:** asignar la misma labor en la misma suerte a operarios distintos (el supervisor puede repartir trabajo entre dos operarios para acelerar).
 
+## Avance compartido entre operarios (multi-operario en la misma suerte)
+
+Cuando el supervisor asigna a OP-A y OP-B la misma labor + suerte, **ambos tienen su propia asignación en DB con `area` = área total de la suerte**. Comparten el trabajo en campo. Si OP-A reporta 5 ha de las 10 totales, OP-B debe ver al instante que ya solo le quedan 5 ha por hacer (no 10).
+
+Helper en `OperatorView.tsx`:
+
+```ts
+getSuerteProgress(assignment, allAssignments) → {
+  executedTotal,      // suma executedArea de todas las asignaciones COMPLETADA + PARCIAL de la misma suerte+labor (incluida la propia)
+  sharedExecuted,     // executedTotal - ownExecuted (lo aportado por otros operarios)
+  ownExecuted,        // assignment.executedArea
+  remaining,          // max(0, assignment.area - executedTotal)
+  hasProgress,        // executedTotal > 0
+  hasSharedProgress,  // sharedExecuted > 0
+}
+```
+
+Esto modifica:
+
+- **Card en Activas**: si `hasProgress`, agrega inline `"X.XX realizadas · Falta Y.YY"` con la clase `.partial-inline` (ámbar). NO crea una tercera línea — va en la misma línea de la labor.
+- **Status pill derivado**: si DB dice `PENDIENTE` pero `hasSharedProgress`, el badge se muestra como "Parcial". El status DB no cambia (sigue PENDIENTE hasta que el operario aporte).
+- **Sheet de detalle**: el banner ámbar cambia título según el caso ("Continuando labor parcial" propio vs "Labor compartida con otro operario" ajeno). Mensaje explica cuánto hizo cada uno y cuánto falta.
+- **Input pre-llenado** con `progress.remaining` (no solo el propio remaining).
+- **finishAssignment cap**: el sessionMax = remaining global de la suerte (no solo el propio). Mensaje específico: *"Otro operario ya avanzó en esta suerte. Solo puedes registrar hasta X ha."*
+
+## Semántica del input en el finish form (DELTA, no TOTAL)
+
+El campo "Ha ejecutadas" cambia su significado según el contexto:
+
+| Caso | El input representa | Al finalizar |
+|---|---|---|
+| PENDIENTE / EN_PROCESO sin shared progress | Total ejecutado de SU asignación | `executedArea = inputValue` |
+| PARCIAL propia (continuando) | **Delta de esta sesión** | `executedArea = previousOwn + inputValue` |
+| PENDIENTE con shared progress | Su aporte de esta sesión | `executedArea = inputValue` (primer aporte) |
+| Toggle "100%" (cualquier caso) | n/a | `executedArea = ownExecuted + sessionMax` |
+
+`sessionMax` = remaining global de la suerte. El input se pre-llena con `sessionMax` para que el operario solo confirme si hizo todo lo que faltaba.
+
+Label cambia para PARCIAL/multi-op: *"Ha ejecutadas en esta sesión"*. Para PENDIENTE puro: *"Ha ejecutadas"*.
+
+## Cierre por suerte completa (multi-operario)
+
+`isFullyDone` en `finishAssignment` ahora considera 3 condiciones:
+
+1. `isComplete` (toggle "100%" activado)
+2. `executedArea propio + ε >= assignment.area` (su parte sola cubre el total — caso single-operario)
+3. **`suerteExecutedOthers + executedArea propio + ε >= assignment.area`** (la suerte completa se cierra con el aporte conjunto)
+
+Sin la condición 3, en multi-operario las dos asignaciones quedarían PARCIAL para siempre aunque la suerte esté operativamente terminada. Con la condición 3, el operario que aporta para cerrar la suerte queda COMPLETADA aunque su parte sea menor al área planificada individual.
+
+## Historial del operario incluye PARCIAL
+
+`historyAssignments` = `COMPLETADA + CANCELADA + PARCIAL`. La PARCIAL aparece en **Activas** (para continuarla) Y en **Historial** (para ver avance del mes). Es decisión consciente — el badge ámbar la diferencia visualmente.
+
+KPIs del Historial:
+- `ha planificadas` y `ha ejecutadas` suman `COMPLETADA + PARCIAL`
+- `completadas` (count) cuenta solo `COMPLETADA`; el label muestra `(+N parciales)` si las hay
+- `eficiencia` = ejecutadas / planificadas sobre el set ampliado
+
+"Tu jornada" (pestaña Campo):
+- `cerradas` excluye PARCIAL
+- `ha ejecutadas` incluye PARCIAL
+
 ## WORKFLOW — Secuencia de labores
 
 El orden importa. Es la secuencia canónica para una suerte:
@@ -194,6 +257,16 @@ En estos dos componentes específicos, `getStatusMeta(assignment)` usa **"Progra
 La regla "Parcial" (`COMPLETADA && executedArea > 0 && executedArea < area`) es idéntica a la de SupervisorView/OperatorView — solo cambia el label de PENDIENTE.
 
 ## Gotchas
+
+- **[2026-05-28]** El input del finish form cambió de "TOTAL acumulado" a "DELTA de la sesión". Si una asignación está PARCIAL con executedArea = 5 y el operario ingresa "3", `finishAssignment` calcula `5 + 3 = 8`, NO `executedArea = 3` (que sería reemplazo). Para asignaciones PENDIENTE/EN_PROCESO sin avance previo, el comportamiento es retrocompatible (el input es el aporte total). Si tocas finishAssignment, NO confundir `sessionDraftValue` con `executedArea_final`.
+
+- **[2026-05-28]** En multi-operario, el `sessionMax` del finish form NO es el `area - executedArea` propio, sino el `remaining` global de la suerte (calculado por `getSuerteProgress`). Esto evita que dos operarios "se pasen" del área total de la suerte (cap de 10 ha aunque cada uno tenga `area = 10` en su DB row).
+
+- **[2026-05-28]** `isFullyDone` en finishAssignment tiene 3 condiciones — no eliminar la condición 3 (`suerteExecutedOthers + executedArea + eps >= assignment.area`). Sin ella, en multi-operario las dos asignaciones quedan PARCIAL para siempre aunque la suerte se haya terminado por trabajo conjunto.
+
+- **[2026-05-28]** El status DB sigue siendo PENDIENTE para una asignación de OP-B cuando OP-A ya finalizó parcial — el "Parcial" que ve OP-B es un **status derivado** calculado en el render del badge (`assignment.status === 'PENDIENTE' && progress.hasSharedProgress`). Si refactorizas getStatusMeta para aceptar `allAssignments`, mantén ambos caminos: el directo (legacy + PARCIAL) y el derivado (multi-operario).
+
+- **[2026-05-28]** Realtime channel `asignaciones-changes` en `useSync.ts` propaga cualquier UPDATE de la tabla y dispara un re-sync con debounce. NO requiere config extra para multi-operario — el `getSuerteProgress` recalcula automáticamente porque depende de `assignments`. Pero verifica que la tabla esté en la publication: `SELECT * FROM pg_publication_tables WHERE pubname = 'supabase_realtime';`.
 
 - **[2026-05-27]** Antes de agregar PARCIAL, el código usaba "Parcial" solo como **label visual** cuando `status === 'COMPLETADA' && executedArea < area`. Al migrar al status real PARCIAL, dejé el fallback legacy en `getStatusMeta` (4 archivos: `OperatorView`, `SupervisorView`, `AssignmentDetailModal`, `EntityHistoryModal`) para que asignaciones históricas cerradas con executed < area sigan mostrándose con label "Parcial". El nuevo `if (a.status === 'PARCIAL')` va PRIMERO, el legacy `if (a.status === 'COMPLETADA' && executedArea < area)` va después. NO eliminar el fallback hasta que se confirme que no quedan filas legacy en DB.
 

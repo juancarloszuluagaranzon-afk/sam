@@ -2,7 +2,7 @@
 
 Cheat-sheet para mantener y operar SAM en producción. Cuando algo se rompe, busca el síntoma en el índice y sigue los pasos. Cuando hagas un cambio recurrente, añádelo aquí.
 
-> **Última revisión**: 2026-05-27
+> **Última revisión**: 2026-05-28
 > **Mantenedores**: Iván García (ivan.garcia0969@gmail.com), socio (juancarloszuluagaranzon-afk).
 
 ---
@@ -598,6 +598,10 @@ systemctl reload sshd
 
 | Fecha | Cambio | Por |
 |---|---|---|
+| 2026-05-28 | Avance compartido entre operarios: card inline + Realtime entre dispositivos | Iván + Claude |
+| 2026-05-28 | Card de Activas compacta: avance inline (no tercera línea), "hechas" → "realizadas" | Iván + Claude |
+| 2026-05-28 | Input del finish form representa "lo de esta sesión" (delta), no el total acumulado | Iván + Claude |
+| 2026-05-28 | Historial muestra PARCIAL con su avance ejecutado (antes solo COMPLETADA/CANCELADA) | Iván + Claude |
 | 2026-05-27 | Validación: no duplicar asignaciones activas (suerte + labor + operario) | Iván + Claude |
 | 2026-05-27 | Supervisor puede reasignar operario desde modal de detalle de Labores | Iván + Claude |
 | 2026-05-27 | Dictado: mensajes en español + botón siempre visible (deshabilitado si no soportado) | Iván + Claude |

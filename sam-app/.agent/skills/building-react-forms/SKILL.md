@@ -136,6 +136,10 @@ setError('Mensaje de error.')
 
 ## Gotchas
 
+- **[2026-05-28]** Cuando un bloque JSX necesita variables computadas (ej. `progress = getSuerteProgress(a, assignments)` antes del return), envolverlo en IIFE: `{cond ? (...) : (() => { const x = ...; return (<JSX/>) })()}`. Cuidado con el cierre: la sintaxis correcta es `)})()` — un `)` cierra el `return(...)`, `}` cierra el body, `()` ejecuta. Si solo pones `)}` (como en el ternario simple), TypeScript no se queja pero el JSX queda mal balanceado y el runtime lanza error críptico.
+
+- **[2026-05-28]** Para mostrar info inline en una card sin agregar líneas extra (mantener compacta), usar `<span>` con clase de fondo destacado dentro del párrafo padre, NO `<p>` ni `<div>` que generan línea propia. Patrón: `<span className="partial-inline">5.00 realizadas · Falta 9.51 ha</span>` con `display: inline` + `background` + `border-radius`. La franja se ve como un "chip" inline ámbar.
+
 - **[2026-05-27]** Bottom sheet del operario (`.more-sheet`) tiene ancho FIJO de 440px en viewport >= 600px. El `.finish-grid` con 3 columnas (220px + 1fr + 180px ≈ 450px) DESBORDA dentro del sheet entre 600-900px (el media query @900px que lo colapsa a 1 col solo dispara más chico). Síntoma visual: labels superpuestos ("Ha ejecutadas" sobre "Horometro final"), botón "Finalizar" cortado, scroll horizontal. → Solución: forzar grid a 1 columna dentro del sheet con selector específico `.active-sheet .finish-grid, .more-sheet .finish-grid { grid-template-columns: 1fr; }`. También `overflow-x: hidden` + `box-sizing: border-box` en `.more-sheet` para defensa adicional. Mobile no se ve afectado (ya estaba en 1 col).
 
 - **[2026-05-27]** Para que un input "acumule" valor entre sesiones (caso PARCIAL: el operario continúa la labor al día siguiente y debe ver el `executedArea` previo), usar un `useEffect` que pre-llene el draft cuando se selecciona la asignación, con guard contra sobreescribir un draft en curso: `if (existing && existing.area !== '') return current`. El effect depende de `selectedActiveAssignment` y se vuelve a disparar si el server sync actualiza la asignación — el guard previene loops y pérdida de datos.

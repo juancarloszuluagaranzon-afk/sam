@@ -28,9 +28,15 @@ return { data: mapped, source: 'supabase' }
 | Tabla | Campos clave |
 |-------|-------------|
 | `asignaciones` | `id`, `suerte_codigo`, `numero_suerte`, `codigo_hacienda`, `nombre_hacienda`, `labor_nombre`, `tractor`, `equipo_codigo`, `equipo_nombre`, `area_asignada`, `estado`, `fecha_inicio`, `fecha_fin`, `area_realizada`, `observaciones`, `supervisor_id`, `supervisor_nombre`, `operador_id`, `operador_nombre`, `tipo_registro`, `created_at` |
-| `maestro_risaralda` | `hacienda`, `nombre_hacienda`, `suerte`, `area_neta`, `activo` |
+| `maestro_risaralda` | `hacienda`, `nombre_hacienda`, `suerte`, `area_neta`, `ingenio_id`, `activo`, `creado_manual`, `creado_por`, `creado_en` |
 | `app_usuarios` | `id`, `nombre_completo`, `rol`, `equipo_codigo`, `activo`, `orden` |
 | `equipos` | `codigo`, `nombre`, `activo` |
+
+### Constraints relevantes
+
+- `asignaciones_estado_check`: `estado IN ('PENDIENTE', 'EN_PROCESO', 'COMPLETADA', 'CANCELADA', 'PARCIAL')`
+- `uniq_maestro_suerte`: UNIQUE `(hacienda, suerte, ingenio_id)` en `maestro_risaralda` — evita duplicados ad-hoc cross-supervisores. Violación → error 23505 (PostgREST `unique_violation`).
+- `app_usuarios.rol` CHECK: `('supervisor', 'operador', 'owner', 'administracion')`
 
 ## mapAssignment — mapeo canónico
 
@@ -105,6 +111,10 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-05-29]** Al agregar columnas a `maestro_risaralda`, NO olvidar incluirlas en `select(...)` del `loadMaestro` y mapearlas en el `.map()` a camelCase en `MaestroRow`. Si solo agregas en la migración SQL, las columnas existen pero el cliente no las ve. Patrón: SQL → domain interface → loader select → loader map → uso en UI.
+
+- **[2026-05-29]** El error 23505 (`unique_violation`) de PostgREST viene como `error.code === '23505'`. En `createMaestroRow` se atrapa y se re-lanza como `new Error('DUPLICATE')` para que el llamador muestre un mensaje accionable sin exponer el error técnico al usuario. Patrón reusable para otros INSERTs con UNIQUE constraints.
+
 - **[2026-05-27]** Para agregar campos editables nuevos al `updateAssignment` (samApi.ts), recordar el mapeo camelCase → snake_case del DB: `operatorId → operador_id`, `operatorName → operador_nombre`, `equipmentCode → equipo_codigo`, etc. El `UpdateAssignmentInput` (domain/sam.ts) debe declarar el campo Y `updateAssignment` debe agregar la línea `if (input.X !== undefined) payload.x_snake = input.X`. Si solo agregas a uno de los dos lados, TypeScript no se queja pero el campo nunca llega a la DB.
 
 - **[2026-05-27]** El comando para verificar un CHECK constraint en Studio: `SELECT pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid = 'public.asignaciones'::regclass AND conname = 'asignaciones_estado_check';`. El resultado se trunca visualmente en la tabla del SQL Editor. Para confirmar inclusión de un valor específico sin truncado, usar: `SELECT CASE WHEN pg_get_constraintdef(oid) LIKE '%PARCIAL%' THEN 'OK' ELSE 'FALTA' END FROM pg_constraint WHERE conname = 'asignaciones_estado_check';`.

@@ -244,6 +244,30 @@ Si difieren: Vercel dashboard → Settings → Environment Variables → editar 
    varios operarios, asigna a operarios distintos en la misma suerte
    (eso sí está permitido).
 
+10. **Avance compartido filtrado por `dateKey`**: `getSuerteProgress`
+    (OperatorView) y `finishAssignment` (useAssignmentActions) solo
+    suman avance de asignaciones con **el mismo `dateKey`** que la
+    asignación actual. Esto evita que histórico de ciclos pasados
+    (DESPEJE de marzo COMPLETADA) infle el cap del frente actual
+    (DESPEJE de mayo en la misma suerte). Asignaciones "zombie" con
+    `remaining = 0` se ocultan de "Activas" (siguen en Historial con
+    su `executedArea` propio).
+
+11. **Maestro permite creación ad-hoc**: el botón "+ Nueva suerte" en
+    Asignar y Tomar campo crea filas en `maestro_risaralda` con
+    `creado_manual = true` cuando una suerte aún no está en el
+    catálogo oficial del ingenio. Funciona también para crear
+    haciendas nuevas (escribiendo un código que no existe). Migración
+    canónica: `supabase/migrations/20260529120000_maestro_creado_manual.sql`.
+    Constraint UNIQUE `(hacienda, suerte, ingenio_id)` evita
+    duplicados cross-usuarios.
+
+12. **Nombres de hacienda en MAYÚSCULAS**: el catálogo oficial usa
+    mayúsculas (`"SAN MIGUEL"`, `"EL BRASIL"`). El input del modal
+    de creación aplica `.toUpperCase()` en `onChange` para mantener
+    consistencia. Si se agrega otro punto de entrada al maestro,
+    aplicar la misma normalización.
+
 ---
 
 ## URLs y referencias

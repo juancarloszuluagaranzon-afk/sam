@@ -70,6 +70,23 @@ Tres puntos de chequeo:
 
 **Permitido a propósito:** asignar la misma labor en la misma suerte a operarios distintos (el supervisor puede repartir trabajo entre dos operarios para acelerar).
 
+## Filtro por `dateKey` en avance compartido
+
+**CRÍTICO:** `getSuerteProgress` y el cálculo del cap en `finishAssignment` filtran por **`dateKey === assignment.dateKey`**. Sin este filtro, asignaciones COMPLETADAs históricas de ciclos pasados (ej: DESPEJE en marzo) sumarían al `executedTotal` del frente operativo actual (ej: DESPEJE en mayo) y romperían las cards: aparecerían como "X realizadas · Falta 0" o incluso con totales que exceden el área planificada.
+
+Cada `dateKey` representa un **ciclo agrícola independiente**: dos asignaciones de la misma suerte+labor en fechas distintas son ciclos distintos y no comparten avance. Solo se "fusionan" las del mismo día de programación (caso de varios operarios divididos por el supervisor).
+
+## Asignaciones "zombie" — filtrar de Activas si `remaining = 0`
+
+Si la suerte se cierra por trabajo conjunto (otro operario aportó lo suficiente), las asignaciones del mismo ciclo del mismo operario con `executedArea` parcial pueden quedar **huérfanas en Activas** con un cap de 0 — el operario no puede agregar nada pero la card sigue ahí confundiendo.
+
+`activeAssignments` aplica un segundo filter:
+- Si `progress.remaining > 0` → muestra (aún hay trabajo)
+- Si `remaining = 0` y status `EN_PROCESO` → muestra igual (operario está adentro, no se la quitamos a medio camino)
+- Si `remaining = 0` y status PENDIENTE/PARCIAL → **oculta** (suerte cerrada, nada que hacer)
+
+La asignación sigue en DB con su `executedArea` propio (no se borra ni modifica el status) — preserva atribución para métricas y reportes. El operario la ve en **Historial** con su aporte real.
+
 ## Avance compartido entre operarios (multi-operario en la misma suerte)
 
 Cuando el supervisor asigna a OP-A y OP-B la misma labor + suerte, **ambos tienen su propia asignación en DB con `area` = área total de la suerte**. Comparten el trabajo en campo. Si OP-A reporta 5 ha de las 10 totales, OP-B debe ver al instante que ya solo le quedan 5 ha por hacer (no 10).
@@ -257,6 +274,10 @@ En estos dos componentes específicos, `getStatusMeta(assignment)` usa **"Progra
 La regla "Parcial" (`COMPLETADA && executedArea > 0 && executedArea < area`) es idéntica a la de SupervisorView/OperatorView — solo cambia el label de PENDIENTE.
 
 ## Gotchas
+
+- **[2026-05-29]** Bug visible reportado: SAN MIGUEL 020 mostraba "34.02 ha realizadas" cuando el área es 14.51. Causa: `getSuerteProgress` sumaba 2 VALENCIA COMPLETADAs históricas (14.51 c/u, ciclos viejos) + DOMÍNGUEZ PARCIAL (5.00). Fix permanente: filtrar por `dateKey === assignment.dateKey` en `getSuerteProgress` Y en el cálculo de `suerteExecutedOthers` en `finishAssignment`. NO eliminar este filtro.
+
+- **[2026-05-29]** Las asignaciones "zombie" (PARCIAL del operario con `remaining = 0` por trabajo conjunto de otro operario) deben filtrarse de `activeAssignments` para no confundir al operario. EXCEPCIÓN: si la asignación está EN_PROCESO, dejarla aunque `remaining = 0` (operario está adentro). La asignación sigue en DB intacta — solo cambia el render. Aparece en Historial con su `executedArea` propio.
 
 - **[2026-05-28]** El input del finish form cambió de "TOTAL acumulado" a "DELTA de la sesión". Si una asignación está PARCIAL con executedArea = 5 y el operario ingresa "3", `finishAssignment` calcula `5 + 3 = 8`, NO `executedArea = 3` (que sería reemplazo). Para asignaciones PENDIENTE/EN_PROCESO sin avance previo, el comportamiento es retrocompatible (el input es el aporte total). Si tocas finishAssignment, NO confundir `sessionDraftValue` con `executedArea_final`.
 

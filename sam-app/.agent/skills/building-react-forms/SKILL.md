@@ -136,6 +136,10 @@ setError('Mensaje de error.')
 
 ## Gotchas
 
+- **[2026-05-29]** Para inputs que deben quedar siempre en mayúsculas (ej: nombre de hacienda en `NewSuerteModal`), aplicar 3 capas: (1) `onChange={(e) => setValue(e.target.value.toUpperCase())}` — el value en estado/DB queda en mayúsculas; (2) `autoCapitalize="characters"` — hint al teclado móvil para abrir directo en Caps Lock; (3) `style={{ textTransform: 'uppercase' }}` — respaldo visual. La capa 1 es la importante; las otras dos mejoran UX. Aplicar también al setter cuando se autocomplete desde otra fuente (ej: `handleHaciendaChange`) para consistencia.
+
+- **[2026-05-29]** Cuando un modal se abre desde dentro de un bottom sheet (`.more-sheet` z-index 195 o `.assign-sheet` 195) o del menú lateral (`.side-drawer` z-index 210), el `.modal-overlay` genérico (z-index 100) queda DETRÁS del sheet padre. Fix: agregar una clase específica al overlay del nuevo modal con z-index >= 250. Patrón: `<div className="modal-overlay nombre-modal-overlay open">` + en CSS `.nombre-modal-overlay { z-index: 250 }`. Sin esto, el modal aparece pero se ve traslúcido o tapado.
+
 - **[2026-05-28]** Cuando un bloque JSX necesita variables computadas (ej. `progress = getSuerteProgress(a, assignments)` antes del return), envolverlo en IIFE: `{cond ? (...) : (() => { const x = ...; return (<JSX/>) })()}`. Cuidado con el cierre: la sintaxis correcta es `)})()` — un `)` cierra el `return(...)`, `}` cierra el body, `()` ejecuta. Si solo pones `)}` (como en el ternario simple), TypeScript no se queja pero el JSX queda mal balanceado y el runtime lanza error críptico.
 
 - **[2026-05-28]** Para mostrar info inline en una card sin agregar líneas extra (mantener compacta), usar `<span>` con clase de fondo destacado dentro del párrafo padre, NO `<p>` ni `<div>` que generan línea propia. Patrón: `<span className="partial-inline">5.00 realizadas · Falta 9.51 ha</span>` con `display: inline` + `background` + `border-radius`. La franja se ve como un "chip" inline ámbar.

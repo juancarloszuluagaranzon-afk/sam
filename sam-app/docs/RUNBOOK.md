@@ -2,7 +2,7 @@
 
 Cheat-sheet para mantener y operar SAM en producción. Cuando algo se rompe, busca el síntoma en el índice y sigue los pasos. Cuando hagas un cambio recurrente, añádelo aquí.
 
-> **Última revisión**: 2026-05-28
+> **Última revisión**: 2026-05-29
 > **Mantenedores**: Iván García (ivan.garcia0969@gmail.com), socio (juancarloszuluagaranzon-afk).
 
 ---
@@ -63,6 +63,8 @@ Cheat-sheet para mantener y operar SAM en producción. Cuando algo se rompe, bus
 **Roles válidos** (CHECK constraint en `app_usuarios.rol`): `supervisor`, `operador`, `owner`, `administracion`.
 
 **Estados de asignación válidos** (CHECK constraint en `asignaciones.estado`): `PENDIENTE`, `EN_PROCESO`, `COMPLETADA`, `CANCELADA`, `PARCIAL`. El estado `PARCIAL` se usa cuando el operario finaliza con `area_realizada < area_asignada` — la labor sigue activa y puede continuarse.
+
+**Maestro `maestro_risaralda`** soporta creación ad-hoc desde la app: las suertes nuevas que aún no están en el catálogo oficial del ingenio se pueden crear directamente con el botón **"+ Nueva suerte"** del form de Asignar (supervisor) o Tomar suerte en campo (operario). Quedan marcadas con `creado_manual = true`, `creado_por`, `creado_en` para auditoría. Constraint `uniq_maestro_suerte` UNIQUE `(hacienda, suerte, ingenio_id)` evita duplicados cross-usuarios simultáneos.
 
 ---
 
@@ -396,6 +398,41 @@ RETURNING id, nombre_completo, rol, activo;
 
 Cambia `'Nombre Completo Aqui'`, `'operador'` (o `supervisor`/`owner`/`administracion`), y `'1234'` (PIN inicial) por los valores reales.
 
+### Auditar suertes creadas manualmente desde la app
+
+Las suertes que el supervisor u operario crearon ad-hoc (porque aún no estaban en el catálogo del ingenio) quedan con `creado_manual = true`. Para revisarlas:
+
+```sql
+-- Las más recientes primero
+SELECT hacienda, nombre_hacienda, suerte, area_neta, ingenio_id, creado_por, creado_en
+FROM public.maestro_risaralda
+WHERE creado_manual = true
+ORDER BY creado_en DESC;
+```
+
+Cuando el ingenio envíe el catálogo oficial actualizado y traiga la misma suerte:
+
+```sql
+-- Validar y "absorber" en el catálogo oficial (área del oficial gana, marca queda limpia)
+UPDATE public.maestro_risaralda
+SET area_neta = <ÁREA_OFICIAL>,
+    creado_manual = false
+WHERE hacienda = '<CODIGO_HAC>'
+  AND suerte = '<NUMERO_SUERTE>'
+  AND ingenio_id = '<INGENIO>';
+```
+
+Si la suerte manual fue un error (escrita mal o nunca existió):
+
+```sql
+-- Soft delete (no aparece más en cliente, pero queda para historial de asignaciones)
+UPDATE public.maestro_risaralda
+SET activo = false
+WHERE hacienda = '<CODIGO_HAC>'
+  AND suerte = '<NUMERO_SUERTE>'
+  AND ingenio_id = '<INGENIO>';
+```
+
 ### Reactivar / desactivar usuario
 
 ```bash
@@ -598,6 +635,11 @@ systemctl reload sshd
 
 | Fecha | Cambio | Por |
 |---|---|---|
+| 2026-05-29 | Migración `20260529120000_maestro_creado_manual.sql` aplicada en VPS (columnas + UNIQUE) | Iván + Claude |
+| 2026-05-29 | Nombres de hacienda forzados a MAYÚSCULAS en input + autoCapitalize móvil | Iván + Claude |
+| 2026-05-29 | Botón "+ Nueva suerte" en form de Asignar y Tomar campo (supervisor + operario) | Iván + Claude |
+| 2026-05-29 | Activas oculta asignaciones zombie (suerte cerrada por trabajo conjunto, remaining=0) | Iván + Claude |
+| 2026-05-29 | Fix avance compartido por `dateKey`: no mezcla histórico de ciclos pasados | Iván + Claude |
 | 2026-05-28 | Avance compartido entre operarios: card inline + Realtime entre dispositivos | Iván + Claude |
 | 2026-05-28 | Card de Activas compacta: avance inline (no tercera línea), "hechas" → "realizadas" | Iván + Claude |
 | 2026-05-28 | Input del finish form representa "lo de esta sesión" (delta), no el total acumulado | Iván + Claude |

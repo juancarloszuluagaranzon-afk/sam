@@ -3476,6 +3476,69 @@ button.movement-row--clickable:active {
 }
 
 /* ============================================================
+   NEW SUERTE — boton "+ Nueva suerte" y modal
+   ============================================================ */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.new-suerte-btn {
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  color: var(--color-brand);
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.new-suerte-btn:hover {
+  background: var(--color-bg-muted);
+  border-color: var(--color-brand);
+}
+:root[data-theme="dark"] .new-suerte-btn {
+  color: var(--color-brand-mid);
+}
+
+/* Etiqueta "manual" en suertes creadas ad-hoc para distinguirlas
+   visualmente de las del catalogo oficial. */
+.suerte-manual-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: #faf6ec;
+  color: #6b4500;
+  border: 1px solid #ebe1c5;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+:root[data-theme="dark"] .suerte-manual-tag {
+  background: #3a2e12;
+  color: #ffe28a;
+  border-color: #5a4825;
+}
+
+.new-suerte-card {
+  max-width: min(440px, calc(100vw - 32px));
+}
+.new-suerte-card .eyebrow {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-ink-light);
+}
+
+/* ============================================================
    THEME TOGGLE
    Dos variantes:
    - header: botón translúcido sobre la barra verde corporativa

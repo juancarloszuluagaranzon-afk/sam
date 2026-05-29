@@ -10,6 +10,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { NewSuerteModal } from '../components/NewSuerteModal'
 import {
   EntityHistoryModal,
   matchesSummaryFilter,
@@ -213,12 +214,13 @@ export function SupervisorView({
   const {
     session,
     isOnline, outboxCount, busy, error, info,
-    operators, users, assignments, setAssignments, maestro, todayKey, sortedEquipment, operatorStatusMap,
+    operators, users, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
   } = useAppData()
 
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
+  const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
 
   const {
     assignmentForm, updateAssignmentForm,
@@ -561,6 +563,39 @@ export function SupervisorView({
           onAssignmentsReloaded={setAssignments}
         />
       )}
+
+      <NewSuerteModal
+        open={isNewSuerteOpen}
+        onClose={() => setIsNewSuerteOpen(false)}
+        createdBy={session.id}
+        haciendas={Array.from(
+          // Lista de haciendas conocidas para auto-completar codigo y nombre.
+          // Se construye desde el maestro filtrado al ingenio actual para
+          // sugerir solo haciendas del mismo ingenio (consistencia visual).
+          new Map(
+            maestro
+              .filter((row) => !assignmentForm.ingenioId || row.ingenio_id === assignmentForm.ingenioId)
+              .map((row) => [row.haciendaCode, { code: row.haciendaCode, name: row.haciendaName }]),
+          ).values(),
+        )}
+        ingenios={INGENIOS}
+        maestro={maestro}
+        prefillHaciendaCode={assignmentForm.haciendaCode}
+        prefillIngenioId={assignmentForm.ingenioId}
+        onCreated={(row) => {
+          // 1. Sumar la nueva fila al estado global del maestro: aparece
+          //    de inmediato en el dropdown y la lista de haciendas.
+          setMaestro((prev) => [...prev, row])
+          // 2. Auto-seleccionar para minimizar el tecleo del supervisor:
+          //    setea hacienda + ingenio + agrega la suerte al checklist.
+          updateAssignmentForm('haciendaCode', row.haciendaCode)
+          updateAssignmentForm('ingenioId', row.ingenio_id)
+          if (!assignmentSuertesList.includes(row.suerte)) {
+            toggleAssignmentSuerte(row.suerte)
+          }
+          setInfo(`Suerte ${row.suerte} creada en ${row.haciendaName}.`)
+        }}
+      />
 
       {!isOnline && (
         <div className="offline-banner">
@@ -2307,7 +2342,19 @@ export function SupervisorView({
                 />
               </label>
               <div>
-                <span className="field-label">Suertes</span>
+                <div className="field-label-row">
+                  <span className="field-label">Suertes</span>
+                  {assignmentForm.ingenioId && (
+                    <button
+                      type="button"
+                      className="inline-button new-suerte-btn"
+                      onClick={() => setIsNewSuerteOpen(true)}
+                      title="Crear una suerte que aun no este en el maestro del ingenio"
+                    >
+                      + Nueva suerte
+                    </button>
+                  )}
+                </div>
                 {assignmentForm.haciendaCode ? (
                   <ul className="suertes-checklist">
                     {assignmentSuertes.map((row) => {
@@ -2326,6 +2373,9 @@ export function SupervisorView({
                               disabled={!!isCompleted}
                             />
                             <span className="suerte-check-code">{row.suerte}</span>
+                            {row.creadoManual && (
+                              <span className="suerte-manual-tag" title="Suerte creada manualmente, aun no en el catalogo oficial del ingenio">manual</span>
+                            )}
                             {isCompleted
                               ? <span className="suerte-check-done">Completa</span>
                               : <span className="suerte-check-area">{formatArea(remaining)}</span>

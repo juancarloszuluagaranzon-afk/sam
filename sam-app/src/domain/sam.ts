@@ -46,6 +46,24 @@ export interface MaestroRow {
   suerte: string
   area: number
   ingenio_id: string
+  // Flag de auditoria: distingue suertes oficiales del ingenio (false)
+  // de las creadas ad-hoc desde la app cuando el catalogo del ingenio
+  // aun no las tiene (true). Cuando el ingenio sincronice, se puede
+  // revisar y conciliar las marcadas como manuales.
+  creadoManual?: boolean
+  creadoPor?: string
+}
+
+// Input para crear una suerte ad-hoc desde la app. La completa el
+// supervisor u operario en el modal "+ Nueva suerte" cuando una
+// suerte que necesita aun no esta en el maestro oficial del ingenio.
+export interface CreateMaestroRowInput {
+  haciendaCode: string
+  haciendaName: string
+  suerte: string
+  area: number
+  ingenio_id: string
+  createdBy: string
 }
 
 export interface Assignment {

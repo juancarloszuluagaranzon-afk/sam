@@ -220,7 +220,7 @@ export async function loadMaestro(): Promise<{
     while (hasMore) {
       const { data, error } = await supabase
         .from('maestro_risaralda')
-        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id')
+        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
         .eq('activo', true)
         .order('hacienda')
         .order('suerte')
@@ -250,6 +250,8 @@ export async function loadMaestro(): Promise<{
         suerte: row.suerte,
         area: Number(row.area_neta),
         ingenio_id: String(row.ingenio_id ?? 'risaralda'),
+        creadoManual: row.creado_manual === true,
+        creadoPor: row.creado_por ?? undefined,
       }))
 
     void (async () => {
@@ -269,6 +271,70 @@ export async function loadMaestro(): Promise<{
     if (cached.length) return { data: cached, source: 'fallback' }
     return { data: LOCAL_MAESTRO, source: 'fallback' }
   }
+}
+
+/**
+ * Crea una suerte ad-hoc en el maestro. Se usa cuando el supervisor u
+ * operario llega a una suerte que aun no esta en el catalogo oficial
+ * del ingenio. Marca la fila con creado_manual=true para auditoria.
+ *
+ * Errores manejados:
+ *   - 23505 (unique_violation): la combinacion hacienda+suerte+ingenio_id
+ *     ya existe. El llamador debe mostrar "esa suerte ya existe,
+ *     seleccionala del listado".
+ *   - otros: re-lanza para que la UI muestre mensaje generico.
+ */
+export async function createMaestroRow(
+  input: import('../domain/sam').CreateMaestroRowInput,
+): Promise<MaestroRow> {
+  const payload = {
+    hacienda: input.haciendaCode,
+    nombre_hacienda: input.haciendaName,
+    suerte: input.suerte,
+    area_neta: input.area,
+    ingenio_id: input.ingenio_id,
+    activo: true,
+    creado_manual: true,
+    creado_por: input.createdBy,
+    creado_en: new Date().toISOString(),
+  }
+
+  const { data, error } = await supabase
+    .from('maestro_risaralda')
+    .insert(payload)
+    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+    .single()
+
+  if (error) {
+    // Codigo PostgREST/Postgres 23505: violacion de unique constraint.
+    if ((error as { code?: string }).code === '23505') {
+      throw new Error('DUPLICATE')
+    }
+    throw error
+  }
+  if (!data) {
+    throw new Error('No se pudo crear la suerte.')
+  }
+
+  const row: MaestroRow = {
+    haciendaCode: String(data.hacienda),
+    haciendaName: data.nombre_hacienda,
+    suerte: data.suerte,
+    area: Number(data.area_neta),
+    ingenio_id: String(data.ingenio_id ?? 'risaralda'),
+    creadoManual: data.creado_manual === true,
+    creadoPor: data.creado_por ?? undefined,
+  }
+
+  // Refleja la nueva fila en el cache local de Dexie para que aparezca
+  // de inmediato en el dropdown sin esperar al proximo loadMaestro.
+  try {
+    await db.maestro.put(row)
+  } catch {
+    /* sin cache no falla — la proxima carga de maestro la traera */
+  }
+
+  return row
 }
 
 // IDs de asignaciones con un cambio local pendiente de enviar (outbox

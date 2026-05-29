@@ -3538,6 +3538,33 @@ button.movement-row--clickable:active {
   color: var(--color-ink-light);
 }
 
+/* El modal de Nueva suerte se abre por encima del bottom sheet de
+   Asignar (z-index 195) y del menu lateral (z-index 210). Subir su
+   overlay a 250 garantiza que quede al frente con su backdrop oscuro
+   real (sin la transparencia del sheet padre). */
+.new-suerte-overlay {
+  z-index: 250;
+}
+
+/* Hint verde que aparece debajo del codigo de hacienda cuando el
+   supervisor escribio un codigo que no existe en el catalogo del
+   ingenio actual — confirma que se va a crear una hacienda nueva
+   (no solo una suerte) junto con la suerte. */
+.new-hacienda-hint {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--color-brand);
+  background: var(--color-status-done-bg);
+  border-radius: 6px;
+}
+:root[data-theme="dark"] .new-hacienda-hint {
+  color: #7fdca0;
+  background: #18331f;
+}
+
 /* ============================================================
    THEME TOGGLE
    Dos variantes:

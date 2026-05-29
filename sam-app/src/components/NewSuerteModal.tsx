@@ -140,9 +140,22 @@ export function NewSuerteModal({
 
   if (!open) return null
 
+  // Detecta si el codigo de hacienda escrito ya existe en el maestro del
+  // ingenio seleccionado. Si NO existe, vamos a crear una hacienda nueva
+  // (al insertar la primera suerte de ella). Mostramos un badge claro
+  // para que el supervisor sepa lo que esta haciendo.
+  const trimmedHaciendaCode = haciendaCode.trim()
+  const isNewHacienda = Boolean(
+    trimmedHaciendaCode &&
+      ingenioId &&
+      !maestro.some(
+        (row) => row.haciendaCode === trimmedHaciendaCode && row.ingenio_id === ingenioId,
+      ),
+  )
+
   return (
     <div
-      className="modal-overlay open"
+      className="modal-overlay new-suerte-overlay open"
       onClick={(e) => {
         e.stopPropagation()
         if (!busy) onClose()
@@ -154,8 +167,8 @@ export function NewSuerteModal({
       >
         <div className="labor-detail-header">
           <div>
-            <p className="eyebrow">Maestro de suertes</p>
-            <h3>Nueva suerte</h3>
+            <p className="eyebrow">Maestro</p>
+            <h3>Nueva suerte o hacienda</h3>
           </div>
           <button
             type="button"
@@ -169,9 +182,10 @@ export function NewSuerteModal({
         </div>
 
         <p className="subtle-copy" style={{ marginTop: 0 }}>
-          Solo usar cuando la suerte real del campo no aparece en el
-          listado oficial. Queda marcada como creada manualmente para
-          revision posterior.
+          Usalo cuando la suerte (o la hacienda completa) no aparece
+          en el listado oficial del ingenio. Si la hacienda tampoco
+          existe, escribe un codigo nuevo y se crea junto con la suerte.
+          Queda marcada como creada manualmente para revision posterior.
         </p>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -195,7 +209,7 @@ export function NewSuerteModal({
               type="text"
               value={haciendaCode}
               onChange={(e) => handleHaciendaChange(e.target.value)}
-              placeholder="Ej: 105"
+              placeholder="Existente del catalogo o nuevo (ej: 105)"
               disabled={busy}
               list="hacienda-codes-datalist"
             />
@@ -204,6 +218,11 @@ export function NewSuerteModal({
                 <option key={h.code} value={h.code}>{h.name}</option>
               ))}
             </datalist>
+            {isNewHacienda && (
+              <small className="new-hacienda-hint">
+                + Hacienda nueva — se creara al guardar
+              </small>
+            )}
           </label>
 
           <label>

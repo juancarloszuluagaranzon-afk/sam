@@ -71,11 +71,13 @@ export function NewSuerteModal({
 
   // Cuando el usuario cambia la hacienda manualmente desde el select,
   // pre-llenamos su nombre. Si escribe una hacienda nueva, el nombre
-  // queda vacio para que la complete.
+  // queda vacio para que la complete. Los nombres siempre van en
+  // MAYUSCULAS para consistencia con el catalogo oficial del ingenio
+  // (ej: "SAN MIGUEL", "EL BRASIL") y con los reportes.
   function handleHaciendaChange(code: string) {
     setHaciendaCode(code)
     const hacienda = haciendas.find((h) => h.code === code)
-    setHaciendaName(hacienda?.name ?? '')
+    setHaciendaName((hacienda?.name ?? '').toUpperCase())
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -230,9 +232,11 @@ export function NewSuerteModal({
             <input
               type="text"
               value={haciendaName}
-              onChange={(e) => setHaciendaName(e.target.value)}
+              onChange={(e) => setHaciendaName(e.target.value.toUpperCase())}
               placeholder="Ej: SAN MIGUEL"
               disabled={busy}
+              autoCapitalize="characters"
+              style={{ textTransform: 'uppercase' }}
             />
           </label>
 

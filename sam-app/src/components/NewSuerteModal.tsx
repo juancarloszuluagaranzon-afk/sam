@@ -49,9 +49,14 @@ export function NewSuerteModal({
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
-  // Cada vez que se abre el modal, reinicia campos y pre-llena lo que
-  // el padre haya pasado. Si la hacienda pre-llenada existe en el
-  // catalogo, tambien rellena su nombre para que el usuario no la teclee.
+  // Reinicia campos y pre-llena SOLO al abrir el modal (transicion
+  // cerrado -> abierto). IMPORTANTE: la dependencia es unicamente `open`.
+  // No incluir `haciendas`/prefills aqui: ese array es recalculado por el
+  // padre en cada render (derivado del maestro), y al llegar un evento de
+  // Realtime mientras el modal esta abierto, su referencia cambia, el
+  // efecto se re-dispara y BORRA lo que el usuario ya escribio. Leemos los
+  // prefills/haciendas por closure en el momento de abrir, que es justo lo
+  // que queremos.
   useEffect(() => {
     if (!open) return
     setError('')
@@ -67,7 +72,8 @@ export function NewSuerteModal({
       setHaciendaCode('')
       setHaciendaName('')
     }
-  }, [open, prefillHaciendaCode, prefillIngenioId, haciendas])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
 
   // Cuando el usuario cambia la hacienda manualmente desde el select,
   // pre-llenamos su nombre. Si escribe una hacienda nueva, el nombre

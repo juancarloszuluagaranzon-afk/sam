@@ -2339,6 +2339,34 @@ th {
   color: #155b30;
 }
 
+/* Dark mode: el checklist de suertes usaba tinta casi negra (#161a14)
+   sobre superficie oscura y quedaba ilegible. Forzamos tinta clara
+   (codigo en blanco, area en gris claro) y superficies/divisores con
+   los tokens dark para mantener contraste y jerarquia. */
+:root[data-theme="dark"] .suertes-checklist {
+  border-color: var(--color-border);
+  background: var(--color-bg-soft);
+}
+:root[data-theme="dark"] .suerte-check-item {
+  border-bottom-color: var(--color-divider);
+}
+:root[data-theme="dark"] .suerte-check-item:hover {
+  background: var(--color-bg-elevated);
+}
+:root[data-theme="dark"] .suerte-check-code {
+  color: var(--color-ink);
+}
+:root[data-theme="dark"] .suerte-check-area {
+  color: var(--color-ink-mid);
+}
+:root[data-theme="dark"] .suerte-check-done {
+  color: var(--color-status-done);
+  background: var(--color-status-done-bg);
+}
+:root[data-theme="dark"] .suertes-count {
+  color: var(--color-brand-mid);
+}
+
 /* Resumen inline de avance en la card de Activas cuando hay area ya
    realizada (propia o por otro operario en la misma suerte+labor).
    Va en la MISMA linea de "DESPEJE Prog. - 14.51 ha" para mantener la

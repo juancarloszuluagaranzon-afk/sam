@@ -174,12 +174,28 @@ export function NewSuerteModal({
       ),
   )
 
+  // ¿El formulario tiene datos a medio escribir? Si es asi, un toque en el
+  // backdrop NO debe cerrar el modal y descartar el trabajo. En movil, al
+  // enfocar el campo "Area" (type=number) se abre el teclado numerico, el
+  // layout salta, y un toque accidental caia en el overlay -> cerraba el
+  // modal -> al reabrir, el reset dejaba todo en blanco. (Sintoma: "la
+  // primera vez me saca al poner el area".) Con datos, solo se cierra con
+  // la X o Cancelar (acciones explicitas).
+  const isDirty = Boolean(
+    haciendaCode || haciendaName || suerte || areaStr || ingenioId,
+  )
+
   return (
     <div
       className="modal-overlay new-suerte-overlay open"
       onClick={(e) => {
         e.stopPropagation()
-        if (!busy) onClose()
+        // Solo cierra en un click REAL sobre el backdrop (no burbujeado
+        // desde un hijo), si no hay creacion en curso y si el form esta
+        // limpio. Asi un toque accidental en el fondo no borra lo escrito.
+        if (e.target !== e.currentTarget) return
+        if (busy || isDirty) return
+        onClose()
       }}
     >
       <div

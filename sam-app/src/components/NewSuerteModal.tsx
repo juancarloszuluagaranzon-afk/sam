@@ -133,7 +133,20 @@ export function NewSuerteModal({
           'Otro usuario ya creo esa suerte. Cierra este modal y selecciónala del listado.',
         )
       } else {
-        setError('No se pudo crear la suerte. Verifica conexion e intenta de nuevo.')
+        // Mostrar la causa tecnica real ademas del consejo generico. Asi el
+        // operario u owner puede pasarle el mensaje al admin cuando algo
+        // falla y se diagnostica mas rapido (ej: "column creado_manual
+        // does not exist" indica que falta aplicar la migracion en VPS).
+        const errObj = err as { message?: string; code?: string; details?: string; hint?: string }
+        const technical =
+          (errObj?.message && errObj.message !== 'DUPLICATE' ? errObj.message : '') ||
+          errObj?.details ||
+          errObj?.hint ||
+          (errObj?.code ? `codigo ${errObj.code}` : '') ||
+          'error desconocido'
+        setError(`No se pudo crear la suerte. (${technical}) — verifica conexion y/o avisa al admin.`)
+        // Log adicional a consola para diagnostico tecnico
+        console.error('[createMaestroRow] error:', err)
       }
     } finally {
       setBusy(false)

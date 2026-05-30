@@ -21,6 +21,7 @@ import {
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, MaestroRow, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
+import { isSameCycle } from '../utils/suerteCycle'
 
 export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios'
 
@@ -89,12 +90,16 @@ function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }
 
-function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: string, totalArea: number): number {
+function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: string, totalArea: number, todayKey: string): number {
   const executed = assignments
     .filter(
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
+        // Solo el CICLO ACTUAL (ventana de dias respecto a hoy), consistente
+        // con la vista del operario: un re-laboreo meses despues vuelve a
+        // mostrar el area completa; el avance reciente del ciclo si se descuenta.
+        isSameCycle(a.dateKey, todayKey) &&
         (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
     )
     .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
@@ -2492,7 +2497,7 @@ export function SupervisorView({
                     {assignmentSuertes.map((row) => {
                       const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
                       const remaining = assignmentForm.labor
-                        ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area)
+                        ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area, todayKey)
                         : row.area
                       const isCompleted = assignmentForm.labor && remaining === 0
                       return (

@@ -12,6 +12,7 @@ import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
+import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
 import { formatTime, executionDateKey } from '../services/samApi'
@@ -50,12 +51,22 @@ function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }
 
-function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: string, totalArea: number): number {
+function getRemainingArea(
+  assignments: Assignment[],
+  suerteCode: string,
+  labor: string,
+  totalArea: number,
+  todayKey: string,
+): number {
   const executed = assignments
     .filter(
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
+        // Solo descontar avance del CICLO ACTUAL (ventana de dias respecto a
+        // hoy). Asi un re-laboreo meses despues arranca con el area completa
+        // disponible, pero un avance reciente (mismo ciclo) si se descuenta.
+        isSameCycle(a.dateKey, todayKey) &&
         // PARCIAL aporta tambien al area ejecutada de la suerte
         (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
     )
@@ -66,14 +77,16 @@ function getRemainingArea(assignments: Assignment[], suerteCode: string, labor: 
 /**
  * Calcula el avance "a nivel de suerte+labor" para una asignacion del
  * operario en su CICLO ACTUAL. Si varios operarios estan trabajando la
- * misma suerte+labor PROGRAMADA EL MISMO DIA (mismo dateKey), comparten
- * un mismo "remaining" — lo hecho por el companero consume el area
- * planificada del ciclo.
+ * misma suerte+labor en el MISMO CICLO, comparten un mismo "remaining" —
+ * lo hecho por el companero consume el area planificada del ciclo.
  *
- * Filtra por mismo dateKey para no mezclar historico de ciclos pasados:
- * si en marzo se hizo DESPEJE en la suerte (COMPLETADA) y en mayo se
- * programa otro DESPEJE, son CICLOS DISTINTOS — el viejo no consume
- * area del nuevo.
+ * El ciclo se agrupa con `isSameCycle` (ventana tolerante en dias), NO con
+ * `dateKey` exacto. Esto es clave para labores TOMADAS EN CAMPO: dos
+ * operarios que toman la misma suerte en dias distintos pertenecen al mismo
+ * ciclo y su avance se suma para cerrar la labor (antes, con dateKey exacto,
+ * cada uno veia solo su parte y la labor nunca cerraba). Un re-laboreo meses
+ * despues (ej: DESPEJE en marzo y otro en mayo) queda FUERA de la ventana y
+ * sigue siendo un CICLO DISTINTO — el viejo no consume area del nuevo.
  *
  * Sincronizado en tiempo real via Realtime: cuando otro operario notifica
  * 5 ha y la suerte total son 10, este operario ve "Falta 5 ha" sin recargar.
@@ -83,7 +96,7 @@ function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[])
     (a) =>
       a.suerteCode === assignment.suerteCode &&
       normalizeText(a.labor) === normalizeText(assignment.labor) &&
-      a.dateKey === assignment.dateKey &&
+      isSameCycle(a.dateKey, assignment.dateKey) &&
       (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
   )
   const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
@@ -1200,7 +1213,7 @@ export function OperatorView({
                     {freeFieldSuertes.map((row) => {
                       const suerteCode = `${freeFieldForm.haciendaCode}-${row.suerte}`
                       const remaining = freeFieldForm.labor
-                        ? getRemainingArea(assignments, suerteCode, freeFieldForm.labor, row.area)
+                        ? getRemainingArea(assignments, suerteCode, freeFieldForm.labor, row.area, todayKey)
                         : row.area
                       const isCompleted = freeFieldForm.labor && remaining === 0
                       return (

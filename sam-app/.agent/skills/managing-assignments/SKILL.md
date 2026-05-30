@@ -70,11 +70,17 @@ Tres puntos de chequeo:
 
 **Permitido a propósito:** asignar la misma labor en la misma suerte a operarios distintos (el supervisor puede repartir trabajo entre dos operarios para acelerar).
 
-## Filtro por `dateKey` en avance compartido
+## Agrupación por CICLO en avance compartido (`isSameCycle`, ventana de días)
 
-**CRÍTICO:** `getSuerteProgress` y el cálculo del cap en `finishAssignment` filtran por **`dateKey === assignment.dateKey`**. Sin este filtro, asignaciones COMPLETADAs históricas de ciclos pasados (ej: DESPEJE en marzo) sumarían al `executedTotal` del frente operativo actual (ej: DESPEJE en mayo) y romperían las cards: aparecerían como "X realizadas · Falta 0" o incluso con totales que exceden el área planificada.
+**CRÍTICO:** `getSuerteProgress`, el cap en `finishAssignment` (`suerteExecutedOthers`) y los 4 `getRemainingArea` agrupan el avance de la misma suerte+labor por **CICLO**, usando `isSameCycle(a.dateKey, b.dateKey)` de `src/utils/suerteCycle.ts` (ventana `CYCLE_WINDOW_DAYS = 21` días) — **NO** por `dateKey === dateKey` exacto.
 
-Cada `dateKey` representa un **ciclo agrícola independiente**: dos asignaciones de la misma suerte+labor en fechas distintas son ciclos distintos y no comparten avance. Solo se "fusionan" las del mismo día de programación (caso de varios operarios divididos por el supervisor).
+**Por qué NO exacto:** el filtro exacto (`a.dateKey === assignment.dateKey`) rompía las **labores tomadas en campo (LIBRE)** trabajadas por varios operarios en **días distintos**. Cada operario crea su propia row con `dateKey = día de creación`; si Julio toma la suerte el lunes y Rolando el martes, sus `dateKey` difieren, no se ven entre sí, y la labor **nunca cierra** aunque entre ambos cubran el área total (caso real: LA ESPERANZA-04U, 18.86 ha = Julio 9.66 + Rolando 9.20, ambos atascados en PARCIAL).
+
+**Por qué tampoco sin filtro:** sin ninguna separación, una COMPLETADA histórica de un ciclo viejo (ej: DESPEJE en marzo) sumaría al frente operativo actual (DESPEJE en mayo) → "X realizadas · Falta 0" o totales que exceden el área (bug SAN MIGUEL 020).
+
+**La ventana resuelve ambos:** una colaboración real entre operarios ocurre en días (≤ 21) → mismo ciclo, su avance se suma. Un re-laboreo meses después queda fuera de la ventana → ciclo distinto, no comparte avance. Para los `getRemainingArea` (que no tienen una asignación "ancla") la ventana se mide contra `todayKey` — por eso ahora reciben `todayKey` como último parámetro.
+
+Si necesitas ajustar la tolerancia, cambia **solo** `CYCLE_WINDOW_DAYS` en `src/utils/suerteCycle.ts` (fuente única). No vuelvas a `dateKey === dateKey`.
 
 ## Asignaciones "zombie" — filtrar de Activas si `remaining = 0`
 
@@ -275,7 +281,9 @@ La regla "Parcial" (`COMPLETADA && executedArea > 0 && executedArea < area`) es 
 
 ## Gotchas
 
-- **[2026-05-29]** Bug visible reportado: SAN MIGUEL 020 mostraba "34.02 ha realizadas" cuando el área es 14.51. Causa: `getSuerteProgress` sumaba 2 VALENCIA COMPLETADAs históricas (14.51 c/u, ciclos viejos) + DOMÍNGUEZ PARCIAL (5.00). Fix permanente: filtrar por `dateKey === assignment.dateKey` en `getSuerteProgress` Y en el cálculo de `suerteExecutedOthers` en `finishAssignment`. NO eliminar este filtro.
+- **[2026-05-30]** Bug reportado: labor LIBRE multi-operario tomada en campo NO cerraba. LA ESPERANZA-04U (18.86 ha): Julio hizo 9.66, Rolando 9.20 (= 18.86 exacto) pero ambos seguían viendo la labor activa en PARCIAL ("Falta 9.20" / "Falta 9.66"). **Causa raíz:** `getSuerteProgress` y `suerteExecutedOthers` agrupaban con `dateKey === assignment.dateKey` (mismo día EXACTO de creación). Para LIBRE cada operario crea su row en el día que toma la suerte; si la toman en días distintos, sus `dateKey` difieren → no se ven entre sí → la suma conjunta nunca alcanza el área → nunca cierra. **Fix:** reemplazar la igualdad exacta por `isSameCycle(a.dateKey, b.dateKey)` (ventana `CYCLE_WINDOW_DAYS = 21` en `src/utils/suerteCycle.ts`) en los **6 sitios** de agrupación: `getSuerteProgress` (OperatorView), `suerteExecutedOthers` (useAssignmentActions), y los **4** `getRemainingArea` (OperatorView, useFreeFieldForm, useAssignmentForm, SupervisorView — estos miden la ventana contra `todayKey`). Build pasa. NO volver a `dateKey === dateKey`. Ver sección "Agrupación por CICLO".
+
+- **[2026-05-29]** Bug visible reportado: SAN MIGUEL 020 mostraba "34.02 ha realizadas" cuando el área es 14.51. Causa: `getSuerteProgress` sumaba 2 VALENCIA COMPLETADAs históricas (14.51 c/u, ciclos viejos) + DOMÍNGUEZ PARCIAL (5.00). Fix original: filtrar por ciclo. **Actualizado [2026-05-30]:** el filtro pasó de `dateKey === assignment.dateKey` exacto a `isSameCycle` (ventana de 21 días) para no romper labores LIBRE multi-día — el caso SAN MIGUEL (ciclos a meses de distancia) sigue resuelto porque quedan fuera de la ventana. NO eliminar la separación por ciclo.
 
 - **[2026-05-29]** Las asignaciones "zombie" (PARCIAL del operario con `remaining = 0` por trabajo conjunto de otro operario) deben filtrarse de `activeAssignments` para no confundir al operario. EXCEPCIÓN: si la asignación está EN_PROCESO, dejarla aunque `remaining = 0` (operario está adentro). La asignación sigue en DB intacta — solo cambia el render. Aparece en Historial con su `executedArea` propio.
 

@@ -4,6 +4,7 @@ import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
 import { createAssignment as apiCreateAssignment, loadAssignments } from '../services/samApi'
+import { isSameCycle } from '../utils/suerteCycle'
 
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
@@ -26,12 +27,17 @@ function getRemainingArea(
   suerteCode: string,
   labor: string,
   totalArea: number,
+  todayKey: string,
 ): number {
   const executed = assignments
     .filter(
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
+        // Solo descontar avance del CICLO ACTUAL (ventana de dias respecto a
+        // hoy): un re-laboreo meses despues arranca con el area completa; un
+        // avance reciente del mismo ciclo (otro operario en campo) si se resta.
+        isSameCycle(a.dateKey, todayKey) &&
         // Una PARCIAL ya consumio su executedArea aunque siga activa.
         (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
     )
@@ -193,6 +199,7 @@ export function useFreeFieldForm(options?: Options) {
           `${row.haciendaCode}-${row.suerte}`,
           freeFieldForm.labor,
           row.area,
+          todayKey,
         ) === 0,
     )
     if (suertesCompletas.length > 0) {
@@ -235,6 +242,7 @@ export function useFreeFieldForm(options?: Options) {
             `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
             freeFieldForm.labor,
             maestroRow.area,
+            todayKey,
           )
           const createInput: Parameters<typeof apiCreateAssignment>[0] = {
             haciendaCode: maestroRow.haciendaCode,
@@ -307,6 +315,7 @@ export function useFreeFieldForm(options?: Options) {
                 `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
                 freeFieldForm.labor,
                 maestroRow.area,
+                todayKey,
               ),
               supervisorId: selectedSupervisor.id,
               supervisorName: selectedSupervisor.name,

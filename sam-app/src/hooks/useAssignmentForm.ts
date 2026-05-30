@@ -4,6 +4,7 @@ import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
 import { createAssignment as apiCreateAssignment, loadAssignments } from '../services/samApi'
+import { isSameCycle } from '../utils/suerteCycle'
 
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
@@ -26,12 +27,17 @@ function getRemainingArea(
   suerteCode: string,
   labor: string,
   totalArea: number,
+  todayKey: string,
 ): number {
   const executed = assignments
     .filter(
       (a) =>
         a.suerteCode === suerteCode &&
         normalizeText(a.labor) === normalizeText(labor) &&
+        // Solo el CICLO ACTUAL (ventana de dias respecto a hoy): un re-laboreo
+        // meses despues arranca con el area completa disponible para asignar;
+        // el avance reciente del mismo ciclo si se descuenta.
+        isSameCycle(a.dateKey, todayKey) &&
         // Una PARCIAL ya "consumio" su executedArea de la suerte aunque
         // siga activa: si no contamos eso, otro operario podria asignarse
         // la totalidad nuevamente y duplicar area.
@@ -214,6 +220,7 @@ export function useAssignmentForm(options?: Options) {
           `${row.haciendaCode}-${row.suerte}`,
           assignmentForm.labor,
           row.area,
+          todayKey,
         ) === 0,
     )
     if (suertesCompletas.length > 0) {
@@ -261,6 +268,7 @@ export function useAssignmentForm(options?: Options) {
             `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
             assignmentForm.labor,
             maestroRow.area,
+            todayKey,
           )
           const createInput: Parameters<typeof apiCreateAssignment>[0] = {
             haciendaCode: maestroRow.haciendaCode,
@@ -332,6 +340,7 @@ export function useAssignmentForm(options?: Options) {
               `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
               assignmentForm.labor,
               maestroRow.area,
+              todayKey,
             ),
             supervisorId: session.id,
             supervisorName: session.name,

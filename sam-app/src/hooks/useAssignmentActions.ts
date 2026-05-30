@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import type { Assignment } from '../domain/sam'
 import { db } from '../lib/db'
 import { updateAssignment } from '../services/samApi'
+import { isSameCycle } from '../utils/suerteCycle'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
 
@@ -121,12 +122,15 @@ export function useAssignmentActions() {
     const draft = finishDrafts[assignment.id]
     const isComplete = draft?.isComplete ?? false
 
-    // Avance agregado de la suerte+labor en el MISMO CICLO (mismo dateKey)
-    // entre todos los operarios que trabajan dicha suerte. Si OP-A ya hizo
-    // 5 de 10 ha hoy, cuando OP-B finaliza solo puede registrar hasta 5 ha.
-    // Filtramos por dateKey para no mezclar historico de meses pasados —
-    // si la suerte ya tuvo DESPEJE en marzo y hoy se programa otro
-    // DESPEJE, son ciclos distintos.
+    // Avance agregado de la suerte+labor en el MISMO CICLO entre todos los
+    // operarios que trabajan dicha suerte. Si OP-A ya hizo 5 de 10 ha en el
+    // ciclo, cuando OP-B finaliza solo puede registrar hasta 5 ha.
+    //
+    // El "ciclo" se agrupa con `isSameCycle` (ventana tolerante en dias), NO
+    // con `dateKey` exacto: dos operarios que toman la misma suerte EN CAMPO
+    // en dias distintos pertenecen al mismo ciclo y su avance debe sumarse
+    // para cerrar la labor. Un re-laboreo meses despues queda fuera de la
+    // ventana y sigue siendo un ciclo distinto (no mezcla historico).
     const normalizedLabor = assignment.labor.trim().toUpperCase()
     const suerteExecutedOthers = assignments
       .filter(
@@ -134,7 +138,7 @@ export function useAssignmentActions() {
           a.id !== assignment.id &&
           a.suerteCode === assignment.suerteCode &&
           a.labor.trim().toUpperCase() === normalizedLabor &&
-          a.dateKey === assignment.dateKey &&
+          isSameCycle(a.dateKey, assignment.dateKey) &&
           (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
       )
       .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)

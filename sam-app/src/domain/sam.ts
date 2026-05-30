@@ -94,6 +94,11 @@ export interface Assignment {
   approvedBy: string | null
   approvedAt: string | null
   zone: Zone | null
+  // Flag de "liberada": el operario rechazo/solto este parcial porque no
+  // lo va a terminar. Se oculta de SUS Activas pero la labor sigue abierta
+  // (status sin cambiar) para que el supervisor la reasigne/cancele o el
+  // operario la retome en campo. Al reasignar se vuelve a poner en false.
+  liberada?: boolean
 }
 
 export interface DashboardMetrics {
@@ -139,4 +144,5 @@ export interface UpdateAssignmentInput {
   approvedAt?: string | null
   operatorId?: string
   operatorName?: string
+  liberada?: boolean
 }

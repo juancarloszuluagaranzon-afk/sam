@@ -143,9 +143,28 @@ export function useAssignmentActions() {
       )
       .reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
     const ownExecuted = assignment.executedArea ?? 0
+
+    // Area TOTAL de la suerte en el ciclo. La primera toma (o la ASIGNADA)
+    // lleva el area completa; una RE-TOMA posterior del restante lleva solo
+    // lo que faltaba (ej: 7.32 tras liberar un parcial de 12.20). Usar
+    // `assignment.area` directo en ese caso restaria dos veces lo ya hecho
+    // y el cap quedaria en 0 (el operario no podria registrar nada). Tomamos
+    // el MAX de las areas del ciclo = area completa real de la suerte.
+    const suerteTotalArea = Math.max(
+      assignment.area,
+      ...assignments
+        .filter(
+          (a) =>
+            a.suerteCode === assignment.suerteCode &&
+            a.labor.trim().toUpperCase() === normalizedLabor &&
+            isSameCycle(a.dateKey, assignment.dateKey) &&
+            a.status !== 'CANCELADA',
+        )
+        .map((a) => a.area),
+    )
     const suerteRemaining = Math.max(
       0,
-      assignment.area - (suerteExecutedOthers + ownExecuted),
+      suerteTotalArea - (suerteExecutedOthers + ownExecuted),
     )
 
     // isOwnContinuation: el operario ya habia registrado avance propio
@@ -213,7 +232,7 @@ export function useAssignmentActions() {
     //     menor al area planificada individual.
     //   - en otro caso → PARCIAL (sigue activa).
     const eps = 0.001
-    const suerteFullyDone = suerteExecutedOthers + executedArea + eps >= assignment.area
+    const suerteFullyDone = suerteExecutedOthers + executedArea + eps >= suerteTotalArea
     const isFullyDone =
       isComplete || executedArea + eps >= assignment.area || suerteFullyDone
     const finalStatus: 'COMPLETADA' | 'PARCIAL' = isFullyDone ? 'COMPLETADA' : 'PARCIAL'
@@ -374,6 +393,42 @@ export function useAssignmentActions() {
     }
   }
 
+  // El operario "libera" (rechaza) una labor que no va a poder terminar.
+  // NO cambia el status (un PARCIAL sigue PARCIAL, conservando su avance):
+  // solo marca `liberada = true` para ocultarla de SUS Activas. La labor
+  // sigue abierta para que el supervisor la reasigne/cancele o el propio
+  // operario la retome en campo. No se pierde el area ya ejecutada.
+  async function releaseAssignment(assignment: Assignment) {
+    setBusy(true)
+    setError('')
+
+    try {
+      if (!isOnline) {
+        await db.outbox.add({
+          type: 'UPDATE',
+          assignmentId: assignment.id,
+          updatePayload: { liberada: true },
+          queuedAt: new Date().toISOString(),
+          status: 'pending',
+        })
+        setAssignments((current) =>
+          current.map((a) => (a.id === assignment.id ? { ...a, liberada: true } : a)),
+        )
+        void db.assignments.update(assignment.id, { liberada: true })
+        setOutboxCount((c) => c + 1)
+        setInfo('Labor liberada localmente. Se sincronizara al recuperar senal.')
+      } else {
+        const updated = await updateAssignment(assignment.id, { liberada: true })
+        mergeUpdated(updated)
+        setInfo(`Labor liberada: ${assignment.labor}. El supervisor podra reasignarla.`)
+      }
+    } catch {
+      setError('No se pudo liberar la labor.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   type EditPatch = {
     executedArea?: number
     horometroInicial?: number | null
@@ -384,6 +439,7 @@ export function useAssignmentActions() {
     operatorId?: string
     operatorName?: string
     status?: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA' | 'CANCELADA' | 'PARCIAL'
+    liberada?: boolean
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {
@@ -415,6 +471,7 @@ export function useAssignmentActions() {
           a.suerteCode === assignment.suerteCode &&
           a.labor.trim().toUpperCase() === normalizedLabor &&
           a.operatorId === patch.operatorId &&
+          !a.liberada &&
           (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
       )
       if (conflict) {
@@ -433,6 +490,14 @@ export function useAssignmentActions() {
     if (patch.equipmentCode !== undefined && patch.equipmentName === undefined) {
       const eq = equipment.find((e) => e.code === patch.equipmentCode)
       if (eq) finalPatch.equipmentName = eq.name
+    }
+
+    // Reasignar a otro operario "des-libera" la labor: el nuevo operario
+    // debe verla en SUS Activas para continuarla. Si seguia marcada como
+    // liberada quedaria oculta tambien para el. (No tocar si el operario
+    // no cambia, para no pisar el flag en ediciones normales.)
+    if (patch.operatorId !== undefined && patch.operatorId !== assignment.operatorId) {
+      finalPatch.liberada = false
     }
 
     try {
@@ -474,6 +539,7 @@ export function useAssignmentActions() {
     startAssignment,
     finishAssignment,
     cancelAssignment,
+    releaseAssignment,
     approveAssignment,
     rejectAssignment,
     editAssignment,

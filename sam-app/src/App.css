@@ -4592,3 +4592,75 @@ button.movement-row--clickable:active {
   color: var(--color-ink-mid);
 }
 
+/* ===== Liberar / rechazar una labor parcial (operario) ===== */
+
+/* Boton dentro del sheet de la labor activa: el operario suelta una labor
+   que no va a poder terminar. Estilo discreto/destructivo para que no
+   compita con "Finalizar" pero quede claro que es una accion seria. */
+.release-labor-btn {
+  margin-top: 10px;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  background: transparent;
+  border: 1.5px solid var(--color-status-cancel);
+  color: var(--color-status-cancel);
+  transition: background 0.15s, opacity 0.15s;
+  min-height: 42px;
+}
+.release-labor-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-status-cancel) 10%, transparent);
+}
+.release-labor-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Card del modal de confirmacion de liberar: angosto y centrado. */
+.release-confirm-card {
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+/* Boton de confirmacion (destructivo, relleno rojo). */
+.release-confirm-btn {
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--color-status-cancel);
+  border: 1.5px solid var(--color-status-cancel);
+  color: #fff;
+  transition: opacity 0.15s;
+  min-height: 42px;
+}
+.release-confirm-btn:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.release-confirm-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Badge "Liberada" en la lista/detalle de Labores del supervisor. */
+.liberada-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: #fdecec;
+  color: #a12626;
+  border: 1px solid #f3c9c9;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+:root[data-theme="dark"] .liberada-badge {
+  background: #3a1c1c;
+  color: #ff9e9e;
+  border-color: #5a2e2e;
+}
+

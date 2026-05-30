@@ -1886,6 +1886,14 @@ export function SupervisorView({
                       ) : (
                         <span className="kind-badge libre">Campo</span>
                       )}
+                      {assignment.liberada && (
+                        <span
+                          className="liberada-badge"
+                          title="El operario liberó esta labor. Reasígnala a otro operario o cancélala."
+                        >
+                          Liberada
+                        </span>
+                      )}
                       {assignment.zone && (
                         <span className={`zone-badge zone-${assignment.zone.toLowerCase()}`}>
                           {assignment.zone === 'NORTE' ? 'Norte' : 'Sur'}
@@ -2111,6 +2119,15 @@ export function SupervisorView({
                   <div>
                     <h3>{selectedLabor.labor}</h3>
                     <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
+                    {selectedLabor.liberada && (
+                      <span
+                        className="liberada-badge"
+                        title="El operario liberó esta labor. Reasígnala (cambia el operador en Editar) o cancélala."
+                        style={{ marginLeft: 6 }}
+                      >
+                        Liberada
+                      </span>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {canEditAssignments && !editingLabor && (

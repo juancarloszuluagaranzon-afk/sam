@@ -67,6 +67,9 @@ function hasActiveDuplicate(
       a.suerteCode === suerteCode &&
       normalizeText(a.labor) === normalizeText(labor) &&
       a.operatorId === operatorId &&
+      // Una labor LIBERADA no cuenta como "activa" para bloquear: justamente
+      // el operario la solto y puede querer retomar el restante en campo.
+      !a.liberada &&
       (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
   )
 }

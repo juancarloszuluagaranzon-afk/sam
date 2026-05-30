@@ -102,7 +102,24 @@ function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[])
   const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
   const ownExecuted = assignment.executedArea ?? 0
   const sharedExecuted = Math.max(0, executedTotal - ownExecuted)
-  const remaining = Math.max(0, assignment.area - executedTotal)
+  // Area TOTAL de la suerte en el ciclo = el MAX de las areas del ciclo. La
+  // primera toma (o la ASIGNADA) lleva el area completa; una RE-TOMA del
+  // restante (tras liberar un parcial) lleva solo lo que faltaba. Usar
+  // `assignment.area` directo en una re-toma restaria dos veces lo ya hecho
+  // y dejaria remaining=0 (la card desapareceria como "zombie" al instante).
+  const suerteTotalArea = Math.max(
+    assignment.area,
+    ...allAssignments
+      .filter(
+        (a) =>
+          a.suerteCode === assignment.suerteCode &&
+          normalizeText(a.labor) === normalizeText(assignment.labor) &&
+          isSameCycle(a.dateKey, assignment.dateKey) &&
+          a.status !== 'CANCELADA',
+      )
+      .map((a) => a.area),
+  )
+  const remaining = Math.max(0, suerteTotalArea - executedTotal)
   return {
     executedTotal,
     sharedExecuted,
@@ -207,7 +224,12 @@ export function OperatorView({
     startHorometroDrafts, setStartHorometroDrafts,
     startAssignment: onStartAssignment,
     finishAssignment: onFinishAssignment,
+    releaseAssignment: onReleaseAssignment,
   } = useAssignmentActions()
+
+  // Labor que el operario esta a punto de liberar (rechazar): dispara el
+  // modal de confirmacion para evitar soltarla por un toque accidental.
+  const [releaseTarget, setReleaseTarget] = useState<Assignment | null>(null)
 
   const { fileInputRef: photoInputRef, triggerUpload: triggerPhotoUpload, handleFileChange: handlePhotoChange, uploading: photoUploading } = usePhotoUpload()
 
@@ -248,7 +270,11 @@ export function OperatorView({
     () =>
       operatorAssignments
         .filter(
-          (a) => a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL',
+          (a) =>
+            (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL') &&
+            // Liberada por el operario: no la mostramos en SUS Activas (sigue
+            // abierta para el supervisor / re-toma en campo).
+            !a.liberada,
         )
         // Si la suerte ya esta completa por trabajo conjunto en el mismo ciclo
         // (remaining = 0 a nivel global de la suerte), no hay nada que el
@@ -872,6 +898,17 @@ export function OperatorView({
                       </div>
                       )
                     })()}
+
+                    {/* Liberar/rechazar: el operario suelta una labor que no
+                        va a poder terminar. Confirmacion para evitar accidentes. */}
+                    <button
+                      type="button"
+                      className="release-labor-btn"
+                      onClick={() => setReleaseTarget(a)}
+                      disabled={busy}
+                    >
+                      No puedo continuar — liberar esta labor
+                    </button>
                   </div>
                 </>
               )
@@ -1080,6 +1117,58 @@ export function OperatorView({
             </form>
           </div>
         </div>
+
+        {releaseTarget && (() => {
+          const prog = getSuerteProgress(releaseTarget, assignments)
+          return (
+            <div className="modal-overlay open" onClick={() => setReleaseTarget(null)}>
+              <div className="modal-card release-confirm-card" onClick={(e) => e.stopPropagation()}>
+                <h3>¿Liberar esta labor?</h3>
+                <p className="subtle-copy" style={{ marginTop: 0 }}>
+                  <strong>{releaseTarget.haciendaName} - {releaseTarget.suerte}</strong>{' · '}{releaseTarget.labor}
+                </p>
+                <p className="subtle-copy">
+                  {prog.ownExecuted > 0 ? (
+                    <>
+                      Tu avance de <strong>{formatArea(prog.ownExecuted)}</strong> queda guardado.
+                      La labor saldrá de tus <strong>Activas</strong>; el supervisor podrá
+                      reasignarla o cancelarla, y tú puedes retomar el restante
+                      ({formatArea(prog.remaining)}) desde <strong>Campo</strong>.
+                    </>
+                  ) : (
+                    <>
+                      La labor saldrá de tus <strong>Activas</strong>. El supervisor podrá
+                      reasignarla a otro operario o cancelarla.
+                    </>
+                  )}
+                </p>
+                <div className="modal-footer">
+                  <button
+                    type="button"
+                    className="inline-button"
+                    onClick={() => setReleaseTarget(null)}
+                    disabled={busy}
+                  >
+                    No, volver
+                  </button>
+                  <button
+                    type="button"
+                    className="release-confirm-btn"
+                    disabled={busy}
+                    onClick={() => {
+                      const target = releaseTarget
+                      setReleaseTarget(null)
+                      setSelectedActiveAssignment(null)
+                      void onReleaseAssignment(target)
+                    }}
+                  >
+                    {busy ? 'Liberando...' : 'Sí, liberar'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
       </div>
 

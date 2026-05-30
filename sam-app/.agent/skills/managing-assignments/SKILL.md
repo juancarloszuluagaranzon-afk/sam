@@ -33,8 +33,8 @@ Cuando un operario finaliza con `executedArea < area` planificada, el `finishAss
 Migración SQL canónica: `supabase/migrations/20260527160000_status_parcial.sql` — extiende el CHECK constraint de `estado` para incluir `'PARCIAL'`. Aplicada en VPS via Studio SQL Editor (2026-05-27).
 
 Filtros del operador (`operatorAssignments` en `OperatorView.tsx`):
-- **Activas** = PENDIENTE + EN_PROCESO + **PARCIAL**
-- **Historial** = COMPLETADA + CANCELADA (NO PARCIAL — sigue activa)
+- **Activas** = PENDIENTE + EN_PROCESO + **PARCIAL**, **excluyendo `liberada === true`** (ver "Liberar un parcial")
+- **Historial** = COMPLETADA + CANCELADA + PARCIAL (la PARCIAL sigue activa pero el operario necesita ver su avance)
 
 Al abrir una PARCIAL en el sheet de finalizar, un `useEffect` pre-llena `finishDraft.area` con el `executedArea` previo. Banner amarillo `.partial-progress-banner` muestra "Acumulado previo: X.XX ha de Y.YY ha".
 
@@ -155,6 +155,27 @@ KPIs del Historial:
 "Tu jornada" (pestaña Campo):
 - `cerradas` excluye PARCIAL
 - `ha ejecutadas` incluye PARCIAL
+
+## Liberar (rechazar) un parcial — flag `liberada`
+
+Un operario puede **liberar** una labor activa que no va a poder terminar (situación particular). No quiere que le quede "estorbando" en Activas, pero su avance NO se pierde.
+
+**Columna DB:** `asignaciones.liberada boolean NOT NULL DEFAULT false` (migración `20260530140000_asignaciones_liberada.sql`, aplicar en Studio ANTES del push). Mapeada en `mapAssignment` (`Boolean(row.liberada ?? false)`) y `updateAssignment` (`if (input.liberada !== undefined) payload.liberada = input.liberada`). En `domain/sam.ts`: `Assignment.liberada?` y `UpdateAssignmentInput.liberada?`.
+
+**Flujo:**
+1. Operario → sheet de la labor activa → botón "No puedo continuar — liberar esta labor" (`.release-labor-btn`) → **modal de confirmación** (`.release-confirm-card`, evita accidentes) → `releaseAssignment` en `useAssignmentActions.ts`.
+2. `releaseAssignment` hace `updateAssignment(id, { liberada: true })` — **NO cambia el status** (un PARCIAL sigue PARCIAL con su `executedArea` intacto). Maneja offline igual que `cancelAssignment`.
+3. `activeAssignments` (OperatorView) excluye `a.liberada` → sale de las Activas del operario. Sigue en Historial (PARCIAL) con su aporte.
+4. **Supervisor** la ve en Labores con badge `.liberada-badge` ("Liberada"). Puede:
+   - **Reasignarla**: Editar → cambiar Operador. `editAssignment` pone `liberada = false` automáticamente cuando `operatorId` cambia (si no, quedaría oculta también para el nuevo operario). El nuevo operario la ve en SUS Activas y continúa el restante.
+   - **Cancelarla**: botón "Cancelar labor" (status → CANCELADA) si ya no se hará.
+5. **Operario** también puede **retomar el restante en Campo**. Las tres `hasActiveDuplicate` (useFreeFieldForm, useAssignmentForm, editAssignment) excluyen `liberada` para no bloquear la re-toma con "ya tienes una activa".
+
+## Área TOTAL de la suerte = MAX de áreas del ciclo (re-tomas del restante)
+
+**CRÍTICO:** `getSuerteProgress` (OperatorView) y el cap/cierre en `finishAssignment` calculan el restante contra `suerteTotalArea = Math.max(assignment.area, ...áreas del ciclo no-CANCELADA)`, **NO** contra `assignment.area` directo.
+
+Por qué: una RE-TOMA en campo del restante (ej: tras liberar un parcial de 12.20 de 19.52) se crea con `area = getRemainingArea = 7.32` (no el área completa). Si `getSuerteProgress` restara `7.32 - executedTotal(12.20)` daría `remaining < 0 → 0` y la card desaparecería al instante como "zombie", o el cap del finish quedaría en 0 (el operario no podría registrar nada). Tomando el MAX de las áreas del ciclo recuperamos el área completa real (la primera toma / la ASIGNADA siempre lleva el área completa), y el restante se calcula bien (`19.52 - 12.20 = 7.32`). En el caso normal (todas las áreas = completa) `MAX = assignment.area` → sin cambio de comportamiento.
 
 ## WORKFLOW — Secuencia de labores
 

@@ -134,6 +134,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     approvedBy: row.aprobada_por ? String(row.aprobada_por) : null,
     approvedAt: row.aprobada_en ? String(row.aprobada_en) : null,
     zone: normalizeZone(row.zona as string | null | undefined),
+    liberada: Boolean(row.liberada ?? false),
   }
 }
 
@@ -695,6 +696,7 @@ export async function updateAssignment(
   if (input.approvedAt !== undefined) payload.aprobada_en = input.approvedAt
   if (input.operatorId !== undefined) payload.operador_id = input.operatorId
   if (input.operatorName !== undefined) payload.operador_nombre = input.operatorName
+  if (input.liberada !== undefined) payload.liberada = input.liberada
 
   const { data, error } = await supabase
     .from('asignaciones')

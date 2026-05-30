@@ -4619,6 +4619,14 @@ button.movement-row--clickable:active {
   cursor: not-allowed;
 }
 
+/* El modal de confirmacion se abre DESDE el sheet de la labor activa
+   (.more-sheet, z-index 195). El .modal-overlay base es z-index 100, asi que
+   sin esto el modal queda DETRAS del sheet. Subimos por encima del sheet
+   (pero debajo del toast de mensajes, z-index 300). */
+.release-confirm-overlay {
+  z-index: 240;
+}
+
 /* Card del modal de confirmacion de liberar: angosto y centrado. */
 .release-confirm-card {
   max-width: min(420px, calc(100vw - 32px));

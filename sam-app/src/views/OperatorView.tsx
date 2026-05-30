@@ -1121,7 +1121,7 @@ export function OperatorView({
         {releaseTarget && (() => {
           const prog = getSuerteProgress(releaseTarget, assignments)
           return (
-            <div className="modal-overlay open" onClick={() => setReleaseTarget(null)}>
+            <div className="modal-overlay release-confirm-overlay open" onClick={() => setReleaseTarget(null)}>
               <div className="modal-card release-confirm-card" onClick={(e) => e.stopPropagation()}>
                 <h3>¿Liberar esta labor?</h3>
                 <p className="subtle-copy" style={{ marginTop: 0 }}>

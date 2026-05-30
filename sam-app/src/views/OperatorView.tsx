@@ -900,11 +900,18 @@ export function OperatorView({
                     })()}
 
                     {/* Liberar/rechazar: el operario suelta una labor que no
-                        va a poder terminar. Confirmacion para evitar accidentes. */}
+                        va a poder terminar. Confirmacion para evitar accidentes.
+                        Cerramos el sheet al abrir la confirmacion para que el
+                        modal quede limpio encima del panel (sin el sheet
+                        asomandose atras). El draft persiste por assignment.id,
+                        asi que si pulsa "No, volver" no pierde lo escrito. */}
                     <button
                       type="button"
                       className="release-labor-btn"
-                      onClick={() => setReleaseTarget(a)}
+                      onClick={() => {
+                        setReleaseTarget(a)
+                        setSelectedActiveAssignment(null)
+                      }}
                       disabled={busy}
                     >
                       No puedo continuar — liberar esta labor

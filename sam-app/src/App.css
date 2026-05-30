@@ -1119,6 +1119,221 @@ textarea {
   flex-wrap: wrap;
 }
 
+/* ============================================================
+   Pestana Labores: barra de busqueda + boton de filtros
+   emergentes (reemplaza los 4 dropdowns apilados).
+   ============================================================ */
+.labores-search-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.labores-search-input-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+.labores-search-icon {
+  position: absolute;
+  left: 12px;
+  color: var(--color-ink-light);
+  pointer-events: none;
+}
+
+.labores-search-input {
+  width: 100%;
+  padding: 11px 36px 11px 38px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  box-sizing: border-box;
+}
+.labores-search-input::placeholder {
+  color: var(--color-ink-light);
+}
+.labores-search-input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+  box-shadow: 0 0 0 3px rgba(21, 91, 48, 0.14);
+}
+/* Oculta la X nativa del input type=search (usamos boton propio). */
+.labores-search-input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.labores-search-clear {
+  position: absolute;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--color-bg-muted);
+  color: var(--color-ink-mid);
+  cursor: pointer;
+  font-size: 0.68rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filtros-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 16px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.filtros-toggle-btn:hover {
+  background: var(--color-bg-soft);
+}
+.filtros-toggle-btn--active {
+  border-color: var(--color-brand);
+  color: var(--color-brand);
+}
+.filtros-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+/* Drawer lateral de filtros (slide-in desde la derecha, estilo deslizable). */
+.filter-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--color-overlay);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 220;
+}
+.filter-drawer-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.filter-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: min(380px, 90vw);
+  transform: translateX(100%);
+  transition: transform 0.24s ease;
+  background: var(--color-bg-elevated);
+  border-left: 1px solid var(--color-border);
+  box-shadow: -12px 0 28px var(--color-shadow-card);
+  z-index: 230;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+.filter-drawer.open {
+  transform: translateX(0);
+}
+
+.filter-drawer__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+.filter-drawer__head h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--color-ink);
+}
+.filter-drawer__back {
+  border: 0;
+  background: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--color-ink);
+  cursor: pointer;
+  padding: 2px 4px;
+}
+.filter-drawer__clear {
+  border: 0;
+  background: none;
+  color: var(--color-brand);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.filter-drawer__clear:disabled {
+  color: var(--color-ink-light);
+  cursor: default;
+}
+
+.filter-drawer__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.filter-drawer__field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink-mid);
+}
+.filter-drawer__field select {
+  padding: 11px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.filter-drawer__footer {
+  padding: 14px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.filter-drawer__count {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-ink-mid);
+}
+.filter-drawer__footer .primary-button {
+  width: 100%;
+}
+
 .table-wrap {
   overflow-x: auto;
 }

@@ -165,6 +165,8 @@ interface Props {
   setIngenioFilter: (v: string) => void
   haciendaFilter: string
   setHaciendaFilter: (v: string) => void
+  laborSearch: string
+  setLaborSearch: (v: string) => void
   reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }
   setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }>>
   onSaveSession: (user: UserProfile | null) => void
@@ -205,6 +207,8 @@ export function SupervisorView({
   setIngenioFilter,
   haciendaFilter,
   setHaciendaFilter,
+  laborSearch,
+  setLaborSearch,
   reportFilters,
   setReportFilters,
   onSaveSession,
@@ -221,6 +225,25 @@ export function SupervisorView({
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
+  // Panel emergente de filtros de la pestana Labores (drawer lateral).
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false)
+
+  // Cuantos filtros (no la busqueda de texto) estan activos. Alimenta el
+  // badge del boton "Filtros" para que el supervisor sepa que hay filtros
+  // aplicados aunque el panel este cerrado.
+  const activeFilterCount =
+    (statusFilter !== 'TODAS' ? 1 : 0) +
+    (operatorFilter !== 'TODOS' ? 1 : 0) +
+    (ingenioFilter !== 'TODOS' ? 1 : 0) +
+    (haciendaFilter !== 'TODAS' ? 1 : 0)
+
+  // Restablece todos los filtros del panel a su valor "todos".
+  function clearLaborFilters() {
+    setStatusFilter('TODAS')
+    setOperatorFilter('TODOS')
+    setIngenioFilter('TODOS')
+    setHaciendaFilter('TODAS')
+  }
 
   const {
     assignmentForm, updateAssignmentForm,
@@ -771,6 +794,10 @@ export function SupervisorView({
             )}
           </nav>
 
+          {/* Franja de metricas "Hoy": solo en la pestana Labores (antes
+              se mostraba en todas). En Resumen y Reporte hay sus propios
+              KPIs, asi que aqui se omite para no duplicar. */}
+          {supervisorTab === 'labores' && (
           <div className="day-status-bar day-status-bar--large">
             <div className="day-status-bar__heading">Hoy</div>
             <div className="day-status-bar__items">
@@ -792,6 +819,7 @@ export function SupervisorView({
               </div>
             </div>
           </div>
+          )}
         </section>
 
         {(error || info) && (
@@ -1685,48 +1713,152 @@ export function SupervisorView({
                 <h2>Labores</h2>
                 <span className="labores-count">{filteredAssignments.length}</span>
               </div>
-              <div className="filter-row">
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="TODAS">Todos los estados</option>
-                  <option value="POR_APROBAR">
-                    Por aprobar{(() => {
-                      const n = assignments.filter(
-                        (a) => a.approval === 'PENDIENTE' && a.supervisorId === session.id,
-                      ).length
-                      return n > 0 ? ` (${n})` : ''
-                    })()}
-                  </option>
-                  <option value="PENDIENTE">Pendiente</option>
-                  <option value="EN_PROCESO">En proceso</option>
-                  <option value="COMPLETADA">Completada</option>
-                  <option value="CANCELADA">Cancelada</option>
-                </select>
-                <select value={operatorFilter} onChange={(event) => setOperatorFilter(event.target.value)}>
-                  <option value="TODOS">Todos los op.</option>
-                  {operators.map((operator) => (
-                    <option key={operator.id} value={operator.id}>{operator.name}</option>
-                  ))}
-                </select>
-                <select
-                  value={ingenioFilter}
-                  onChange={(event) => {
-                    setIngenioFilter(event.target.value)
-                    setHaciendaFilter('TODAS')
-                  }}
+              {/* Barra de busqueda libre + boton de filtros emergentes.
+                  Reemplaza los 4 dropdowns apilados por una UI mas limpia:
+                  la busqueda acota por hacienda/suerte/labor/operario y el
+                  resto de filtros viven en el panel deslizable lateral. */}
+              <div className="labores-search-row">
+                <div className="labores-search-input-wrap">
+                  <svg className="labores-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="search"
+                    className="labores-search-input"
+                    placeholder="Buscar hacienda, suerte, labor u operario..."
+                    value={laborSearch}
+                    onChange={(event) => setLaborSearch(event.target.value)}
+                  />
+                  {laborSearch && (
+                    <button
+                      type="button"
+                      className="labores-search-clear"
+                      onClick={() => setLaborSearch('')}
+                      aria-label="Limpiar busqueda"
+                    >
+                      &#x2715;
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  className={`filtros-toggle-btn${activeFilterCount > 0 ? ' filtros-toggle-btn--active' : ''}`}
+                  onClick={() => setFilterPanelOpen(true)}
                 >
-                  <option value="TODOS">Todos los ingenios</option>
-                  {INGENIOS.map((ing) => (
-                    <option key={ing.id} value={ing.id}>{ing.nombre}</option>
-                  ))}
-                </select>
-                <select value={haciendaFilter} onChange={(event) => setHaciendaFilter(event.target.value)}>
-                  <option value="TODAS">Todas las haciendas</option>
-                  {haciendaFilterOptions.map(({ code, name }) => (
-                    <option key={code} value={code}>{name}</option>
-                  ))}
-                </select>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
+                  Filtros
+                  {activeFilterCount > 0 && (
+                    <span className="filtros-badge">{activeFilterCount}</span>
+                  )}
+                </button>
               </div>
             </div>
+
+            {/* Panel emergente de filtros (drawer lateral deslizable).
+                Solo existe en la pestana Labores. Agrupa Estado, Operario,
+                Ingenio y Hacienda para no saturar la cabecera. */}
+            <div
+              className={`filter-drawer-overlay${filterPanelOpen ? ' open' : ''}`}
+              onClick={() => setFilterPanelOpen(false)}
+            />
+            <aside
+              className={`filter-drawer${filterPanelOpen ? ' open' : ''}`}
+              aria-hidden={!filterPanelOpen}
+            >
+              <div className="filter-drawer__head">
+                <button
+                  type="button"
+                  className="filter-drawer__back"
+                  onClick={() => setFilterPanelOpen(false)}
+                  aria-label="Cerrar filtros"
+                >
+                  &#x2190;
+                </button>
+                <h3>Filtrar</h3>
+                <button
+                  type="button"
+                  className="filter-drawer__clear"
+                  onClick={clearLaborFilters}
+                  disabled={activeFilterCount === 0}
+                >
+                  Limpiar
+                </button>
+              </div>
+
+              <div className="filter-drawer__body">
+                <label className="filter-drawer__field">
+                  Estado
+                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                    <option value="TODAS">Todos los estados</option>
+                    <option value="POR_APROBAR">
+                      Por aprobar{(() => {
+                        const n = assignments.filter(
+                          (a) => a.approval === 'PENDIENTE' && a.supervisorId === session.id,
+                        ).length
+                        return n > 0 ? ` (${n})` : ''
+                      })()}
+                    </option>
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="EN_PROCESO">En proceso</option>
+                    <option value="COMPLETADA">Completada</option>
+                    <option value="CANCELADA">Cancelada</option>
+                  </select>
+                </label>
+
+                <label className="filter-drawer__field">
+                  Operario
+                  <select value={operatorFilter} onChange={(event) => setOperatorFilter(event.target.value)}>
+                    <option value="TODOS">Todos los operarios</option>
+                    {operators.map((operator) => (
+                      <option key={operator.id} value={operator.id}>{operator.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="filter-drawer__field">
+                  Ingenio
+                  <select
+                    value={ingenioFilter}
+                    onChange={(event) => {
+                      setIngenioFilter(event.target.value)
+                      setHaciendaFilter('TODAS')
+                    }}
+                  >
+                    <option value="TODOS">Todos los ingenios</option>
+                    {INGENIOS.map((ing) => (
+                      <option key={ing.id} value={ing.id}>{ing.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="filter-drawer__field">
+                  Hacienda
+                  <select value={haciendaFilter} onChange={(event) => setHaciendaFilter(event.target.value)}>
+                    <option value="TODAS">Todas las haciendas</option>
+                    {haciendaFilterOptions.map(({ code, name }) => (
+                      <option key={code} value={code}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="filter-drawer__footer">
+                <p className="filter-drawer__count">
+                  Mostrando <strong>{filteredAssignments.length}</strong>{' '}
+                  {filteredAssignments.length === 1 ? 'resultado' : 'resultados'}
+                </p>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => setFilterPanelOpen(false)}
+                >
+                  Ver resultados
+                </button>
+              </div>
+            </aside>
 
             <ul className="labores-list">
               {filteredAssignments.map((assignment) => {

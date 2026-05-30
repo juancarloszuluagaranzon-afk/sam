@@ -54,6 +54,9 @@ function AppContent() {
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
   const [ingenioFilter, setIngenioFilter] = useState('TODOS')
   const [haciendaFilter, setHaciendaFilter] = useState('TODAS')
+  // Texto de la barra de busqueda de la pestana Labores. Busca de forma
+  // libre en hacienda, suerte, labor y operario (ver filteredAssignments).
+  const [laborSearch, setLaborSearch] = useState('')
   const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
   const [reportFilters, setReportFilters] = useState({
     period: 'MES' as ReportPeriod,
@@ -103,9 +106,16 @@ function AppContent() {
         )
         if (!row || row.ingenio_id !== ingenioFilter) return false
       }
+      // Busqueda libre por hacienda, suerte, labor u operario. Se aplica
+      // de ultimo para acotar el resultado ya filtrado por los selects.
+      if (laborSearch.trim()) {
+        const q = laborSearch.trim().toLowerCase()
+        const haystack = `${assignment.haciendaName} ${assignment.suerte} ${assignment.labor} ${assignment.operatorName}`.toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
       return true
     })
-  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, maestro, todayKey, session])
+  }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, laborSearch, maestro, todayKey, session])
 
   const haciendaFilterOptions = useMemo(() => {
     const codes = new Map<string, string>()
@@ -374,6 +384,8 @@ function AppContent() {
         setIngenioFilter={setIngenioFilter}
         haciendaFilter={haciendaFilter}
         setHaciendaFilter={setHaciendaFilter}
+        laborSearch={laborSearch}
+        setLaborSearch={setLaborSearch}
         reportFilters={reportFilters}
         setReportFilters={setReportFilters}
         onSaveSession={saveSession}

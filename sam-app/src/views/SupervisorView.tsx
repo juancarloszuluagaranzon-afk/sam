@@ -230,6 +230,10 @@ export function SupervisorView({
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
+  // Texto para filtrar el listado de suertes del formulario de asignar
+  // (escribir en vez de solo hacer scroll, como en Hacienda). Se limpia al
+  // cambiar de hacienda/ingenio para no arrastrar un filtro de otra lista.
+  const [suerteSearch, setSuerteSearch] = useState('')
   // Panel emergente de filtros de la pestana Labores (drawer lateral).
   const [filterPanelOpen, setFilterPanelOpen] = useState(false)
 
@@ -1030,13 +1034,23 @@ export function SupervisorView({
 
         {supervisorTab === 'asignar' ? (
           <section className="assign-tab-stack">
-            <button
-              type="button"
-              className="primary-button assign-cta"
-              onClick={() => setIsCreateAssignmentOpen(true)}
-            >
-              + Crear asignación
-            </button>
+            <div className="assign-cta-row">
+              <button
+                type="button"
+                className="primary-button assign-cta"
+                onClick={() => setIsCreateAssignmentOpen(true)}
+              >
+                + Crear asignación
+              </button>
+              <button
+                type="button"
+                className="primary-button outline assign-cta-secondary"
+                onClick={() => setIsNewSuerteOpen(true)}
+                title="Crear una suerte que aun no este en el maestro del ingenio"
+              >
+                + Nueva suerte
+              </button>
+            </div>
 
             <article className="panel-card">
               <div className="panel-title">
@@ -2478,7 +2492,7 @@ export function SupervisorView({
                 Ingenio
                 <SearchableSelect
                   value={assignmentForm.ingenioId}
-                  onChange={(value) => updateAssignmentForm('ingenioId', value)}
+                  onChange={(value) => { updateAssignmentForm('ingenioId', value); setSuerteSearch('') }}
                   placeholder="Selecciona un ingenio"
                   options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
                 />
@@ -2487,7 +2501,7 @@ export function SupervisorView({
                 Hacienda
                 <SearchableSelect
                   value={assignmentForm.haciendaCode}
-                  onChange={(value) => updateAssignmentForm('haciendaCode', value)}
+                  onChange={(value) => { updateAssignmentForm('haciendaCode', value); setSuerteSearch('') }}
                   placeholder={!assignmentForm.ingenioId ? 'Selecciona un ingenio primero' : 'Hacienda'}
                   options={assignmentHaciendas.map((item) => ({
                     value: item.code,
@@ -2496,22 +2510,32 @@ export function SupervisorView({
                 />
               </label>
               <div>
-                <div className="field-label-row">
-                  <span className="field-label">Suertes</span>
-                  {assignmentForm.ingenioId && (
-                    <button
-                      type="button"
-                      className="inline-button new-suerte-btn"
-                      onClick={() => setIsNewSuerteOpen(true)}
-                      title="Crear una suerte que aun no este en el maestro del ingenio"
-                    >
-                      + Nueva suerte
-                    </button>
-                  )}
-                </div>
-                {assignmentForm.haciendaCode ? (
+                <span className="field-label">Suertes</span>
+                {assignmentForm.haciendaCode && (
+                  <input
+                    type="search"
+                    className="suerte-search-input"
+                    value={suerteSearch}
+                    onChange={(e) => setSuerteSearch(e.target.value)}
+                    placeholder="Escribe para filtrar suertes…"
+                    aria-label="Filtrar suertes"
+                  />
+                )}
+                {assignmentForm.haciendaCode ? (() => {
+                  const term = suerteSearch.trim().toLowerCase()
+                  const filteredSuertes = term
+                    ? assignmentSuertes.filter((row) => row.suerte.toLowerCase().includes(term))
+                    : assignmentSuertes
+                  if (filteredSuertes.length === 0) {
+                    return (
+                      <p className="field-hint">
+                        Ninguna suerte coincide con “{suerteSearch.trim()}”. Si no existe, usa “+ Nueva suerte”.
+                      </p>
+                    )
+                  }
+                  return (
                   <ul className="suertes-checklist">
-                    {assignmentSuertes.map((row) => {
+                    {filteredSuertes.map((row) => {
                       const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
                       const remaining = assignmentForm.labor
                         ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area, todayKey)
@@ -2539,7 +2563,8 @@ export function SupervisorView({
                       )
                     })}
                   </ul>
-                ) : (
+                  )
+                })() : (
                   <p className="field-hint">Selecciona una hacienda primero</p>
                 )}
                 {assignmentSuertesList.length > 0 && (

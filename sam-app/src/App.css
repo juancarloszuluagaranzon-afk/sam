@@ -1533,6 +1533,44 @@ th {
   font-weight: 600;
 }
 
+/* Fila con los dos CTA de la pestana Asignar: "+ Crear asignación" (relleno,
+   mas ancho) y "+ Nueva suerte" (outline). En pantallas angostas se apilan. */
+.assign-cta-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.assign-cta-row .assign-cta {
+  flex: 2 1 240px;
+  width: auto;
+}
+.assign-cta-row .assign-cta-secondary {
+  flex: 1 1 170px;
+  width: auto;
+  padding: 14px 20px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+/* Barra para escribir/filtrar el listado de suertes (como Hacienda). */
+.suerte-search-input {
+  width: 100%;
+  margin: 6px 0 10px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--color-border);
+  border-radius: 12px;
+  font-size: 0.95rem;
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+}
+.suerte-search-input::placeholder {
+  color: var(--color-ink-light);
+}
+.suerte-search-input:focus {
+  outline: none;
+  border-color: var(--color-brand);
+}
+
 .assign-sheet {
   max-height: 92vh;
   overflow-y: auto;

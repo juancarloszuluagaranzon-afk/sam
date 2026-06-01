@@ -4871,3 +4871,53 @@ button.movement-row--clickable:active {
   background: color-mix(in srgb, var(--color-status-cancel) 14%, transparent);
 }
 
+/* Modal de cargue masivo de suertes */
+.bulk-maestro-card { max-width: min(520px, calc(100vw - 32px)); }
+.bulk-steps {
+  margin: 4px 0 12px;
+  padding-left: 18px;
+  color: var(--color-ink-mid);
+  font-size: 0.88rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.bulk-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.bulk-actions .primary-button { width: auto; flex: 1 1 180px; }
+.bulk-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+.bulk-kpi {
+  flex: 1 1 90px;
+  text-align: center;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  padding: 10px;
+}
+.bulk-kpi strong { display: block; font-size: 1.3rem; color: var(--color-ink); }
+.bulk-kpi span { font-size: 0.7rem; color: var(--color-ink-mid); text-transform: uppercase; letter-spacing: 0.02em; }
+.bulk-kpi--green strong { color: var(--color-brand); }
+.bulk-kpi--red strong { color: var(--color-status-cancel); }
+.bulk-errores {
+  max-height: 160px;
+  overflow: auto;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
+  color: var(--color-ink-mid);
+}
+.bulk-errores ul { margin: 6px 0 0; padding-left: 18px; }
+.bulk-errores li { margin: 2px 0; }
+

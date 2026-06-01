@@ -59,6 +59,7 @@ Acciones:
 - **+ Nueva suerte** (header) → reusa `NewSuerteModal` (mismo flujo de `createMaestroRow`).
 - **Editar** (por fila) → modal que cambia `area_neta` vía `samApi.updateMaestroRow(key, { area })`. La clave es `(haciendaCode, suerte, ingenio_id)`. Requiere la **policy RLS de UPDATE** (migración `20260601150000_maestro_rls_update.sql`).
 - **Eliminar** (por fila) → confirmación → `samApi.deleteMaestroRow(key)` que hace **soft-delete** (`activo = false`), NO DELETE físico. Sale del catálogo/dropdowns (`loadMaestro` filtra `activo=true`) pero NO rompe el histórico de asignaciones que referencian la suerte. Reusa la MISMA policy de UPDATE — no necesita policy de DELETE.
+- **Cargue masivo** (header) → `BulkMaestroModal`: descarga plantilla .xlsx (cols: Ingenio, Codigo hacienda, Nombre hacienda, Suerte, Area neta), sube el archivo, autodetecta hoja+columnas, valida (ingenio resuelto por id o nombre, área>0, sin duplicados internos), muestra preview (nuevas / ya existen / con error) y crea con `samApi.bulkInsertMaestro(rows, createdBy)`. Este hace `upsert` con `ignoreDuplicates:true` (ON CONFLICT DO NOTHING) → inserta solo las que NO existen (todas `creado_manual=true`, pasa la policy de INSERT), en chunks de 500, y devuelve SOLO las realmente insertadas. Las existentes se omiten (no se tocan). NO requiere migración.
 
 Tras editar/eliminar/crear, el componente actualiza `setMaestro` (in-memory) y `db.maestro` (Dexie) para reflejar el cambio al instante. La autorización por rol es en la UI (auth por PIN propia, todos usan anon_key a nivel DB).
 

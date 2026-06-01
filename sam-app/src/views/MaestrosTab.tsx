@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { updateMaestroRow, deleteMaestroRow } from '../services/samApi'
 import { NewSuerteModal } from '../components/NewSuerteModal'
+import { BulkMaestroModal } from '../components/BulkMaestroModal'
 import type { MaestroRow } from '../domain/sam'
 
 /**
@@ -40,6 +41,7 @@ export function MaestrosTab() {
   const [editArea, setEditArea] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<MaestroRow | null>(null)
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
+  const [isBulkOpen, setIsBulkOpen] = useState(false)
 
   // Haciendas conocidas (del maestro, opcionalmente filtradas al ingenio
   // seleccionado) para autocompletar en el modal de "Nueva suerte".
@@ -160,13 +162,22 @@ export function MaestrosTab() {
     <section className="panel-card">
       <div className="panel-title split">
         <h2>Maestros — catálogo de suertes</h2>
-        <button
-          type="button"
-          className="primary-button outline validacion-export-btn"
-          onClick={() => setIsNewSuerteOpen(true)}
-        >
-          + Nueva suerte
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className="primary-button outline validacion-export-btn"
+            onClick={() => setIsBulkOpen(true)}
+          >
+            ⬆ Cargue masivo
+          </button>
+          <button
+            type="button"
+            className="primary-button outline validacion-export-btn"
+            onClick={() => setIsNewSuerteOpen(true)}
+          >
+            + Nueva suerte
+          </button>
+        </div>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         Edita el área neta de una suerte o elimínala del catálogo. Usa la búsqueda o los filtros para encontrarla rápido.
@@ -407,6 +418,25 @@ export function MaestrosTab() {
         onCreated={(row) => {
           setMaestro((prev) => [...prev, row])
           setInfo(`Suerte ${row.suerte} creada en ${row.haciendaName}.`)
+        }}
+      />
+
+      <BulkMaestroModal
+        open={isBulkOpen}
+        onClose={() => setIsBulkOpen(false)}
+        maestro={maestro}
+        createdBy={session?.id ?? ''}
+        onInserted={(rows) => {
+          if (rows.length === 0) {
+            setInfo('No se crearon suertes nuevas (todas ya existían).')
+            return
+          }
+          setMaestro((prev) => {
+            const keys = new Set(prev.map((r) => `${r.ingenio_id}|${r.haciendaCode}|${r.suerte}`))
+            const add = rows.filter((r) => !keys.has(`${r.ingenio_id}|${r.haciendaCode}|${r.suerte}`))
+            return [...prev, ...add]
+          })
+          setInfo(`Cargue masivo: ${rows.length} suerte(s) creadas.`)
         }}
       />
     </section>

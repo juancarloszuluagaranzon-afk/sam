@@ -411,6 +411,58 @@ export async function deleteMaestroRow(
   }
 }
 
+/**
+ * Cargue masivo de suertes (desde plantilla Excel). Inserta TODAS las filas
+ * con `creado_manual=true` (pasa la policy RLS de INSERT). Las que ya existen
+ * (mismo `hacienda + suerte + ingenio_id`) se OMITEN gracias a
+ * `ignoreDuplicates` (ON CONFLICT DO NOTHING) — no se tocan ni se reflejan
+ * como manuales. Devuelve SOLO las filas realmente insertadas.
+ */
+export async function bulkInsertMaestro(
+  rows: { haciendaCode: string; haciendaName: string; suerte: string; area: number; ingenio_id: string }[],
+  createdBy: string,
+): Promise<MaestroRow[]> {
+  if (rows.length === 0) return []
+  const now = new Date().toISOString()
+  const inserted: MaestroRow[] = []
+  const CHUNK = 500
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    const payload = rows.slice(i, i + CHUNK).map((r) => ({
+      hacienda: r.haciendaCode,
+      nombre_hacienda: r.haciendaName,
+      suerte: r.suerte,
+      area_neta: r.area,
+      ingenio_id: r.ingenio_id,
+      activo: true,
+      creado_manual: true,
+      creado_por: createdBy,
+      creado_en: now,
+    }))
+    const { data, error } = await supabase
+      .from('maestro_risaralda')
+      .upsert(payload, { onConflict: 'hacienda,suerte,ingenio_id', ignoreDuplicates: true })
+      .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+    if (error) throw error
+    for (const d of (data ?? []) as Record<string, unknown>[]) {
+      inserted.push({
+        haciendaCode: String(d.hacienda),
+        haciendaName: String(d.nombre_hacienda ?? ''),
+        suerte: String(d.suerte ?? ''),
+        area: Number(d.area_neta),
+        ingenio_id: String(d.ingenio_id ?? 'risaralda'),
+        creadoManual: d.creado_manual === true,
+        creadoPor: d.creado_por ? String(d.creado_por) : undefined,
+      })
+    }
+  }
+  try {
+    for (const r of inserted) await db.maestro.put(r)
+  } catch {
+    /* sin cache no falla */
+  }
+  return inserted
+}
+
 // IDs de asignaciones con un cambio local pendiente de enviar (outbox
 // status='pending', type='UPDATE'). Los usamos en loadAssignments para NO
 // sobrescribir esas filas con la version del servidor: si lo hicieramos,

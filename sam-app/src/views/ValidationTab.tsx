@@ -43,8 +43,18 @@ function canonLabor(s: unknown) {
   if (t === 'DESPAJE' || t === 'DESPEJE') return 'DESPEJE'
   return t
 }
+// Para el CRUCE, DESPEJE / REENCALLE / REENCALLE V se tratan como UNA sola
+// unidad por suerte. En el Excel suelen colapsarse en una línea "DESPEJE X2"
+// (área ×2), mientras que en el app van como DOS labores separadas (DESPEJE +
+// REENCALLE). Agrupándolas juntas, ambas representaciones suman lo mismo y
+// cuadran (Excel 3.03×2 = 6.06 == app 3.03 + 3.03 = 6.06).
+function bucketLabor(labor: unknown): string {
+  const c = canonLabor(labor)
+  if (c === 'DESPEJE' || c === 'RENCALLE' || c === 'RENCALLE V') return 'DESPEJE/REENCALLE'
+  return c
+}
 function groupKey(hacienda: unknown, suerte: unknown, labor: unknown) {
-  return `${normTxt(hacienda)}|${normSuerte(suerte)}|${canonLabor(labor)}`
+  return `${normTxt(hacienda)}|${normSuerte(suerte)}|${bucketLabor(labor)}`
 }
 // Detecta la marca "FACTURA X2" / "SE FACTURA X2" / "FACTURA X 2" en cualquier
 // celda de una fila del Excel (la posición de la columna de nota varía).
@@ -167,7 +177,7 @@ export function ValidationTab() {
       const k = groupKey(a.haciendaName, a.suerte, a.labor)
       const mr = maestro.find((r) => r.haciendaCode === a.haciendaCode && r.suerte === a.suerte)
       const area = mr?.area ?? a.area
-      const cur = m.get(k) ?? { hacienda: a.haciendaName, suerte: a.suerte, labor: a.labor, sum: 0, area: 0, operario: a.operatorName, n: 0 }
+      const cur = m.get(k) ?? { hacienda: a.haciendaName, suerte: a.suerte, labor: bucketLabor(a.labor), sum: 0, area: 0, operario: a.operatorName, n: 0 }
       cur.sum += a.executedArea > 0 ? a.executedArea : 0
       cur.area = Math.max(cur.area, area)
       cur.n++
@@ -193,7 +203,7 @@ export function ValidationTab() {
     for (const r of excelRows) {
       if (!inPeriod(r.fechaKey)) continue
       const k = groupKey(r.hacienda, r.suerte, r.labor)
-      const g = excelMap.get(k) ?? { hacienda: r.hacienda, suerte: r.suerte, labor: r.labor, ha: 0, operario: r.operario, n: 0, x2: false }
+      const g = excelMap.get(k) ?? { hacienda: r.hacienda, suerte: r.suerte, labor: bucketLabor(r.labor), ha: 0, operario: r.operario, n: 0, x2: false }
       g.ha += r.ha * (r.facturaX2 ? 2 : 1)
       g.x2 = g.x2 || r.facturaX2
       g.n++

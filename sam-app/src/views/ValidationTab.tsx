@@ -46,11 +46,10 @@ function canonLabor(s: unknown) {
 function groupKey(hacienda: unknown, suerte: unknown, labor: unknown) {
   return `${normTxt(hacienda)}|${normSuerte(suerte)}|${canonLabor(labor)}`
 }
-// Labores que se facturan ×2 (despeje / reencalle / reencalle en V). En el
-// Excel se marca "SE FACTURA X2" en la columna de nota.
-function esX2(labor: unknown) {
-  const c = canonLabor(labor)
-  return c === 'DESPEJE' || c === 'RENCALLE' || c === 'RENCALLE V'
+// Detecta la marca "FACTURA X2" / "SE FACTURA X2" / "FACTURA X 2" en cualquier
+// celda de una fila del Excel (la posición de la columna de nota varía).
+function tieneMarcaX2(celdas: unknown[]): boolean {
+  return celdas.some((c) => /facturad?[ao]?\s*x\s*2|factura\s*x\s*2/i.test(String(c ?? '')))
 }
 
 function pad2(n: number) {
@@ -99,6 +98,7 @@ interface ExcelRow {
   labor: string
   ha: number
   operario: string
+  facturaX2: boolean
 }
 interface Grupo {
   hacienda: string
@@ -107,6 +107,7 @@ interface Grupo {
   ha: number
   operario: string
   n: number
+  x2?: boolean
 }
 
 export function ValidationTab() {
@@ -153,44 +154,71 @@ export function ValidationTab() {
     [assignments, mes, quincena],
   )
 
+  // Agrupa el app por suerte+labor en el período: suma del executedArea, área
+  // de la suerte (del maestro), y operario. El ×2 del app es "data-driven": el
+  // app dejó dos líneas que suman ~el doble del área de la suerte. NO se marca
+  // por nombre de labor (no todas las despeje/reencalle van ×2).
+  const appGroups = useMemo(() => {
+    const m = new Map<
+      string,
+      { hacienda: string; suerte: string; labor: string; sum: number; area: number; operario: string; n: number }
+    >()
+    for (const a of periodRows) {
+      const k = groupKey(a.haciendaName, a.suerte, a.labor)
+      const mr = maestro.find((r) => r.haciendaCode === a.haciendaCode && r.suerte === a.suerte)
+      const area = mr?.area ?? a.area
+      const cur = m.get(k) ?? { hacienda: a.haciendaName, suerte: a.suerte, labor: a.labor, sum: 0, area: 0, operario: a.operatorName, n: 0 }
+      cur.sum += a.executedArea > 0 ? a.executedArea : 0
+      cur.area = Math.max(cur.area, area)
+      cur.n++
+      m.set(k, cur)
+    }
+    return m
+  }, [periodRows, maestro])
+
+  // ¿El grupo (suerte+labor) del app está facturado ×2? = lo ejecutado suma
+  // ≈ el doble del área de la suerte (umbral 1.8× para tolerar redondeos).
+  const isAppX2 = (k: string) => {
+    const g = appGroups.get(k)
+    return !!g && g.area > 0 && g.sum >= g.area * 1.8
+  }
+  const appRowX2 = (a: Assignment) => isAppX2(groupKey(a.haciendaName, a.suerte, a.labor))
+
   // ---------- cruce app ↔ Excel ----------
   const reconc = useMemo(() => {
     if (!excelRows) return null
+    // Excel: una línea marcada "FACTURA X2" cuenta su área DOS VECES, para que
+    // su facturable iguale a las dos líneas separadas del app.
     const excelMap = new Map<string, Grupo>()
     for (const r of excelRows) {
       if (!inPeriod(r.fechaKey)) continue
       const k = groupKey(r.hacienda, r.suerte, r.labor)
-      const g = excelMap.get(k) ?? { hacienda: r.hacienda, suerte: r.suerte, labor: r.labor, ha: 0, operario: r.operario, n: 0 }
-      g.ha += r.ha
+      const g = excelMap.get(k) ?? { hacienda: r.hacienda, suerte: r.suerte, labor: r.labor, ha: 0, operario: r.operario, n: 0, x2: false }
+      g.ha += r.ha * (r.facturaX2 ? 2 : 1)
+      g.x2 = g.x2 || r.facturaX2
       g.n++
       excelMap.set(k, g)
-    }
-    const appMap = new Map<string, Grupo>()
-    for (const a of periodRows) {
-      const k = groupKey(a.haciendaName, a.suerte, a.labor)
-      const g = appMap.get(k) ?? { hacienda: a.haciendaName, suerte: a.suerte, labor: a.labor, ha: 0, operario: a.operatorName, n: 0 }
-      g.ha += a.executedArea > 0 ? a.executedArea : 0
-      g.n++
-      appMap.set(k, g)
     }
     const faltanApp: Grupo[] = []
     const ambos: (Grupo & { haApp: number })[] = []
     for (const [k, g] of excelMap) {
-      const ap = appMap.get(k)
-      if (ap) ambos.push({ ...g, haApp: ap.ha })
+      const ap = appGroups.get(k)
+      if (ap) ambos.push({ ...g, haApp: ap.sum })
       else faltanApp.push(g)
     }
     const soloApp: Grupo[] = []
-    for (const [k, g] of appMap) {
-      if (!excelMap.has(k)) soloApp.push(g)
+    for (const [k, ap] of appGroups) {
+      if (!excelMap.has(k)) {
+        soloApp.push({ hacienda: ap.hacienda, suerte: ap.suerte, labor: ap.labor, ha: ap.sum, operario: ap.operario, n: ap.n, x2: isAppX2(k) })
+      }
     }
     const byName = (a: Grupo, b: Grupo) => `${a.hacienda} ${a.suerte}`.localeCompare(`${b.hacienda} ${b.suerte}`)
     faltanApp.sort(byName)
     soloApp.sort(byName)
     ambos.sort(byName)
-    return { faltanApp, soloApp, ambos, excelTotal: excelMap.size, appTotal: appMap.size }
+    return { faltanApp, soloApp, ambos, excelTotal: excelMap.size }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [excelRows, periodRows, mes, quincena])
+  }, [excelRows, appGroups, mes, quincena])
 
   const term = search.trim().toLowerCase()
   const matchSearch = (g: { hacienda: string; suerte: string; labor: string; operario?: string }) =>
@@ -254,6 +282,7 @@ export function ValidationTab() {
             labor,
             ha,
             operario: iOp >= 0 ? String(r[iOp] ?? '').trim() : '',
+            facturaX2: tieneMarcaX2(r),
           })
         }
         parsed = out
@@ -303,7 +332,7 @@ export function ValidationTab() {
         aoa.push([
           executionDateKey(a), 'AGROMORALES', clienteCorto(a, maestro), '', a.zone ?? '',
           a.labor, a.haciendaName, a.suerte, a.executedArea > 0 ? a.executedArea : a.area,
-          esX2(a.labor) ? 'SE FACTURA X2' : '',
+          appRowX2(a) ? 'SE FACTURA X2' : '',
           '', a.operatorName, supName(a.supervisorId), '', '', '', a.notes, '', '', '', '',
         ])
       }
@@ -355,7 +384,7 @@ export function ValidationTab() {
 
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         {reconc
-          ? 'Cruce app ↔ Excel por hacienda + suerte + labor (en el mes elegido). Lo importante es la lista 🔴 "Falta en app".'
+          ? 'Cruce app ↔ Excel por hacienda + suerte + labor (en el mes elegido). Las líneas con “FACTURA X2” en el Excel cuentan el área ×2 (equivale a las dos líneas separadas del app). Lo importante es la lista 🔴 "Falta en app".'
           : 'Sube tu Excel para cruzar lo registrado en el app contra lo que llevas en el archivo, o revisa abajo qué registros del app están incompletos.'}
       </p>
 
@@ -433,7 +462,7 @@ export function ValidationTab() {
                 {reconc.faltanApp.filter(matchSearch).map((g, i) => (
                   <tr key={i}>
                     <td>{g.hacienda} · {g.suerte}</td>
-                    <td>{g.labor}{esX2(g.labor) && <span className="x2-badge">×2</span>}</td>
+                    <td>{g.labor}{g.x2 && <span className="x2-badge">×2</span>}</td>
                     <td className="num">{g.ha.toFixed(2)}</td>
                     <td>{g.operario || '—'}</td>
                   </tr>
@@ -454,7 +483,7 @@ export function ValidationTab() {
                 {reconc.soloApp.filter(matchSearch).map((g, i) => (
                   <tr key={i}>
                     <td>{g.hacienda} · {g.suerte}</td>
-                    <td>{g.labor}{esX2(g.labor) && <span className="x2-badge">×2</span>}</td>
+                    <td>{g.labor}{g.x2 && <span className="x2-badge">×2</span>}</td>
                     <td className="num">{g.ha.toFixed(2)}</td>
                     <td>{g.operario || '—'}</td>
                   </tr>
@@ -477,7 +506,7 @@ export function ValidationTab() {
                   return (
                     <tr key={i}>
                       <td>{g.hacienda} · {g.suerte}</td>
-                      <td>{g.labor}{esX2(g.labor) && <span className="x2-badge">×2</span>}</td>
+                      <td>{g.labor}{g.x2 && <span className="x2-badge">×2</span>}</td>
                       <td className="num">{g.ha.toFixed(2)}</td>
                       <td className="num">{g.haApp.toFixed(2)}</td>
                       <td>{dif > 0.1 ? <span className="val-faltan">⚠ {dif.toFixed(2)}</span> : '✓'}</td>
@@ -516,7 +545,7 @@ export function ValidationTab() {
                     <td><span className={`val-dot val-dot--${v.nivel}`} title={v.nivel} /></td>
                     <td className="nowrap">{executionDateKey(a) || '—'}</td>
                     <td>{a.haciendaName} · {a.suerte}</td>
-                    <td>{a.labor}{esX2(a.labor) && <span className="x2-badge">×2</span>}</td>
+                    <td>{a.labor}{appRowX2(a) && <span className="x2-badge">×2</span>}</td>
                     <td>{a.operatorName || '—'}</td>
                     <td className="num">{a.executedArea > 0 ? a.executedArea.toFixed(2) : '—'}</td>
                     <td>

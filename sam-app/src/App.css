@@ -4837,3 +4837,23 @@ button.movement-row--clickable:active {
 .val-title--green { color: var(--color-brand); }
 .validacion-table-wrap--sm { max-height: 34vh; overflow: auto; }
 
+/* Distintivo "×2" para labores que se facturan doble (despeje/reencalle/reencalle V). */
+.x2-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: #f3e8ff;
+  color: #7c3aed;
+  border: 1px solid #ddc9f5;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+:root[data-theme="dark"] .x2-badge {
+  background: #2a1c44;
+  color: #c4a3ff;
+  border-color: #463066;
+}
+

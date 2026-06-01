@@ -46,6 +46,12 @@ function canonLabor(s: unknown) {
 function groupKey(hacienda: unknown, suerte: unknown, labor: unknown) {
   return `${normTxt(hacienda)}|${normSuerte(suerte)}|${canonLabor(labor)}`
 }
+// Labores que se facturan ×2 (despeje / reencalle / reencalle en V). En el
+// Excel se marca "SE FACTURA X2" en la columna de nota.
+function esX2(labor: unknown) {
+  const c = canonLabor(labor)
+  return c === 'DESPEJE' || c === 'RENCALLE' || c === 'RENCALLE V'
+}
 
 function pad2(n: number) {
   return String(n).padStart(2, '0')
@@ -287,7 +293,7 @@ export function ValidationTab() {
       const { utils, writeFile } = await import('xlsx')
       const header = [
         'FECHA', 'EMPRESA', 'CLIENTE', 'SERVICIO', 'SECTOR', 'LABOR', 'HACIENDA',
-        'SUERTE', 'HA', ' ', 'MATAS', 'OPERARIO', 'CABO', 'FACTURA ',
+        'SUERTE', 'HA', 'FACTURA X2', 'MATAS', 'OPERARIO', 'CABO', 'FACTURA ',
         'FECHA DE FACTURA ', ' VALOR FACTURA ', 'OBSERVACION ', 'MATAS ', 'ACTA ',
         'FECHA2', 'DUDA, PREGUNTAR',
       ]
@@ -296,7 +302,8 @@ export function ValidationTab() {
       for (const a of ordered) {
         aoa.push([
           executionDateKey(a), 'AGROMORALES', clienteCorto(a, maestro), '', a.zone ?? '',
-          a.labor, a.haciendaName, a.suerte, a.executedArea > 0 ? a.executedArea : a.area, '',
+          a.labor, a.haciendaName, a.suerte, a.executedArea > 0 ? a.executedArea : a.area,
+          esX2(a.labor) ? 'SE FACTURA X2' : '',
           '', a.operatorName, supName(a.supervisorId), '', '', '', a.notes, '', '', '', '',
         ])
       }
@@ -426,7 +433,7 @@ export function ValidationTab() {
                 {reconc.faltanApp.filter(matchSearch).map((g, i) => (
                   <tr key={i}>
                     <td>{g.hacienda} · {g.suerte}</td>
-                    <td>{g.labor}</td>
+                    <td>{g.labor}{esX2(g.labor) && <span className="x2-badge">×2</span>}</td>
                     <td className="num">{g.ha.toFixed(2)}</td>
                     <td>{g.operario || '—'}</td>
                   </tr>
@@ -447,7 +454,7 @@ export function ValidationTab() {
                 {reconc.soloApp.filter(matchSearch).map((g, i) => (
                   <tr key={i}>
                     <td>{g.hacienda} · {g.suerte}</td>
-                    <td>{g.labor}</td>
+                    <td>{g.labor}{esX2(g.labor) && <span className="x2-badge">×2</span>}</td>
                     <td className="num">{g.ha.toFixed(2)}</td>
                     <td>{g.operario || '—'}</td>
                   </tr>
@@ -470,7 +477,7 @@ export function ValidationTab() {
                   return (
                     <tr key={i}>
                       <td>{g.hacienda} · {g.suerte}</td>
-                      <td>{g.labor}</td>
+                      <td>{g.labor}{esX2(g.labor) && <span className="x2-badge">×2</span>}</td>
                       <td className="num">{g.ha.toFixed(2)}</td>
                       <td className="num">{g.haApp.toFixed(2)}</td>
                       <td>{dif > 0.1 ? <span className="val-faltan">⚠ {dif.toFixed(2)}</span> : '✓'}</td>
@@ -509,7 +516,7 @@ export function ValidationTab() {
                     <td><span className={`val-dot val-dot--${v.nivel}`} title={v.nivel} /></td>
                     <td className="nowrap">{executionDateKey(a) || '—'}</td>
                     <td>{a.haciendaName} · {a.suerte}</td>
-                    <td>{a.labor}</td>
+                    <td>{a.labor}{esX2(a.labor) && <span className="x2-badge">×2</span>}</td>
                     <td>{a.operatorName || '—'}</td>
                     <td className="num">{a.executedArea > 0 ? a.executedArea.toFixed(2) : '—'}</td>
                     <td>

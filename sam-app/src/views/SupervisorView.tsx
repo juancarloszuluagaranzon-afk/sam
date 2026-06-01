@@ -23,8 +23,9 @@ import type { Assignment, MaestroRow, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 import { ValidationTab } from './ValidationTab'
+import { MaestrosTab } from './MaestrosTab'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -502,6 +503,16 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
                   </div>
                 </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'maestros' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('maestros'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">▤</span>
+                  <div>
+                    <div className="more-sheet__label">Maestros</div>
+                    <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
+                  </div>
+                </button>
               </>
             ) : (
               <>
@@ -533,6 +544,16 @@ export function SupervisorView({
                   <div>
                     <div className="more-sheet__label">Validación</div>
                     <div className="more-sheet__desc">Revisar qué falta diligenciar y exportar a Excel</div>
+                  </div>
+                </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'maestros' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('maestros'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">▤</span>
+                  <div>
+                    <div className="more-sheet__label">Maestros</div>
+                    <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
                   </div>
                 </button>
               </>
@@ -724,7 +745,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -756,7 +777,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'equipos' || supervisorTab === 'tablero' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'equipos' || supervisorTab === 'tablero' || supervisorTab === 'maestros' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -821,6 +842,15 @@ export function SupervisorView({
                   <span className="nav-item">
                     <span className="nav-icon">✔</span>
                     <span className="nav-label">Validación</span>
+                  </span>
+                </button>
+                <button
+                  className={supervisorTab === 'maestros' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('maestros')}
+                >
+                  <span className="nav-item">
+                    <span className="nav-icon">▤</span>
+                    <span className="nav-label">Maestros</span>
                   </span>
                 </button>
               </>
@@ -1273,6 +1303,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'validacion' ? (
           <ValidationTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion' || session.role === 'supervisor') && supervisorTab === 'maestros' ? (
+          <MaestrosTab />
         ) : null}
 
         {(session.role === 'administracion' || session.role === 'owner') && supervisorTab === 'reporte' ? (

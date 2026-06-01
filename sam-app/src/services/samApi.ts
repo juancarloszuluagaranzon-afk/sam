@@ -338,6 +338,52 @@ export async function createMaestroRow(
   return row
 }
 
+/**
+ * Edita una fila del maestro (area_neta y/o nombre de la hacienda) desde la
+ * pestana "Maestros". La fila se identifica por su clave unica
+ * (hacienda + suerte + ingenio_id). Requiere la policy RLS de UPDATE
+ * (migracion 20260601150000) — si falta, PostgREST devuelve un error de RLS.
+ */
+export async function updateMaestroRow(
+  key: { haciendaCode: string; suerte: string; ingenio_id: string },
+  changes: { area?: number; haciendaName?: string },
+): Promise<MaestroRow> {
+  const payload: Record<string, unknown> = {}
+  if (changes.area !== undefined) payload.area_neta = changes.area
+  if (changes.haciendaName !== undefined) payload.nombre_hacienda = changes.haciendaName
+
+  const { data, error } = await supabase
+    .from('maestro_risaralda')
+    .update(payload)
+    .eq('hacienda', key.haciendaCode)
+    .eq('suerte', key.suerte)
+    .eq('ingenio_id', key.ingenio_id)
+    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+    .single()
+
+  if (error || !data) {
+    throw error ?? new Error('No se pudo actualizar la suerte del maestro.')
+  }
+
+  const row: MaestroRow = {
+    haciendaCode: String(data.hacienda),
+    haciendaName: data.nombre_hacienda,
+    suerte: data.suerte,
+    area: Number(data.area_neta),
+    ingenio_id: String(data.ingenio_id ?? 'risaralda'),
+    creadoManual: data.creado_manual === true,
+    creadoPor: data.creado_por ?? undefined,
+  }
+
+  try {
+    await db.maestro.put(row)
+  } catch {
+    /* sin cache no falla */
+  }
+
+  return row
+}
+
 // IDs de asignaciones con un cambio local pendiente de enviar (outbox
 // status='pending', type='UPDATE'). Los usamos en loadAssignments para NO
 // sobrescribir esas filas con la version del servidor: si lo hicieramos,

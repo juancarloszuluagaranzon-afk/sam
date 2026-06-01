@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { updateMaestroRow } from '../services/samApi'
+import { updateMaestroRow, deleteMaestroRow } from '../services/samApi'
+import { NewSuerteModal } from '../components/NewSuerteModal'
 import type { MaestroRow } from '../domain/sam'
 
 /**
@@ -27,7 +28,7 @@ const ingenioNombre = (id: string) => INGENIOS.find((i) => i.id === id)?.nombre 
 const LIMIT = 300
 
 export function MaestrosTab() {
-  const { maestro, setMaestro, busy, setBusy, setError, setInfo } = useAppData()
+  const { session, maestro, setMaestro, busy, setBusy, setError, setInfo } = useAppData()
 
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -37,6 +38,22 @@ export function MaestrosTab() {
 
   const [editRow, setEditRow] = useState<MaestroRow | null>(null)
   const [editArea, setEditArea] = useState('')
+  const [deleteTarget, setDeleteTarget] = useState<MaestroRow | null>(null)
+  const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
+
+  // Haciendas conocidas (del maestro, opcionalmente filtradas al ingenio
+  // seleccionado) para autocompletar en el modal de "Nueva suerte".
+  const haciendasParaModal = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          maestro
+            .filter((r) => ingenioFilter === 'TODOS' || r.ingenio_id === ingenioFilter)
+            .map((r) => [r.haciendaCode, { code: r.haciendaCode, name: r.haciendaName }]),
+        ).values(),
+      ),
+    [maestro, ingenioFilter],
+  )
 
   const haciendaOptions = useMemo(() => {
     const map = new Map<string, string>()
@@ -117,13 +134,42 @@ export function MaestrosTab() {
     }
   }
 
+  async function confirmDelete() {
+    if (!deleteTarget) return
+    const t = deleteTarget
+    setBusy(true)
+    setError('')
+    try {
+      await deleteMaestroRow({ haciendaCode: t.haciendaCode, suerte: t.suerte, ingenio_id: t.ingenio_id })
+      setMaestro((prev) =>
+        prev.filter(
+          (r) => !(r.haciendaCode === t.haciendaCode && r.suerte === t.suerte && r.ingenio_id === t.ingenio_id),
+        ),
+      )
+      setInfo(`Suerte ${t.suerte} de ${t.haciendaName} eliminada del catálogo.`)
+      setDeleteTarget(null)
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo eliminar. (${e?.message ?? 'error'}) — verifica conexión y/o avisa al admin.`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <section className="panel-card">
-      <div className="panel-title">
+      <div className="panel-title split">
         <h2>Maestros — catálogo de suertes</h2>
+        <button
+          type="button"
+          className="primary-button outline validacion-export-btn"
+          onClick={() => setIsNewSuerteOpen(true)}
+        >
+          + Nueva suerte
+        </button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Edita el área neta de una suerte. Usa la búsqueda o los filtros para encontrarla rápido.
+        Edita el área neta de una suerte o elimínala del catálogo. Usa la búsqueda o los filtros para encontrarla rápido.
       </p>
 
       {/* Búsqueda + botón de filtros (mismo patrón que Labores) */}
@@ -240,7 +286,16 @@ export function MaestrosTab() {
                 <td>{r.suerte}</td>
                 <td className="num">{r.area.toFixed(2)}</td>
                 <td>
-                  <button type="button" className="inline-button" onClick={() => openEdit(r)}>Editar</button>
+                  <div className="maestro-row-actions">
+                    <button type="button" className="inline-button" onClick={() => openEdit(r)}>Editar</button>
+                    <button
+                      type="button"
+                      className="inline-button maestro-delete-btn"
+                      onClick={() => { setDeleteTarget(r); setError('') }}
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -303,6 +358,57 @@ export function MaestrosTab() {
           </div>
         </div>
       )}
+
+      {/* Confirmación de eliminar (desactivar) */}
+      {deleteTarget && (
+        <div className="modal-overlay open" onClick={() => setDeleteTarget(null)}>
+          <div
+            className="modal-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}
+          >
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Maestro</p>
+                <h3>¿Eliminar esta suerte?</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setDeleteTarget(null)} disabled={busy} aria-label="Cerrar">
+                &#x2715;
+              </button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              <strong>{ingenioNombre(deleteTarget.ingenio_id)} · {deleteTarget.haciendaCode} {deleteTarget.haciendaName} · Suerte {deleteTarget.suerte}</strong>
+            </p>
+            <p className="subtle-copy">
+              Se quitará del catálogo (deja de aparecer en los listados y dropdowns).
+              El histórico de labores que la usan <strong>se conserva</strong>; un administrador puede reactivarla si hace falta.
+            </p>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setDeleteTarget(null)} disabled={busy}>
+                Cancelar
+              </button>
+              <button type="button" className="release-confirm-btn" onClick={() => void confirmDelete()} disabled={busy}>
+                {busy ? 'Eliminando...' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para crear una suerte nueva (reusa el del operario/supervisor) */}
+      <NewSuerteModal
+        open={isNewSuerteOpen}
+        onClose={() => setIsNewSuerteOpen(false)}
+        createdBy={session?.id ?? ''}
+        haciendas={haciendasParaModal}
+        ingenios={INGENIOS}
+        maestro={maestro}
+        prefillIngenioId={ingenioFilter !== 'TODOS' ? ingenioFilter : undefined}
+        onCreated={(row) => {
+          setMaestro((prev) => [...prev, row])
+          setInfo(`Suerte ${row.suerte} creada en ${row.haciendaName}.`)
+        }}
+      />
     </section>
   )
 }

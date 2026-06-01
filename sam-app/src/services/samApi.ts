@@ -384,6 +384,33 @@ export async function updateMaestroRow(
   return row
 }
 
+/**
+ * "Elimina" una suerte del catálogo = la DESACTIVA (`activo = false`).
+ * `loadMaestro` solo trae `activo = true`, así que deja de aparecer en el
+ * catálogo y en los dropdowns, pero NO rompe el histórico de asignaciones que
+ * la referencian (no es un DELETE físico). Reusa la policy RLS de UPDATE
+ * (migración 20260601150000) — no necesita policy de DELETE.
+ */
+export async function deleteMaestroRow(
+  key: { haciendaCode: string; suerte: string; ingenio_id: string },
+): Promise<void> {
+  const { error } = await supabase
+    .from('maestro_risaralda')
+    .update({ activo: false })
+    .eq('hacienda', key.haciendaCode)
+    .eq('suerte', key.suerte)
+    .eq('ingenio_id', key.ingenio_id)
+
+  if (error) throw error
+
+  // El cache local (Dexie) usa la clave compuesta [haciendaCode+suerte].
+  try {
+    await db.maestro.delete([key.haciendaCode, key.suerte])
+  } catch {
+    /* sin cache no falla */
+  }
+}
+
 // IDs de asignaciones con un cambio local pendiente de enviar (outbox
 // status='pending', type='UPDATE'). Los usamos en loadAssignments para NO
 // sobrescribir esas filas con la version del servidor: si lo hicieramos,

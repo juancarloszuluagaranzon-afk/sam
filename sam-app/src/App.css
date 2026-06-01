@@ -4857,3 +4857,17 @@ button.movement-row--clickable:active {
   border-color: #463066;
 }
 
+/* Acciones por fila en la pestaña Maestros (Editar / Eliminar). */
+.maestro-row-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.maestro-delete-btn {
+  color: var(--color-status-cancel);
+}
+.maestro-delete-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--color-status-cancel) 14%, transparent);
+}
+

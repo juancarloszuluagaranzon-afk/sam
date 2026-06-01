@@ -177,6 +177,15 @@ Un operario puede **liberar** una labor activa que no va a poder terminar (situa
 
 Por qué: una RE-TOMA en campo del restante (ej: tras liberar un parcial de 12.20 de 19.52) se crea con `area = getRemainingArea = 7.32` (no el área completa). Si `getSuerteProgress` restara `7.32 - executedTotal(12.20)` daría `remaining < 0 → 0` y la card desaparecería al instante como "zombie", o el cap del finish quedaría en 0 (el operario no podría registrar nada). Tomando el MAX de las áreas del ciclo recuperamos el área completa real (la primera toma / la ASIGNADA siempre lleva el área completa), y el restante se calcula bien (`19.52 - 12.20 = 7.32`). En el caso normal (todas las áreas = completa) `MAX = assignment.area` → sin cambio de comportamiento.
 
+## Pestaña Validación (jefe/owner + administración)
+
+Componente `src/views/ValidationTab.tsx` (usa `useAppData()` directo, sin props). Tab `'validacion'` en `SupervisorTab`. Acceso: `owner` (en el menú "Más") y `administracion` (tab directo). Render gated: `(role==='owner'||role==='administracion') && supervisorTab==='validacion'`.
+
+Propósito: que jefe/administración validen que TODO lo del Excel paralelo ya está diligenciado en el app mientras prueban el sistema. Decisiones (2026-05-31):
+- **Regla ×2** (DESPEJE/REENCALLE/REENCALLE V se facturan doble): en el Excel es una marca manual `FACTURA X2` (~46 de 4642 filas, NO es factor automático por labor). En el app quedan **dos líneas que suman el doble del área**. El dashboard **NO multiplica por factor**: solo SUMA el `executedArea` (las dos líneas ya dan el doble = el "facturar 2"). Por eso el usuario eligió "sumar las 2 líneas, no tocar flujo".
+- **Validación = consistencia interna** (no importa Excel): semáforo por registro — 🟢 completa (COMPLETADA con área ejec + horómetro final + operario), 🟡 en curso (EN_PROCESO/PARCIAL), 🔴 incompleta (PENDIENTE o COMPLETADA con campos faltantes). Aprobación va en columna aparte, no en el rojo.
+- **Export a Excel** con `aoa_to_sheet` (array-of-arrays) para replicar EXACTO el encabezado de la hoja "Resumen de Labores" (incluye columnas en blanco y "MATAS" duplicada que `json_to_sheet` no soporta). Mapeo app→Excel: EMPRESA fijo `AGROMORALES`, CLIENTE=ingenio (sin prefijo "Ingenio", uppercase), SECTOR=zona, CABO=supervisor (resuelto por `users`), HA=executedArea, FACTURA/VALOR/ACTA/etc=vacío (los llena admin en Excel). `import('xlsx')` dinámico (lazy) como en `App.tsx handleDownloadReport`.
+
 ## WORKFLOW — Secuencia de labores
 
 El orden importa. Es la secuencia canónica para una suerte:

@@ -22,8 +22,9 @@ import { WORKFLOW } from '../data/constants'
 import type { Assignment, MaestroRow, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
+import { ValidationTab } from './ValidationTab'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -520,6 +521,16 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
                   </div>
                 </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'validacion' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('validacion'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">✔</span>
+                  <div>
+                    <div className="more-sheet__label">Validación</div>
+                    <div className="more-sheet__desc">Revisar qué falta diligenciar y exportar a Excel</div>
+                  </div>
+                </button>
               </>
             )}
           </div>
@@ -797,6 +808,15 @@ export function SupervisorView({
                   <span className="nav-item">
                     <span className="nav-icon">⬦</span>
                     <span className="nav-label">Reporte</span>
+                  </span>
+                </button>
+                <button
+                  className={supervisorTab === 'validacion' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('validacion')}
+                >
+                  <span className="nav-item">
+                    <span className="nav-icon">✔</span>
+                    <span className="nav-label">Validación</span>
                   </span>
                 </button>
               </>
@@ -1236,6 +1256,10 @@ export function SupervisorView({
               <span className="tablero-legend-item pendiente">Pendiente</span>
             </div>
           </section>
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'validacion' ? (
+          <ValidationTab />
         ) : null}
 
         {(session.role === 'administracion' || session.role === 'owner') && supervisorTab === 'reporte' ? (

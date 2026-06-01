@@ -101,8 +101,22 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
     if (!entity) return []
     return assignments
       .filter((a) => {
-        if (entity.type === 'operator' && a.operatorId !== entity.id) return false
-        if (entity.type === 'equipment' && a.equipmentCode !== entity.code) return false
+        // Emparejar con LA MISMA clave que usa el agrupamiento de las tarjetas
+        // (summaryByOperator / summaryByEquipment): por id/código si existe, si
+        // no por nombre. Filas históricas tienen `operador_id` / `equipo_codigo`
+        // vacío; antes el modal comparaba contra el id literal "sin-operador" y
+        // nunca encontraba nada → la tarjeta mostraba labores y el detalle salía
+        // "Sin labores en el periodo".
+        if (entity.type === 'operator') {
+          const aKey = a.operatorId || `name:${(a.operatorName || 'Sin operador').trim().toUpperCase()}`
+          const eKey = entity.id || `name:${(entity.name || 'Sin operador').trim().toUpperCase()}`
+          if (aKey !== eKey) return false
+        }
+        if (entity.type === 'equipment') {
+          const aKey = a.equipmentCode || `name:${(a.equipmentName || a.equipmentCode || 'Sin equipo').trim().toUpperCase()}`
+          const eKey = entity.code || `name:${(entity.name || 'Sin equipo').trim().toUpperCase()}`
+          if (aKey !== eKey) return false
+        }
         if (a.status === 'CANCELADA') return false
         // Agrupar por fecha de EJECUCIÓN (fecha_fin / fecha_inicio según estado),
         // no por fecha de asignación. Una labor del 14-may ejecutada el 16-may cuenta

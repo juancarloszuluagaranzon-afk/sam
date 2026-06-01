@@ -388,13 +388,16 @@ export function SupervisorView({
       { id: string; name: string; planned: number; executed: number; count: number }
     >()
     for (const a of summaryAssignments) {
-      const id = a.operatorId || 'sin-operador'
       const name = a.operatorName || 'Sin operador'
-      const current = groups.get(id) ?? { id, name, planned: 0, executed: 0, count: 0 }
+      const id = a.operatorId || ''
+      // Clave: por id si existe, si no por nombre (filas históricas sin
+      // operador_id). El modal de detalle reconstruye esta MISMA clave.
+      const key = id || `name:${name.trim().toUpperCase()}`
+      const current = groups.get(key) ?? { id, name, planned: 0, executed: 0, count: 0 }
       current.planned += a.area
       if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
       current.count += 1
-      groups.set(id, current)
+      groups.set(key, current)
     }
     return Array.from(groups.values()).sort((a, b) => b.executed - a.executed)
   }, [summaryAssignments])
@@ -411,13 +414,14 @@ export function SupervisorView({
       { code: string; name: string; planned: number; executed: number; count: number }
     >()
     for (const a of summaryAssignments) {
-      const code = a.equipmentCode || 'sin-equipo'
       const name = a.equipmentName || a.equipmentCode || 'Sin equipo'
-      const current = groups.get(code) ?? { code, name, planned: 0, executed: 0, count: 0 }
+      const code = a.equipmentCode || ''
+      const key = code || `name:${name.trim().toUpperCase()}`
+      const current = groups.get(key) ?? { code, name, planned: 0, executed: 0, count: 0 }
       current.planned += a.area
       if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
       current.count += 1
-      groups.set(code, current)
+      groups.set(key, current)
     }
     return Array.from(groups.values()).sort((a, b) => b.executed - a.executed)
   }, [summaryAssignments])
@@ -1040,6 +1044,15 @@ export function SupervisorView({
         ) : null}
 
         <EntityHistoryModal
+          key={
+            selectedEntity
+              ? `${selectedEntity.type}:${
+                  selectedEntity.type === 'operator'
+                    ? selectedEntity.id || selectedEntity.name
+                    : selectedEntity.code || selectedEntity.name
+                }`
+              : 'none'
+          }
           entity={selectedEntity}
           assignments={scopedAssignments}
           defaultMonth={summaryMonth}

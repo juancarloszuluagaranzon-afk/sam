@@ -4812,3 +4812,28 @@ button.movement-row--clickable:active {
 
 .validacion-empty { text-align: center; color: var(--color-ink-light); padding: 24px; }
 
+/* Cruce app ↔ Excel */
+.validacion-excel-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  background: var(--color-bg-soft);
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  font-size: 0.9rem;
+  color: var(--color-ink);
+}
+.validacion-section-title {
+  margin: 20px 0 8px;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+.val-title--red { color: var(--color-status-cancel); }
+.val-title--amber { color: #b8860b; }
+.val-title--green { color: var(--color-brand); }
+.validacion-table-wrap--sm { max-height: 34vh; overflow: auto; }
+

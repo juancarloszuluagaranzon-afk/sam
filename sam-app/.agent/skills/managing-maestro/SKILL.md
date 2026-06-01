@@ -49,6 +49,19 @@ Flujo:
 
 Roles permitidos: **supervisor, owner, administracion, operador**. El operador puede crear porque el caso típico es justo el operario que llega a campo y ve una suerte nueva.
 
+## Pestaña "Maestros" — gestionar el catálogo (owner/admin/supervisor)
+
+Componente `src/views/MaestrosTab.tsx`. Tab `'maestros'` en `SupervisorTab`. Acceso: **owner** y **supervisor** (menú "Más"), **administración** (tab directo). Operadores NO la ven.
+
+Lista el catálogo con **búsqueda + panel de filtros emergente** (mismo patrón que Labores: ingenio / hacienda / origen oficial-vs-manual). El maestro tiene ~15K filas → la lista se topa en `LIMIT = 300`; si hay más, pide refinar (no renderiza todo, por rendimiento).
+
+Acciones:
+- **+ Nueva suerte** (header) → reusa `NewSuerteModal` (mismo flujo de `createMaestroRow`).
+- **Editar** (por fila) → modal que cambia `area_neta` vía `samApi.updateMaestroRow(key, { area })`. La clave es `(haciendaCode, suerte, ingenio_id)`. Requiere la **policy RLS de UPDATE** (migración `20260601150000_maestro_rls_update.sql`).
+- **Eliminar** (por fila) → confirmación → `samApi.deleteMaestroRow(key)` que hace **soft-delete** (`activo = false`), NO DELETE físico. Sale del catálogo/dropdowns (`loadMaestro` filtra `activo=true`) pero NO rompe el histórico de asignaciones que referencian la suerte. Reusa la MISMA policy de UPDATE — no necesita policy de DELETE.
+
+Tras editar/eliminar/crear, el componente actualiza `setMaestro` (in-memory) y `db.maestro` (Dexie) para reflejar el cambio al instante. La autorización por rol es en la UI (auth por PIN propia, todos usan anon_key a nivel DB).
+
 ## Convenciones de datos
 
 - **Nombre de hacienda**: SIEMPRE en mayúsculas. El input del modal aplica `.toUpperCase()` en `onChange` + `autoCapitalize="characters"` + `textTransform: uppercase` (3 capas). Razón: consistencia con el catálogo oficial del ingenio y los reportes.
@@ -89,6 +102,8 @@ Dexie cache (`db.maestro`) tiene como PK `[haciendaCode+suerte]` — los campos 
 El channel `asignaciones-changes` en `useSync.ts` propaga solo `asignaciones`, NO `maestro_risaralda`. Una suerte creada por OP-A NO aparece automáticamente en el dropdown de OP-B hasta que OP-B recargue o llame manualmente a `loadMaestro`. Si esto se vuelve un problema (típicamente no, porque las creaciones son raras), agregar suscripción a `maestro_risaralda` en el useSync.
 
 ## Gotchas
+
+- **[2026-06-01]** "Eliminar" una suerte (pestaña Maestros) = **soft-delete** (`activo = false`), NO DELETE físico. Razón: un DELETE rompería los reportes/cruces y las asignaciones históricas que referencian la suerte (no hay FK pero la app las usa por `suerteCode`). `deleteMaestroRow` reusa la policy RLS de UPDATE → no hace falta policy de DELETE. Para "reactivar" bastaría `UPDATE ... SET activo=true` (aún no hay UI; se podría sumar un filtro "inactivas" + botón Reactivar). Editar el área requiere esa misma policy de UPDATE (migración `20260601150000`).
 
 - **[2026-05-29]** El modal `NewSuerteModal` usa `.modal-overlay` genérico (z-index 100), pero se abre desde dentro de `.more-sheet` / `.assign-sheet` que tienen `z-index: 195`. Resultado: el modal queda detrás del sheet padre. Fix: clase específica `.new-suerte-overlay { z-index: 250 }` para que esté al frente con su backdrop oscuro propio. Si creas otro modal que se invoque desde dentro de un sheet, recuerda este patrón.
 

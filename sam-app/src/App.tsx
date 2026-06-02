@@ -11,7 +11,7 @@ import type { Assignment, UserProfile } from './domain/sam'
 import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getAssignmentIngenioId } from './services/samApi'
 import { db } from './lib/db'
 
-export type ReportPeriod = 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'
+export type ReportPeriod = 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -166,14 +166,21 @@ function AppContent() {
     // El mes seleccionado aplica a PRIMERA/SEGUNDA/MES (permite mes anterior y
     // cualquier mes). HOY ignora el mes (usa todayKey vía matchesSummaryFilter).
     const periodMonth = reportFilters.mes || currentMonth
+    // "Ayer" = todayKey - 1 día (aritmética sobre la fecha de Bogotá; maneja
+    // bien el cambio de mes/año).
+    const [ty, tm, td] = todayKey.split('-').map(Number)
+    const yDate = new Date(ty, tm - 1, td - 1)
+    const yesterdayKey = `${yDate.getFullYear()}-${String(yDate.getMonth() + 1).padStart(2, '0')}-${String(yDate.getDate()).padStart(2, '0')}`
     return assignments
       .filter((a) => {
         const execDate = executionDateKey(a)
-        // Filtro de período: CUSTOM usa desde/hasta manuales, los demás usan
-        // matchesSummaryFilter (misma lógica que el Resumen).
+        // Filtro de período: CUSTOM usa desde/hasta manuales, AYER compara contra
+        // ayer, los demás usan matchesSummaryFilter (misma lógica que el Resumen).
         if (reportFilters.period === 'CUSTOM') {
           if (reportFilters.desde && execDate < reportFilters.desde) return false
           if (reportFilters.hasta && execDate > reportFilters.hasta) return false
+        } else if (reportFilters.period === 'AYER') {
+          if (execDate !== yesterdayKey) return false
         } else {
           const quincena: SummaryQuincena =
             reportFilters.period === 'HOY' ? 'HOY' :

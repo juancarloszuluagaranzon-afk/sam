@@ -174,8 +174,8 @@ interface Props {
   setHaciendaFilter: (v: string) => void
   laborSearch: string
   setLaborSearch: (v: string) => void
-  reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; mes: string; desde: string; hasta: string; estado: string; haciendaCode: string; suerte: string; operatorId: string; ingenioId: string }
-  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; mes: string; desde: string; hasta: string; estado: string; haciendaCode: string; suerte: string; operatorId: string; ingenioId: string }>>
+  reportFilters: { period: 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; mes: string; desde: string; hasta: string; estado: string; haciendaCode: string; suerte: string; operatorId: string; ingenioId: string }
+  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; mes: string; desde: string; hasta: string; estado: string; haciendaCode: string; suerte: string; operatorId: string; ingenioId: string }>>
   onSaveSession: (user: UserProfile | null) => void
   handleChangePin: (e: FormEvent) => Promise<void>
   handleDownloadReport: () => Promise<void>
@@ -1332,9 +1332,10 @@ export function SupervisorView({
                   Período
                   <select
                     value={reportFilters.period}
-                    onChange={(e) => setReportFilters((f) => ({ ...f, period: e.target.value as 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES' }))}
+                    onChange={(e) => setReportFilters((f) => ({ ...f, period: e.target.value as 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES' }))}
                   >
                     <option value="HOY">Hoy</option>
+                    <option value="AYER">Ayer</option>
                     <option value="PRIMERA">1ra quincena (1-15)</option>
                     <option value="SEGUNDA">2da quincena (16-fin)</option>
                     <option value="MES">Mes completo</option>
@@ -1439,6 +1440,7 @@ export function SupervisorView({
               const mesLabel = summaryMonthOptions.find((o) => o.value === reportFilters.mes)?.label ?? reportFilters.mes
               const periodLabel =
                 reportFilters.period === 'HOY' ? 'Hoy' :
+                reportFilters.period === 'AYER' ? 'Ayer' :
                 reportFilters.period === 'PRIMERA' ? `1ra quincena · ${mesLabel}` :
                 reportFilters.period === 'SEGUNDA' ? `2da quincena · ${mesLabel}` :
                 reportFilters.period === 'MES' ? mesLabel :

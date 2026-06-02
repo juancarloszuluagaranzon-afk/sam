@@ -343,7 +343,15 @@ export function OperatorView({
 
   const historyMonths = useMemo(() => {
     const set = new Set<string>()
-    historyAssignments.forEach((a) => { if (a.dateKey) set.add(a.dateKey.slice(0, 7)) })
+    // Usar la fecha de EJECUCIÓN (igual que filteredHistory), NO la de creación.
+    // Una labor creada el 31-may pero finalizada el 1-jun se EJECUTA en junio:
+    // si el desplegable se armara por `dateKey` (creación = mayo), junio nunca
+    // saldría como opción y la labor quedaba invisible (no está en mayo porque
+    // su ejecución es junio, y junio no era seleccionable). Deben coincidir.
+    historyAssignments.forEach((a) => {
+      const k = executionDateKey(a)
+      if (k) set.add(k.slice(0, 7))
+    })
     return Array.from(set).sort((a, b) => b.localeCompare(a))
   }, [historyAssignments])
 

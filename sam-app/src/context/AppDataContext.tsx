@@ -120,21 +120,19 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [error])
 
   async function hydrate() {
-    // Si la carga viene de un RELOAD del navegador (F5 / Ctrl+R / botón circular),
-    // borramos el watermark de delta sync para forzar full reload de asignaciones
-    // en la fase 2. Sin esto, el reload normal sirve el bundle cacheado del SW
-    // y aplica delta sync, que NO detecta filas borradas en el servidor — al
-    // usuario le parece que "el reload no actualiza nada". El mismo efecto que
-    // Diagnóstico → "Forzar sync ahora" pero gratis al pulsar el botón
-    // circular del navegador.
+    // Forzamos SIEMPRE full sync de asignaciones al ABRIR/recargar la app (antes
+    // solo en reload del navegador). La tabla es chica (~250 KB) y el delta sync
+    // dejaba caches incompletas: un operario con sesion persistida que solo
+    // REABRIA la PWA (sin reload ni re-login) hacia delta sobre una cache parcial
+    // y su Historial salia VACIO aunque el dato existia en el servidor (el
+    // propietario, que recarga seguido, si lo veia). Borrar el watermark hace que
+    // la fase 2 traiga TODO desde Supabase. Costo: ~250 KB por apertura; beneficio:
+    // dataset siempre completo. El delta sync se conserva para los re-syncs en
+    // segundo plano de useSync durante la sesion (la tabla ya esta completa ahi).
     try {
-      const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[]
-      const isReload = navEntries.length > 0 && navEntries[0].type === 'reload'
-      if (isReload) {
-        await db.meta.delete('assignments_last_sync')
-      }
+      await db.meta.delete('assignments_last_sync')
     } catch {
-      // Performance API ausente (browser viejo) — saltar; el resto del flujo igual funciona
+      // Sin meta el siguiente loadAssignments igual fuerza full sync.
     }
 
     setLoading(true)

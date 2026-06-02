@@ -347,6 +347,17 @@ export function OperatorView({
     return Array.from(set).sort((a, b) => b.localeCompare(a))
   }, [historyAssignments])
 
+  // El Historial arranca en el MES ACTUAL (default en App.tsx). Al cambiar de
+  // mes (ej. 1-jun) ese mes nuevo esta vacio y "desaparece" el historial de la
+  // quincena pasada aunque el dato siga en la base. Si el mes seleccionado NO
+  // tiene labores del operario pero SI hay historial en otros meses, saltamos
+  // automaticamente al mes mas reciente con datos.
+  useEffect(() => {
+    if (historyMonths.length > 0 && !historyMonths.includes(historyMonth)) {
+      setHistoryMonth(historyMonths[0])
+    }
+  }, [historyMonths, historyMonth, setHistoryMonth])
+
   const filteredHistory = useMemo(() => {
     const [year, month] = historyMonth.split('-').map(Number)
     let startLimit: Date

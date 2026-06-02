@@ -174,8 +174,8 @@ interface Props {
   setHaciendaFilter: (v: string) => void
   laborSearch: string
   setLaborSearch: (v: string) => void
-  reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }
-  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; desde: string; hasta: string; estado: string; haciendaCode: string; operatorId: string; ingenioId: string }>>
+  reportFilters: { period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; mes: string; desde: string; hasta: string; estado: string; haciendaCode: string; suerte: string; operatorId: string; ingenioId: string }
+  setReportFilters: React.Dispatch<React.SetStateAction<{ period: 'CUSTOM' | 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES'; view: 'labor' | 'maquina'; mes: string; desde: string; hasta: string; estado: string; haciendaCode: string; suerte: string; operatorId: string; ingenioId: string }>>
   onSaveSession: (user: UserProfile | null) => void
   handleChangePin: (e: FormEvent) => Promise<void>
   handleDownloadReport: () => Promise<void>
@@ -321,6 +321,17 @@ export function SupervisorView({
   })
 
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
+
+  // Suertes que tienen labores (para el filtro del Reporte). Si hay una hacienda
+  // elegida, solo las de esa hacienda — así la lista no se vuelve enorme.
+  const reportSuerteOptions = useMemo(() => {
+    const set = new Set<string>()
+    for (const a of assignments) {
+      if (reportFilters.haciendaCode && a.haciendaCode !== reportFilters.haciendaCode) continue
+      if (a.suerte) set.add(a.suerte)
+    }
+    return Array.from(set).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }))
+  }, [assignments, reportFilters.haciendaCode])
 
   const summaryAssignments = useMemo(
     () =>
@@ -1326,10 +1337,23 @@ export function SupervisorView({
                     <option value="HOY">Hoy</option>
                     <option value="PRIMERA">1ra quincena (1-15)</option>
                     <option value="SEGUNDA">2da quincena (16-fin)</option>
-                    <option value="MES">Mes actual</option>
+                    <option value="MES">Mes completo</option>
                     <option value="CUSTOM">Personalizado</option>
                   </select>
                 </label>
+                {(reportFilters.period === 'PRIMERA' || reportFilters.period === 'SEGUNDA' || reportFilters.period === 'MES') && (
+                  <label className="report-filter-label">
+                    Mes
+                    <select
+                      value={reportFilters.mes}
+                      onChange={(e) => setReportFilters((f) => ({ ...f, mes: e.target.value }))}
+                    >
+                      {summaryMonthOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                )}
                 <label className="report-filter-label">
                   Vista
                   <select
@@ -1381,9 +1405,15 @@ export function SupervisorView({
                 />
                 <SearchableSelect
                   value={reportFilters.haciendaCode}
-                  onChange={(v) => setReportFilters((f) => ({ ...f, haciendaCode: v }))}
+                  onChange={(v) => setReportFilters((f) => ({ ...f, haciendaCode: v, suerte: '' }))}
                   placeholder="Todas las haciendas"
                   options={haciendaFilterOptions.map((h) => ({ value: h.code, label: h.name }))}
+                />
+                <SearchableSelect
+                  value={reportFilters.suerte}
+                  onChange={(v) => setReportFilters((f) => ({ ...f, suerte: v }))}
+                  placeholder="Todas las suertes"
+                  options={reportSuerteOptions.map((s) => ({ value: s, label: s }))}
                 />
                 <SearchableSelect
                   value={reportFilters.operatorId}
@@ -1406,11 +1436,12 @@ export function SupervisorView({
                 .reduce((s, a) => s + (a.executedArea > 0 ? a.executedArea : a.area), 0)
               const cumpl = planif ? Math.round((ejec / planif) * 100) : 0
               const enProc = activos.filter((a) => a.status === 'EN_PROCESO').length
+              const mesLabel = summaryMonthOptions.find((o) => o.value === reportFilters.mes)?.label ?? reportFilters.mes
               const periodLabel =
                 reportFilters.period === 'HOY' ? 'Hoy' :
-                reportFilters.period === 'PRIMERA' ? '1ra quincena' :
-                reportFilters.period === 'SEGUNDA' ? '2da quincena' :
-                reportFilters.period === 'MES' ? 'Mes actual' :
+                reportFilters.period === 'PRIMERA' ? `1ra quincena · ${mesLabel}` :
+                reportFilters.period === 'SEGUNDA' ? `2da quincena · ${mesLabel}` :
+                reportFilters.period === 'MES' ? mesLabel :
                 'Personalizado'
               return (
                 <div className="day-status-bar day-status-bar--large">

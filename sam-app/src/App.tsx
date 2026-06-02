@@ -61,12 +61,16 @@ function AppContent() {
   const [reportFilters, setReportFilters] = useState({
     period: 'MES' as ReportPeriod,
     view: 'labor' as 'labor' | 'maquina',
+    // Mes (YYYY-MM) al que aplican los períodos PRIMERA/SEGUNDA/MES. Default =
+    // mes actual; permite filtrar el mes anterior o cualquier otro.
+    mes: new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7),
     desde: '',
     hasta: '',
     // sentinels vacíos = "todos"; con SearchableSelect el placeholder item
     // borra a ''. Las comparaciones en filteredReport usan truthy check.
     estado: '',
     haciendaCode: '',
+    suerte: '',
     operatorId: '',
     ingenioId: '',
   })
@@ -159,6 +163,9 @@ function AppContent() {
     // El reporte agrupa por fecha de EJECUCIÓN (fecha_fin para COMPLETADA,
     // fecha_inicio para EN_PROCESO, created_at como fallback). Ver executionDateKey.
     const currentMonth = todayKey.slice(0, 7)
+    // El mes seleccionado aplica a PRIMERA/SEGUNDA/MES (permite mes anterior y
+    // cualquier mes). HOY ignora el mes (usa todayKey vía matchesSummaryFilter).
+    const periodMonth = reportFilters.mes || currentMonth
     return assignments
       .filter((a) => {
         const execDate = executionDateKey(a)
@@ -172,11 +179,12 @@ function AppContent() {
             reportFilters.period === 'HOY' ? 'HOY' :
             reportFilters.period === 'PRIMERA' ? 'PRIMERA' :
             reportFilters.period === 'SEGUNDA' ? 'SEGUNDA' :
-            'TODO' // MES = todo el mes actual
-          if (!matchesSummaryFilter(execDate, currentMonth, quincena, todayKey)) return false
+            'TODO' // MES = todo el mes seleccionado
+          if (!matchesSummaryFilter(execDate, periodMonth, quincena, todayKey)) return false
         }
         if (reportFilters.estado && a.status !== reportFilters.estado) return false
         if (reportFilters.haciendaCode && a.haciendaCode !== reportFilters.haciendaCode) return false
+        if (reportFilters.suerte && a.suerte !== reportFilters.suerte) return false
         if (reportFilters.operatorId && a.operatorId !== reportFilters.operatorId) return false
         if (reportFilters.ingenioId) {
           const ingId = getAssignmentIngenioId(a, maestro)

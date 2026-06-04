@@ -15,7 +15,7 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate } from '../services/samApi'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -1084,7 +1084,8 @@ export function OperatorView({
                     </div>
                     <div className="movement-side">
                       <span className={`status-pill ${meta.tone}`}>{meta.label}</span>
-                      <small>{formatTime(assignment.finishedAt)}</small>
+                      <small>{formatExecutionDate(assignment)}</small>
+                      {assignment.finishedAt && <small>{formatTime(assignment.finishedAt)}</small>}
                     </div>
                   </div>
                 )

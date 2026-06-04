@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
-import { formatTime, executionDateKey } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate } from '../services/samApi'
 import { AssignmentDetailModal } from './AssignmentDetailModal'
 
 interface EditPatch {
@@ -208,7 +208,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
                 <div>
                   <strong>{a.haciendaName} - {a.suerte}</strong>
                   <span>
-                    {a.dateKey} - {a.labor}
+                    {formatExecutionDate(a)} - {a.labor}
                     {a.kind === 'ASIGNADA' ? (
                       <span className="kind-badge asignada">Prog.</span>
                     ) : (

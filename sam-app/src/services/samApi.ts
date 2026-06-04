@@ -921,3 +921,30 @@ export function formatTime(value: string | null) {
     minute: '2-digit',
   })
 }
+
+/**
+ * Fecha "de realizado" para los Historiales (operario y propietario/admin).
+ * Para COMPLETADA/PARCIAL usa el timestamp real de cierre (finishedAt) en tz
+ * Bogota; para el resto (ej. CANCELADA) cae al dateKey de ejecucion, parseado
+ * POR PARTES para evitar el corrimiento de un dia de `new Date('YYYY-MM-DD')`
+ * (interpreta UTC y en Bogota -05 retrocede al dia anterior).
+ * Devuelve algo como "04 jun 2026".
+ */
+export function formatExecutionDate(a: Assignment): string {
+  const iso = a.status === 'COMPLETADA' || a.status === 'PARCIAL' ? a.finishedAt : null
+  if (iso) {
+    return new Date(iso).toLocaleDateString('es-CO', {
+      timeZone: 'America/Bogota',
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+  }
+  const [y, m, d] = executionDateKey(a).split('-').map(Number)
+  if (!y || !m || !d) return ''
+  return new Date(y, m - 1, d).toLocaleDateString('es-CO', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}

@@ -310,6 +310,12 @@ export function SupervisorView({
   const [summaryOperatorSearch, setSummaryOperatorSearch] = useState('')
   const [summaryEquipmentSearch, setSummaryEquipmentSearch] = useState('')
 
+  // Aprobación de labor de campo: si le faltan cliente/zona, el supervisor los
+  // diligencia OBLIGATORIamente en este modal antes de aprobar.
+  const [approveTarget, setApproveTarget] = useState<Assignment | null>(null)
+  const [approveCliente, setApproveCliente] = useState('')
+  const [approveZona, setApproveZona] = useState('')
+
   const [editingLabor, setEditingLabor] = useState(false)
   const [editLaborDraft, setEditLaborDraft] = useState({
     executedArea: '',
@@ -2041,7 +2047,16 @@ export function SupervisorView({
                         <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
                           <button
                             className="approve-btn"
-                            onClick={() => void handleApproveAssignment(assignment)}
+                            onClick={() => {
+                              // Labor de campo sin cliente/zona → obligar a diligenciarlos.
+                              if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
+                                setApproveTarget(assignment)
+                                setApproveCliente(assignment.cliente ?? '')
+                                setApproveZona(assignment.zone ?? '')
+                              } else {
+                                void handleApproveAssignment(assignment)
+                              }
+                            }}
                           >
                             Aprobar
                           </button>
@@ -2497,6 +2512,59 @@ export function SupervisorView({
             </div>
           )
         })()}
+
+        {/* Aprobar labor de campo: obliga a diligenciar cliente + zona faltantes */}
+        {approveTarget && (
+          <div className="modal-overlay open" onClick={() => { if (!busy) setApproveTarget(null) }}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
+              <div className="labor-detail-header">
+                <div>
+                  <p className="eyebrow">Aprobar labor de campo</p>
+                  <h3>{approveTarget.labor}</h3>
+                </div>
+                <button type="button" className="modal-close-btn" onClick={() => setApproveTarget(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+              </div>
+              <p className="subtle-copy" style={{ marginTop: 0 }}>
+                {approveTarget.haciendaName} · Suerte {approveTarget.suerte} · {approveTarget.operatorName || '—'}
+              </p>
+              <p className="subtle-copy">Completa los datos que faltan antes de aprobar:</p>
+              <label className="assignment-detail-field">
+                <span>Cliente</span>
+                <select value={approveCliente} onChange={(e) => setApproveCliente(e.target.value)} disabled={busy}>
+                  <option value="">Seleccionar…</option>
+                  <option value="ingenios">Ingenios</option>
+                  <option value="proveedores">Proveedores</option>
+                </select>
+              </label>
+              <label className="assignment-detail-field">
+                <span>Zona</span>
+                <select value={approveZona} onChange={(e) => setApproveZona(e.target.value)} disabled={busy}>
+                  <option value="">Seleccionar…</option>
+                  <option value="NORTE">Norte</option>
+                  <option value="SUR">Sur</option>
+                </select>
+              </label>
+              <div className="modal-footer">
+                <button type="button" className="inline-button" onClick={() => setApproveTarget(null)} disabled={busy}>Cancelar</button>
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={busy || !approveCliente || !approveZona}
+                  onClick={async () => {
+                    const target = approveTarget
+                    await handleApproveAssignment(target, {
+                      cliente: approveCliente as 'ingenios' | 'proveedores',
+                      zone: approveZona as 'NORTE' | 'SUR',
+                    })
+                    setApproveTarget(null)
+                  }}
+                >
+                  {busy ? 'Aprobando…' : 'Aprobar labor'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className={`modal-overlay ${isPinModalOpen ? 'open' : ''}`}>
           <div className="modal-card">

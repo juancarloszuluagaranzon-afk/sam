@@ -1219,53 +1219,7 @@ export function OperatorView({
             </div>
 
             <form className="form-grid-block" onSubmit={onCreateFreeField}>
-              <label>
-                Zona
-                <div className="dictate-input-wrap">
-                  <SearchableSelect
-                    value={freeFieldForm.zone}
-                    onChange={(value) => updateFreeFieldForm('zone', value)}
-                    placeholder="Selecciona la zona"
-                    options={[
-                      { value: 'NORTE', label: 'Zona Norte' },
-                      { value: 'SUR', label: 'Zona Sur' },
-                    ]}
-                  />
-                  <DictateInlineButton
-                    ariaLabel="Dictar zona"
-                    onComplete={(text) => {
-                      const match = findItemByVoice(text, [
-                        { code: 'NORTE', name: 'Norte' },
-                        { code: 'SUR', name: 'Sur' },
-                      ])
-                      if (match) updateFreeFieldForm('zone', match.code)
-                    }}
-                  />
-                </div>
-              </label>
-              <label>
-                Cliente
-                <div className="dictate-input-wrap">
-                  <SearchableSelect
-                    value={freeFieldForm.cliente}
-                    onChange={(value) => updateFreeFieldForm('cliente', value)}
-                    options={[
-                      { value: 'ingenios', label: 'Ingenios' },
-                      { value: 'proveedores', label: 'Proveedores' },
-                    ]}
-                  />
-                  <DictateInlineButton
-                    ariaLabel="Dictar cliente"
-                    onComplete={(text) => {
-                      const match = findItemByVoice(text, [
-                        { code: 'ingenios', name: 'Ingenios' },
-                        { code: 'proveedores', name: 'Proveedores' },
-                      ])
-                      if (match) updateFreeFieldForm('cliente', match.code)
-                    }}
-                  />
-                </div>
-              </label>
+              {/* Cliente y Zona los diligencia el supervisor al aprobar (campo simplificado). */}
               <label>
                 Ingenio
                 <div className="dictate-input-wrap">

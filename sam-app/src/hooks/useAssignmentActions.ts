@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import type { Assignment } from '../domain/sam'
+import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import { updateAssignment } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
@@ -294,7 +294,13 @@ export function useAssignmentActions() {
     }
   }
 
-  async function decideApproval(assignment: Assignment, decision: 'APROBADA' | 'RECHAZADA') {
+  async function decideApproval(
+    assignment: Assignment,
+    decision: 'APROBADA' | 'RECHAZADA',
+    // Datos que el supervisor diligencia al aprobar una labor de campo (cliente
+    // y zona, que el operario ya no captura). Se mezclan en el mismo update.
+    extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null },
+  ) {
     if (!session) return
     if (assignment.supervisorId !== session.id) {
       setError('Solo el supervisor asignado puede aprobar o rechazar esta labor.')
@@ -309,6 +315,7 @@ export function useAssignmentActions() {
       approval: decision,
       approvedBy: session.id,
       approvedAt: now,
+      ...(extra ?? {}),
     }
 
     try {
@@ -323,7 +330,7 @@ export function useAssignmentActions() {
         setAssignments((current) =>
           current.map((a) =>
             a.id === assignment.id
-              ? { ...a, approval: decision, approvedBy: session.id, approvedAt: now }
+              ? { ...a, approval: decision, approvedBy: session.id, approvedAt: now, ...(extra ?? {}) }
               : a,
           ),
         )
@@ -331,6 +338,7 @@ export function useAssignmentActions() {
           approval: decision,
           approvedBy: session.id,
           approvedAt: now,
+          ...(extra ?? {}),
         })
         setOutboxCount((c) => c + 1)
         setInfo(
@@ -354,8 +362,11 @@ export function useAssignmentActions() {
     }
   }
 
-  async function approveAssignment(assignment: Assignment) {
-    return decideApproval(assignment, 'APROBADA')
+  async function approveAssignment(
+    assignment: Assignment,
+    extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null },
+  ) {
+    return decideApproval(assignment, 'APROBADA', extra)
   }
 
   async function rejectAssignment(assignment: Assignment) {

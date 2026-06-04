@@ -822,6 +822,8 @@ export async function updateAssignment(
   if (input.operatorId !== undefined) payload.operador_id = input.operatorId
   if (input.operatorName !== undefined) payload.operador_nombre = input.operatorName
   if (input.liberada !== undefined) payload.liberada = input.liberada
+  if (input.cliente !== undefined) payload.cliente = input.cliente
+  if (input.zone !== undefined) payload.zona = input.zone
 
   const { data, error } = await supabase
     .from('asignaciones')

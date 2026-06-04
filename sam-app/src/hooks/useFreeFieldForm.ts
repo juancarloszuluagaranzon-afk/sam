@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import type { Assignment, Zone } from '../domain/sam'
+import type { Assignment } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
 import { createAssignment as apiCreateAssignment, loadAssignments } from '../services/samApi'
@@ -170,8 +170,8 @@ export function useFreeFieldForm(options?: Options) {
       (item) => item.code === (freeFieldForm.equipmentCode || session.equipmentCode),
     )
 
-    if (!operator || !equipmentItem || !freeFieldForm.labor || !freeFieldForm.cliente) {
-      setError('Completa labor, equipo y cliente para tomar campo libre.')
+    if (!operator || !equipmentItem || !freeFieldForm.labor) {
+      setError('Completa labor y equipo para tomar campo libre.')
       return
     }
 
@@ -181,12 +181,8 @@ export function useFreeFieldForm(options?: Options) {
       return
     }
 
-    if (freeFieldForm.zone !== 'NORTE' && freeFieldForm.zone !== 'SUR') {
-      setError('Selecciona la zona (Norte o Sur).')
-      return
-    }
-    const zone: Zone = freeFieldForm.zone
-
+    // Cliente y zona ya NO los pone el operario al tomar en campo: el supervisor
+    // los diligencia OBLIGATORIAMENTE al aprobar. Se crean en null.
     const maestroRows = freeFieldSuertesList
       .map((suerte) =>
         maestro.find(
@@ -260,11 +256,11 @@ export function useFreeFieldForm(options?: Options) {
             equipmentCode: equipmentItem.code,
             equipmentName: equipmentItem.name,
             notes: freeFieldForm.notes,
-            cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+            cliente: undefined,
             kind: 'LIBRE',
             initialStatus: 'PENDIENTE',
             approval: 'PENDIENTE',
-            zone,
+            zone: null,
           }
           const local: Assignment = {
             id: tempId,
@@ -289,11 +285,11 @@ export function useFreeFieldForm(options?: Options) {
             kind: 'LIBRE',
             horometroInicial: null,
             horometroFinal: null,
-            cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+            cliente: undefined,
             approval: 'PENDIENTE',
             approvedBy: null,
             approvedAt: null,
-            zone,
+            zone: null,
           }
           await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
           await db.assignments.put(local)
@@ -327,11 +323,11 @@ export function useFreeFieldForm(options?: Options) {
               equipmentCode: equipmentItem.code,
               equipmentName: equipmentItem.name,
               notes: freeFieldForm.notes,
-              cliente: freeFieldForm.cliente as 'ingenios' | 'proveedores',
+              cliente: undefined,
               kind: 'LIBRE',
               initialStatus: 'PENDIENTE',
               approval: 'PENDIENTE',
-              zone,
+              zone: null,
             }),
           ),
         )

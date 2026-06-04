@@ -122,7 +122,9 @@ export interface CreateAssignmentInput {
   equipmentName: string
   notes: string
   kind: string
-  cliente: 'ingenios' | 'proveedores'
+  // Opcional: las labores tomadas EN CAMPO (LIBRE) ya no piden cliente al
+  // operario — el supervisor lo diligencia al aprobar. Las ASIGNADAS sí lo traen.
+  cliente?: 'ingenios' | 'proveedores'
   initialStatus: AssignmentStatus
   startedAt?: string | null
   approval?: ApprovalStatus
@@ -145,4 +147,7 @@ export interface UpdateAssignmentInput {
   operatorId?: string
   operatorName?: string
   liberada?: boolean
+  // El supervisor diligencia cliente y zona al APROBAR una labor de campo.
+  cliente?: 'ingenios' | 'proveedores'
+  zone?: Zone | null
 }

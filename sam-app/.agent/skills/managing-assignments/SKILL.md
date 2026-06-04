@@ -205,6 +205,14 @@ export const WORKFLOW = [
 
 `getSuggestedLabor` encuentra la primera labor del WORKFLOW que aún no está `COMPLETADA` en esa suerte. Úsala para pre-seleccionar la labor en el formulario.
 
+## Tomar suerte en campo (LIBRE) — simplificado + cliente/zona en aprobación
+
+**[2026-06-01]** El operario al "Tomar suerte en campo" YA NO captura **Cliente** ni **Zona** (se quitaron del form en `OperatorView`). La labor LIBRE se crea con `cliente=null`, `zona=null` (`takeFreeField` en `useFreeFieldForm`). El operario sí elige Ingenio, Hacienda, Suerte, Labor, Equipo y **Supervisor** (el supervisor es lo que la scopea).
+
+**El supervisor diligencia cliente+zona al APROBAR:** el botón "Aprobar" de la lista de Labores, si la labor es `kind==='LIBRE'` y le falta `cliente` o `zone`, abre un modal (`approveTarget` en SupervisorView) que OBLIGA a elegir Cliente (ingenios/proveedores) + Zona (Norte/Sur) antes de aprobar (botón deshabilitado hasta tener ambos). `approveAssignment(assignment, { cliente, zone })` → `decideApproval` mezcla esos campos en el mismo update; `updateAssignment` mapea `cliente` y `zona`. Las ASIGNADAS sí traen cliente/zona (el form de asignar los exige), así que aprueban directo sin modal.
+
+**Scoping (ya existía):** `scopedAssignments` filtra `a.supervisorId === session.id` para rol `supervisor` → cada supervisor solo ve las de campo donde lo eligieron + las que él asigna. Owner/administración ven todas. `CreateAssignmentInput.cliente` es opcional; `UpdateAssignmentInput` acepta `cliente` y `zone`.
+
 ## Tipos de registro (kind)
 
 | kind | Creado por | Descripción |

@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, summarizeAssignments, getIngenioName, executionDateKey } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
@@ -225,7 +225,7 @@ export function SupervisorView({
   const {
     session,
     isOnline, outboxCount, busy, error, info,
-    operators, users, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
+    operators, users, setUsers, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
   } = useAppData()
 
@@ -315,6 +315,10 @@ export function SupervisorView({
   const [approveTarget, setApproveTarget] = useState<Assignment | null>(null)
   const [approveCliente, setApproveCliente] = useState('')
   const [approveZona, setApproveZona] = useState('')
+
+  // Confirmacion de borrado de usuario (CRUD admin/owner). Guarda el usuario
+  // a eliminar para mostrar el modal de confirmacion superpuesto.
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ id: string; nombre: string } | null>(null)
 
   const [editingLabor, setEditingLabor] = useState(false)
   const [editLaborDraft, setEditLaborDraft] = useState({
@@ -868,6 +872,15 @@ export function SupervisorView({
                   <span className="nav-item">
                     <span className="nav-icon">▤</span>
                     <span className="nav-label">Maestros</span>
+                  </span>
+                </button>
+                <button
+                  className={supervisorTab === 'usuarios' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('usuarios')}
+                >
+                  <span className="nav-item">
+                    <span className="nav-icon">👤</span>
+                    <span className="nav-label">Usuarios</span>
                   </span>
                 </button>
               </>
@@ -1644,7 +1657,7 @@ export function SupervisorView({
           </section>
         ) : null}
 
-        {session.role === 'owner' && supervisorTab === 'usuarios' ? (
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'usuarios' ? (
           <section className="panel-card">
             <div className="panel-title users-panel-title">
               <h2>Usuarios</h2>
@@ -1713,7 +1726,7 @@ export function SupervisorView({
           </section>
         ) : null}
 
-        {session.role === 'owner' && isUserFormOpen && (() => {
+        {(session.role === 'owner' || session.role === 'administracion') && isUserFormOpen && (() => {
           const closeUserModal = () => {
             setIsUserFormOpen(false)
             setEditingUserId(null)
@@ -1756,6 +1769,9 @@ export function SupervisorView({
                         await createAppUser({ ...userForm, id: userForm.id || nextUserId })
                         setInfo(`Usuario ${userForm.nombreCompleto} creado.`)
                       }
+                      // Refresca la lista para reflejar el alta/cambio al instante.
+                      const refreshed = await loadAppUsers()
+                      setUsers(refreshed.data)
                       closeUserModal()
                     } catch (err: unknown) {
                       setError(err instanceof Error ? err.message : 'Error al guardar usuario')
@@ -1818,6 +1834,18 @@ export function SupervisorView({
                     />
                   </label>
                   <div className="modal-footer user-form__actions">
+                    {editingUserId && (
+                      <button
+                        type="button"
+                        className="danger-button"
+                        style={{ marginRight: 'auto' }}
+                        disabled={busy || editingUserId === session.id}
+                        title={editingUserId === session.id ? 'No puedes eliminar tu propio usuario' : undefined}
+                        onClick={() => setConfirmDeleteUser({ id: userForm.id, nombre: userForm.nombreCompleto })}
+                      >
+                        Eliminar
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="inline-button"
@@ -1834,6 +1862,55 @@ export function SupervisorView({
             </div>
           )
         })()}
+
+        {/* Confirmacion de borrado de usuario. Se renderiza despues del modal de
+            usuario para quedar SIEMPRE por encima (mismo z-index, orden DOM). */}
+        {confirmDeleteUser && (
+          <div className="modal-overlay open" style={{ zIndex: 2000 }} onClick={() => setConfirmDeleteUser(null)}>
+            <div className="modal-card" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+              <div className="labor-detail-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <h3 style={{ margin: 0 }}>Eliminar usuario</h3>
+                <button type="button" className="modal-close-btn" onClick={() => setConfirmDeleteUser(null)} aria-label="Cerrar">×</button>
+              </div>
+              <p style={{ margin: '4px 0 18px', lineHeight: 1.5 }}>
+                ¿Seguro que deseas eliminar a <strong>{confirmDeleteUser.nombre}</strong> ({confirmDeleteUser.id})?
+                <br />
+                El usuario dejará de aparecer y no podrá iniciar sesión. Su historial de labores se conserva.
+              </p>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                <button type="button" className="inline-button" onClick={() => setConfirmDeleteUser(null)} disabled={busy}>
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  className="danger-button"
+                  disabled={busy}
+                  onClick={async () => {
+                    const target = confirmDeleteUser
+                    setBusy(true)
+                    setError('')
+                    try {
+                      await deleteAppUser(target.id)
+                      const refreshed = await loadAppUsers()
+                      setUsers(refreshed.data)
+                      setInfo(`Usuario ${target.nombre} eliminado.`)
+                      setConfirmDeleteUser(null)
+                      setIsUserFormOpen(false)
+                      setEditingUserId(null)
+                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                    } catch (err: unknown) {
+                      setError(err instanceof Error ? err.message : 'Error al eliminar usuario')
+                    } finally {
+                      setBusy(false)
+                    }
+                  }}
+                >
+                  {busy ? 'Eliminando...' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {supervisorTab === 'labores' ? (
           <section className="panel-card">

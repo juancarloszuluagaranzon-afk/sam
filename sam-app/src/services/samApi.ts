@@ -784,6 +784,19 @@ export async function updateAppUser(input: {
   return true
 }
 
+/**
+ * Elimina un usuario. La RPC `app_delete_user` hace soft-delete (activo=false),
+ * así que deja de aparecer (loadAppUsers filtra activo=true) y no puede iniciar
+ * sesión, pero se conserva la integridad histórica de sus asignaciones.
+ */
+export async function deleteAppUser(id: string) {
+  const { error } = await supabase.rpc('app_delete_user', { p_id: id.toUpperCase() })
+  if (error) {
+    throw new Error(error.message || 'No se pudo eliminar el usuario')
+  }
+  return true
+}
+
 export async function createAssignment(input: CreateAssignmentInput) {
   const { data, error } = await supabase
     .from('asignaciones')

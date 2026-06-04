@@ -87,6 +87,38 @@ const { data, error } = await supabase.rpc('app_login', {
 // data es un array, tomar data[0]
 ```
 
+## RPC de gestión de usuarios (CRUD)
+
+Las 3 funciones viven en la migración `20260514120000_user_crud_md5.sql` (un
+solo commit, `SECURITY DEFINER`, `search_path = public,pg_catalog`, grants a
+`anon, authenticated`). **Todas usan `md5(pin || ':sam-piloto')`** — consistente
+con `app_login`. NUNCA `crypt`/`gen_salt`/bcrypt (esos PINs nunca podrían
+loguearse y `gen_salt` falla fuera del search_path).
+
+```ts
+// crear (samApi.createAppUser) — id se fuerza a UPPER, pin obligatorio
+supabase.rpc('app_create_user', { p_id, p_nombre, p_rol, p_pin, p_equipo_codigo })
+// editar (samApi.updateAppUser) — p_pin NULL/'' deja el hash sin tocar
+supabase.rpc('app_update_user', { p_id, p_nombre, p_rol, p_pin, p_equipo_codigo })
+// eliminar (samApi.deleteAppUser) — SOFT delete: activo=false
+supabase.rpc('app_delete_user', { p_id })
+```
+
+- **`app_delete_user` es soft-delete** (`activo=false`). `loadAppUsers` filtra
+  `.eq('activo', true)`, así que el usuario desaparece de la UI y no puede
+  loguearse, pero su histórico de labores (FK por `operador_id`) se conserva.
+- **Quién puede gestionar usuarios:** `owner` Y `administracion`. La pestaña
+  Usuarios y el modal en `SupervisorView` están gateados a
+  `role === 'owner' || role === 'administracion'`. `administracion` tiene su
+  botón Usuarios en la nav plana (no usa el menú "Más", que solo es owner/superv).
+- **Guard anti-bloqueo:** el botón Eliminar se deshabilita si
+  `editingUserId === session.id` (no auto-eliminarse). El borrado de usuarios
+  es SIN confirmación nativa: usa un modal superpuesto (z-index 2000, renderizado
+  DESPUÉS del modal de usuario en el DOM para quedar encima — el usuario se
+  quejó antes de confirmaciones que quedaban detrás del formulario).
+- Tras crear/editar/eliminar se llama `loadAppUsers()` + `setUsers()` para
+  refrescar la lista al instante (las RPC no devuelven la fila).
+
 ## mapAssignmentPayload — campos escritura
 
 Al insertar en `asignaciones`, el campo `tractor` es alias legacy de `equipo_nombre`. Siempre escribe ambos:

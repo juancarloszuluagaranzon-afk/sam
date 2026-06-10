@@ -36,9 +36,9 @@ export default defineConfig({
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-512x512-maskable.png'],
       manifest: {
         id: '/',
-        name: 'SAM Control',
-        short_name: 'SAM',
-        description: 'Sistema de gestión de labores agrícolas - AgroMorales',
+        name: 'ASM - AgroServicios Morales',
+        short_name: 'ASM',
+        description: 'Sistema de gestión de labores agrícolas - AgroServicios Morales',
         lang: 'es',
         theme_color: '#1a6b3a',
         background_color: '#f5f5f0',

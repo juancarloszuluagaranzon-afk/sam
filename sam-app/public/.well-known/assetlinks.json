@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tech.surcoapp.agromorales",
+      "sha256_cert_fingerprints": [
+        "45:BA:5A:BE:38:D7:7B:9F:B2:4D:FD:DC:FC:95:44:64:4E:90:D5:1E:D6:B3:40:AA:F1:C5:73:B7:3E:0A:A8:68"
+      ]
+    }
+  }
+]

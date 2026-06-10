@@ -97,7 +97,12 @@ function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[])
       a.suerteCode === assignment.suerteCode &&
       normalizeText(a.labor) === normalizeText(assignment.labor) &&
       isSameCycle(a.dateKey, assignment.dateKey) &&
-      (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
+      // EN_PROCESO también cuenta su `executedArea`: una PARCIAL re-iniciada
+      // (el operario vuelve a poner horómetro inicial para retomar) pasa a
+      // EN_PROCESO conservando su avance previo; si no se contara, su área ya
+      // hecha "desaparecería" del cálculo del restante mientras la retoma. Un
+      // EN_PROCESO recién iniciado tiene executedArea=0, así que suma 0 (inocuo).
+      (a.status === 'COMPLETADA' || a.status === 'PARCIAL' || a.status === 'EN_PROCESO'),
   )
   const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
   const ownExecuted = assignment.executedArea ?? 0
@@ -739,8 +744,19 @@ export function OperatorView({
                       )}
                     </div>
 
-                    {a.status === 'PENDIENTE' ? (
+                    {(a.status === 'PENDIENTE' || a.status === 'PARCIAL') ? (() => {
+                      const startProgress = getSuerteProgress(a, assignments)
+                      const isResumingPartial = a.status === 'PARCIAL' && startProgress.hasProgress
+                      return (
                       <div className="start-grid">
+                        {isResumingPartial && (
+                          <div className="partial-progress-banner">
+                            <strong>Retomar labor parcial</strong>
+                            <span>
+                              Acumulado previo: {formatArea(a.executedArea)} de {formatArea(a.area)}. Faltan {formatArea(startProgress.remaining)}. Pon el horómetro inicial de esta sesión para retomar; al terminar registras el horómetro final.
+                            </span>
+                          </div>
+                        )}
                         <label>
                           Equipo para ejecutar
                           <select
@@ -762,7 +778,7 @@ export function OperatorView({
                           </select>
                         </label>
                         <label>
-                          Horometro inicial
+                          {isResumingPartial ? 'Horometro inicial (nueva sesión)' : 'Horometro inicial'}
                           <div className="dictate-input-wrap">
                             <input
                               type="number"
@@ -789,10 +805,11 @@ export function OperatorView({
                           onClick={() => void onStartAssignment(a)}
                           disabled={busy}
                         >
-                          Iniciar labor
+                          {isResumingPartial ? 'Continuar labor' : 'Iniciar labor'}
                         </button>
                       </div>
-                    ) : (() => {
+                      )
+                    })() : (() => {
                       const progress = getSuerteProgress(a, assignments)
                       const isPartialContinuation = progress.hasProgress
                       const remainingArea = progress.remaining

@@ -66,6 +66,12 @@ export function useAssignmentActions() {
       equipmentCode: selectedEquipment.code,
       equipmentName: selectedEquipment.name,
       horometroInicial,
+      // Re-inicio de una PARCIAL: el cierre anterior (finishedAt + horómetro
+      // final) pertenece a la sesión previa ya cerrada. Lo limpiamos para abrir
+      // una sesión nueva; el avance acumulado (executedArea) se conserva intacto.
+      // Para un inicio fresco (PENDIENTE) estos ya venían en null, así que es inocuo.
+      finishedAt: null,
+      horometroFinal: null,
     }
 
     try {
@@ -86,6 +92,9 @@ export function useAssignmentActions() {
                   startedAt: startPayload.startedAt,
                   equipmentCode: selectedEquipment.code,
                   equipmentName: selectedEquipment.name,
+                  horometroInicial,
+                  finishedAt: null,
+                  horometroFinal: null,
                 }
               : a,
           ),
@@ -93,6 +102,9 @@ export function useAssignmentActions() {
         void db.assignments.update(assignment.id, {
           status: 'EN_PROCESO',
           startedAt: startPayload.startedAt,
+          horometroInicial,
+          finishedAt: null,
+          horometroFinal: null,
         })
         setOutboxCount((c) => c + 1)
         setInfo(`Labor iniciada (sin conexion, se sincronizara al recuperar senal).`)

@@ -1,8 +1,8 @@
 {
   "packageId": "tech.surcoapp.agromorales",
   "host": "agroserviciosmorales.vercel.app",
-  "name": "SAM Control",
-  "launcherName": "AgroMorales",
+  "name": "ASM - AgroServicios Morales",
+  "launcherName": "ASM",
   "display": "standalone",
   "themeColor": "#1a6b3a",
   "themeColorDark": "#000000",
@@ -20,8 +20,8 @@
     "path": "./android.keystore",
     "alias": "agromorales"
   },
-  "appVersionName": "1.0.0",
-  "appVersionCode": 1,
+  "appVersionName": "1.0.1",
+  "appVersionCode": 2,
   "webManifestUrl": "https://agroserviciosmorales.vercel.app/manifest.webmanifest",
   "fallbackType": "customtabs",
   "enableSiteSettingsShortcut": true,

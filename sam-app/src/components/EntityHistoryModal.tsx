@@ -70,6 +70,9 @@ interface EntityHistoryModalProps {
   assignments: Assignment[]
   defaultMonth: string
   defaultQuincena: SummaryQuincena
+  // Necesario para que el periodo "Solo hoy" (HOY) funcione igual que en la
+  // página: matchesSummaryFilter('HOY') compara contra todayKey.
+  todayKey?: string
   onClose: () => void
   canEdit?: boolean
   equipment?: Equipment[]
@@ -84,6 +87,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
   assignments,
   defaultMonth,
   defaultQuincena,
+  todayKey,
   onClose,
   canEdit,
   equipment,
@@ -120,11 +124,11 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
         if (a.status === 'CANCELADA') return false
         // Agrupar por fecha de EJECUCIÓN (fecha_fin / fecha_inicio según estado),
         // no por fecha de asignación. Una labor del 14-may ejecutada el 16-may cuenta
-        // para la 2da quincena.
-        return matchesSummaryFilter(executionDateKey(a), month, quincena)
+        // para la 2da quincena. Se pasa todayKey para que "Solo hoy" (HOY) funcione.
+        return matchesSummaryFilter(executionDateKey(a), month, quincena, todayKey)
       })
       .sort((a, b) => b.dateKey.localeCompare(a.dateKey))
-  }, [entity, assignments, month, quincena])
+  }, [entity, assignments, month, quincena, todayKey])
 
   if (!entity) return null
 
@@ -182,8 +186,9 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
             </select>
           </label>
           <label>
-            Quincena
+            Periodo
             <select value={quincena} onChange={(e) => setQuincena(e.target.value as SummaryQuincena)}>
+              <option value="HOY">Solo hoy</option>
               <option value="TODO">Todo el mes</option>
               <option value="PRIMERA">1ra quincena (1-15)</option>
               <option value="SEGUNDA">2da quincena (16-fin)</option>

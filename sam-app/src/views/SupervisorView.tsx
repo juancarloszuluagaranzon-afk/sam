@@ -1137,6 +1137,7 @@ export function SupervisorView({
           assignments={scopedAssignments}
           defaultMonth={summaryMonth}
           defaultQuincena={summaryQuincena}
+          todayKey={todayKey}
           onClose={() => setSelectedEntity(null)}
           canEdit={canEditAssignments}
           equipment={sortedEquipment}

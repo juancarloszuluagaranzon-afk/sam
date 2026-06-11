@@ -4921,3 +4921,99 @@ button.movement-row--clickable:active {
 .bulk-errores ul { margin: 6px 0 0; padding-left: 18px; }
 .bulk-errores li { margin: 2px 0; }
 
+/* ===== Planilla quincenal ===== */
+.planilla-caption {
+  margin: 4px 0 14px;
+  color: var(--color-ink-mid);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+.planilla-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 14px;
+}
+.planilla-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-ink-mid);
+}
+.planilla-filters select,
+.planilla-search {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  font-size: 0.9rem;
+}
+.planilla-search { min-width: 180px; flex: 1; }
+
+.planilla-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  -webkit-overflow-scrolling: touch;
+}
+.planilla-table {
+  border-collapse: collapse;
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.82rem;
+}
+.planilla-table th,
+.planilla-table td {
+  border-bottom: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  padding: 7px 9px;
+  text-align: center;
+  white-space: nowrap;
+}
+.planilla-table thead th {
+  background: var(--color-bg-muted);
+  color: var(--color-ink-mid);
+  font-weight: 600;
+}
+.planilla-wd { display: block; font-size: 0.62rem; color: var(--color-ink-light); }
+.planilla-day { display: block; font-weight: 700; color: var(--color-ink); }
+
+/* Primera columna (operario) fija al hacer scroll horizontal */
+.planilla-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  text-align: left;
+  background: var(--color-surface);
+}
+.planilla-table thead .planilla-sticky { z-index: 3; background: var(--color-bg-muted); }
+.planilla-th-op, .planilla-op { min-width: 150px; }
+.planilla-op { font-weight: 600; color: var(--color-ink); }
+
+.planilla-cell { color: var(--color-ink-mid); }
+.planilla-has {
+  background: var(--color-status-done-bg);
+  color: var(--color-status-done);
+  font-weight: 700;
+}
+.planilla-today { background: rgba(31, 122, 64, 0.12); }
+.planilla-table thead .planilla-today { background: rgba(31, 122, 64, 0.22); }
+
+.planilla-total-col {
+  font-weight: 700;
+  color: var(--color-brand);
+  background: var(--color-bg-soft);
+}
+.planilla-table thead .planilla-total-col { background: var(--color-bg-muted); }
+
+.planilla-table tfoot td {
+  background: var(--color-bg-muted);
+  font-weight: 700;
+  color: var(--color-ink);
+  border-top: 2px solid var(--color-brand-mid);
+}
+.planilla-foot { color: var(--color-ink); }
+

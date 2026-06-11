@@ -21,13 +21,14 @@ function fmt(value: number) {
 }
 
 export function PlanillaTab() {
-  const { assignments, todayKey } = useAppData()
+  const { assignments, todayKey, setError, setInfo } = useAppData()
 
   const [planillaMonth, setPlanillaMonth] = useState(() => todayKey.slice(0, 7))
   const [planillaQuincena, setPlanillaQuincena] = useState<SummaryQuincena>(() =>
     Number(todayKey.slice(8, 10)) >= 16 ? 'SEGUNDA' : 'PRIMERA',
   )
   const [search, setSearch] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
@@ -94,10 +95,59 @@ export function PlanillaTab() {
   const quincenaLabel = planillaQuincena === 'SEGUNDA' ? '2da quincena (16-fin)' : '1ra quincena (1-15)'
   const monthLabel = monthOptions.find((o) => o.value === planillaMonth)?.label ?? planillaMonth
 
+  async function handleDownload() {
+    if (filteredRows.length === 0) {
+      setError('No hay datos para exportar en este periodo.')
+      return
+    }
+    setExporting(true)
+    try {
+      const { utils, writeFile } = await import('xlsx')
+      const cell = (v: number) => (v > 0 ? Number(v.toFixed(1)) : '')
+      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total']
+      const body = filteredRows.map((r) => [
+        r.name,
+        ...days.map((d) => cell(r.perDay[d.key] ?? 0)),
+        Number(r.total.toFixed(1)),
+      ])
+      const footer = [
+        'Total',
+        ...days.map((d) => cell(dayTotals.t[d.key] ?? 0)),
+        Number(dayTotals.grand.toFixed(1)),
+      ]
+      const aoa = [
+        [`Planilla quincenal · ${monthLabel} · ${quincenaLabel}`],
+        ['Hectáreas abiertas por operario y día'],
+        [],
+        header,
+        ...body,
+        footer,
+      ]
+      const ws = utils.aoa_to_sheet(aoa)
+      ws['!cols'] = [{ wch: 24 }, ...days.map(() => ({ wch: 6 })), { wch: 9 }]
+      const wb = utils.book_new()
+      utils.book_append_sheet(wb, ws, 'Planilla')
+      writeFile(wb, `planilla-${planillaMonth}-${planillaQuincena.toLowerCase()}.xlsx`)
+      setInfo('Planilla exportada a Excel.')
+    } catch {
+      setError('No se pudo exportar la planilla.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <section className="panel-card">
-      <div className="panel-title">
+      <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <h2>Planilla quincenal</h2>
+        <button
+          type="button"
+          className="inline-button"
+          onClick={() => void handleDownload()}
+          disabled={exporting}
+        >
+          {exporting ? 'Exportando…' : '⬇ Excel'}
+        </button>
       </div>
 
       <p className="planilla-caption">

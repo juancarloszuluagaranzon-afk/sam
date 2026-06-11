@@ -4921,6 +4921,9 @@ button.movement-row--clickable:active {
 .bulk-errores ul { margin: 6px 0 0; padding-left: 18px; }
 .bulk-errores li { margin: 2px 0; }
 
+/* Barra de búsqueda + Filtros del Resumen (reusa .labores-search-row) */
+.summary-search-bar { margin: 0 0 14px; }
+
 /* ===== Planilla quincenal ===== */
 .planilla-caption {
   margin: 4px 0 14px;

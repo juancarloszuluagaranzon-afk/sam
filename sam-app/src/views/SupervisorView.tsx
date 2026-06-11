@@ -344,9 +344,34 @@ export function SupervisorView({
     return Array.from(set).sort((x, y) => x.localeCompare(y, undefined, { numeric: true }))
   }, [assignments, reportFilters.haciendaCode])
 
+  // Base del Resumen con los MISMOS filtros/búsqueda de Labores (compartidos),
+  // PERO sin el "reset diario" del statusFilter 'TODAS' (eso es propio de la
+  // lista de Labores; el Resumen tiene su propio Mes/Periodo). Así KPIs, cards
+  // y el modal reflejan lo mismo que se filtró en la barra de búsqueda.
+  const summaryBaseAssignments = useMemo(() => {
+    const q = laborSearch.trim().toLowerCase()
+    // statusFilter solo aplica si es un estado real (no 'TODAS' ni 'POR_APROBAR').
+    const concreteStatus =
+      statusFilter !== 'TODAS' && statusFilter !== 'POR_APROBAR' ? statusFilter : ''
+    return scopedAssignments.filter((a) => {
+      if (concreteStatus && a.status !== concreteStatus) return false
+      if (operatorFilter !== 'TODOS' && a.operatorId !== operatorFilter) return false
+      if (haciendaFilter !== 'TODAS' && a.haciendaCode !== haciendaFilter) return false
+      if (ingenioFilter !== 'TODOS') {
+        const row = maestro.find((r) => r.haciendaCode === a.haciendaCode && r.suerte === a.suerte)
+        if (!row || row.ingenio_id !== ingenioFilter) return false
+      }
+      if (q) {
+        const haystack = `${a.haciendaName} ${a.suerte} ${a.labor} ${a.operatorName}`.toLowerCase()
+        if (!haystack.includes(q)) return false
+      }
+      return true
+    })
+  }, [scopedAssignments, statusFilter, operatorFilter, haciendaFilter, ingenioFilter, laborSearch, maestro])
+
   const summaryAssignments = useMemo(
     () =>
-      scopedAssignments.filter((a) => {
+      summaryBaseAssignments.filter((a) => {
         if (a.status === 'CANCELADA') return false
         if (summaryQuincena === 'HOY') {
           // Match summarizeAssignments carry-over logic: include labors created today
@@ -364,7 +389,7 @@ export function SupervisorView({
         // una labor asignada el 14-may pero terminada el 16-may cuenta para la 2da quincena.
         return matchesSummaryFilter(executionDateKey(a), summaryMonth, summaryQuincena, todayKey)
       }),
-    [scopedAssignments, summaryMonth, summaryQuincena, todayKey],
+    [summaryBaseAssignments, summaryMonth, summaryQuincena, todayKey],
   )
 
   const summaryMetrics = useMemo(() => {
@@ -971,6 +996,144 @@ export function SupervisorView({
         ) : null}
 
         {supervisorTab === 'resumen' ? (
+          <section className="summary-search-bar">
+            <div className="labores-search-row">
+              <div className="labores-search-input-wrap">
+                <svg className="labores-search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                  type="search"
+                  className="labores-search-input"
+                  placeholder="Buscar hacienda, suerte, labor u operario..."
+                  value={laborSearch}
+                  onChange={(event) => setLaborSearch(event.target.value)}
+                />
+                {laborSearch && (
+                  <button
+                    type="button"
+                    className="labores-search-clear"
+                    onClick={() => setLaborSearch('')}
+                    aria-label="Limpiar busqueda"
+                  >
+                    &#x2715;
+                  </button>
+                )}
+              </div>
+              <button
+                type="button"
+                className={`filtros-toggle-btn${activeFilterCount > 0 ? ' filtros-toggle-btn--active' : ''}`}
+                onClick={() => setFilterPanelOpen(true)}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                Filtros
+                {activeFilterCount > 0 && (
+                  <span className="filtros-badge">{activeFilterCount}</span>
+                )}
+              </button>
+            </div>
+
+            {/* Drawer de filtros del Resumen: MISMO estado/filtros que Labores
+                (compartidos). No coexiste con el de Labores: son pestañas
+                distintas, solo una se monta a la vez. */}
+            <div
+              className={`filter-drawer-overlay${filterPanelOpen ? ' open' : ''}`}
+              onClick={() => setFilterPanelOpen(false)}
+            />
+            <aside
+              className={`filter-drawer${filterPanelOpen ? ' open' : ''}`}
+              aria-hidden={!filterPanelOpen}
+            >
+              <div className="filter-drawer__head">
+                <button
+                  type="button"
+                  className="filter-drawer__back"
+                  onClick={() => setFilterPanelOpen(false)}
+                  aria-label="Cerrar filtros"
+                >
+                  &#x2190;
+                </button>
+                <h3>Filtrar</h3>
+                <button
+                  type="button"
+                  className="filter-drawer__clear"
+                  onClick={clearLaborFilters}
+                  disabled={activeFilterCount === 0}
+                >
+                  Limpiar
+                </button>
+              </div>
+
+              <div className="filter-drawer__body">
+                <label className="filter-drawer__field">
+                  Estado
+                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                    <option value="TODAS">Todos los estados</option>
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="EN_PROCESO">En proceso</option>
+                    <option value="COMPLETADA">Completada</option>
+                    <option value="PARCIAL">Parcial</option>
+                  </select>
+                </label>
+
+                <label className="filter-drawer__field">
+                  Operario
+                  <select value={operatorFilter} onChange={(event) => setOperatorFilter(event.target.value)}>
+                    <option value="TODOS">Todos los operarios</option>
+                    {operators.map((operator) => (
+                      <option key={operator.id} value={operator.id}>{operator.name}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="filter-drawer__field">
+                  Ingenio
+                  <select
+                    value={ingenioFilter}
+                    onChange={(event) => {
+                      setIngenioFilter(event.target.value)
+                      setHaciendaFilter('TODAS')
+                    }}
+                  >
+                    <option value="TODOS">Todos los ingenios</option>
+                    {INGENIOS.map((ing) => (
+                      <option key={ing.id} value={ing.id}>{ing.nombre}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="filter-drawer__field">
+                  Hacienda
+                  <select value={haciendaFilter} onChange={(event) => setHaciendaFilter(event.target.value)}>
+                    <option value="TODAS">Todas las haciendas</option>
+                    {haciendaFilterOptions.map(({ code, name }) => (
+                      <option key={code} value={code}>{name}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="filter-drawer__footer">
+                <p className="filter-drawer__count">
+                  Mostrando <strong>{summaryBaseAssignments.length}</strong>{' '}
+                  {summaryBaseAssignments.length === 1 ? 'labor' : 'labores'}
+                </p>
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => setFilterPanelOpen(false)}
+                >
+                  Ver resultados
+                </button>
+              </div>
+            </aside>
+          </section>
+        ) : null}
+
+        {supervisorTab === 'resumen' ? (
           <section className="kpi-grid">
             <article className="metric-panel">
               <p>HA PLANIFICADAS</p>
@@ -1134,7 +1297,7 @@ export function SupervisorView({
               : 'none'
           }
           entity={selectedEntity}
-          assignments={scopedAssignments}
+          assignments={summaryBaseAssignments}
           defaultMonth={summaryMonth}
           defaultQuincena={summaryQuincena}
           todayKey={todayKey}

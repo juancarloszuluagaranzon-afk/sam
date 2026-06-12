@@ -346,6 +346,33 @@ export function OperatorView({
     [operatorAssignments],
   )
 
+  // "Tu quincena": acumulado de la QUINCENA EN CURSO (1-15 o 16-fin del mes
+  // actual), alineado con como se paga/reporta. Antes la tarjeta sumaba TODO el
+  // historial (mislabel "Tu jornada"). Usa executionDateKey igual que el resto:
+  // una labor cuenta el dia en que se ejecuto (fin/inicio segun estado).
+  const quincenaHistory = useMemo(() => {
+    const month = todayKey.slice(0, 7)
+    const day = Number(todayKey.slice(8, 10))
+    const start = day >= 16 ? 16 : 1
+    const end = day >= 16 ? 31 : 15
+    return historyAssignments.filter((a) => {
+      const k = executionDateKey(a)
+      if (!k.startsWith(month)) return false
+      const d = Number(k.slice(8, 10))
+      return d >= start && d <= end
+    })
+  }, [historyAssignments, todayKey])
+
+  const quincenaLabel = useMemo(() => {
+    const day = Number(todayKey.slice(8, 10))
+    const monthName = new Date(
+      Number(todayKey.slice(0, 4)),
+      Number(todayKey.slice(5, 7)) - 1,
+      1,
+    ).toLocaleDateString('es-CO', { month: 'long' })
+    return `${day >= 16 ? '2da' : '1ra'} quincena de ${monthName}`
+  }, [todayKey])
+
   const historyMonths = useMemo(() => {
     const set = new Set<string>()
     // Usar la fecha de EJECUCIÓN (igual que filteredHistory), NO la de creación.
@@ -971,7 +998,8 @@ export function OperatorView({
 
             <article className="panel-card operator-journey-card">
               <div className="panel-title">
-                <h2>Tu jornada</h2>
+                <h2>Tu quincena</h2>
+                <span className="subtle-copy">{quincenaLabel}</span>
               </div>
               <div className="journey-stats">
                 <div>
@@ -981,7 +1009,7 @@ export function OperatorView({
                 <div>
                   <strong>
                     {
-                      historyAssignments.filter(
+                      quincenaHistory.filter(
                         (a) => a.status === 'COMPLETADA' || a.status === 'CANCELADA',
                       ).length
                     }
@@ -990,7 +1018,7 @@ export function OperatorView({
                 </div>
                 <div>
                   <strong>
-                    {historyAssignments
+                    {quincenaHistory
                       .filter((item) => item.status === 'COMPLETADA' || item.status === 'PARCIAL')
                       .reduce((sum, item) => sum + item.executedArea, 0)
                       .toFixed(2)}

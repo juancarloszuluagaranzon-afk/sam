@@ -70,6 +70,7 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
+  if (role === 'soporte') return 'Soporte'
   return 'Operador'
 }
 
@@ -1831,7 +1832,7 @@ export function SupervisorView({
                 })
                 .map((u) => {
                   const status = operatorStatusMap.get(u.id) ?? 'disponible'
-                  const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario' }
+                  const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', soporte: 'Soporte' }
                   const openEdit = () => {
                     setEditingUserId(u.id)
                     setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
@@ -1949,6 +1950,7 @@ export function SupervisorView({
                       <option value="supervisor">Supervisor</option>
                       <option value="administracion">Administración</option>
                       <option value="owner">Propietario</option>
+                      <option value="soporte">Soporte</option>
                     </select>
                   </label>
                   <label>

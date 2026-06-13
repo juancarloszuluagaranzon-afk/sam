@@ -3,6 +3,7 @@ import { AppDataProvider, SESSION_KEY, useAppData } from './context/AppDataConte
 import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
+import { SupportSwitcher } from './views/SupportSwitcher'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
 import { matchesSummaryFilter, type SummaryQuincena } from './components/EntityHistoryModal'
@@ -15,8 +16,20 @@ export type ReportPeriod = 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | '
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
+// Guarda la sesión real del usuario de SOPORTE mientras impersona a otro rol,
+// para poder volver. Separado de SESSION_KEY (que es la sesión EFECTIVA).
+const SUPPORT_ORIGIN_KEY = 'sam:support-origin'
+
 function isSupervisorOrOwner(role: UserProfile['role'] | undefined): boolean {
   return role === 'supervisor' || role === 'owner' || role === 'administracion'
+}
+
+function roleLabel(role: UserProfile['role']): string {
+  if (role === 'owner') return 'Propietario'
+  if (role === 'supervisor') return 'Supervisor'
+  if (role === 'administracion') return 'Administración'
+  if (role === 'soporte') return 'Soporte'
+  return 'Operario'
 }
 
 function AppContent() {
@@ -36,6 +49,15 @@ function AppContent() {
   const [isPinModalOpen, setIsPinModalOpen] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', newPin: '', confirm: '', error: '', loading: false })
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
+  // Sesión real de soporte mientras impersona (null = no está impersonando).
+  const [supportOrigin, setSupportOrigin] = useState<UserProfile | null>(() => {
+    try {
+      const raw = window.localStorage.getItem(SUPPORT_ORIGIN_KEY)
+      return raw ? (JSON.parse(raw) as UserProfile) : null
+    } catch {
+      return null
+    }
+  })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
     const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'validacion', 'maestros']
@@ -88,6 +110,32 @@ function AppContent() {
     } else {
       window.localStorage.removeItem(SESSION_KEY)
     }
+  }
+
+  // Soporte entra a la app COMO otro usuario (impersonación). Guarda su sesión
+  // real para poder volver, e intercambia la sesión efectiva por la del usuario.
+  function enterImpersonation(profile: UserProfile) {
+    if (session) {
+      setSupportOrigin(session)
+      try {
+        window.localStorage.setItem(SUPPORT_ORIGIN_KEY, JSON.stringify(session))
+      } catch {
+        /* localStorage bloqueado: la barra flotante igual permite volver en esta sesión */
+      }
+    }
+    saveSession(profile)
+  }
+
+  // Vuelve del modo impersonación a la pantalla de soporte.
+  function exitImpersonation() {
+    const origin = supportOrigin
+    setSupportOrigin(null)
+    try {
+      window.localStorage.removeItem(SUPPORT_ORIGIN_KEY)
+    } catch {
+      /* ignore */
+    }
+    if (origin) saveSession(origin)
   }
 
   const filteredAssignments = useMemo(() => {
@@ -346,6 +394,18 @@ function AppContent() {
     )
   }
 
+  // Rol SOPORTE sin impersonar → pantalla "Ver como" para elegir a quién ver.
+  if (session.role === 'soporte') {
+    return (
+      <SupportSwitcher
+        me={session}
+        users={users}
+        onView={enterImpersonation}
+        onLogout={() => saveSession(null)}
+      />
+    )
+  }
+
   const syncErrorBanner = syncError && isOnline ? (
     <div className="sync-error-banner" role="alert">
       <span>
@@ -362,9 +422,22 @@ function AppContent() {
     </div>
   ) : null
 
+  // Barra flotante cuando soporte está impersonando: indica el modo y permite volver.
+  const impersonationBar = supportOrigin ? (
+    <div className="impersonation-bar" role="status">
+      <span className="impersonation-bar__label">
+        🛟 <strong>Soporte</strong> · viendo como <strong>{session.name}</strong> ({roleLabel(session.role)})
+      </span>
+      <button type="button" className="impersonation-bar__exit" onClick={exitImpersonation}>
+        Volver a Soporte
+      </button>
+    </div>
+  ) : null
+
   if (isSupervisorOrOwner(session.role)) {
     return (
       <>
+        {impersonationBar}
         {syncErrorBanner}
         <SupervisorView
         isSideMenuOpen={isSideMenuOpen}
@@ -413,6 +486,7 @@ function AppContent() {
 
   return (
     <>
+      {impersonationBar}
       {syncErrorBanner}
       <OperatorView
       operatorTab={operatorTab}

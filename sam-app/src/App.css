@@ -5020,3 +5020,93 @@ button.movement-row--clickable:active {
 }
 .planilla-foot { color: var(--color-ink); }
 
+/* ===== Modo soporte (impersonación) ===== */
+.impersonation-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #8a5a00;
+  color: #fff;
+  font-size: 0.85rem;
+}
+.impersonation-bar__label strong { font-weight: 800; }
+.impersonation-bar__exit {
+  flex-shrink: 0;
+  background: #fff;
+  color: #8a5a00;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.impersonation-bar__exit:hover { background: #fff3e0; }
+
+.support-shell {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: var(--color-bg-app-1, #fafaf7);
+}
+.support-card {
+  width: min(560px, 100%);
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #e3e2dc);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 30px var(--color-shadow-card, rgba(55, 49, 26, 0.08));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.support-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+.support-card__head h1 { margin: 2px 0 4px; }
+.support-card__actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.support-sub { color: var(--color-ink-mid, #4a5040); font-size: 0.85rem; line-height: 1.4; margin: 0; }
+
+.support-role-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 14px 16px;
+  border: 1px solid var(--color-border, #e3e2dc);
+  border-radius: 12px;
+  background: var(--color-bg-soft, #fafaf7);
+  cursor: pointer;
+}
+.support-role-btn:hover { border-color: var(--color-brand-mid, #1f7a40); }
+.support-role-btn__icon { font-size: 1.4rem; color: var(--color-brand, #155b30); }
+.support-role-btn__text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.support-role-btn__text strong { color: var(--color-ink, #161a14); }
+.support-role-btn__desc { font-size: 0.78rem; color: var(--color-ink-mid, #4a5040); }
+.support-role-btn__go { color: var(--color-brand, #155b30); font-weight: 700; flex-shrink: 0; }
+
+.support-pick {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+.support-pick__field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--color-ink-mid, #4a5040);
+}
+.support-pick .primary-button { flex-shrink: 0; }
+

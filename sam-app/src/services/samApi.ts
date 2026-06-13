@@ -608,7 +608,7 @@ export async function loadAppUsers(): Promise<{
     const mapped: UserProfile[] = data.map((row) => ({
       id: String(row.id),
       name: String(row.nombre_completo),
-      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
+      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
       photoUrl: row.foto_url ? String(row.foto_url) : undefined,
     }))

@@ -912,6 +912,47 @@ export function executionDateKey(a: Assignment): string {
   return a.dateKey
 }
 
+export interface LaborSesionInput {
+  asignacionId: string
+  suerteCodigo: string
+  numeroSuerte: string
+  nombreHacienda: string
+  laborNombre: string
+  operadorId: string
+  operadorNombre: string
+  equipoCodigo: string
+  equipoNombre: string
+  fecha: string
+  horometroInicial: number | null
+  horometroFinal: number | null
+  horas: number | null
+  areaEjecutada: number
+}
+
+// Inserta una fila INMUTABLE en labor_sesiones: registro evento-a-evento de cada
+// cierre/parcial (no se actualiza nunca). Es el detalle "uno a uno" para reportes
+// de horómetros, horas-máquina y eficiencias. La tabla la crea la migración
+// 20260614_labor_sesiones.
+export async function createLaborSesion(input: LaborSesionInput) {
+  const { error } = await supabase.from('labor_sesiones').insert({
+    asignacion_id: input.asignacionId,
+    suerte_codigo: input.suerteCodigo,
+    numero_suerte: input.numeroSuerte,
+    nombre_hacienda: input.nombreHacienda,
+    labor_nombre: input.laborNombre,
+    operador_id: input.operadorId,
+    operador_nombre: input.operadorNombre,
+    equipo_codigo: input.equipoCodigo,
+    equipo_nombre: input.equipoNombre,
+    fecha: input.fecha,
+    horometro_inicial: input.horometroInicial,
+    horometro_final: input.horometroFinal,
+    horas: input.horas,
+    area_ejecutada: input.areaEjecutada,
+  })
+  if (error) throw new Error(error.message || 'No se pudo registrar la sesión')
+}
+
 export function formatTime(value: string | null) {
   if (!value) return '-'
 

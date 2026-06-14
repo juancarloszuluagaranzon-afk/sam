@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
-import { updateAssignment, createAssignment, executionDateKey } from '../services/samApi'
+import { updateAssignment, createAssignment, executionDateKey, createLaborSesion } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
@@ -354,6 +354,29 @@ export function useAssignmentActions() {
       } else {
         const updated = await updateAssignment(assignment.id, finishPayload)
         mergeUpdated(updated)
+        // Registro INMUTABLE de la sesión: cada cierre/parcial = 1 fila en
+        // labor_sesiones (fecha, horómetro inicial/final, horas, área). Es el
+        // detalle "uno a uno" para trazabilidad de horómetros, horas-máquina y
+        // eficiencias. No bloquea el cierre si falla (solo se loguea).
+        const sessionArea = Math.max(0, Number((executedArea - ownExecuted).toFixed(2)))
+        const horIni = assignment.horometroInicial
+        const horas = horIni != null ? Number((horometroFinal - horIni).toFixed(2)) : null
+        void createLaborSesion({
+          asignacionId: assignment.id,
+          suerteCodigo: assignment.suerteCode,
+          numeroSuerte: assignment.suerte,
+          nombreHacienda: assignment.haciendaName,
+          laborNombre: assignment.labor,
+          operadorId: assignment.operatorId,
+          operadorNombre: assignment.operatorName,
+          equipoCodigo: assignment.equipmentCode,
+          equipoNombre: assignment.equipmentName,
+          fecha: todayKey,
+          horometroInicial: horIni ?? null,
+          horometroFinal,
+          horas,
+          areaEjecutada: sessionArea,
+        }).catch((e) => console.warn('[labor_sesiones] no se pudo registrar la sesión', e))
         setInfo(successMessage)
       }
       setFinishDrafts((current) => {

@@ -3,7 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
-import { createAssignment as apiCreateAssignment, loadAssignments } from '../services/samApi'
+import { createAssignment as apiCreateAssignment, loadAssignments, updateAssignment } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 
 function normalizeText(value: string) {
@@ -382,7 +382,78 @@ export function useAssignmentForm(options?: Options) {
     }
   }
 
+  // Detección de duplicados: para las suertes seleccionadas + la labor, busca
+  // asignaciones PENDIENTE nunca iniciadas (las "colgadas" reciclables). Si
+  // existen, el form muestra una alerta para REUSARLAS en vez de crear nuevas
+  // (evita saturar la base con duplicados).
+  const reusableMatches = useMemo(() => {
+    if (!assignmentForm.labor || assignmentSuertesList.length === 0) return []
+    const out: { suerte: string; existing: Assignment }[] = []
+    for (const suerte of assignmentSuertesList) {
+      const suerteCode = `${assignmentForm.haciendaCode}-${suerte}`
+      const existing = assignments.find(
+        (a) =>
+          a.suerteCode === suerteCode &&
+          normalizeText(a.labor) === normalizeText(assignmentForm.labor) &&
+          a.status === 'PENDIENTE' &&
+          !a.startedAt &&
+          (a.executedArea ?? 0) === 0 &&
+          !a.liberada,
+      )
+      if (existing) out.push({ suerte, existing })
+    }
+    return out
+  }, [assignments, assignmentForm.labor, assignmentForm.haciendaCode, assignmentSuertesList])
+
+  // Reusa las pendientes existentes: las REASIGNA al operario/equipo del form
+  // (un solo UPDATE por fila, NO crea filas nuevas). Reversible vía la edición
+  // normal. No toca el flujo de creación.
+  async function reuseExisting() {
+    if (!session || !isSupervisorOrOwner(session.role)) return
+    const matches = reusableMatches
+    if (matches.length === 0) return
+    const operator = operators.find((item) => item.id === assignmentForm.operatorId)
+    const equipmentItem = equipment.find((item) => item.code === assignmentForm.equipmentCode)
+    if (!operator || !equipmentItem || !assignmentForm.labor || !assignmentForm.cliente) {
+      setError('Completa operador, equipo y cliente para reusar la existente.')
+      return
+    }
+    if (assignmentForm.zone !== 'NORTE' && assignmentForm.zone !== 'SUR') {
+      setError('Selecciona la zona (Norte o Sur).')
+      return
+    }
+    const zone: Zone = assignmentForm.zone
+    setBusy(true)
+    setError('')
+    try {
+      await Promise.all(
+        matches.map((m) =>
+          updateAssignment(m.existing.id, {
+            operatorId: operator.id,
+            operatorName: operator.name,
+            equipmentCode: equipmentItem.code,
+            equipmentName: equipmentItem.name,
+            cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+            zone,
+          }),
+        ),
+      )
+      await refreshAssignments()
+      setInfo(`${matches.length} asignación(es) existente(s) reutilizada(s) y reasignada(s) a ${operator.name}.`)
+      setAssignmentForm(EMPTY_FORM)
+      setAssignmentSuertesList([])
+      options?.onAssignmentCreated?.()
+    } catch (err) {
+      console.error('[reuseExisting]', err)
+      setError(`No se pudo reusar la asignación. ${formatError(err)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return {
+    reusableMatches,
+    reuseExisting,
     assignmentForm,
     setAssignmentForm,
     updateAssignmentForm,

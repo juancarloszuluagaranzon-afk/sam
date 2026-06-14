@@ -289,6 +289,7 @@ export function SupervisorView({
     assignmentHaciendas, assignmentSuertes,
     prefillAssignmentForm: prefillFormState,
     createAssignment: handleCreateAssignment,
+    reusableMatches, reuseExisting,
   } = useAssignmentForm({
     onAssignmentCreated: () => {
       setIsCreateAssignmentOpen(false)
@@ -2823,6 +2824,29 @@ export function SupervisorView({
             </div>
 
             <form className="form-grid-block" onSubmit={handleCreateAssignment}>
+              {reusableMatches.length > 0 && (
+                <div className="reuse-alert" style={{ gridColumn: '1 / -1' }}>
+                  <div className="reuse-alert__text">
+                    <strong>
+                      ⚠️ Ya existe{reusableMatches.length > 1 ? 'n' : ''} {reusableMatches.length} asignación
+                      {reusableMatches.length > 1 ? 'es' : ''} pendiente{reusableMatches.length > 1 ? 's' : ''} sin iniciar
+                    </strong>
+                    <span>
+                      En {reusableMatches.map((m) => m.suerte).join(', ')} con esta labor
+                      {reusableMatches[0]?.existing.operatorName ? ` (asignada a ${reusableMatches[0].existing.operatorName})` : ''}.
+                      Llena operario/equipo y <strong>reúsala</strong> (la reasigna) en vez de crear un duplicado.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="primary-button reuse-alert__btn"
+                    onClick={() => void reuseExisting()}
+                    disabled={busy}
+                  >
+                    Reusar {reusableMatches.length > 1 ? `las ${reusableMatches.length}` : 'esta'}
+                  </button>
+                </div>
+              )}
               <label>
                 Zona
                 <SearchableSelect

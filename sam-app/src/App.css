@@ -5177,3 +5177,20 @@ button.movement-row--clickable:active {
 .stale-banner__text span { font-size: 0.82rem; color: var(--color-ink-mid, #4a5040); }
 .stale-banner__btn { flex: 0 0 auto; width: auto; padding: 9px 18px; }
 
+/* Alerta de duplicado al asignar (reusar pendiente existente) */
+.reuse-alert {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #cfe0c8;
+  border-left: 4px solid var(--color-brand-mid, #1f7a40);
+  border-radius: 10px;
+  background: var(--color-status-done-bg, #eff5f0);
+}
+.reuse-alert__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.reuse-alert__text strong { color: var(--color-brand, #155b30); }
+.reuse-alert__text span { font-size: 0.82rem; color: var(--color-ink-mid, #4a5040); }
+.reuse-alert__btn { flex: 0 0 auto; width: auto; padding: 9px 18px; }
+

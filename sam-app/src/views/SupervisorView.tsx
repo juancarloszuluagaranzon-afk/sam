@@ -549,7 +549,7 @@ export function SupervisorView({
         onClick={() => setIsSideMenuOpen(false)}
       />
 
-      {(session.role === 'owner' || session.role === 'supervisor') && moreMenuOpen && (
+      {(session.role === 'owner' || session.role === 'supervisor' || session.role === 'administracion') && moreMenuOpen && (
         <>
           <div className="more-sheet-overlay" onClick={() => setMoreMenuOpen(false)} />
           <div className="more-sheet" role="dialog" aria-label="Más opciones">
@@ -639,6 +639,18 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
                   </div>
                 </button>
+                {session.role === 'administracion' && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">👤</span>
+                    <div>
+                      <div className="more-sheet__label">Usuarios</div>
+                      <div className="more-sheet__desc">Crear, editar y eliminar usuarios</div>
+                    </div>
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -901,57 +913,14 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={supervisorTab === 'tablero' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('tablero')}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' ? 'active' : ''}
+                  onClick={() => setMoreMenuOpen((v) => !v)}
+                  aria-haspopup="true"
+                  aria-expanded={moreMenuOpen}
                 >
                   <span className="nav-item">
-                    <span className="nav-icon">◫</span>
-                    <span className="nav-label">Tablero</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'reporte' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('reporte')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">⬦</span>
-                    <span className="nav-label">Reporte</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'planilla' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('planilla')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">▦</span>
-                    <span className="nav-label">Planilla</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'validacion' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('validacion')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">✔</span>
-                    <span className="nav-label">Validación</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'maestros' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('maestros')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">▤</span>
-                    <span className="nav-label">Maestros</span>
-                  </span>
-                </button>
-                <button
-                  className={supervisorTab === 'usuarios' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('usuarios')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">👤</span>
-                    <span className="nav-label">Usuarios</span>
+                    <span className="nav-icon">⋯</span>
+                    <span className="nav-label">Más</span>
                   </span>
                 </button>
               </>

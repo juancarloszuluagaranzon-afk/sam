@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
-import { updateAssignment } from '../services/samApi'
+import { updateAssignment, createAssignment, executionDateKey } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
@@ -22,6 +22,8 @@ export function useAssignmentActions() {
     setInfo,
     setError,
     setBusy,
+    todayKey,
+    supervisors,
   } = useAppData()
 
   const [finishDrafts, setFinishDrafts] = useState<Record<string, FinishDraft>>({})
@@ -72,6 +74,66 @@ export function useAssignmentActions() {
       // Para un inicio fresco (PENDIENTE) estos ya venían en null, así que es inocuo.
       finishedAt: null,
       horometroFinal: null,
+    }
+
+    // Continuación de una PARCIAL trabajada en un día ANTERIOR: en vez de
+    // sobrescribir esa fila (lo que "movía" la porción de ayer a hoy), CONGELA
+    // la entrada anterior (queda con su porción en SU fecha) y crea una entrada
+    // NUEVA para hoy. Cada día queda en su día y se agrupan por ciclo (como ya
+    // pasa entre dos operarios). Solo online; offline cae al flujo normal.
+    const isCrossDayContinuation =
+      assignment.status === 'PARCIAL' &&
+      (assignment.executedArea ?? 0) > 0 &&
+      executionDateKey(assignment) !== todayKey
+
+    if (isCrossDayContinuation && isOnline) {
+      try {
+        // 1. Congela ayer: COMPLETADA conserva su executedArea y su fecha_fin.
+        const frozen = await updateAssignment(assignment.id, { status: 'COMPLETADA' })
+        // 2. Entrada nueva de HOY para la misma suerte+labor (se agrupa por ciclo).
+        const supName = supervisors.find((s) => s.id === assignment.supervisorId)?.name ?? ''
+        const created = await createAssignment({
+          haciendaCode: assignment.haciendaCode,
+          haciendaName: assignment.haciendaName,
+          suerte: assignment.suerte,
+          labor: assignment.labor,
+          area: assignment.area,
+          supervisorId: assignment.supervisorId,
+          supervisorName: supName,
+          operatorId: assignment.operatorId,
+          operatorName: assignment.operatorName,
+          equipmentCode: selectedEquipment.code,
+          equipmentName: selectedEquipment.name,
+          notes: assignment.notes,
+          cliente: assignment.cliente,
+          kind: assignment.kind,
+          initialStatus: 'EN_PROCESO',
+          startedAt: startPayload.startedAt,
+          approval: 'APROBADA',
+          zone: assignment.zone,
+        })
+        // 3. Horómetro inicial de la sesión de hoy en la fila nueva.
+        const withHoro = await updateAssignment(created.id, { horometroInicial })
+        setAssignments((cur) => [withHoro, ...cur.map((a) => (a.id === assignment.id ? frozen : a))])
+        void db.assignments.put(frozen)
+        void db.assignments.put(withHoro)
+        setStartEquipmentDrafts((current) => {
+          const next = { ...current }
+          delete next[assignment.id]
+          return next
+        })
+        setStartHorometroDrafts((current) => {
+          const next = { ...current }
+          delete next[assignment.id]
+          return next
+        })
+        setInfo('Continúas en una entrada nueva de hoy. La del día anterior queda en su fecha.')
+      } catch {
+        setError('No se pudo continuar la labor en una entrada nueva.')
+      } finally {
+        setBusy(false)
+      }
+      return
     }
 
     try {

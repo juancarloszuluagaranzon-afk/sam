@@ -5118,11 +5118,44 @@ button.movement-row--clickable:active {
 }
 .support-pick__field {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.8rem;
+  gap: 5px;
+}
+.support-pick__label {
+  font-size: 0.78rem;
+  font-weight: 600;
   color: var(--color-ink-mid, #4a5040);
 }
-.support-pick .primary-button { flex-shrink: 0; }
+.support-pick__btn {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 78px;
+  padding: 11px 22px;
+}
+
+.support-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 2px;
+  color: var(--color-ink-light, #8a8e85);
+  font-size: 0.78rem;
+}
+.support-divider span { white-space: nowrap; }
+.support-divider::before,
+.support-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border, #e3e2dc);
+}
+
+.support-role-btn { transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease; }
+.support-role-btn:hover {
+  border-color: var(--color-brand-mid, #1f7a40);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--color-shadow-card, rgba(55, 49, 26, 0.08));
+}
 

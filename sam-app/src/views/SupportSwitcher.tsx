@@ -11,10 +11,10 @@ interface SupportSwitcherProps {
 }
 
 /**
- * Pantalla de inicio del rol "soporte". Permite entrar a la app IMPERSONANDO a
- * un usuario concreto (operario o supervisor) o como propietario, para ver
- * exactamente lo que esa persona ve. La sesión efectiva se intercambia en
- * App.tsx (enterImpersonation) y una barra flotante permite volver aquí.
+ * Pantalla de inicio del rol "soporte". Permite entrar a la app IMPERSONANDO un
+ * rol completo (propietario / administración) o un usuario concreto (supervisor
+ * u operario), para ver exactamente lo que esa persona ve. La sesión efectiva se
+ * intercambia en App.tsx (enterImpersonation); una barra flotante permite volver.
  */
 export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcherProps) {
   const operators = useMemo(
@@ -26,13 +26,15 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
     [users],
   )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner'), [users])
+  const admins = useMemo(() => users.filter((u) => u.role === 'administracion'), [users])
 
-  const [opId, setOpId] = useState('')
   const [supId, setSupId] = useState('')
+  const [opId, setOpId] = useState('')
 
-  // Para "Propietario" usamos un dueño real si existe (su id no afecta: el dueño
-  // ve todo). Si no hay, sintetizamos uno con la identidad de soporte.
+  // Para roles "globales" usamos un usuario real si existe (su id no afecta:
+  // ven todo). Si no hay, sintetizamos uno con la identidad de soporte.
   const ownerTarget: UserProfile = owners[0] ?? { id: me.id, name: 'Propietario', role: 'owner', equipmentCode: '' }
+  const adminTarget: UserProfile = admins[0] ?? { id: me.id, name: 'Administración', role: 'administracion', equipmentCode: '' }
 
   return (
     <main className="app-shell support-shell">
@@ -42,8 +44,8 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
             <p className="eyebrow">Soporte · {me.name}</p>
             <h1>Ver como…</h1>
             <p className="support-sub">
-              Entra a la app tal como la ve cada rol. Podrás volver aquí con el botón
-              flotante en cualquier momento.
+              Entra a la app tal como la ve cada rol. Vuelves aquí con el botón flotante en
+              cualquier momento.
             </p>
           </div>
           <div className="support-card__actions">
@@ -59,27 +61,42 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
           className="support-role-btn"
           onClick={() => onView({ ...ownerTarget })}
         >
-          <span className="support-role-btn__icon">⌂</span>
+          <span className="support-role-btn__icon" aria-hidden="true">⌂</span>
           <span className="support-role-btn__text">
             <strong>Propietario</strong>
-            <span className="support-role-btn__desc">Ve toda la operación (todas las haciendas y operarios)</span>
+            <span className="support-role-btn__desc">Toda la operación — todas las haciendas y operarios</span>
           </span>
           <span className="support-role-btn__go">Ver →</span>
         </button>
 
+        <button
+          type="button"
+          className="support-role-btn"
+          onClick={() => onView({ ...adminTarget })}
+        >
+          <span className="support-role-btn__icon" aria-hidden="true">⚙</span>
+          <span className="support-role-btn__text">
+            <strong>Administración</strong>
+            <span className="support-role-btn__desc">Gestión completa — usuarios, validación, maestros, planilla</span>
+          </span>
+          <span className="support-role-btn__go">Ver →</span>
+        </button>
+
+        <div className="support-divider"><span>o entra como una persona</span></div>
+
         <div className="support-pick">
           <label className="support-pick__field">
-            <span>Supervisor</span>
+            <span className="support-pick__label">Supervisor</span>
             <SearchableSelect
               value={supId}
               onChange={setSupId}
               options={supervisors.map((s) => ({ value: s.id, label: s.name }))}
-              placeholder="Selecciona un supervisor…"
+              placeholder="Buscar supervisor…"
             />
           </label>
           <button
             type="button"
-            className="primary-button"
+            className="primary-button support-pick__btn"
             disabled={!supId}
             onClick={() => {
               const u = supervisors.find((s) => s.id === supId)
@@ -92,17 +109,17 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
 
         <div className="support-pick">
           <label className="support-pick__field">
-            <span>Operario</span>
+            <span className="support-pick__label">Operario</span>
             <SearchableSelect
               value={opId}
               onChange={setOpId}
               options={operators.map((o) => ({ value: o.id, label: o.name }))}
-              placeholder="Selecciona un operario…"
+              placeholder="Buscar operario…"
             />
           </label>
           <button
             type="button"
-            className="primary-button"
+            className="primary-button support-pick__btn"
             disabled={!opId}
             onClick={() => {
               const u = operators.find((o) => o.id === opId)

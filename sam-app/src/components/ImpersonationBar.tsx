@@ -35,13 +35,20 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
     [users],
   )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner'), [users])
+  const admins = useMemo(() => users.filter((u) => u.role === 'administracion'), [users])
   const ownerTarget: UserProfile =
     owners[0] ?? { id: current.id, name: 'Propietario', role: 'owner', equipmentCode: '' }
+  const adminTarget: UserProfile =
+    admins[0] ?? { id: current.id, name: 'Administración', role: 'administracion', equipmentCode: '' }
 
   function handleChange(value: string) {
     if (!value) return
     if (value === '__owner') {
       onSwitch({ ...ownerTarget })
+      return
+    }
+    if (value === '__admin') {
+      onSwitch({ ...adminTarget })
       return
     }
     const u = [...supervisors, ...operators].find((x) => x.id === value)
@@ -62,6 +69,7 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
         >
           <option value="">Cambiar vista…</option>
           <option value="__owner">Propietario — toda la operación</option>
+          <option value="__admin">Administración</option>
           {supervisors.length > 0 && (
             <optgroup label="Supervisores">
               {supervisors.map((s) => (

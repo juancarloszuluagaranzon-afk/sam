@@ -36,7 +36,8 @@ return { data: mapped, source: 'supabase' }
 
 - `asignaciones_estado_check`: `estado IN ('PENDIENTE', 'EN_PROCESO', 'COMPLETADA', 'CANCELADA', 'PARCIAL')`
 - `uniq_maestro_suerte`: UNIQUE `(hacienda, suerte, ingenio_id)` en `maestro_risaralda` — evita duplicados ad-hoc cross-supervisores. Violación → error 23505 (PostgREST `unique_violation`).
-- `app_usuarios.rol` CHECK: `('supervisor', 'operador', 'owner', 'administracion')`
+- `app_usuarios.rol` CHECK: `('supervisor', 'operador', 'owner', 'administracion', 'soporte')` (soporte añadido en migración `20260611120000`).
+- **Rol `soporte` (impersonación):** entra a una pantalla "Ver como…" (`SupportSwitcher`) que intercambia la sesión efectiva para ver/actuar como propietario, administración, o un supervisor/operario concreto. **GOTCHA:** el rol DB→app se mapea en DOS sitios de `samApi.ts` — `loadAppUsers` Y **`appLogin`**. Si agregas un rol y solo tocas uno, el login lo manda al fallback `'operador'`. Actualizar AMBOS.
 
 ## mapAssignment — mapeo canónico
 

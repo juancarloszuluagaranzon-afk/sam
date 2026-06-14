@@ -4,6 +4,7 @@ import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { SupportSwitcher } from './views/SupportSwitcher'
+import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
 import { matchesSummaryFilter, type SummaryQuincena } from './components/EntityHistoryModal'
@@ -22,14 +23,6 @@ const SUPPORT_ORIGIN_KEY = 'sam:support-origin'
 
 function isSupervisorOrOwner(role: UserProfile['role'] | undefined): boolean {
   return role === 'supervisor' || role === 'owner' || role === 'administracion'
-}
-
-function roleLabel(role: UserProfile['role']): string {
-  if (role === 'owner') return 'Propietario'
-  if (role === 'supervisor') return 'Supervisor'
-  if (role === 'administracion') return 'Administración'
-  if (role === 'soporte') return 'Soporte'
-  return 'Operario'
 }
 
 function AppContent() {
@@ -123,6 +116,12 @@ function AppContent() {
         /* localStorage bloqueado: la barra flotante igual permite volver en esta sesión */
       }
     }
+    saveSession(profile)
+  }
+
+  // Cambia la vista a otro usuario SIN salir del modo soporte: solo intercambia
+  // la sesión efectiva; supportOrigin (el soporte real) se mantiene intacto.
+  function switchImpersonation(profile: UserProfile) {
     saveSession(profile)
   }
 
@@ -422,16 +421,15 @@ function AppContent() {
     </div>
   ) : null
 
-  // Barra flotante cuando soporte está impersonando: indica el modo y permite volver.
+  // Barra flotante cuando soporte está impersonando: indica el modo, permite
+  // SALTAR a otra vista/rol al vuelo y volver a soporte.
   const impersonationBar = supportOrigin ? (
-    <div className="impersonation-bar" role="status">
-      <span className="impersonation-bar__label">
-        🛟 <strong>Soporte</strong> · viendo como <strong>{session.name}</strong> ({roleLabel(session.role)})
-      </span>
-      <button type="button" className="impersonation-bar__exit" onClick={exitImpersonation}>
-        Volver a Soporte
-      </button>
-    </div>
+    <ImpersonationBar
+      current={session}
+      users={users}
+      onSwitch={switchImpersonation}
+      onExit={exitImpersonation}
+    />
   ) : null
 
   if (isSupervisorOrOwner(session.role)) {

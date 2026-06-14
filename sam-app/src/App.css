@@ -5046,6 +5046,22 @@ button.movement-row--clickable:active {
   cursor: pointer;
 }
 .impersonation-bar__exit:hover { background: #fff3e0; }
+.impersonation-bar__controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.impersonation-bar__select {
+  background: #fff;
+  color: #5a3a00;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 600;
+  font-size: 0.82rem;
+  max-width: 46vw;
+  cursor: pointer;
+}
+@media (max-width: 640px) {
+  .impersonation-bar { flex-wrap: wrap; }
+  .impersonation-bar__label { width: 100%; }
+}
 
 .support-shell {
   min-height: 100dvh;

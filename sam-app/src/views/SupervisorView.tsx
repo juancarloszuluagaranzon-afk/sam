@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
@@ -330,6 +330,45 @@ export function SupervisorView({
     () => summarizeAssignments(scopedAssignments, todayKey),
     [scopedAssignments, todayKey],
   )
+
+  // Pendientes "colgadas": asignadas, NUNCA iniciadas, sin avance, de hace +N
+  // días. El filtro diario las esconde y se acumulan inflando el área asignada.
+  // Se pueden cancelar en bloque (CANCELADA = reversible, no borra).
+  const STALE_DAYS = 3
+  const stalePendientes = useMemo(() => {
+    const [y, m, d] = todayKey.split('-').map(Number)
+    const cut = new Date(y, m - 1, d - STALE_DAYS)
+    const cutoff = `${cut.getFullYear()}-${String(cut.getMonth() + 1).padStart(2, '0')}-${String(cut.getDate()).padStart(2, '0')}`
+    const list = scopedAssignments.filter(
+      (a) =>
+        a.status === 'PENDIENTE' &&
+        !a.startedAt &&
+        (a.executedArea ?? 0) === 0 &&
+        a.dateKey < cutoff,
+    )
+    return { count: list.length, area: list.reduce((s, a) => s + a.area, 0), ids: list.map((a) => a.id) }
+  }, [scopedAssignments, todayKey])
+
+  const [showStaleConfirm, setShowStaleConfirm] = useState(false)
+  const [cleaningStale, setCleaningStale] = useState(false)
+
+  async function handleCleanStale() {
+    const ids = stalePendientes.ids
+    if (ids.length === 0) return
+    setCleaningStale(true)
+    setError('')
+    try {
+      await cancelAssignmentsBulk(ids)
+      const idSet = new Set(ids)
+      setAssignments((cur) => cur.map((a) => (idSet.has(a.id) ? { ...a, status: 'CANCELADA' } : a)))
+      setInfo(`${ids.length} labores pendientes viejas canceladas (reversibles).`)
+      setShowStaleConfirm(false)
+    } catch {
+      setError('No se pudieron cancelar las pendientes. Reintenta.')
+    } finally {
+      setCleaningStale(false)
+    }
+  }
 
   const [summaryMonth, setSummaryMonth] = useState(() => todayKey.slice(0, 7))
   const [summaryQuincena, setSummaryQuincena] = useState<SummaryQuincena>('TODO')
@@ -2092,6 +2131,49 @@ export function SupervisorView({
               haciendaFilterOptions={haciendaFilterOptions}
               resultCount={filteredAssignments.length}
             />
+
+            {canEditAssignments && stalePendientes.count > 0 && (
+              <div className="stale-banner">
+                <div className="stale-banner__text">
+                  <strong>{stalePendientes.count} labores pendientes sin iniciar</strong>
+                  <span>
+                    De hace más de {STALE_DAYS} días, nunca trabajadas ({stalePendientes.area.toFixed(1)} ha).
+                    Inflan el área asignada.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="danger-button stale-banner__btn"
+                  onClick={() => setShowStaleConfirm(true)}
+                  disabled={cleaningStale}
+                >
+                  Limpiar
+                </button>
+              </div>
+            )}
+
+            {showStaleConfirm && (
+              <div className="modal-overlay open" onClick={() => { if (!cleaningStale) setShowStaleConfirm(false) }}>
+                <div className="modal-card" style={{ maxWidth: 440 }} onClick={(e) => e.stopPropagation()}>
+                  <h3 style={{ marginTop: 0 }}>Limpiar pendientes viejas</h3>
+                  <p style={{ lineHeight: 1.5 }}>
+                    ¿Cancelar <strong>{stalePendientes.count}</strong> labores pendientes
+                    ({stalePendientes.area.toFixed(1)} ha) que llevan <strong>+{STALE_DAYS} días</strong>{' '}
+                    asignadas y nunca se iniciaron?
+                    <br />
+                    Quedan como <strong>CANCELADA</strong> — no se borran, es reversible.
+                  </p>
+                  <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+                    <button type="button" className="inline-button" onClick={() => setShowStaleConfirm(false)} disabled={cleaningStale}>
+                      Cancelar
+                    </button>
+                    <button type="button" className="danger-button" onClick={() => void handleCleanStale()} disabled={cleaningStale}>
+                      {cleaningStale ? 'Limpiando…' : `Sí, limpiar ${stalePendientes.count}`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <ul className="labores-list">
               {filteredAssignments.map((assignment) => {

@@ -5159,3 +5159,21 @@ button.movement-row--clickable:active {
   box-shadow: 0 4px 14px var(--color-shadow-card, rgba(55, 49, 26, 0.08));
 }
 
+/* Banner de pendientes "colgadas" (depuración) */
+.stale-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1px solid #e8c8a0;
+  border-left: 4px solid #8a5a00;
+  border-radius: 10px;
+  background: var(--color-status-progress-bg, #faf6ec);
+}
+.stale-banner__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.stale-banner__text strong { color: #5a3a00; }
+.stale-banner__text span { font-size: 0.82rem; color: var(--color-ink-mid, #4a5040); }
+.stale-banner__btn { flex: 0 0 auto; width: auto; padding: 9px 18px; }
+

@@ -953,6 +953,21 @@ export async function createLaborSesion(input: LaborSesionInput) {
   if (error) throw new Error(error.message || 'No se pudo registrar la sesión')
 }
 
+// Cancela en BLOQUE (estado=CANCELADA) las asignaciones cuyos ids se pasan.
+// Sirve para depurar pendientes viejas sin iniciar. Es REVERSIBLE (no borra;
+// solo cambia el estado). El cliente decide QUÉ ids (las que mostró el conteo).
+export async function cancelAssignmentsBulk(ids: string[]) {
+  if (ids.length === 0) return
+  for (let i = 0; i < ids.length; i += 200) {
+    const chunk = ids.slice(i, i + 200)
+    const { error } = await supabase
+      .from('asignaciones')
+      .update({ estado: 'CANCELADA' })
+      .in('id', chunk)
+    if (error) throw new Error(error.message || 'No se pudieron cancelar las asignaciones')
+  }
+}
+
 export function formatTime(value: string | null) {
   if (!value) return '-'
 

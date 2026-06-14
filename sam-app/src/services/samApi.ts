@@ -697,7 +697,7 @@ export async function appLogin(userId: string, pin: string) {
   return {
     id: String(row.id),
     name: String(row.nombre_completo),
-    role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : 'operador',
+    role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : 'operador',
     equipmentCode: String(row.equipo_codigo ?? ''),
     photoUrl: fotoRow?.foto_url ? String(fotoRow.foto_url) : undefined,
   } as UserProfile

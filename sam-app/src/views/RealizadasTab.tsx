@@ -71,8 +71,10 @@ export function RealizadasTab() {
     <section className="panel-card">
       <div className="panel-title">
         <h2>Labores realizadas</h2>
-        <span className="subtle-copy">
-          {filtered.length} · {fmtArea(totalArea)}
+        <span className="realizadas-resumen">
+          <strong>{filtered.length}</strong> {filtered.length === 1 ? 'labor' : 'labores'}
+          {' · '}
+          <strong>{fmtArea(totalArea)}</strong> ejecutadas
         </span>
       </div>
 

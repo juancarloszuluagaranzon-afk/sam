@@ -4925,6 +4925,15 @@ button.movement-row--clickable:active {
 .summary-search-bar { margin: 0 0 14px; }
 
 /* ===== Labores realizadas (vista propietario) ===== */
+.realizadas-resumen {
+  font-size: 0.86rem;
+  color: var(--color-ink-mid);
+  white-space: nowrap;
+}
+.realizadas-resumen strong {
+  color: var(--color-ink, #1a1a1a);
+  font-weight: 700;
+}
 .realizadas-filters {
   display: flex;
   flex-wrap: wrap;

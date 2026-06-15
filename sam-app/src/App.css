@@ -4924,6 +4924,93 @@ button.movement-row--clickable:active {
 /* Barra de búsqueda + Filtros del Resumen (reusa .labores-search-row) */
 .summary-search-bar { margin: 0 0 14px; }
 
+/* ===== Labores realizadas (vista propietario) ===== */
+.realizadas-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 4px 0 16px;
+}
+.realizadas-filters__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1 1 220px;
+  min-width: 200px;
+}
+.realizadas-filters__field > span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-ink-mid);
+}
+.realizadas-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.realizada-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  border-radius: 12px;
+  background: var(--color-surface, #fff);
+}
+.realizada-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.realizada-item__main strong {
+  font-size: 0.92rem;
+  color: var(--color-ink, #1a1a1a);
+}
+.realizada-item__sub {
+  font-size: 0.8rem;
+  color: var(--color-ink-mid);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.realizada-item__meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.realizada-item__area {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-ink, #1a1a1a);
+}
+.realizada-item__date {
+  font-size: 0.78rem;
+  color: var(--color-ink-mid);
+}
+.realizada-chip {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.realizada-chip.completa {
+  background: rgba(34, 160, 80, 0.14);
+  color: #1f8a47;
+}
+.realizada-chip.parcial {
+  background: rgba(230, 160, 20, 0.16);
+  color: #b3760a;
+}
+
 /* ===== Planilla quincenal ===== */
 .planilla-caption {
   margin: 4px 0 14px;

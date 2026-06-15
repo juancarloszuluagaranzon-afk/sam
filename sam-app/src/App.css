@@ -4976,6 +4976,27 @@ button.movement-row--clickable:active {
   color: var(--color-ink, #1a1a1a);
   font-size: 0.84rem;
 }
+.realizadas-rango {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.realizadas-rango label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-ink-mid);
+}
+.realizadas-rango input[type='date'] {
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, #1a1a1a);
+  font-size: 0.84rem;
+}
 .realizadas-filters {
   display: flex;
   flex-wrap: wrap;

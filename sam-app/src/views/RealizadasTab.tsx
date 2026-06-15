@@ -2,15 +2,17 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import SearchableSelect from '../components/SearchableSelect'
 import { executionDateKey } from '../services/samApi'
+import type { Assignment } from '../domain/sam'
 import {
   matchesSummaryFilter,
   buildMonthOptions,
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
 
-// Segmento de fecha: TODAS = todo el historico; el resto se apoya en
-// matchesSummaryFilter (scoped al mes seleccionado salvo HOY, que usa todayKey).
-type DateSeg = 'TODAS' | SummaryQuincena
+// Segmento de fecha: TODAS = todo el historico; RANGO = fecha inicio/fin
+// personalizada; el resto se apoya en matchesSummaryFilter (scoped al mes
+// seleccionado salvo HOY, que usa todayKey).
+type DateSeg = 'TODAS' | 'RANGO' | SummaryQuincena
 
 // Vista del propietario: labores REALIZADAS (COMPLETADA + PARCIAL = con trabajo
 // ejecutado), filtrables por hacienda y labor. Orden: hacienda alfabético y,
@@ -32,6 +34,7 @@ const SEG_OPTIONS: { value: DateSeg; label: string }[] = [
   { value: 'PRIMERA', label: '1ra quinc.' },
   { value: 'SEGUNDA', label: '2da quinc.' },
   { value: 'HOY', label: 'Hoy' },
+  { value: 'RANGO', label: 'Rango' },
 ]
 
 export function RealizadasTab() {
@@ -40,6 +43,8 @@ export function RealizadasTab() {
   const [labor, setLabor] = useState('')
   const [dateSeg, setDateSeg] = useState<DateSeg>('TODAS')
   const [mes, setMes] = useState(() => todayKey.slice(0, 7))
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
@@ -67,13 +72,22 @@ export function RealizadasTab() {
   }, [realizadas])
 
   const filtered = useMemo(() => {
+    const passesDate = (a: Assignment) => {
+      if (dateSeg === 'TODAS') return true
+      const dk = executionDateKey(a)
+      if (dateSeg === 'RANGO') {
+        if (desde && dk < desde) return false
+        if (hasta && dk > hasta) return false
+        return true
+      }
+      return matchesSummaryFilter(dk, mes, dateSeg, todayKey)
+    }
     return realizadas
       .filter(
         (a) =>
           (!haciendaCode || a.haciendaCode === haciendaCode) &&
           (!labor || a.labor === labor) &&
-          (dateSeg === 'TODAS' ||
-            matchesSummaryFilter(executionDateKey(a), mes, dateSeg, todayKey)),
+          passesDate(a),
       )
       .sort((a, b) => {
         // 1) Hacienda alfabético
@@ -86,7 +100,7 @@ export function RealizadasTab() {
         // 3) Suerte (numérico/alfabético)
         return a.suerte.localeCompare(b.suerte, undefined, { numeric: true })
       })
-  }, [realizadas, haciendaCode, labor, dateSeg, mes, todayKey])
+  }, [realizadas, haciendaCode, labor, dateSeg, mes, desde, hasta, todayKey])
 
   const totalArea = useMemo(() => filtered.reduce((s, a) => s + (a.executedArea ?? 0), 0), [filtered])
 
@@ -114,7 +128,7 @@ export function RealizadasTab() {
             </button>
           ))}
         </div>
-        {dateSeg !== 'TODAS' && dateSeg !== 'HOY' && (
+        {(dateSeg === 'TODO' || dateSeg === 'PRIMERA' || dateSeg === 'SEGUNDA') && (
           <select
             className="realizadas-mes"
             value={mes}
@@ -127,6 +141,28 @@ export function RealizadasTab() {
               </option>
             ))}
           </select>
+        )}
+        {dateSeg === 'RANGO' && (
+          <div className="realizadas-rango">
+            <label>
+              <span>Desde</span>
+              <input
+                type="date"
+                value={desde}
+                max={hasta || undefined}
+                onChange={(e) => setDesde(e.target.value)}
+              />
+            </label>
+            <label>
+              <span>Hasta</span>
+              <input
+                type="date"
+                value={hasta}
+                min={desde || undefined}
+                onChange={(e) => setHasta(e.target.value)}
+              />
+            </label>
+          </div>
         )}
       </div>
 

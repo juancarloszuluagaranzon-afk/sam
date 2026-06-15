@@ -650,16 +650,18 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
                   </div>
                 </button>
-                <button
-                  className={`more-sheet__item ${supervisorTab === 'realizadas' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('realizadas'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">✓</span>
-                  <div>
-                    <div className="more-sheet__label">Realizadas</div>
-                    <div className="more-sheet__desc">Labores ejecutadas, filtra por hacienda y labor</div>
-                  </div>
-                </button>
+                {session.role === 'administracion' && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'realizadas' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('realizadas'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">☑</span>
+                    <div>
+                      <div className="more-sheet__label">Realizadas</div>
+                      <div className="more-sheet__desc">Labores ejecutadas, filtra por hacienda y labor</div>
+                    </div>
+                  </button>
+                )}
                 <button
                   className={`more-sheet__item ${supervisorTab === 'planilla' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('planilla'); setMoreMenuOpen(false) }}
@@ -690,7 +692,7 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
                   </div>
                 </button>
-                {session.role === 'administracion' && (
+                {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
                     className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
@@ -855,12 +857,12 @@ export function SupervisorView({
             {session.role === 'owner' ? (
               <>
                 <button
-                  className={supervisorTab === 'usuarios' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('usuarios')}
+                  className={supervisorTab === 'realizadas' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('realizadas')}
                 >
                   <span className="nav-item">
-                    <span className="nav-icon">👤</span>
-                    <span className="nav-label">Usuarios</span>
+                    <span className="nav-icon">☑</span>
+                    <span className="nav-label">Realizadas</span>
                   </span>
                 </button>
                 <button
@@ -891,7 +893,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}

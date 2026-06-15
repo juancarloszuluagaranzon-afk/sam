@@ -2,6 +2,15 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import SearchableSelect from '../components/SearchableSelect'
 import { executionDateKey } from '../services/samApi'
+import {
+  matchesSummaryFilter,
+  buildMonthOptions,
+  type SummaryQuincena,
+} from '../components/EntityHistoryModal'
+
+// Segmento de fecha: TODAS = todo el historico; el resto se apoya en
+// matchesSummaryFilter (scoped al mes seleccionado salvo HOY, que usa todayKey).
+type DateSeg = 'TODAS' | SummaryQuincena
 
 // Vista del propietario: labores REALIZADAS (COMPLETADA + PARCIAL = con trabajo
 // ejecutado), filtrables por hacienda y labor. Orden: hacienda alfabético y,
@@ -17,10 +26,22 @@ function fmtDate(key: string) {
   return d && m && y ? `${d}/${m}/${y}` : key
 }
 
+const SEG_OPTIONS: { value: DateSeg; label: string }[] = [
+  { value: 'TODAS', label: 'Todas' },
+  { value: 'TODO', label: 'Mes' },
+  { value: 'PRIMERA', label: '1ra quinc.' },
+  { value: 'SEGUNDA', label: '2da quinc.' },
+  { value: 'HOY', label: 'Hoy' },
+]
+
 export function RealizadasTab() {
-  const { assignments } = useAppData()
+  const { assignments, todayKey } = useAppData()
   const [haciendaCode, setHaciendaCode] = useState('')
   const [labor, setLabor] = useState('')
+  const [dateSeg, setDateSeg] = useState<DateSeg>('TODAS')
+  const [mes, setMes] = useState(() => todayKey.slice(0, 7))
+
+  const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
   const realizadas = useMemo(
     () => assignments.filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
@@ -50,7 +71,9 @@ export function RealizadasTab() {
       .filter(
         (a) =>
           (!haciendaCode || a.haciendaCode === haciendaCode) &&
-          (!labor || a.labor === labor),
+          (!labor || a.labor === labor) &&
+          (dateSeg === 'TODAS' ||
+            matchesSummaryFilter(executionDateKey(a), mes, dateSeg, todayKey)),
       )
       .sort((a, b) => {
         // 1) Hacienda alfabético
@@ -63,7 +86,7 @@ export function RealizadasTab() {
         // 3) Suerte (numérico/alfabético)
         return a.suerte.localeCompare(b.suerte, undefined, { numeric: true })
       })
-  }, [realizadas, haciendaCode, labor])
+  }, [realizadas, haciendaCode, labor, dateSeg, mes, todayKey])
 
   const totalArea = useMemo(() => filtered.reduce((s, a) => s + (a.executedArea ?? 0), 0), [filtered])
 
@@ -76,6 +99,35 @@ export function RealizadasTab() {
           {' · '}
           <strong>{fmtArea(totalArea)}</strong> ejecutadas
         </span>
+      </div>
+
+      <div className="realizadas-dateseg">
+        <div className="realizadas-seg" role="group" aria-label="Periodo">
+          {SEG_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              className={`realizadas-seg__btn ${dateSeg === opt.value ? 'is-active' : ''}`}
+              onClick={() => setDateSeg(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {dateSeg !== 'TODAS' && dateSeg !== 'HOY' && (
+          <select
+            className="realizadas-mes"
+            value={mes}
+            onChange={(e) => setMes(e.target.value)}
+            aria-label="Mes"
+          >
+            {monthOptions.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div className="realizadas-filters">

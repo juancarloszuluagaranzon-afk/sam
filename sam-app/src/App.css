@@ -4934,6 +4934,48 @@ button.movement-row--clickable:active {
   color: var(--color-ink, #1a1a1a);
   font-weight: 700;
 }
+.realizadas-dateseg {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 12px;
+}
+.realizadas-seg {
+  display: inline-flex;
+  background: var(--color-surface-alt, rgba(0, 0, 0, 0.05));
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.realizadas-seg__btn {
+  border: none;
+  background: transparent;
+  color: var(--color-ink-mid);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.realizadas-seg__btn:hover {
+  color: var(--color-ink, #1a1a1a);
+}
+.realizadas-seg__btn.is-active {
+  background: var(--color-brand, #1f6b3a);
+  color: #fff;
+}
+.realizadas-mes {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, #1a1a1a);
+  font-size: 0.84rem;
+}
 .realizadas-filters {
   display: flex;
   flex-wrap: wrap;

@@ -15,9 +15,21 @@ Este repositorio contiene la evolución del sistema **SAM Control**, desde su pr
 - 🔄 **Sincronización Supabase**: Persistencia de datos en la nube con manejo de concurrencia.
 - 📊 **Dashboard de KPIs**: Visualización instantánea de rendimiento por hacienda, suerte y operador.
 - 🔐 **Sistema de Roles**:
-  - **Gerencia**: Acceso a indicadores de alto nivel.
+  - **Gerencia / Propietario**: Acceso a indicadores de alto nivel, edición de liquidación y catálogos.
+  - **Administración**: Gestión global (usuarios, maestros, catálogo de labores, reportes).
   - **Supervisor**: Creación y monitoreo de asignaciones.
   - **Operador**: Ejecución y reporte de labores.
+  - **Soporte**: Impersonación ("Ver como…") para diagnóstico.
+
+## Herramientas de gestión (propietario / administración)
+
+- 🏷️ **Catálogo de labores (CRUD)**: crear, renombrar, **activar/desactivar** y tipificar labores como **Mecanizada / Manual**. Las inactivas dejan de ofrecerse en los selectores; el operador de tractor solo ve labores mecanizadas al tomar en campo.
+- 📋 **Realizadas**: vista del propietario con las labores ejecutadas, filtrable por hacienda y labor, con segmentador de fecha (mes / quincena / hoy / rango).
+- 📆 **Planilla quincenal**: matriz operario × día (orden alfabético), con resaltado **azul** persistente de las casillas ya revisadas y ventana de detalle para limpiarlas.
+- 🧾 **Reporte de Labores editable**: editar o eliminar líneas (con confirmación) para ajustar la liquidación final, además de la descarga a Excel.
+- 🧹 **Depuración de pendientes viejas**: banner que abre el detalle de labores sin iniciar de +3 días para cancelarlas una a una o todas (reversible).
+
+> 📚 La lógica de negocio detallada vive en `sam-app/.agent/skills/` (`managing-assignments`, `managing-supabase`, `managing-maestro`, etc.). Consultar ahí antes de tocar el dominio.
 
 ## Requisitos Previos
 

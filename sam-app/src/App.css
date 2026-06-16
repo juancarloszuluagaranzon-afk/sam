@@ -5100,6 +5100,11 @@ button.movement-row--clickable:active {
   border-radius: 12px;
   background: var(--color-surface, #fff);
 }
+.realizada-item--clickable { cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.realizada-item--clickable:hover {
+  border-color: var(--color-brand, #1f6b3a);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.08);
+}
 .realizada-item__main {
   display: flex;
   flex-direction: column;

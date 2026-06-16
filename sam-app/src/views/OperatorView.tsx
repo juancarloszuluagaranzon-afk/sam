@@ -15,9 +15,29 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey, formatExecutionDate } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades } from '../services/samApi'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
+
+// Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Para reportar
+// novedades (vacaciones/taller) por rango. Guard de 400 días por seguridad.
+function datesInRange(desde: string, hasta: string): string[] {
+  if (!desde || !hasta || desde > hasta) return []
+  const [y1, m1, d1] = desde.split('-').map(Number)
+  const [y2, m2, d2] = hasta.split('-').map(Number)
+  const out: string[] = []
+  let cur = new Date(y1, m1 - 1, d1)
+  const end = new Date(y2, m2 - 1, d2)
+  let guard = 0
+  while (cur <= end && guard < 400) {
+    out.push(
+      `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`,
+    )
+    cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1)
+    guard++
+  }
+  return out
+}
 
 const INGENIOS = [
   { id: 'risaralda', nombre: 'Ingenio Risaralda' },
@@ -207,6 +227,46 @@ export function OperatorView({
   const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores } = useAppData()
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
+
+  // Novedades del operario: reportar Vacaciones (V) o Taller (T) por rango de
+  // fechas → se marcan en la Planilla.
+  const [novedadModal, setNovedadModal] = useState<null | 'V' | 'T'>(null)
+  const [novDesde, setNovDesde] = useState('')
+  const [novHasta, setNovHasta] = useState('')
+  const [savingNov, setSavingNov] = useState(false)
+
+  async function submitNovedad() {
+    if (!session || !novedadModal) return
+    const fechas = datesInRange(novDesde, novHasta)
+    if (fechas.length === 0) {
+      setError('Selecciona una fecha de inicio y fin válidas.')
+      return
+    }
+    setSavingNov(true)
+    setError('')
+    try {
+      await setOperarioNovedades(session.id, fechas, novedadModal)
+      setInfo(
+        novedadModal === 'V'
+          ? `Vacaciones reportadas (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`
+          : `Taller reportado (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`,
+      )
+      setNovedadModal(null)
+      setNovDesde('')
+      setNovHasta('')
+    } catch {
+      setError('No se pudo reportar la novedad. Revisa la conexión.')
+    } finally {
+      setSavingNov(false)
+    }
+  }
+
+  function openNovedad(tipo: 'V' | 'T') {
+    setNovDesde(todayKey)
+    setNovHasta(todayKey)
+    setError('')
+    setNovedadModal(tipo)
+  }
 
   const [isFreeFieldOpen, setIsFreeFieldOpen] = useState(false)
 
@@ -570,6 +630,40 @@ export function OperatorView({
         />
       )}
 
+      {novedadModal && (
+        <div className="modal-overlay open" onClick={() => { if (!savingNov) setNovedadModal(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Novedad</p>
+                <h3>{novedadModal === 'V' ? '🏖️ Reportar vacaciones' : '🔧 Reportar taller'}</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setNovedadModal(null)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Los días seleccionados quedarán marcados como <strong>{novedadModal}</strong> en la planilla.
+              {novedadModal === 'T' ? ' Si es solo hoy, deja las dos fechas iguales.' : ''}
+            </p>
+            <div className="novedad-fields">
+              <label>
+                <span>Desde</span>
+                <input type="date" value={novDesde} max={novHasta || undefined} onChange={(e) => setNovDesde(e.target.value)} disabled={savingNov} />
+              </label>
+              <label>
+                <span>Hasta</span>
+                <input type="date" value={novHasta} min={novDesde || undefined} onChange={(e) => setNovHasta(e.target.value)} disabled={savingNov} />
+              </label>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setNovedadModal(null)} disabled={savingNov}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void submitNovedad()} disabled={savingNov || !novDesde || !novHasta}>
+                {savingNov ? 'Guardando…' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <NewSuerteModal
         open={isNewSuerteOpen}
         onClose={() => setIsNewSuerteOpen(false)}
@@ -685,6 +779,16 @@ export function OperatorView({
                 <span>{operatorMetrics.inProgress === 1 ? 'labor en progreso' : 'labores en progreso'}</span>
               </article>
             </div>
+
+            <div className="operator-novedades">
+              <button type="button" className="operator-novedad-btn vac" onClick={() => openNovedad('V')}>
+                🏖️ Vacaciones
+              </button>
+              <button type="button" className="operator-novedad-btn taller" onClick={() => openNovedad('T')}>
+                🔧 Taller
+              </button>
+            </div>
+
             {activeAssignments.map((assignment) => {
               const progress = getSuerteProgress(assignment, assignments)
               // Status derivado: si DB dice PENDIENTE pero otro operario ya

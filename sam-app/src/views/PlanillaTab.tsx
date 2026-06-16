@@ -5,6 +5,7 @@ import {
   loadPlanillaRevisiones,
   setPlanillaRevision,
   clearAllPlanillaRevisiones,
+  loadOperarioNovedades,
 } from '../services/samApi'
 import {
   matchesSummaryFilter,
@@ -26,7 +27,7 @@ function fmt(value: number) {
 }
 
 export function PlanillaTab() {
-  const { assignments, todayKey, session, setError, setInfo } = useAppData()
+  const { assignments, operators, todayKey, session, setError, setInfo } = useAppData()
 
   const [planillaMonth, setPlanillaMonth] = useState(() => todayKey.slice(0, 7))
   const [planillaQuincena, setPlanillaQuincena] = useState<SummaryQuincena>(() =>
@@ -41,6 +42,19 @@ export function PlanillaTab() {
   const [markMode, setMarkMode] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [confirmClearAll, setConfirmClearAll] = useState(false)
+
+  // Novedades de operario (V=vacaciones, T=taller). Clave `${operadorId}|${fecha}`.
+  const [novedades, setNovedades] = useState<Map<string, 'V' | 'T'>>(new Map())
+
+  useEffect(() => {
+    let alive = true
+    void loadOperarioNovedades().then((rows) => {
+      if (alive) setNovedades(new Map(rows.map((r) => [`${r.operadorId}|${r.fecha}`, r.tipo])))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
 
   useEffect(() => {
     let alive = true
@@ -188,10 +202,19 @@ export function PlanillaTab() {
       row.perDay[dk] = (row.perDay[dk] ?? 0) + a.area
       row.total += a.area
     }
+    // Operarios que SOLO tienen novedad (vacaciones/taller) en el periodo, sin
+    // labores abiertas: agregarlos como fila vacía para que se vea su V/T.
+    const visibleDays = new Set(days.map((d) => d.key))
+    for (const k of novedades.keys()) {
+      const [opId, fecha] = k.split('|')
+      if (!visibleDays.has(fecha) || map.has(opId)) continue
+      const name = operators.find((o) => o.id === opId)?.name ?? opId
+      map.set(opId, { id: opId, name, perDay: {}, total: 0 })
+    }
     return Array.from(map.values()).sort((a, b) =>
       a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
     )
-  }, [assignments, planillaMonth, planillaQuincena, todayKey])
+  }, [assignments, planillaMonth, planillaQuincena, todayKey, days, novedades, operators])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -225,10 +248,15 @@ export function PlanillaTab() {
     try {
       const { utils, writeFile } = await import('xlsx')
       const cell = (v: number) => (v > 0 ? Number(v.toFixed(1)) : '')
+      // En la celda, la novedad (V/T) tiene prioridad sobre las hectáreas.
+      const cellFor = (rowKey: string, dayKey: string, v: number): string | number => {
+        const nov = novedades.get(`${rowKey}|${dayKey}`)
+        return nov ?? cell(v)
+      }
       const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total']
       const body = filteredRows.map((r) => [
         r.name,
-        ...days.map((d) => cell(r.perDay[d.key] ?? 0)),
+        ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
         Number(r.total.toFixed(1)),
       ])
       const footer = [
@@ -361,14 +389,19 @@ export function PlanillaTab() {
                     {days.map((d) => {
                       const v = r.perDay[d.key] ?? 0
                       const revisada = revisadas.has(`${rowKey}|${d.key}`)
+                      const nov = novedades.get(`${rowKey}|${d.key}`)
                       return (
                         <td
                           key={d.key}
-                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 ? ' planilla-has' : ''}${revisada ? ' planilla-revisada' : ''}${markMode ? ' planilla-markable' : ''}`}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 && !nov ? ' planilla-has' : ''}${revisada ? ' planilla-revisada' : ''}${markMode ? ' planilla-markable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
                           onClick={markMode ? () => void toggleRevision(rowKey, d.key) : undefined}
-                          title={markMode ? (revisada ? 'Quitar marca de revisado' : 'Marcar como revisado') : undefined}
+                          title={
+                            nov
+                              ? nov === 'V' ? 'Vacaciones' : 'Taller'
+                              : markMode ? (revisada ? 'Quitar marca de revisado' : 'Marcar como revisado') : undefined
+                          }
                         >
-                          {fmt(v)}
+                          {nov ?? fmt(v)}
                         </td>
                       )
                     })}

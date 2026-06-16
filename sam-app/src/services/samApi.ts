@@ -833,6 +833,52 @@ export async function clearAllLaborRevisiones(): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudieron limpiar las marcas')
 }
 
+// ──────────── Novedades del operario (vacaciones / taller) → Planilla ────────────
+// Cada fila = un día marcado V (vacaciones) o T (taller) para un operario.
+
+export interface OperarioNovedad {
+  operadorId: string
+  fecha: string
+  tipo: 'V' | 'T'
+}
+
+export async function loadOperarioNovedades(): Promise<OperarioNovedad[]> {
+  const { data, error } = await supabase
+    .from('operario_novedades')
+    .select('operador_id,fecha,tipo')
+  if (error || !data) return []
+  return data.map((r) => ({
+    operadorId: String(r.operador_id),
+    fecha: String(r.fecha),
+    tipo: String(r.tipo) === 'T' ? 'T' : 'V',
+  }))
+}
+
+// Marca (upsert) un rango de días como V o T para un operario.
+export async function setOperarioNovedades(
+  operadorId: string,
+  fechas: string[],
+  tipo: 'V' | 'T',
+): Promise<void> {
+  if (fechas.length === 0) return
+  const rows = fechas.map((fecha) => ({ operador_id: operadorId, fecha, tipo }))
+  const { error } = await supabase
+    .from('operario_novedades')
+    .upsert(rows, { onConflict: 'operador_id,fecha' })
+  if (error) throw new Error(error.message || 'No se pudo registrar la novedad')
+}
+
+// Borra las novedades de un operario en un rango (para corregir un reporte).
+export async function clearOperarioNovedades(operadorId: string, fechas: string[]): Promise<void> {
+  if (fechas.length === 0) return
+  const { error } = await supabase
+    .from('operario_novedades')
+    .delete()
+    .eq('operador_id', operadorId)
+    .in('fecha', fechas)
+  if (error) throw new Error(error.message || 'No se pudo quitar la novedad')
+}
+
 export async function clearAllPlanillaRevisiones(): Promise<void> {
   // Borra TODAS las marcas. El filtro neq(sentinela) hace match de todas las filas
   // (Supabase exige un filtro en delete).

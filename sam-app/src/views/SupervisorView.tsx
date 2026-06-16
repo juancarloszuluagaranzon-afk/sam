@@ -5,7 +5,8 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment } from '../services/samApi'
+import { db } from '../lib/db'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
@@ -407,6 +408,28 @@ export function SupervisorView({
       setError('No se pudo cancelar la labor. Reintenta.')
     } finally {
       setCleaningStale(false)
+    }
+  }
+
+  // Edición/eliminación de líneas del Reporte (ajuste de liquidación por dueño/admin).
+  const [deleteReportTarget, setDeleteReportTarget] = useState<Assignment | null>(null)
+  const [deletingReport, setDeletingReport] = useState(false)
+
+  async function handleDeleteReportRow() {
+    const target = deleteReportTarget
+    if (!target) return
+    setDeletingReport(true)
+    setError('')
+    try {
+      await deleteAssignment(target.id)
+      setAssignments((cur) => cur.filter((a) => a.id !== target.id))
+      void db.assignments.delete(target.id)
+      setInfo(`Línea eliminada del reporte: ${target.haciendaName} · ${target.suerte} · ${target.labor}.`)
+      setDeleteReportTarget(null)
+    } catch {
+      setError('No se pudo eliminar la línea. Revisa la conexión e inténtalo de nuevo.')
+    } finally {
+      setDeletingReport(false)
     }
   }
 
@@ -1721,6 +1744,7 @@ export function SupervisorView({
                       <th>Ingenio</th>
                       <th>Estado</th>
                       <th>Operador</th>
+                      {canEditAssignments && <th>Acciones</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1745,6 +1769,28 @@ export function SupervisorView({
                           <td>{ingenioLabel}</td>
                           <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
                           <td>{a.operatorName}</td>
+                          {canEditAssignments && (
+                            <td>
+                              <div className="report-row-actions">
+                                <button
+                                  type="button"
+                                  className="inline-button"
+                                  onClick={() => setSelectedLabor(a)}
+                                  title="Editar área, operario u otros datos"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  type="button"
+                                  className="inline-button maestro-delete-btn"
+                                  onClick={() => { setDeleteReportTarget(a); setError('') }}
+                                  title="Eliminar esta línea (permanente)"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       )
                     })}
@@ -2801,6 +2847,38 @@ export function SupervisorView({
             </div>
           )
         })()}
+
+        {/* Confirmar eliminación de una línea del Reporte (ajuste de liquidación) */}
+        {deleteReportTarget && (
+          <div className="modal-overlay open" onClick={() => { if (!deletingReport) setDeleteReportTarget(null) }}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(460px, calc(100vw - 32px))' }}>
+              <div className="labor-detail-header">
+                <div>
+                  <p className="eyebrow">Reporte · liquidación</p>
+                  <h3>¿Eliminar esta línea?</h3>
+                </div>
+                <button type="button" className="modal-close-btn" onClick={() => setDeleteReportTarget(null)} disabled={deletingReport} aria-label="Cerrar">&#x2715;</button>
+              </div>
+              <p className="subtle-copy" style={{ marginTop: 0 }}>
+                <strong>{deleteReportTarget.haciendaName} · {deleteReportTarget.suerte}</strong> — {deleteReportTarget.labor}
+                {' · '}{deleteReportTarget.operatorName || 'Sin operario'}
+                {' · '}{executionDateKey(deleteReportTarget)}
+              </p>
+              <p className="subtle-copy">
+                Se borra <strong>de forma permanente</strong> (no se puede deshacer) y deja de contar en la liquidación.
+                Si solo quieres corregir datos, usa <strong>Editar</strong> en su lugar.
+              </p>
+              <div className="modal-footer">
+                <button type="button" className="inline-button" onClick={() => setDeleteReportTarget(null)} disabled={deletingReport}>
+                  Cancelar
+                </button>
+                <button type="button" className="release-confirm-btn" onClick={() => void handleDeleteReportRow()} disabled={deletingReport}>
+                  {deletingReport ? 'Eliminando…' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Aprobar labor de campo: obliga a diligenciar cliente + zona faltantes */}
         {approveTarget && (

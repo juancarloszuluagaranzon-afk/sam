@@ -1135,6 +1135,14 @@ export async function cancelAssignmentsBulk(ids: string[]) {
   }
 }
 
+// Borrado REAL (DELETE) de una asignación. Irreversible. Solo para ajustes de
+// liquidación por dueño/administración desde el Reporte. La cache local se
+// limpia en el llamador (setAssignments + db.assignments.delete).
+export async function deleteAssignment(id: string): Promise<void> {
+  const { error } = await supabase.from('asignaciones').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar la labor')
+}
+
 export function formatTime(value: string | null) {
   if (!value) return '-'
 

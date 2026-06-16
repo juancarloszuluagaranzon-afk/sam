@@ -2821,6 +2821,11 @@ th {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+.report-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
 
 .report-overflow-note {
   text-align: center;

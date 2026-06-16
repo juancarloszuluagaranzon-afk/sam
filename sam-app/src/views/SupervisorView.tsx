@@ -1,11 +1,11 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, loadLaborRevisiones, setLaborRevision, clearAllLaborRevisiones } from '../services/samApi'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
@@ -241,6 +241,71 @@ export function SupervisorView({
     () => new Set(labores.filter((l) => l.tipo === 'MANUAL').map((l) => l.nombre.toUpperCase())),
     [labores],
   )
+
+  // ── Marcas de "labor revisada" (azul celeste), persistidas en BD por id de
+  // asignación. markModeLab activa el clic-para-marcar sobre las tarjetas.
+  const [revisadasLab, setRevisadasLab] = useState<Set<string>>(new Set())
+  const [markModeLab, setMarkModeLab] = useState(false)
+  const [detailLabOpen, setDetailLabOpen] = useState(false)
+  const [confirmClearLab, setConfirmClearLab] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    void loadLaborRevisiones().then((ids) => {
+      if (alive) setRevisadasLab(new Set(ids))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function toggleLaborRevision(id: string) {
+    const yaEsta = revisadasLab.has(id)
+    setRevisadasLab((prev) => {
+      const next = new Set(prev)
+      if (yaEsta) next.delete(id)
+      else next.add(id)
+      return next
+    })
+    try {
+      await setLaborRevision(id, !yaEsta, session.id)
+    } catch {
+      setRevisadasLab((prev) => {
+        const next = new Set(prev)
+        if (yaEsta) next.add(id)
+        else next.delete(id)
+        return next
+      })
+      setError('No se pudo guardar la marca de revisión. Revisa la conexión.')
+    }
+  }
+
+  async function clearLaborRevisionAll() {
+    const backup = new Set(revisadasLab)
+    setRevisadasLab(new Set())
+    setConfirmClearLab(false)
+    try {
+      await clearAllLaborRevisiones()
+      setInfo('Se limpiaron todas las labores revisadas.')
+    } catch {
+      setRevisadasLab(backup)
+      setError('No se pudieron limpiar las marcas. Revisa la conexión.')
+    }
+  }
+
+  // Detalle de las labores marcadas (solo las que aún existen en el dataset),
+  // ordenado alfabético por hacienda·suerte.
+  const revisadasLabList = useMemo(() => {
+    const byId = new Map(assignments.map((a) => [a.id, a]))
+    return Array.from(revisadasLab)
+      .map((id) => byId.get(id))
+      .filter((a): a is Assignment => Boolean(a))
+      .sort((a, b) => {
+        const h = a.haciendaName.localeCompare(b.haciendaName, 'es', { sensitivity: 'base' })
+        if (h !== 0) return h
+        return a.suerte.localeCompare(b.suerte, undefined, { numeric: true })
+      })
+  }, [revisadasLab, assignments])
 
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
@@ -2108,7 +2173,34 @@ export function SupervisorView({
               <div className="labores-title-row">
                 <h2>Labores</h2>
                 <span className="labores-count">{filteredAssignments.length}</span>
+                {canEditAssignments && (
+                  <div className="labores-review-tools">
+                    <button
+                      type="button"
+                      className={`inline-button planilla-mark-toggle${markModeLab ? ' is-active' : ''}`}
+                      onClick={() => setMarkModeLab((v) => !v)}
+                      title="Activa el clic para resaltar en azul las labores revisadas"
+                    >
+                      {markModeLab ? '✓ Marcando revisadas' : '🖍 Marcar revisadas'}
+                    </button>
+                    <button
+                      type="button"
+                      className="inline-button"
+                      onClick={() => setDetailLabOpen(true)}
+                      disabled={revisadasLab.size === 0}
+                      title="Ver el detalle de las labores revisadas y limpiarlas"
+                    >
+                      📋 Revisadas ({revisadasLab.size})
+                    </button>
+                  </div>
+                )}
               </div>
+              {markModeLab && (
+                <p className="planilla-mark-hint">
+                  🖍 Modo marcar activo: haz clic en una labor para resaltarla en azul (revisada) o quitarla.
+                  El cambio queda guardado.
+                </p>
+              )}
               {/* Barra de busqueda libre + boton de filtros emergentes.
                   Reemplaza los 4 dropdowns apilados por una UI mas limpia:
                   la busqueda acota por hacienda/suerte/labor/operario y el
@@ -2220,7 +2312,11 @@ export function SupervisorView({
               {filteredAssignments.map((assignment) => {
                 const meta = getStatusMeta(assignment)
                 return (
-                  <li key={assignment.id} className="labor-item labor-item--tappable" onClick={() => setSelectedLabor(assignment)}>
+                  <li
+                    key={assignment.id}
+                    className={`labor-item labor-item--tappable${revisadasLab.has(assignment.id) ? ' labor-item--revisada' : ''}${markModeLab ? ' labor-item--markable' : ''}`}
+                    onClick={markModeLab ? () => void toggleLaborRevision(assignment.id) : () => setSelectedLabor(assignment)}
+                  >
                     <span className="labor-title">
                       {assignment.haciendaName}{' '}
                       <span style={{ color: 'var(--color-ink-light)', fontWeight: 400 }}>·</span>{' '}
@@ -2313,6 +2409,76 @@ export function SupervisorView({
                 <li className="labores-empty">Sin labores para los filtros seleccionados.</li>
               )}
             </ul>
+
+            {/* Ventana emergente: detalle de labores revisadas + limpiar */}
+            {detailLabOpen && (
+              <div className="modal-overlay open" onClick={() => { setDetailLabOpen(false); setConfirmClearLab(false) }}>
+                <div
+                  className="modal-card"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxWidth: 'min(540px, calc(100vw - 32px))' }}
+                >
+                  <div className="labor-detail-header">
+                    <div>
+                      <p className="eyebrow">Labores</p>
+                      <h3>Labores revisadas ({revisadasLabList.length})</h3>
+                    </div>
+                    <button
+                      type="button"
+                      className="modal-close-btn"
+                      onClick={() => { setDetailLabOpen(false); setConfirmClearLab(false) }}
+                      aria-label="Cerrar"
+                    >
+                      &#x2715;
+                    </button>
+                  </div>
+
+                  {revisadasLabList.length === 0 ? (
+                    <p className="subtle-copy" style={{ marginTop: 0 }}>No hay labores marcadas como revisadas.</p>
+                  ) : (
+                    <>
+                      <ul className="revisadas-list">
+                        {revisadasLabList.map((a) => (
+                          <li key={a.id} className="revisadas-item">
+                            <div className="revisadas-item__main">
+                              <strong>{a.haciendaName} · {a.suerte}</strong>
+                              <span>{a.labor} — {a.operatorName}</span>
+                            </div>
+                            <button
+                              type="button"
+                              className="inline-button revisadas-clear-one"
+                              onClick={() => void toggleLaborRevision(a.id)}
+                              title="Quitar esta marca"
+                            >
+                              ✕ Limpiar
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {confirmClearLab ? (
+                        <div className="revisadas-confirm">
+                          <p className="subtle-copy" style={{ margin: 0 }}>
+                            ¿Seguro? Se quitarán <strong>todas</strong> las {revisadasLabList.length} marcas.
+                          </p>
+                          <div className="modal-footer" style={{ marginTop: 8 }}>
+                            <button type="button" className="inline-button" onClick={() => setConfirmClearLab(false)}>Cancelar</button>
+                            <button type="button" className="release-confirm-btn" onClick={() => void clearLaborRevisionAll()}>Sí, limpiar todas</button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="modal-footer">
+                          <button type="button" className="inline-button" onClick={() => setDetailLabOpen(false)}>Cerrar</button>
+                          <button type="button" className="release-confirm-btn" onClick={() => setConfirmClearLab(true)}>
+                            Limpiar todas
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         ) : null}
 

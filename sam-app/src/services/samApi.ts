@@ -795,6 +795,44 @@ export async function setPlanillaRevision(
   }
 }
 
+// ─────────────────── Marcas de "revisado" de la pestaña Labores ───────────────────
+// Cada fila = una labor (asignación) marcada como revisada. Toggle = upsert/delete.
+
+export async function loadLaborRevisiones(): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('labor_revisiones')
+    .select('asignacion_id')
+  if (error || !data) return []
+  return data.map((r) => String(r.asignacion_id))
+}
+
+export async function setLaborRevision(
+  asignacionId: string,
+  revisado: boolean,
+  revisadoPor?: string,
+): Promise<void> {
+  if (revisado) {
+    const { error } = await supabase
+      .from('labor_revisiones')
+      .upsert({ asignacion_id: asignacionId, revisado_por: revisadoPor ?? null }, { onConflict: 'asignacion_id' })
+    if (error) throw new Error(error.message || 'No se pudo marcar la labor')
+  } else {
+    const { error } = await supabase
+      .from('labor_revisiones')
+      .delete()
+      .eq('asignacion_id', asignacionId)
+    if (error) throw new Error(error.message || 'No se pudo desmarcar la labor')
+  }
+}
+
+export async function clearAllLaborRevisiones(): Promise<void> {
+  const { error } = await supabase
+    .from('labor_revisiones')
+    .delete()
+    .neq('asignacion_id', '__none__')
+  if (error) throw new Error(error.message || 'No se pudieron limpiar las marcas')
+}
+
 export async function clearAllPlanillaRevisiones(): Promise<void> {
   // Borra TODAS las marcas. El filtro neq(sentinela) hace match de todas las filas
   // (Supabase exige un filtro en delete).

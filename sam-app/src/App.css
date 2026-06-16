@@ -5286,6 +5286,18 @@ td.planilla-revisada {
   padding-top: 10px;
 }
 
+/* Tarjeta de labor revisada (azul celeste) en la pestaña Labores */
+.labores-review-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.labor-item--revisada {
+  background: rgba(86, 184, 255, 0.16);
+  box-shadow: inset 0 0 0 2px rgba(40, 150, 225, 0.45);
+}
+.labor-item--markable { cursor: pointer; }
+.labor-item--markable:hover {
+  outline: 2px dashed rgba(40, 150, 225, 0.55);
+  outline-offset: -2px;
+}
+
 .planilla-total-col {
   font-weight: 700;
   color: var(--color-brand);

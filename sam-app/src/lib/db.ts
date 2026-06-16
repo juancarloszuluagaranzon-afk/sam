@@ -3,6 +3,7 @@ import type {
   Assignment,
   CreateAssignmentInput,
   Equipment,
+  Labor,
   MaestroRow,
   UpdateAssignmentInput,
   UserProfile,
@@ -27,6 +28,7 @@ class SamDb extends Dexie {
   maestro!: Table<MaestroRow>
   users!: Table<UserProfile>
   equipment!: Table<Equipment>
+  labores!: Table<Labor>
   outbox!: Table<OutboxItem>
   meta!: Table<{ key: string; value: string }>
 
@@ -83,6 +85,11 @@ class SamDb extends Dexie {
           tx.table('meta').clear(),
         ]).then(() => undefined),
       )
+
+    // v7: catálogo de labores cacheado offline (CRUD activar/desactivar).
+    this.version(7).stores({
+      labores: 'id, nombre',
+    })
   }
 }
 

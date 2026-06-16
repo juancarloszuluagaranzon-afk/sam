@@ -4924,6 +4924,68 @@ button.movement-row--clickable:active {
 /* Barra de búsqueda + Filtros del Resumen (reusa .labores-search-row) */
 .summary-search-bar { margin: 0 0 14px; }
 
+/* ===== Catálogo de labores (CRUD) ===== */
+.labor-cat-add {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.labor-cat-add input {
+  flex: 1 1 220px;
+  min-width: 180px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, #1a1a1a);
+  font-size: 0.9rem;
+}
+.labor-cat-chip {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.labor-cat-chip.on {
+  background: rgba(34, 160, 80, 0.14);
+  color: #1f8a47;
+}
+.labor-cat-chip.off {
+  background: rgba(150, 150, 150, 0.18);
+  color: #888;
+}
+.labor-cat-chip.mec {
+  background: rgba(40, 110, 200, 0.14);
+  color: #2266c4;
+}
+.labor-cat-chip.manual {
+  background: rgba(200, 120, 20, 0.16);
+  color: #b3760a;
+}
+.labor-cat-row--off td {
+  opacity: 0.55;
+}
+.labor-cat-tipo-select {
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  background: var(--color-surface, #fff);
+  color: var(--color-ink, #1a1a1a);
+  font-size: 0.88rem;
+}
+.field-warning {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(200, 120, 20, 0.12);
+  color: #9a6207;
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
 /* ===== Labores realizadas (vista propietario) ===== */
 .realizadas-resumen {
   font-size: 0.86rem;

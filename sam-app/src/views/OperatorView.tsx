@@ -204,7 +204,7 @@ export function OperatorView({
   handleChangePin,
   onSaveSession,
 }: Props) {
-  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo } = useAppData()
+  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores } = useAppData()
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
 
@@ -1366,7 +1366,7 @@ export function OperatorView({
                   <SearchableSelect
                     value={freeFieldForm.labor}
                     onChange={(value) => updateFreeFieldForm('labor', value)}
-                    options={WORKFLOW.map((labor) => {
+                    options={fieldLabores.map((labor) => {
                       const firstSuerte = freeFieldSuertesList[0]
                       const isSuggested =
                         freeFieldForm.haciendaCode && firstSuerte
@@ -1380,7 +1380,7 @@ export function OperatorView({
                     onComplete={(text) => {
                       const match = findItemByVoice(
                         text,
-                        WORKFLOW.map((labor) => ({ code: labor, name: labor })),
+                        fieldLabores.map((labor) => ({ code: labor, name: labor })),
                       )
                       if (match) updateFreeFieldForm('labor', match.code)
                     }}

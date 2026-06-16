@@ -1,11 +1,13 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
-import type { Assignment, Equipment, MaestroRow, UserProfile } from '../domain/sam'
+import type { Assignment, Equipment, Labor, MaestroRow, UserProfile } from '../domain/sam'
+import { WORKFLOW } from '../data/constants'
 import {
   loadAppUsers,
   loadAssignments,
   loadEquipment,
+  loadLabores,
   loadMaestro,
   summarizeAssignments,
 } from '../services/samApi'
@@ -23,6 +25,14 @@ interface AppDataContextValue {
   setUsers: React.Dispatch<React.SetStateAction<UserProfile[]>>
   equipment: Equipment[]
   setEquipment: React.Dispatch<React.SetStateAction<Equipment[]>>
+  // Catálogo de labores (CRUD). `labores` = todas; `activeLabores` = nombres
+  // de las activas, ordenados alfabéticamente, para alimentar los selectores.
+  labores: Labor[]
+  setLabores: React.Dispatch<React.SetStateAction<Labor[]>>
+  activeLabores: string[]
+  // Solo labores activas Y mecanizadas — para el picker del operario (tractor)
+  // al tomar en campo, que no debe ver labores manuales.
+  fieldLabores: string[]
   loading: boolean
   setLoading: React.Dispatch<React.SetStateAction<boolean>>
   busy: boolean
@@ -59,6 +69,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [users, setUsers] = useState<UserProfile[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
+  const [labores, setLabores] = useState<Labor[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -141,12 +152,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     // Si hay cache, la app se siente instantanea — el refresh va en fase 2.
     let hasCache = false
     try {
-      const [maestroCache, assignmentsCache, usersCache, equipmentCache] = await Promise.all([
-        db.maestro.toArray(),
-        db.assignments.toArray(),
-        db.users.toArray(),
-        db.equipment.toArray(),
-      ])
+      const [maestroCache, assignmentsCache, usersCache, equipmentCache, laboresCache] =
+        await Promise.all([
+          db.maestro.toArray(),
+          db.assignments.toArray(),
+          db.users.toArray(),
+          db.equipment.toArray(),
+          db.labores.toArray(),
+        ])
       hasCache =
         maestroCache.length > 0 ||
         assignmentsCache.length > 0 ||
@@ -161,6 +174,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           }
           if (usersCache.length) setUsers(usersCache)
           if (equipmentCache.length) setEquipment(equipmentCache)
+          if (laboresCache.length) setLabores(laboresCache)
         })
         setLoading(false)
       }
@@ -172,17 +186,20 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     // sin bloquear el render — la UI ya esta visible. Si no habia cache, esta
     // fase actua como el load original (espera a que termine).
     try {
-      const [maestroResult, assignmentResult, userResult, equipmentResult] = await Promise.all([
-        loadMaestro(),
-        loadAssignments(),
-        loadAppUsers(),
-        loadEquipment(),
-      ])
+      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult] =
+        await Promise.all([
+          loadMaestro(),
+          loadAssignments(),
+          loadAppUsers(),
+          loadEquipment(),
+          loadLabores(),
+        ])
       startTransition(() => {
         setMaestro(maestroResult.data)
         setAssignments(assignmentResult.data)
         setUsers(userResult.data)
         setEquipment(equipmentResult.data)
+        setLabores(laboresResult.data)
         // Si el resync de asignaciones cayo en fallback con error, exponemos
         // el mensaje para que la UI muestre banner. El catch externo solo
         // dispara si Promise.all rechaza, lo cual no sucede aqui porque
@@ -203,6 +220,25 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     [],
   )
   const metrics = useMemo(() => summarizeAssignments(assignments, todayKey), [assignments, todayKey])
+
+  // Nombres de labores ACTIVAS, alfabético. Si el catálogo aún no cargó (primer
+  // arranque sin caché, o antes de correr la migración), cae a WORKFLOW para no
+  // dejar los selectores vacíos.
+  const activeLabores = useMemo(() => {
+    const names = labores.filter((l) => l.activa).map((l) => l.nombre)
+    const base = names.length ? names : [...WORKFLOW]
+    return base.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+  }, [labores])
+
+  // Activas Y mecanizadas, para el operario de tractor. Si el catálogo aún no
+  // cargó cae a WORKFLOW (que es todo mecanizado salvo REPIQUE; aceptable como
+  // fallback transitorio hasta el primer sync).
+  const fieldLabores = useMemo(() => {
+    // tipo ausente (caché vieja) se trata como mecanizada → no se oculta por error.
+    const loaded = labores.filter((l) => l.activa && l.tipo !== 'MANUAL').map((l) => l.nombre)
+    const base = labores.length ? loaded : [...WORKFLOW]
+    return base.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
+  }, [labores])
 
   const operatorStatusMap = useMemo(() => {
     const map = new Map<string, 'ocupado' | 'disponible'>()
@@ -237,6 +273,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         assignments, setAssignments,
         users, setUsers,
         equipment, setEquipment,
+        labores, setLabores, activeLabores, fieldLabores,
         loading, setLoading,
         busy, setBusy,
         error, setError,

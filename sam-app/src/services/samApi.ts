@@ -7,6 +7,8 @@ import type {
   CreateAssignmentInput,
   DashboardMetrics,
   Equipment,
+  Labor,
+  LaborTipo,
   MaestroRow,
   UpdateAssignmentInput,
   UserProfile,
@@ -674,6 +676,82 @@ export async function createEquipment(input: CreateEquipmentInput) {
     code: String(data.codigo),
     name: String(data.nombre),
   } as Equipment
+}
+
+// ───────────────────────── Catálogo de labores (CRUD) ─────────────────────────
+// La tabla `labores` la crea la migración 20260615_labores_catalogo. El cliente
+// usa el anon_key. Las inactivas (activa=false) dejan de ofrecerse en pickers.
+
+function mapLabor(row: Record<string, unknown>): Labor {
+  const tipo = String(row.tipo ?? 'MECANIZADA').trim().toUpperCase()
+  return {
+    id: String(row.id),
+    nombre: String(row.nombre ?? ''),
+    activa: row.activa == null ? true : Boolean(row.activa),
+    tipo: tipo === 'MANUAL' ? 'MANUAL' : 'MECANIZADA',
+  }
+}
+
+export async function loadLabores(): Promise<{ data: Labor[]; source: Source }> {
+  try {
+    const { data, error } = await supabase
+      .from('labores_catalogo')
+      .select('id,nombre,activa,tipo')
+      .order('nombre')
+
+    if (error || !data) throw error ?? new Error('empty')
+
+    const mapped = data.map(mapLabor)
+    void db.labores.clear().then(() => db.labores.bulkPut(mapped))
+    return { data: mapped, source: 'supabase' }
+  } catch {
+    const cached = await db.labores.toArray()
+    return { data: cached, source: 'fallback' }
+  }
+}
+
+export async function createLabor(
+  nombre: string,
+  tipo: LaborTipo = 'MECANIZADA',
+): Promise<Labor> {
+  const { data, error } = await supabase
+    .from('labores_catalogo')
+    .insert({ nombre: nombre.trim().toUpperCase(), tipo })
+    .select('id,nombre,activa,tipo')
+    .single()
+
+  if (error || !data) throw error ?? new Error('No se pudo crear la labor')
+  const labor = mapLabor(data)
+  void db.labores.put(labor)
+  return labor
+}
+
+export async function updateLabor(
+  id: string,
+  patch: { nombre?: string; activa?: boolean; tipo?: LaborTipo },
+): Promise<Labor> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
+  if (patch.activa !== undefined) payload.activa = patch.activa
+  if (patch.tipo !== undefined) payload.tipo = patch.tipo
+
+  const { data, error } = await supabase
+    .from('labores_catalogo')
+    .update(payload)
+    .eq('id', id)
+    .select('id,nombre,activa,tipo')
+    .single()
+
+  if (error || !data) throw error ?? new Error('No se pudo actualizar la labor')
+  const labor = mapLabor(data)
+  void db.labores.put(labor)
+  return labor
+}
+
+export async function deleteLabor(id: string): Promise<void> {
+  const { error } = await supabase.from('labores_catalogo').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar la labor')
+  void db.labores.delete(id)
 }
 
 export async function appLogin(userId: string, pin: string) {

@@ -26,9 +26,10 @@ import { ValidationTab } from './ValidationTab'
 import { MaestrosTab } from './MaestrosTab'
 import { PlanillaTab } from './PlanillaTab'
 import { RealizadasTab } from './RealizadasTab'
+import { LaboresTab } from './LaboresTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -231,7 +232,15 @@ export function SupervisorView({
     isOnline, outboxCount, busy, error, info,
     operators, users, setUsers, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
+    activeLabores, labores,
   } = useAppData()
+
+  // Nombres (en mayúsculas) de labores MANUALES, para advertir si se asignan a
+  // un operador (que en este negocio es de tractor).
+  const manualLaborSet = useMemo(
+    () => new Set(labores.filter((l) => l.tipo === 'MANUAL').map((l) => l.nombre.toUpperCase())),
+    [labores],
+  )
 
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
@@ -692,6 +701,16 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
                   </div>
                 </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'catalogo' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('catalogo'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">🏷</span>
+                  <div>
+                    <div className="more-sheet__label">Labores</div>
+                    <div className="more-sheet__desc">Catálogo de labores — activar / desactivar</div>
+                  </div>
+                </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
                     className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
@@ -893,7 +912,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -966,7 +985,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1398,7 +1417,7 @@ export function SupervisorView({
                     <th className="tab-meta-col">INICIO</th>
                     <th className="tab-meta-col tab-hide-mobile">DIAS</th>
                     <th className="tab-meta-col tab-hide-mobile">ROT.</th>
-                    {WORKFLOW.map((labor) => (
+                    {activeLabores.map((labor) => (
                       <th key={labor} className="tab-labor-col">{labor}</th>
                     ))}
                   </tr>
@@ -1428,7 +1447,7 @@ export function SupervisorView({
                         <td className="center-cell">{firstDate}</td>
                         <td className="center-cell tab-hide-mobile">1</td>
                         <td className="center-cell tab-hide-mobile">DOBLE</td>
-                        {WORKFLOW.map((labor) => {
+                        {activeLabores.map((labor) => {
                           const assignment = rowAssignments.find(
                             (item) => item.labor.toUpperCase() === labor.toUpperCase(),
                           )
@@ -1503,6 +1522,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'realizadas' ? (
           <RealizadasTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'catalogo' ? (
+          <LaboresTab />
         ) : null}
 
         {(session.role === 'administracion' || session.role === 'owner') && supervisorTab === 'reporte' ? (
@@ -2975,7 +2998,7 @@ export function SupervisorView({
                 <SearchableSelect
                   value={assignmentForm.labor}
                   onChange={(value) => updateAssignmentForm('labor', value)}
-                  options={WORKFLOW.map((labor) => {
+                  options={activeLabores.map((labor) => {
                     const firstSuerte = assignmentSuertesList[0]
                     const isSuggested =
                       assignmentForm.haciendaCode && firstSuerte
@@ -2984,6 +3007,12 @@ export function SupervisorView({
                     return { value: labor, label: labor, rightLabel: isSuggested ? '<- sugerida' : undefined }
                   })}
                 />
+                {assignmentForm.labor && manualLaborSet.has(assignmentForm.labor.toUpperCase()) && (
+                  <p className="field-warning">
+                    ⚠ «{assignmentForm.labor}» es una labor <strong>manual</strong>. Verifica: los operadores
+                    son de tractor. Para una labor manual usa el registro que corresponda, no una asignación a máquina.
+                  </p>
+                )}
               </label>
               <label>
                 Operador

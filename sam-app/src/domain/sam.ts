@@ -108,6 +108,18 @@ export interface DashboardMetrics {
   inProgress: number
 }
 
+// Catálogo de labores (CRUD). Vive en la tabla `labores`. Las inactivas dejan
+// de ofrecerse en los selectores; el histórico que las usa se conserva.
+// `tipo`: MECANIZADA (con tractor) o MANUAL (a mano). El operador de tractor
+// solo ve mecanizadas al tomar en campo.
+export type LaborTipo = 'MECANIZADA' | 'MANUAL'
+export interface Labor {
+  id: string
+  nombre: string
+  activa: boolean
+  tipo: LaborTipo
+}
+
 export interface CreateAssignmentInput {
   haciendaCode: string
   haciendaName: string

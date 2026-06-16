@@ -754,6 +754,47 @@ export async function deleteLabor(id: string): Promise<void> {
   void db.labores.delete(id)
 }
 
+// ──────────────────── Marcas de "revisado" de la Planilla ────────────────────
+// Cada fila = una celda (operario × día) marcada como revisada por el propietario.
+// La tabla la crea la migración 20260615_planilla_revisiones. Toggle = upsert/delete.
+
+export interface PlanillaRevision {
+  operadorId: string
+  fecha: string
+}
+
+export async function loadPlanillaRevisiones(): Promise<PlanillaRevision[]> {
+  const { data, error } = await supabase
+    .from('planilla_revisiones')
+    .select('operador_id,fecha')
+  if (error || !data) return []
+  return data.map((r) => ({ operadorId: String(r.operador_id), fecha: String(r.fecha) }))
+}
+
+export async function setPlanillaRevision(
+  operadorId: string,
+  fecha: string,
+  revisado: boolean,
+  revisadoPor?: string,
+): Promise<void> {
+  if (revisado) {
+    const { error } = await supabase
+      .from('planilla_revisiones')
+      .upsert(
+        { operador_id: operadorId, fecha, revisado_por: revisadoPor ?? null },
+        { onConflict: 'operador_id,fecha' },
+      )
+    if (error) throw new Error(error.message || 'No se pudo marcar la casilla')
+  } else {
+    const { error } = await supabase
+      .from('planilla_revisiones')
+      .delete()
+      .eq('operador_id', operadorId)
+      .eq('fecha', fecha)
+    if (error) throw new Error(error.message || 'No se pudo desmarcar la casilla')
+  }
+}
+
 export async function appLogin(userId: string, pin: string) {
   const { data, error } = await supabase.rpc('app_login', {
     p_user_id: userId,

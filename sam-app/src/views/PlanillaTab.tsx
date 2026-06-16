@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { executionDateKey } from '../services/samApi'
+import { executionDateKey, loadPlanillaRevisiones, setPlanillaRevision } from '../services/samApi'
 import {
   matchesSummaryFilter,
   buildMonthOptions,
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
 
-// Planilla quincenal: filas = operarios (orden descendente por total de ha),
+// Planilla quincenal: filas = operarios (orden alfabetico por nombre),
 // columnas = cada dia de la quincena. La celda suma el AREA de las labores que
 // el operario ABRIO/inicio ese dia (status iniciado: EN_PROCESO / PARCIAL /
 // COMPLETADA). "Abrir" = poner horometro inicial; en cuanto abre, su area entra
@@ -21,7 +21,7 @@ function fmt(value: number) {
 }
 
 export function PlanillaTab() {
-  const { assignments, todayKey, setError, setInfo } = useAppData()
+  const { assignments, todayKey, session, setError, setInfo } = useAppData()
 
   const [planillaMonth, setPlanillaMonth] = useState(() => todayKey.slice(0, 7))
   const [planillaQuincena, setPlanillaQuincena] = useState<SummaryQuincena>(() =>
@@ -29,6 +29,44 @@ export function PlanillaTab() {
   )
   const [search, setSearch] = useState('')
   const [exporting, setExporting] = useState(false)
+
+  // Marcas de "casilla revisada" (azul celeste), persistidas en BD. Clave:
+  // `${operadorKey}|${fecha}`. `markMode` activa el clic-para-marcar.
+  const [revisadas, setRevisadas] = useState<Set<string>>(new Set())
+  const [markMode, setMarkMode] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    void loadPlanillaRevisiones().then((rows) => {
+      if (alive) setRevisadas(new Set(rows.map((r) => `${r.operadorId}|${r.fecha}`)))
+    })
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  async function toggleRevision(operadorKey: string, fecha: string) {
+    const cellKey = `${operadorKey}|${fecha}`
+    const yaEsta = revisadas.has(cellKey)
+    // Optimista: refleja el cambio de inmediato y revierte si falla.
+    setRevisadas((prev) => {
+      const next = new Set(prev)
+      if (yaEsta) next.delete(cellKey)
+      else next.add(cellKey)
+      return next
+    })
+    try {
+      await setPlanillaRevision(operadorKey, fecha, !yaEsta, session?.id)
+    } catch {
+      setRevisadas((prev) => {
+        const next = new Set(prev)
+        if (yaEsta) next.add(cellKey)
+        else next.delete(cellKey)
+        return next
+      })
+      setError('No se pudo guardar la marca de revisión. Revisa la conexión.')
+    }
+  }
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
@@ -69,7 +107,9 @@ export function PlanillaTab() {
       row.perDay[dk] = (row.perDay[dk] ?? 0) + a.area
       row.total += a.area
     }
-    return Array.from(map.values()).sort((a, b) => b.total - a.total)
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
+    )
   }, [assignments, planillaMonth, planillaQuincena, todayKey])
 
   const filteredRows = useMemo(() => {
@@ -140,20 +180,37 @@ export function PlanillaTab() {
     <section className="panel-card">
       <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <h2>Planilla quincenal</h2>
-        <button
-          type="button"
-          className="inline-button"
-          onClick={() => void handleDownload()}
-          disabled={exporting}
-        >
-          {exporting ? 'Exportando…' : '⬇ Excel'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            className={`inline-button planilla-mark-toggle${markMode ? ' is-active' : ''}`}
+            onClick={() => setMarkMode((v) => !v)}
+            title="Activa el clic para resaltar en azul las casillas revisadas"
+          >
+            {markMode ? '✓ Marcando revisadas' : '🖍 Marcar revisadas'}
+          </button>
+          <button
+            type="button"
+            className="inline-button"
+            onClick={() => void handleDownload()}
+            disabled={exporting}
+          >
+            {exporting ? 'Exportando…' : '⬇ Excel'}
+          </button>
+        </div>
       </div>
 
       <p className="planilla-caption">
         Hectáreas de las labores que cada operario <strong>abrió</strong> ese día (área de las
         suertes iniciadas, se suman a medida que abre más). {monthLabel} · {quincenaLabel}.
       </p>
+
+      {markMode && (
+        <p className="planilla-mark-hint">
+          🖍 Modo marcar activo: haz clic en una casilla para resaltarla en azul (revisada) o quitarla.
+          El cambio queda guardado.
+        </p>
+      )}
 
       <div className="planilla-filters">
         <label>
@@ -206,23 +263,29 @@ export function PlanillaTab() {
               </tr>
             </thead>
             <tbody>
-              {filteredRows.map((r) => (
-                <tr key={r.id || r.name}>
-                  <td className="planilla-sticky planilla-op">{r.name}</td>
-                  {days.map((d) => {
-                    const v = r.perDay[d.key] ?? 0
-                    return (
-                      <td
-                        key={d.key}
-                        className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 ? ' planilla-has' : ''}`}
-                      >
-                        {fmt(v)}
-                      </td>
-                    )
-                  })}
-                  <td className="planilla-total-col">{r.total.toFixed(1)}</td>
-                </tr>
-              ))}
+              {filteredRows.map((r) => {
+                const rowKey = r.id || r.name
+                return (
+                  <tr key={rowKey}>
+                    <td className="planilla-sticky planilla-op">{r.name}</td>
+                    {days.map((d) => {
+                      const v = r.perDay[d.key] ?? 0
+                      const revisada = revisadas.has(`${rowKey}|${d.key}`)
+                      return (
+                        <td
+                          key={d.key}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 ? ' planilla-has' : ''}${revisada ? ' planilla-revisada' : ''}${markMode ? ' planilla-markable' : ''}`}
+                          onClick={markMode ? () => void toggleRevision(rowKey, d.key) : undefined}
+                          title={markMode ? (revisada ? 'Quitar marca de revisado' : 'Marcar como revisado') : undefined}
+                        >
+                          {fmt(v)}
+                        </td>
+                      )
+                    })}
+                    <td className="planilla-total-col">{r.total.toFixed(1)}</td>
+                  </tr>
+                )
+              })}
             </tbody>
             <tfoot>
               <tr>

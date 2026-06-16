@@ -5252,6 +5252,39 @@ td.planilla-revisada {
   font-size: 0.82rem;
   line-height: 1.4;
 }
+.revisadas-list {
+  list-style: none;
+  margin: 6px 0 14px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.revisadas-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  border-radius: 10px;
+  background: rgba(86, 184, 255, 0.10);
+}
+.revisadas-item__main {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.revisadas-item__main strong { font-size: 0.9rem; }
+.revisadas-item__main span { font-size: 0.8rem; color: var(--color-ink-mid); }
+.revisadas-clear-one { flex-shrink: 0; }
+.revisadas-confirm {
+  border-top: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  padding-top: 10px;
+}
 
 .planilla-total-col {
   font-weight: 700;

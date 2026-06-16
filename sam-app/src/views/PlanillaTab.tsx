@@ -1,6 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { executionDateKey, loadPlanillaRevisiones, setPlanillaRevision } from '../services/samApi'
+import {
+  executionDateKey,
+  loadPlanillaRevisiones,
+  setPlanillaRevision,
+  clearAllPlanillaRevisiones,
+} from '../services/samApi'
 import {
   matchesSummaryFilter,
   buildMonthOptions,
@@ -34,6 +39,8 @@ export function PlanillaTab() {
   // `${operadorKey}|${fecha}`. `markMode` activa el clic-para-marcar.
   const [revisadas, setRevisadas] = useState<Set<string>>(new Set())
   const [markMode, setMarkMode] = useState(false)
+  const [detailOpen, setDetailOpen] = useState(false)
+  const [confirmClearAll, setConfirmClearAll] = useState(false)
 
   useEffect(() => {
     let alive = true
@@ -66,6 +73,80 @@ export function PlanillaTab() {
       })
       setError('No se pudo guardar la marca de revisión. Revisa la conexión.')
     }
+  }
+
+  // Nombre del operario y área abierta por celda (operadorKey|fecha), sobre TODAS
+  // las asignaciones (las marcas abarcan cualquier periodo, no solo el visible).
+  const nameByKey = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const a of assignments) {
+      const opKey = a.operatorId || a.operatorName || 'Sin operador'
+      if (!m.has(opKey)) m.set(opKey, a.operatorName || opKey)
+    }
+    return m
+  }, [assignments])
+
+  const areaByCell = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const a of assignments) {
+      if (a.status !== 'EN_PROCESO' && a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') continue
+      const opKey = a.operatorId || a.operatorName || 'Sin operador'
+      const k = `${opKey}|${executionDateKey(a)}`
+      m.set(k, (m.get(k) ?? 0) + a.area)
+    }
+    return m
+  }, [assignments])
+
+  // Detalle ordenado (operario alfabético, luego fecha) de las casillas marcadas.
+  const revisadasList = useMemo(() => {
+    return Array.from(revisadas)
+      .map((key) => {
+        const [opKey, fecha] = key.split('|')
+        return {
+          key,
+          opKey,
+          fecha,
+          name: nameByKey.get(opKey) ?? opKey,
+          area: areaByCell.get(key) ?? 0,
+        }
+      })
+      .sort((a, b) => {
+        const n = a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+        return n !== 0 ? n : b.fecha.localeCompare(a.fecha)
+      })
+  }, [revisadas, nameByKey, areaByCell])
+
+  async function clearOne(opKey: string, fecha: string) {
+    const cellKey = `${opKey}|${fecha}`
+    setRevisadas((prev) => {
+      const next = new Set(prev)
+      next.delete(cellKey)
+      return next
+    })
+    try {
+      await setPlanillaRevision(opKey, fecha, false, session?.id)
+    } catch {
+      setRevisadas((prev) => new Set(prev).add(cellKey))
+      setError('No se pudo quitar la marca. Revisa la conexión.')
+    }
+  }
+
+  async function clearAll() {
+    const backup = new Set(revisadas)
+    setRevisadas(new Set())
+    setConfirmClearAll(false)
+    try {
+      await clearAllPlanillaRevisiones()
+      setInfo('Se limpiaron todas las casillas revisadas.')
+    } catch {
+      setRevisadas(backup)
+      setError('No se pudieron limpiar las marcas. Revisa la conexión.')
+    }
+  }
+
+  function fmtFecha(key: string) {
+    const [y, m, d] = key.split('-')
+    return d && m && y ? `${d}/${m}/${y}` : key
   }
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
@@ -192,6 +273,15 @@ export function PlanillaTab() {
           <button
             type="button"
             className="inline-button"
+            onClick={() => setDetailOpen(true)}
+            disabled={revisadas.size === 0}
+            title="Ver el detalle de las casillas revisadas y limpiarlas"
+          >
+            📋 Revisadas ({revisadas.size})
+          </button>
+          <button
+            type="button"
+            className="inline-button"
             onClick={() => void handleDownload()}
             disabled={exporting}
           >
@@ -299,6 +389,76 @@ export function PlanillaTab() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* Ventana emergente: detalle de casillas revisadas + limpiar */}
+      {detailOpen && (
+        <div className="modal-overlay open" onClick={() => { setDetailOpen(false); setConfirmClearAll(false) }}>
+          <div
+            className="modal-card"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: 'min(520px, calc(100vw - 32px))' }}
+          >
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Planilla</p>
+                <h3>Casillas revisadas ({revisadasList.length})</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => { setDetailOpen(false); setConfirmClearAll(false) }}
+                aria-label="Cerrar"
+              >
+                &#x2715;
+              </button>
+            </div>
+
+            {revisadasList.length === 0 ? (
+              <p className="subtle-copy" style={{ marginTop: 0 }}>No hay casillas marcadas como revisadas.</p>
+            ) : (
+              <>
+                <ul className="revisadas-list">
+                  {revisadasList.map((it) => (
+                    <li key={it.key} className="revisadas-item">
+                      <div className="revisadas-item__main">
+                        <strong>{it.name}</strong>
+                        <span>{fmtFecha(it.fecha)}{it.area > 0 ? ` · ${it.area.toFixed(1)} ha` : ''}</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="inline-button revisadas-clear-one"
+                        onClick={() => void clearOne(it.opKey, it.fecha)}
+                        title="Quitar esta marca"
+                      >
+                        ✕ Limpiar
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+
+                {confirmClearAll ? (
+                  <div className="revisadas-confirm">
+                    <p className="subtle-copy" style={{ margin: 0 }}>
+                      ¿Seguro? Se quitarán <strong>todas</strong> las {revisadasList.length} marcas.
+                    </p>
+                    <div className="modal-footer" style={{ marginTop: 8 }}>
+                      <button type="button" className="inline-button" onClick={() => setConfirmClearAll(false)}>Cancelar</button>
+                      <button type="button" className="release-confirm-btn" onClick={() => void clearAll()}>Sí, limpiar todas</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="modal-footer">
+                    <button type="button" className="inline-button" onClick={() => setDetailOpen(false)}>Cerrar</button>
+                    <button type="button" className="release-confirm-btn" onClick={() => setConfirmClearAll(true)}>
+                      Limpiar todas
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
     </section>

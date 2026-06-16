@@ -795,6 +795,16 @@ export async function setPlanillaRevision(
   }
 }
 
+export async function clearAllPlanillaRevisiones(): Promise<void> {
+  // Borra TODAS las marcas. El filtro neq(sentinela) hace match de todas las filas
+  // (Supabase exige un filtro en delete).
+  const { error } = await supabase
+    .from('planilla_revisiones')
+    .delete()
+    .neq('operador_id', '__none__')
+  if (error) throw new Error(error.message || 'No se pudieron limpiar las marcas')
+}
+
 export async function appLogin(userId: string, pin: string) {
   const { data, error } = await supabase.rpc('app_login', {
     p_user_id: userId,

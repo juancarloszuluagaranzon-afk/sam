@@ -2276,33 +2276,37 @@ export function SupervisorView({
               resultCount={filteredAssignments.length}
             />
 
-            {pendingApprovals.length > 0 && (
-              <button
-                type="button"
-                className="mini-banner mini-banner--approve"
-                onClick={() => setSupervisorTab('aprobaciones')}
-              >
-                <span className="mini-banner__dot" />
-                <span className="mini-banner__text">
-                  <strong>{pendingApprovals.length}</strong> por aprobar
-                </span>
-                <span className="mini-banner__cta">Revisar →</span>
-              </button>
-            )}
+            {(pendingApprovals.length > 0 || (canEditAssignments && stalePendientes.count > 0)) && (
+              <div className="mini-banner-row">
+                {pendingApprovals.length > 0 && (
+                  <button
+                    type="button"
+                    className="mini-banner mini-banner--approve"
+                    onClick={() => setSupervisorTab('aprobaciones')}
+                  >
+                    <span className="mini-banner__dot" />
+                    <span className="mini-banner__text">
+                      <strong>{pendingApprovals.length}</strong> por aprobar
+                    </span>
+                    <span className="mini-banner__cta">Revisar →</span>
+                  </button>
+                )}
 
-            {canEditAssignments && stalePendientes.count > 0 && (
-              <div className="mini-banner mini-banner--stale">
-                <span className="mini-banner__text">
-                  <strong>{stalePendientes.count}</strong> sin iniciar +{STALE_DAYS}d · {stalePendientes.area.toFixed(1)} ha
-                </span>
-                <button
-                  type="button"
-                  className="mini-banner__btn"
-                  onClick={() => setShowStaleConfirm(true)}
-                  disabled={cleaningStale}
-                >
-                  Limpiar
-                </button>
+                {canEditAssignments && stalePendientes.count > 0 && (
+                  <div className="mini-banner mini-banner--stale">
+                    <span className="mini-banner__text">
+                      <strong>{stalePendientes.count}</strong> sin iniciar +{STALE_DAYS}d · {stalePendientes.area.toFixed(1)} ha
+                    </span>
+                    <button
+                      type="button"
+                      className="mini-banner__btn"
+                      onClick={() => setShowStaleConfirm(true)}
+                      disabled={cleaningStale}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 

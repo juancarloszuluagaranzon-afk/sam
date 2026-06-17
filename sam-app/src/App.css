@@ -5272,6 +5272,19 @@ td.planilla-revisada {
 .nav-aprobaciones.has-pending { animation: aprob-pulse 1.8s ease-in-out infinite; }
 @keyframes aprob-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
+/* Fila de banners compactos lado a lado (se acomodan en celular) */
+.mini-banner-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+.mini-banner-row .mini-banner {
+  flex: 1 1 220px;
+  width: auto;
+  margin: 0;
+}
+
 /* Banner compacto de UNA línea (aprobaciones / pendientes viejas) — responsivo */
 .mini-banner {
   display: flex;

@@ -5347,40 +5347,78 @@ td.planilla-revisada {
   cursor: pointer;
 }
 
-/* Novedades del operario en la planilla: V (vacaciones), T (taller) */
+/* Novedades del operario en la planilla (letra, color de TEXTO por tipo) */
 .planilla-nov { font-weight: 800; }
-.planilla-nov--v {
-  background: rgba(40, 150, 225, 0.16);
-  color: #1d6fa5;
-}
-.planilla-nov--t {
-  background: rgba(200, 120, 20, 0.18);
-  color: #b3760a;
-}
+.planilla-nov--v { color: #1d6fa5; }   /* Vacaciones */
+.planilla-nov--t { color: #b3760a; }   /* Taller */
+.planilla-nov--np { color: #6b7280; }  /* No programado */
+.planilla-nov--d { color: #7c5cbf; }   /* Descanso */
+.planilla-nov--p { color: #138a8a; }   /* Permiso */
+.planilla-nov--c { color: #8a5a2b; }   /* Camioneta */
 
-/* Botones de novedad del operario (Vacaciones / Taller) */
-.operator-novedades {
+/* Resaltado por color (fondo pastel) — para la celda y los swatches del picker.
+   Definido DESPUÉS de .planilla-has/.planilla-today para ganar el empate. */
+.planilla-hl--azul { background: #d6e9fb; }
+.planilla-hl--verde { background: #d8f0da; }
+.planilla-hl--amarillo { background: #fbf3c9; }
+.planilla-hl--rojo { background: #f8d8d8; }
+
+/* Barra del modo marcar: hint + selector de color */
+.planilla-mark-bar {
   display: flex;
+  align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+.planilla-color-picker { display: flex; gap: 6px; }
+.planilla-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 2px solid rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  padding: 0;
+}
+.planilla-swatch.is-active {
+  border-color: var(--color-ink, #333);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.18);
+}
+/* Segmentador de tipo de novedad (7 opciones) — que envuelva en varias filas */
+.planilla-nov-seg {
+  display: flex;
+  flex-wrap: wrap;
+  border-radius: 12px;
+}
+.planilla-nov-seg .realizadas-seg__btn { flex: 1 1 auto; }
+
+/* Botones de novedad del operario (V/T/NP/D/P/C) — grilla responsiva */
+.operator-novedades {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
   margin: 4px 0 12px;
 }
 .operator-novedad-btn {
-  flex: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 12px 14px;
+  padding: 11px 12px;
   border-radius: 12px;
   border: 1.5px solid var(--color-border, rgba(0, 0, 0, 0.12));
   background: var(--color-surface, #fff);
   color: var(--color-ink, #1a1a1a);
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 700;
   cursor: pointer;
 }
-.operator-novedad-btn.vac { border-color: rgba(40, 150, 225, 0.5); color: #1d6fa5; }
-.operator-novedad-btn.taller { border-color: rgba(200, 120, 20, 0.5); color: #b3760a; }
+.operator-novedad-btn.nov-v { border-color: rgba(40, 150, 225, 0.5); color: #1d6fa5; }
+.operator-novedad-btn.nov-t { border-color: rgba(200, 120, 20, 0.5); color: #b3760a; }
+.operator-novedad-btn.nov-np { border-color: rgba(120, 130, 145, 0.5); color: #6b7280; }
+.operator-novedad-btn.nov-d { border-color: rgba(124, 92, 191, 0.5); color: #7c5cbf; }
+.operator-novedad-btn.nov-p { border-color: rgba(19, 138, 138, 0.5); color: #138a8a; }
+.operator-novedad-btn.nov-c { border-color: rgba(138, 90, 43, 0.5); color: #8a5a2b; }
 .operator-novedad-btn:active { transform: scale(0.98); }
 .novedad-fields {
   display: flex;

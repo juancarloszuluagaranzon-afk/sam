@@ -758,30 +758,44 @@ export async function deleteLabor(id: string): Promise<void> {
 // Cada fila = una celda (operario × día) marcada como revisada por el propietario.
 // La tabla la crea la migración 20260615_planilla_revisiones. Toggle = upsert/delete.
 
+// Color de resaltado de una celda (tonos pastel en la UI).
+export type HighlightColor = 'azul' | 'rojo' | 'amarillo' | 'verde'
+
 export interface PlanillaRevision {
   operadorId: string
   fecha: string
+  color: HighlightColor
+}
+
+function normalizeColor(value: unknown): HighlightColor {
+  const v = String(value ?? 'azul').toLowerCase()
+  return v === 'rojo' || v === 'amarillo' || v === 'verde' ? v : 'azul'
 }
 
 export async function loadPlanillaRevisiones(): Promise<PlanillaRevision[]> {
   const { data, error } = await supabase
     .from('planilla_revisiones')
-    .select('operador_id,fecha')
+    .select('operador_id,fecha,color')
   if (error || !data) return []
-  return data.map((r) => ({ operadorId: String(r.operador_id), fecha: String(r.fecha) }))
+  return data.map((r) => ({
+    operadorId: String(r.operador_id),
+    fecha: String(r.fecha),
+    color: normalizeColor(r.color),
+  }))
 }
 
+// color = null → quita la marca; un color → la pinta/repinta de ese color.
 export async function setPlanillaRevision(
   operadorId: string,
   fecha: string,
-  revisado: boolean,
+  color: HighlightColor | null,
   revisadoPor?: string,
 ): Promise<void> {
-  if (revisado) {
+  if (color) {
     const { error } = await supabase
       .from('planilla_revisiones')
       .upsert(
-        { operador_id: operadorId, fecha, revisado_por: revisadoPor ?? null },
+        { operador_id: operadorId, fecha, color, revisado_por: revisadoPor ?? null },
         { onConflict: 'operador_id,fecha' },
       )
     if (error) throw new Error(error.message || 'No se pudo marcar la casilla')
@@ -833,13 +847,31 @@ export async function clearAllLaborRevisiones(): Promise<void> {
   if (error) throw new Error(error.message || 'No se pudieron limpiar las marcas')
 }
 
-// ──────────── Novedades del operario (vacaciones / taller) → Planilla ────────────
-// Cada fila = un día marcado V (vacaciones) o T (taller) para un operario.
+// ──────────── Novedades del operario (disponibilidad) → Planilla ────────────
+// Cada fila = un día marcado para un operario con un tipo de novedad.
+//   V = Vacaciones · T = Taller · NP = No programado · D = Descanso
+//   P = Permiso    · C = Camioneta
+
+export type NovedadTipo = 'V' | 'T' | 'NP' | 'D' | 'P' | 'C'
+export const NOVEDAD_TIPOS: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'C']
+export const NOVEDAD_LABEL: Record<NovedadTipo, string> = {
+  V: 'Vacaciones',
+  T: 'Taller',
+  NP: 'No programado',
+  D: 'Descanso',
+  P: 'Permiso',
+  C: 'Camioneta',
+}
+
+function normalizeNovedad(value: unknown): NovedadTipo {
+  const v = String(value ?? '').trim().toUpperCase()
+  return (NOVEDAD_TIPOS as string[]).includes(v) ? (v as NovedadTipo) : 'V'
+}
 
 export interface OperarioNovedad {
   operadorId: string
   fecha: string
-  tipo: 'V' | 'T'
+  tipo: NovedadTipo
 }
 
 export async function loadOperarioNovedades(): Promise<OperarioNovedad[]> {
@@ -850,15 +882,15 @@ export async function loadOperarioNovedades(): Promise<OperarioNovedad[]> {
   return data.map((r) => ({
     operadorId: String(r.operador_id),
     fecha: String(r.fecha),
-    tipo: String(r.tipo) === 'T' ? 'T' : 'V',
+    tipo: normalizeNovedad(r.tipo),
   }))
 }
 
-// Marca (upsert) un rango de días como V o T para un operario.
+// Marca (upsert) un rango de días con un tipo de novedad para un operario.
 export async function setOperarioNovedades(
   operadorId: string,
   fechas: string[],
-  tipo: 'V' | 'T',
+  tipo: NovedadTipo,
 ): Promise<void> {
   if (fechas.length === 0) return
   const rows = fechas.map((fecha) => ({ operador_id: operadorId, fecha, tipo }))

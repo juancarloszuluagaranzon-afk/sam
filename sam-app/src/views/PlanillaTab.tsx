@@ -8,7 +8,19 @@ import {
   loadOperarioNovedades,
   setOperarioNovedades,
   clearOperarioNovedades,
+  NOVEDAD_TIPOS,
+  NOVEDAD_LABEL,
+  type NovedadTipo,
+  type HighlightColor,
 } from '../services/samApi'
+
+// Colores de resaltado (tonos pastel). El picker los muestra como swatches.
+const HIGHLIGHT_COLORS: { value: HighlightColor; label: string }[] = [
+  { value: 'azul', label: 'Azul' },
+  { value: 'verde', label: 'Verde' },
+  { value: 'amarillo', label: 'Amarillo' },
+  { value: 'rojo', label: 'Rojo' },
+]
 
 // Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Guard 400 días.
 function datesInRange(desde: string, hasta: string): string[] {
@@ -57,19 +69,21 @@ export function PlanillaTab() {
   const [search, setSearch] = useState('')
   const [exporting, setExporting] = useState(false)
 
-  // Marcas de "casilla revisada" (azul celeste), persistidas en BD. Clave:
-  // `${operadorKey}|${fecha}`. `markMode` activa el clic-para-marcar.
-  const [revisadas, setRevisadas] = useState<Set<string>>(new Set())
+  // Resaltado de casillas por color (azul/rojo/amarillo/verde), persistido en BD.
+  // Clave: `${operadorKey}|${fecha}` → color. `markMode` activa el clic-para-pintar
+  // con el color `markColor` seleccionado.
+  const [revisadas, setRevisadas] = useState<Map<string, HighlightColor>>(new Map())
   const [markMode, setMarkMode] = useState(false)
+  const [markColor, setMarkColor] = useState<HighlightColor>('azul')
   const [detailOpen, setDetailOpen] = useState(false)
   const [confirmClearAll, setConfirmClearAll] = useState(false)
 
-  // Novedades de operario (V=vacaciones, T=taller). Clave `${operadorId}|${fecha}`.
-  const [novedades, setNovedades] = useState<Map<string, 'V' | 'T'>>(new Map())
+  // Novedades de operario (V/T/NP/D/P/C). Clave `${operadorId}|${fecha}`.
+  const [novedades, setNovedades] = useState<Map<string, NovedadTipo>>(new Map())
 
   // Reportar/quitar novedad desde la Planilla (al oprimir el nombre del operario).
   const [novTarget, setNovTarget] = useState<{ key: string; name: string } | null>(null)
-  const [novTipo, setNovTipo] = useState<'V' | 'T' | 'CLEAR'>('V')
+  const [novTipo, setNovTipo] = useState<NovedadTipo | 'CLEAR'>('V')
   const [novDesde, setNovDesde] = useState('')
   const [novHasta, setNovHasta] = useState('')
   const [savingNov, setSavingNov] = useState(false)
@@ -107,11 +121,7 @@ export function PlanillaTab() {
           for (const f of fechas) next.set(`${novTarget.key}|${f}`, novTipo)
           return next
         })
-        setInfo(
-          novTipo === 'V'
-            ? `Vacaciones registradas a ${novTarget.name}.`
-            : `Taller registrado a ${novTarget.name}.`,
-        )
+        setInfo(`${NOVEDAD_LABEL[novTipo]} registrado a ${novTarget.name}.`)
       }
       setNovTarget(null)
     } catch {
@@ -134,7 +144,7 @@ export function PlanillaTab() {
   useEffect(() => {
     let alive = true
     void loadPlanillaRevisiones().then((rows) => {
-      if (alive) setRevisadas(new Set(rows.map((r) => `${r.operadorId}|${r.fecha}`)))
+      if (alive) setRevisadas(new Map(rows.map((r) => [`${r.operadorId}|${r.fecha}`, r.color])))
     })
     return () => {
       alive = false
@@ -143,24 +153,26 @@ export function PlanillaTab() {
 
   async function toggleRevision(operadorKey: string, fecha: string) {
     const cellKey = `${operadorKey}|${fecha}`
-    const yaEsta = revisadas.has(cellKey)
-    // Optimista: refleja el cambio de inmediato y revierte si falla.
+    const actual = revisadas.get(cellKey)
+    // Mismo color → lo quita; distinto/ninguno → lo pinta con el color activo.
+    const next: HighlightColor | null = actual === markColor ? null : markColor
+    const prevColor = actual
     setRevisadas((prev) => {
-      const next = new Set(prev)
-      if (yaEsta) next.delete(cellKey)
-      else next.add(cellKey)
-      return next
+      const m = new Map(prev)
+      if (next) m.set(cellKey, next)
+      else m.delete(cellKey)
+      return m
     })
     try {
-      await setPlanillaRevision(operadorKey, fecha, !yaEsta, session?.id)
+      await setPlanillaRevision(operadorKey, fecha, next, session?.id)
     } catch {
       setRevisadas((prev) => {
-        const next = new Set(prev)
-        if (yaEsta) next.add(cellKey)
-        else next.delete(cellKey)
-        return next
+        const m = new Map(prev)
+        if (prevColor) m.set(cellKey, prevColor)
+        else m.delete(cellKey)
+        return m
       })
-      setError('No se pudo guardar la marca de revisión. Revisa la conexión.')
+      setError('No se pudo guardar el resaltado. Revisa la conexión.')
     }
   }
 
@@ -186,15 +198,16 @@ export function PlanillaTab() {
     return m
   }, [assignments])
 
-  // Detalle ordenado (operario alfabético, luego fecha) de las casillas marcadas.
+  // Detalle ordenado (operario alfabético, luego fecha) de las casillas resaltadas.
   const revisadasList = useMemo(() => {
-    return Array.from(revisadas)
-      .map((key) => {
+    return Array.from(revisadas.entries())
+      .map(([key, color]) => {
         const [opKey, fecha] = key.split('|')
         return {
           key,
           opKey,
           fecha,
+          color,
           name: nameByKey.get(opKey) ?? opKey,
           area: areaByCell.get(key) ?? 0,
         }
@@ -207,26 +220,31 @@ export function PlanillaTab() {
 
   async function clearOne(opKey: string, fecha: string) {
     const cellKey = `${opKey}|${fecha}`
+    const prevColor = revisadas.get(cellKey)
     setRevisadas((prev) => {
-      const next = new Set(prev)
+      const next = new Map(prev)
       next.delete(cellKey)
       return next
     })
     try {
-      await setPlanillaRevision(opKey, fecha, false, session?.id)
+      await setPlanillaRevision(opKey, fecha, null, session?.id)
     } catch {
-      setRevisadas((prev) => new Set(prev).add(cellKey))
-      setError('No se pudo quitar la marca. Revisa la conexión.')
+      setRevisadas((prev) => {
+        const next = new Map(prev)
+        if (prevColor) next.set(cellKey, prevColor)
+        return next
+      })
+      setError('No se pudo quitar el resaltado. Revisa la conexión.')
     }
   }
 
   async function clearAll() {
-    const backup = new Set(revisadas)
-    setRevisadas(new Set())
+    const backup = new Map(revisadas)
+    setRevisadas(new Map())
     setConfirmClearAll(false)
     try {
       await clearAllPlanillaRevisiones()
-      setInfo('Se limpiaron todas las casillas revisadas.')
+      setInfo('Se limpiaron todos los resaltados.')
     } catch {
       setRevisadas(backup)
       setError('No se pudieron limpiar las marcas. Revisa la conexión.')
@@ -369,18 +387,18 @@ export function PlanillaTab() {
             type="button"
             className={`inline-button planilla-mark-toggle${markMode ? ' is-active' : ''}`}
             onClick={() => setMarkMode((v) => !v)}
-            title="Activa el clic para resaltar en azul las casillas revisadas"
+            title="Activa el clic para resaltar casillas con color"
           >
-            {markMode ? '✓ Marcando revisadas' : '🖍 Marcar revisadas'}
+            {markMode ? '✓ Resaltando' : '🖍 Resaltar'}
           </button>
           <button
             type="button"
             className="inline-button"
             onClick={() => setDetailOpen(true)}
             disabled={revisadas.size === 0}
-            title="Ver el detalle de las casillas revisadas y limpiarlas"
+            title="Ver el detalle de las casillas resaltadas y limpiarlas"
           >
-            📋 Revisadas ({revisadas.size})
+            📋 Resaltadas ({revisadas.size})
           </button>
           <button
             type="button"
@@ -399,10 +417,21 @@ export function PlanillaTab() {
       </p>
 
       {markMode && (
-        <p className="planilla-mark-hint">
-          🖍 Modo marcar activo: haz clic en una casilla para resaltarla en azul (revisada) o quitarla.
-          El cambio queda guardado.
-        </p>
+        <div className="planilla-mark-bar">
+          <span className="planilla-mark-hint">🖍 Clic en una casilla para resaltarla (otra vez con el mismo color la quita). Color:</span>
+          <div className="planilla-color-picker">
+            {HIGHLIGHT_COLORS.map((c) => (
+              <button
+                key={c.value}
+                type="button"
+                className={`planilla-swatch planilla-hl--${c.value}${markColor === c.value ? ' is-active' : ''}`}
+                onClick={() => setMarkColor(c.value)}
+                title={c.label}
+                aria-label={c.label}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       <div className="planilla-filters">
@@ -469,18 +498,14 @@ export function PlanillaTab() {
                     </td>
                     {days.map((d) => {
                       const v = r.perDay[d.key] ?? 0
-                      const revisada = revisadas.has(`${rowKey}|${d.key}`)
+                      const hl = revisadas.get(`${rowKey}|${d.key}`)
                       const nov = novedades.get(`${rowKey}|${d.key}`)
                       return (
                         <td
                           key={d.key}
-                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 && !nov ? ' planilla-has' : ''}${revisada ? ' planilla-revisada' : ''}${markMode ? ' planilla-markable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 && !nov ? ' planilla-has' : ''}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
                           onClick={markMode ? () => void toggleRevision(rowKey, d.key) : undefined}
-                          title={
-                            nov
-                              ? nov === 'V' ? 'Vacaciones' : 'Taller'
-                              : markMode ? (revisada ? 'Quitar marca de revisado' : 'Marcar como revisado') : undefined
-                          }
+                          title={nov ? NOVEDAD_LABEL[nov] : markMode ? 'Resaltar / quitar' : undefined}
                         >
                           {nov ?? fmt(v)}
                         </td>
@@ -517,18 +542,27 @@ export function PlanillaTab() {
               </div>
               <button type="button" className="modal-close-btn" onClick={() => setNovTarget(null)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
             </div>
-            <div className="realizadas-seg" role="group" aria-label="Tipo de novedad" style={{ marginBottom: 10 }}>
-              {([['V', '🏖️ Vacaciones'], ['T', '🔧 Taller'], ['CLEAR', '🧹 Quitar']] as const).map(([val, lbl]) => (
+            <div className="realizadas-seg planilla-nov-seg" role="group" aria-label="Tipo de novedad" style={{ marginBottom: 10 }}>
+              {NOVEDAD_TIPOS.map((t) => (
                 <button
-                  key={val}
+                  key={t}
                   type="button"
-                  className={`realizadas-seg__btn ${novTipo === val ? 'is-active' : ''}`}
-                  onClick={() => setNovTipo(val)}
+                  className={`realizadas-seg__btn ${novTipo === t ? 'is-active' : ''}`}
+                  onClick={() => setNovTipo(t)}
                   disabled={savingNov}
+                  title={NOVEDAD_LABEL[t]}
                 >
-                  {lbl}
+                  {t} · {NOVEDAD_LABEL[t]}
                 </button>
               ))}
+              <button
+                type="button"
+                className={`realizadas-seg__btn ${novTipo === 'CLEAR' ? 'is-active' : ''}`}
+                onClick={() => setNovTipo('CLEAR')}
+                disabled={savingNov}
+              >
+                🧹 Quitar
+              </button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
               {novTipo === 'CLEAR'
@@ -571,7 +605,7 @@ export function PlanillaTab() {
             <div className="labor-detail-header">
               <div>
                 <p className="eyebrow">Planilla</p>
-                <h3>Casillas revisadas ({revisadasList.length})</h3>
+                <h3>Casillas resaltadas ({revisadasList.length})</h3>
               </div>
               <button
                 type="button"
@@ -584,14 +618,17 @@ export function PlanillaTab() {
             </div>
 
             {revisadasList.length === 0 ? (
-              <p className="subtle-copy" style={{ marginTop: 0 }}>No hay casillas marcadas como revisadas.</p>
+              <p className="subtle-copy" style={{ marginTop: 0 }}>No hay casillas resaltadas.</p>
             ) : (
               <>
                 <ul className="revisadas-list">
                   {revisadasList.map((it) => (
                     <li key={it.key} className="revisadas-item">
                       <div className="revisadas-item__main">
-                        <strong>{it.name}</strong>
+                        <strong>
+                          <span className={`planilla-swatch planilla-hl--${it.color}`} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 6 }} />
+                          {it.name}
+                        </strong>
                         <span>{fmtFecha(it.fecha)}{it.area > 0 ? ` · ${it.area.toFixed(1)} ha` : ''}</span>
                       </div>
                       <button

@@ -15,7 +15,7 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo } from '../services/samApi'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -37,6 +37,15 @@ function datesInRange(desde: string, hasta: string): string[] {
     guard++
   }
   return out
+}
+
+const NOV_ICON: Record<NovedadTipo, string> = {
+  V: '🏖️',
+  T: '🔧',
+  NP: '⛔',
+  D: '😴',
+  P: '📄',
+  C: '🚚',
 }
 
 const INGENIOS = [
@@ -230,7 +239,7 @@ export function OperatorView({
 
   // Novedades del operario: reportar Vacaciones (V) o Taller (T) por rango de
   // fechas → se marcan en la Planilla.
-  const [novedadModal, setNovedadModal] = useState<null | 'V' | 'T'>(null)
+  const [novedadModal, setNovedadModal] = useState<NovedadTipo | null>(null)
   const [novDesde, setNovDesde] = useState('')
   const [novHasta, setNovHasta] = useState('')
   const [savingNov, setSavingNov] = useState(false)
@@ -247,9 +256,7 @@ export function OperatorView({
     try {
       await setOperarioNovedades(session.id, fechas, novedadModal)
       setInfo(
-        novedadModal === 'V'
-          ? `Vacaciones reportadas (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`
-          : `Taller reportado (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`,
+        `${NOVEDAD_LABEL[novedadModal]} reportado (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`,
       )
       setNovedadModal(null)
       setNovDesde('')
@@ -261,7 +268,7 @@ export function OperatorView({
     }
   }
 
-  function openNovedad(tipo: 'V' | 'T') {
+  function openNovedad(tipo: NovedadTipo) {
     setNovDesde(todayKey)
     setNovHasta(todayKey)
     setError('')
@@ -636,7 +643,7 @@ export function OperatorView({
             <div className="labor-detail-header">
               <div>
                 <p className="eyebrow">Novedad</p>
-                <h3>{novedadModal === 'V' ? '🏖️ Reportar vacaciones' : '🔧 Reportar taller'}</h3>
+                <h3>{NOV_ICON[novedadModal]} Reportar {NOVEDAD_LABEL[novedadModal].toLowerCase()}</h3>
               </div>
               <button type="button" className="modal-close-btn" onClick={() => setNovedadModal(null)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
             </div>
@@ -781,12 +788,16 @@ export function OperatorView({
             </div>
 
             <div className="operator-novedades">
-              <button type="button" className="operator-novedad-btn vac" onClick={() => openNovedad('V')}>
-                🏖️ Vacaciones
-              </button>
-              <button type="button" className="operator-novedad-btn taller" onClick={() => openNovedad('T')}>
-                🔧 Taller
-              </button>
+              {NOVEDAD_TIPOS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`operator-novedad-btn nov-${t.toLowerCase()}`}
+                  onClick={() => openNovedad(t)}
+                >
+                  {NOV_ICON[t]} {NOVEDAD_LABEL[t]}
+                </button>
+              ))}
             </div>
 
             {activeAssignments.map((assignment) => {

@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import SearchableSelect from '../components/SearchableSelect'
 import { executionDateKey, formatTime } from '../services/samApi'
+import { isSameCycle } from '../utils/suerteCycle'
 import type { Assignment } from '../domain/sam'
 
-// Una tarjeta = un "corte": misma suerte + labor + MISMA fecha de ejecución.
-// Varios parciales del mismo día (p. ej. dos operarios) se consolidan; si se
-// reanudó otro día, queda en otra tarjeta (otra fecha). Al hacer clic se ve el
-// detalle de cada parcial del grupo.
+// Una tarjeta = un "corte": misma suerte + labor dentro del MISMO CICLO
+// (ventana de ~21 días, isSameCycle). Todos los parciales de ese corte —de uno
+// o varios operarios, en uno o varios días— se consolidan en una sola tarjeta
+// con el total ejecutado / asignada. Un re-laboreo en otro ciclo queda en otra
+// tarjeta. Al hacer clic se ve el detalle de cada parcial (operario + fecha).
 interface RealizadaGroup {
   key: string
   rows: Assignment[]
@@ -15,7 +17,9 @@ interface RealizadaGroup {
   haciendaCode: string
   suerte: string
   labor: string
-  dateKey: string
+  dateKey: string // fecha más reciente del corte (para ordenar)
+  firstDate: string
+  lastDate: string
   executed: number
   asignada: number
   operators: string[]
@@ -121,17 +125,12 @@ export function RealizadasTab() {
       })
   }, [realizadas, haciendaCode, labor, dateSeg, mes, desde, hasta, todayKey])
 
-  // Agrupa los parciales del mismo corte (suerte+labor+fecha) en una sola tarjeta.
+  // Consolida los parciales del mismo corte: agrupa por suerte+labor y, dentro,
+  // clusteriza por CICLO (isSameCycle, ~21 días). Cada cluster = una tarjeta.
   const grouped = useMemo<RealizadaGroup[]>(() => {
-    const map = new Map<string, Assignment[]>()
-    for (const a of filtered) {
-      const k = `${a.suerteCode}|${a.labor.trim().toUpperCase()}|${executionDateKey(a)}`
-      const arr = map.get(k)
-      if (arr) arr.push(a)
-      else map.set(k, [a])
-    }
     const groups: RealizadaGroup[] = []
-    for (const [key, rows] of map) {
+
+    const build = (rows: Assignment[]) => {
       const rep = rows[0]
       const executed = rows.reduce((s, r) => s + (r.executedArea ?? 0), 0)
       const maestroRow = maestro.find(
@@ -139,21 +138,55 @@ export function RealizadasTab() {
       )
       const asignada = maestroRow?.area ?? Math.max(...rows.map((r) => r.area))
       const operators = Array.from(new Set(rows.map((r) => r.operatorName).filter(Boolean)))
-      const completa = rows.every((r) => r.status === 'COMPLETADA') && executed + 0.01 >= asignada
+      const dates = rows.map((r) => executionDateKey(r))
+      const firstDate = dates.reduce((a, b) => (a < b ? a : b))
+      const lastDate = dates.reduce((a, b) => (a > b ? a : b))
+      const completa = rows.every((r) => r.status === 'COMPLETADA') || executed + 0.01 >= asignada
       groups.push({
-        key,
+        key: `${rep.suerteCode}|${rep.labor.trim().toUpperCase()}|${firstDate}`,
         rows,
         haciendaName: rep.haciendaName,
         haciendaCode: rep.haciendaCode,
         suerte: rep.suerte,
         labor: rep.labor,
-        dateKey: executionDateKey(rep),
+        dateKey: lastDate,
+        firstDate,
+        lastDate,
         executed,
         asignada,
         operators,
         completa,
       })
     }
+
+    // 1) Agrupar por suerte + labor.
+    const bySL = new Map<string, Assignment[]>()
+    for (const a of filtered) {
+      const k = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
+      const arr = bySL.get(k)
+      if (arr) arr.push(a)
+      else bySL.set(k, [a])
+    }
+    // 2) Clusterizar por ciclo dentro de cada suerte+labor.
+    for (const rows of bySL.values()) {
+      rows.sort((x, y) => executionDateKey(x).localeCompare(executionDateKey(y)))
+      let cluster: Assignment[] = []
+      for (const a of rows) {
+        if (cluster.length === 0) {
+          cluster.push(a)
+          continue
+        }
+        const last = cluster[cluster.length - 1]
+        if (isSameCycle(executionDateKey(a), executionDateKey(last))) {
+          cluster.push(a)
+        } else {
+          build(cluster)
+          cluster = [a]
+        }
+      }
+      if (cluster.length) build(cluster)
+    }
+    // 3) Orden: hacienda alfabético → fecha más reciente desc → suerte.
     groups.sort((a, b) => {
       const h = a.haciendaName.localeCompare(b.haciendaName, 'es', { sensitivity: 'base' })
       if (h !== 0) return h
@@ -278,7 +311,11 @@ export function RealizadasTab() {
                   <span className="realizada-item__area">
                     {g.executed.toFixed(1)} / {g.asignada.toFixed(1)} ha
                   </span>
-                  <span className="realizada-item__date">{fmtDate(g.dateKey)}</span>
+                  <span className="realizada-item__date">
+                    {g.firstDate === g.lastDate
+                      ? fmtDate(g.lastDate)
+                      : `${fmtDate(g.firstDate)}–${fmtDate(g.lastDate)}`}
+                  </span>
                   <span className={`realizada-chip ${g.completa ? 'completa' : 'parcial'}`}>
                     {g.completa ? 'Completada' : 'Parcial'}
                   </span>
@@ -306,8 +343,11 @@ export function RealizadasTab() {
               </button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
-              {detail.labor} · {fmtDate(detail.dateKey)} ·{' '}
-              <strong>{detail.executed.toFixed(1)} / {detail.asignada.toFixed(1)} ha</strong>
+              {detail.labor} ·{' '}
+              {detail.firstDate === detail.lastDate
+                ? fmtDate(detail.lastDate)
+                : `${fmtDate(detail.firstDate)}–${fmtDate(detail.lastDate)}`}{' '}
+              · <strong>{detail.executed.toFixed(1)} / {detail.asignada.toFixed(1)} ha</strong>
               {detail.rows.length > 1 ? ` · ${detail.rows.length} parciales` : ''}
             </p>
             <ul className="revisadas-list">
@@ -316,7 +356,7 @@ export function RealizadasTab() {
                   <div className="revisadas-item__main">
                     <strong>{r.operatorName || 'Sin operario'}</strong>
                     <span>
-                      {(r.executedArea ?? 0).toFixed(1)} ha · {r.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
+                      {fmtDate(executionDateKey(r))} · {(r.executedArea ?? 0).toFixed(1)} ha · {r.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
                       {r.equipmentName ? ` · ${r.equipmentName}` : ''}
                       {r.finishedAt ? ` · ${formatTime(r.finishedAt)}` : ''}
                     </span>

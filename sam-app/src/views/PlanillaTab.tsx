@@ -282,15 +282,17 @@ export function PlanillaTab() {
       { id: string; name: string; perDay: Record<string, number>; total: number }
     >()
     // 1) Sembrar TODOS los operarios del catálogo (rol operador) con fila vacía.
+    //    .trim() defensivo: algunos nombres en BD traen espacios/NBSP al inicio
+    //    que rompían el orden alfabético (quedaban arriba de todo).
     for (const o of operators) {
-      map.set(o.id, { id: o.id, name: o.name, perDay: {}, total: 0 })
+      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, total: 0 })
     }
     // 2) Sumar las labores ABIERTAS del periodo a su operario.
     for (const a of assignments) {
       if (a.status !== 'EN_PROCESO' && a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') continue
       const dk = executionDateKey(a)
       if (!matchesSummaryFilter(dk, planillaMonth, planillaQuincena, todayKey)) continue
-      const name = a.operatorName || 'Sin operador'
+      const name = (a.operatorName || 'Sin operador').trim()
       const id = a.operatorId || ''
       // Si el operario está en el catálogo (por id), suma ahí; si no, fila por nombre.
       const key = id && map.has(id) ? id : id || `name:${name.trim().toUpperCase()}`
@@ -307,7 +309,7 @@ export function PlanillaTab() {
     for (const k of novedades.keys()) {
       const [opId, fecha] = k.split('|')
       if (!visibleDays.has(fecha) || map.has(opId)) continue
-      const name = operators.find((o) => o.id === opId)?.name ?? opId
+      const name = (operators.find((o) => o.id === opId)?.name ?? opId).trim()
       map.set(opId, { id: opId, name, perDay: {}, total: 0 })
     }
     return Array.from(map.values()).sort((a, b) =>

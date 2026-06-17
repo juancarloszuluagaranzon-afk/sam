@@ -239,13 +239,14 @@ export function OperatorView({
 
   // Novedades del operario: reportar Vacaciones (V) o Taller (T) por rango de
   // fechas → se marcan en la Planilla.
-  const [novedadModal, setNovedadModal] = useState<NovedadTipo | null>(null)
+  const [novOpen, setNovOpen] = useState(false)
+  const [novTipoSel, setNovTipoSel] = useState<NovedadTipo>('V')
   const [novDesde, setNovDesde] = useState('')
   const [novHasta, setNovHasta] = useState('')
   const [savingNov, setSavingNov] = useState(false)
 
   async function submitNovedad() {
-    if (!session || !novedadModal) return
+    if (!session) return
     const fechas = datesInRange(novDesde, novHasta)
     if (fechas.length === 0) {
       setError('Selecciona una fecha de inicio y fin válidas.')
@@ -254,11 +255,11 @@ export function OperatorView({
     setSavingNov(true)
     setError('')
     try {
-      await setOperarioNovedades(session.id, fechas, novedadModal)
+      await setOperarioNovedades(session.id, fechas, novTipoSel)
       setInfo(
-        `${NOVEDAD_LABEL[novedadModal]} reportado (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`,
+        `${NOVEDAD_LABEL[novTipoSel]} reportado (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`,
       )
-      setNovedadModal(null)
+      setNovOpen(false)
       setNovDesde('')
       setNovHasta('')
     } catch {
@@ -268,11 +269,12 @@ export function OperatorView({
     }
   }
 
-  function openNovedad(tipo: NovedadTipo) {
+  function openNovedadModal() {
+    setNovTipoSel('V')
     setNovDesde(todayKey)
     setNovHasta(todayKey)
     setError('')
-    setNovedadModal(tipo)
+    setNovOpen(true)
   }
 
   const [isFreeFieldOpen, setIsFreeFieldOpen] = useState(false)
@@ -637,20 +639,30 @@ export function OperatorView({
         />
       )}
 
-      {novedadModal && (
-        <div className="modal-overlay open" onClick={() => { if (!savingNov) setNovedadModal(null) }}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
+      {novOpen && (
+        <div className="modal-overlay open" onClick={() => { if (!savingNov) setNovOpen(false) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
             <div className="labor-detail-header">
               <div>
                 <p className="eyebrow">Novedad</p>
-                <h3>{NOV_ICON[novedadModal]} Reportar {NOVEDAD_LABEL[novedadModal].toLowerCase()}</h3>
+                <h3>📋 Registrar novedad</h3>
               </div>
-              <button type="button" className="modal-close-btn" onClick={() => setNovedadModal(null)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
+              <button type="button" className="modal-close-btn" onClick={() => setNovOpen(false)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
             </div>
-            <p className="subtle-copy" style={{ marginTop: 0 }}>
-              Los días seleccionados quedarán marcados como <strong>{novedadModal}</strong> en la planilla.
-              {novedadModal === 'T' ? ' Si es solo hoy, deja las dos fechas iguales.' : ''}
-            </p>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>Elige el tipo y el rango de días. Quedará marcado en la planilla.</p>
+            <div className="operator-novedades">
+              {NOVEDAD_TIPOS.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`operator-novedad-btn nov-${t.toLowerCase()}${novTipoSel === t ? ' is-active' : ''}`}
+                  onClick={() => setNovTipoSel(t)}
+                  disabled={savingNov}
+                >
+                  {NOV_ICON[t]} {NOVEDAD_LABEL[t]}
+                </button>
+              ))}
+            </div>
             <div className="novedad-fields">
               <label>
                 <span>Desde</span>
@@ -662,7 +674,7 @@ export function OperatorView({
               </label>
             </div>
             <div className="modal-footer">
-              <button type="button" className="inline-button" onClick={() => setNovedadModal(null)} disabled={savingNov}>Cancelar</button>
+              <button type="button" className="inline-button" onClick={() => setNovOpen(false)} disabled={savingNov}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void submitNovedad()} disabled={savingNov || !novDesde || !novHasta}>
                 {savingNov ? 'Guardando…' : 'Confirmar'}
               </button>
@@ -787,17 +799,10 @@ export function OperatorView({
               </article>
             </div>
 
-            <div className="operator-novedades">
-              {NOVEDAD_TIPOS.map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  className={`operator-novedad-btn nov-${t.toLowerCase()}`}
-                  onClick={() => openNovedad(t)}
-                >
-                  {NOV_ICON[t]} {NOVEDAD_LABEL[t]}
-                </button>
-              ))}
+            <div className="operator-novedades-bar">
+              <button type="button" className="operator-novedad-trigger" onClick={openNovedadModal}>
+                📋 Registrar novedad
+              </button>
             </div>
 
             {activeAssignments.map((assignment) => {

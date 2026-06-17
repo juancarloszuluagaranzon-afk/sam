@@ -5420,6 +5420,29 @@ td.planilla-revisada {
 .operator-novedad-btn.nov-p { border-color: rgba(19, 138, 138, 0.5); color: #138a8a; }
 .operator-novedad-btn.nov-c { border-color: rgba(138, 90, 43, 0.5); color: #8a5a2b; }
 .operator-novedad-btn:active { transform: scale(0.98); }
+.operator-novedad-btn.is-active {
+  box-shadow: inset 0 0 0 2px currentColor;
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* Botón único "Registrar novedad" (colapsa los 6 tipos en un modal) */
+.operator-novedades-bar { margin: 4px 0 12px; }
+.operator-novedad-trigger {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1.5px solid var(--color-brand, #1f6b3a);
+  background: var(--color-surface, #fff);
+  color: var(--color-brand, #1f6b3a);
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.operator-novedad-trigger:active { transform: scale(0.99); }
 .novedad-fields {
   display: flex;
   gap: 10px;

@@ -273,30 +273,36 @@ export function PlanillaTab() {
     return out
   }, [planillaMonth, planillaQuincena, todayKey])
 
-  // Matriz operario x dia.
+  // Matriz operario x dia. Se muestran TODOS los operarios del catálogo (aunque
+  // no hayan trabajado), más cualquier trabajador con labores/novedad que no esté
+  // en el catálogo. Orden: alfabético por nombre.
   const rows = useMemo(() => {
     const map = new Map<
       string,
       { id: string; name: string; perDay: Record<string, number>; total: number }
     >()
+    // 1) Sembrar TODOS los operarios del catálogo (rol operador) con fila vacía.
+    for (const o of operators) {
+      map.set(o.id, { id: o.id, name: o.name, perDay: {}, total: 0 })
+    }
+    // 2) Sumar las labores ABIERTAS del periodo a su operario.
     for (const a of assignments) {
-      // Solo labores YA INICIADAS (el operario "abrio" la labor).
       if (a.status !== 'EN_PROCESO' && a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') continue
       const dk = executionDateKey(a)
       if (!matchesSummaryFilter(dk, planillaMonth, planillaQuincena, todayKey)) continue
       const name = a.operatorName || 'Sin operador'
       const id = a.operatorId || ''
-      const key = id || `name:${name.trim().toUpperCase()}`
+      // Si el operario está en el catálogo (por id), suma ahí; si no, fila por nombre.
+      const key = id && map.has(id) ? id : id || `name:${name.trim().toUpperCase()}`
       let row = map.get(key)
       if (!row) {
-        row = { id, name, perDay: {}, total: 0 }
+        row = { id: id || key, name, perDay: {}, total: 0 }
         map.set(key, row)
       }
       row.perDay[dk] = (row.perDay[dk] ?? 0) + a.area
       row.total += a.area
     }
-    // Operarios que SOLO tienen novedad (vacaciones/taller) en el periodo, sin
-    // labores abiertas: agregarlos como fila vacía para que se vea su V/T.
+    // 3) Trabajadores con novedad en el periodo que no estén ya en la lista.
     const visibleDays = new Set(days.map((d) => d.key))
     for (const k of novedades.keys()) {
       const [opId, fecha] = k.split('|')
@@ -307,7 +313,7 @@ export function PlanillaTab() {
     return Array.from(map.values()).sort((a, b) =>
       a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
     )
-  }, [assignments, planillaMonth, planillaQuincena, todayKey, days, novedades, operators])
+  }, [assignments, operators, planillaMonth, planillaQuincena, todayKey, days, novedades])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()

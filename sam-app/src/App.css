@@ -5251,6 +5251,58 @@ td.planilla-revisada {
 .planilla-op--clickable { cursor: pointer; }
 .planilla-op--clickable:hover { text-decoration: underline; color: var(--color-brand, #1f6b3a); }
 
+/* ===== Aprobaciones pendientes: badge en nav + banner ===== */
+.nav-item { position: relative; }
+.nav-badge {
+  position: absolute;
+  top: -5px;
+  right: -12px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #e53935;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 16px;
+  text-align: center;
+}
+.nav-aprobaciones.has-pending .nav-icon { color: #e53935; }
+.nav-aprobaciones.has-pending { animation: aprob-pulse 1.8s ease-in-out infinite; }
+@keyframes aprob-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.approvals-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(229, 57, 53, 0.5);
+  border-radius: 12px;
+  background: rgba(229, 57, 53, 0.08);
+  cursor: pointer;
+}
+.approvals-banner__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e53935;
+  flex-shrink: 0;
+  animation: aprob-dot 1.6s ease-out infinite;
+}
+@keyframes aprob-dot {
+  0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.5); }
+  70% { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
+.approvals-banner__text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.approvals-banner__text strong { color: #c62828; font-size: 0.92rem; }
+.approvals-banner__text span { font-size: 0.8rem; color: var(--color-ink-mid); }
+.approvals-banner__cta { font-weight: 700; color: #c62828; flex-shrink: 0; white-space: nowrap; }
+
 /* Novedades del operario en la planilla: V (vacaciones), T (taller) */
 .planilla-nov { font-weight: 800; }
 .planilla-nov--v {

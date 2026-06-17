@@ -317,6 +317,11 @@ export function useAssignmentActions() {
       executedArea,
       notes: draft?.notes ?? assignment.notes,
       horometroFinal,
+      // Toda labor FINALIZADA (parcial o completa) vuelve a "por aprobar": el
+      // supervisor revisa el área ejecutada antes de que cuente para facturación.
+      // Aplica a ASIGNADA y LIBRE. Si era APROBADA y el operario re-finaliza una
+      // parcial, vuelve a PENDIENTE (hay área nueva que verificar).
+      approval: 'PENDIENTE' as const,
     }
 
     const successMessage =
@@ -336,7 +341,7 @@ export function useAssignmentActions() {
         setAssignments((current) =>
           current.map((a) =>
             a.id === assignment.id
-              ? { ...a, status: finalStatus, finishedAt: finishPayload.finishedAt, executedArea }
+              ? { ...a, status: finalStatus, finishedAt: finishPayload.finishedAt, executedArea, approval: 'PENDIENTE' }
               : a,
           ),
         )
@@ -344,6 +349,7 @@ export function useAssignmentActions() {
           status: finalStatus,
           finishedAt: finishPayload.finishedAt,
           executedArea,
+          approval: 'PENDIENTE',
         })
         setOutboxCount((c) => c + 1)
         setInfo(
@@ -399,8 +405,14 @@ export function useAssignmentActions() {
     extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null },
   ) {
     if (!session) return
-    if (assignment.supervisorId !== session.id) {
-      setError('Solo el supervisor asignado puede aprobar o rechazar esta labor.')
+    // El supervisor asignado aprueba lo suyo; owner/administración pueden aprobar
+    // cualquiera (supervisión global).
+    const puedeAprobar =
+      assignment.supervisorId === session.id ||
+      session.role === 'owner' ||
+      session.role === 'administracion'
+    if (!puedeAprobar) {
+      setError('Solo el supervisor asignado (o la administración) puede aprobar o rechazar esta labor.')
       return
     }
 

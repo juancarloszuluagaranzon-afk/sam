@@ -30,7 +30,7 @@ import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -341,6 +341,21 @@ export function SupervisorView({
   const scopedMetrics = useMemo(
     () => summarizeAssignments(scopedAssignments, todayKey),
     [scopedAssignments, todayKey],
+  )
+
+  // Bandeja de aprobaciones: labores YA FINALIZADAS (parcial o completa, asignada
+  // o de campo) que esperan el visto bueno del supervisor antes de facturarse.
+  // Supervisor ve las suyas (scopedAssignments); owner/admin ven todas.
+  const pendingApprovals = useMemo(
+    () =>
+      scopedAssignments
+        .filter(
+          (a) =>
+            a.approval === 'PENDIENTE' &&
+            (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
+        )
+        .sort((a, b) => (b.finishedAt ?? '').localeCompare(a.finishedAt ?? '')),
+    [scopedAssignments],
   )
 
   // Pendientes "colgadas": asignadas, NUNCA iniciadas, sin avance, de hace +N
@@ -922,6 +937,19 @@ export function SupervisorView({
               <span className="nav-item">
                 <span className="nav-icon">✓</span>
                 <span className="nav-label">Labores</span>
+              </span>
+            </button>
+
+            <button
+              className={`nav-aprobaciones${supervisorTab === 'aprobaciones' ? ' active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+              onClick={() => setSupervisorTab('aprobaciones')}
+            >
+              <span className="nav-item">
+                <span className="nav-icon">✔</span>
+                <span className="nav-label">Aprobar</span>
+                {pendingApprovals.length > 0 && (
+                  <span className="nav-badge">{pendingApprovals.length > 99 ? '99+' : pendingApprovals.length}</span>
+                )}
               </span>
             </button>
 
@@ -2248,6 +2276,21 @@ export function SupervisorView({
               resultCount={filteredAssignments.length}
             />
 
+            {pendingApprovals.length > 0 && (
+              <button
+                type="button"
+                className="approvals-banner"
+                onClick={() => setSupervisorTab('aprobaciones')}
+              >
+                <span className="approvals-banner__dot" />
+                <span className="approvals-banner__text">
+                  <strong>{pendingApprovals.length} labor{pendingApprovals.length === 1 ? '' : 'es'} por aprobar</strong>
+                  <span>Toca para revisar el área y aprobar antes de facturación.</span>
+                </span>
+                <span className="approvals-banner__cta">Revisar →</span>
+              </button>
+            )}
+
             {canEditAssignments && stalePendientes.count > 0 && (
               <div className="stale-banner">
                 <div className="stale-banner__text">
@@ -2421,6 +2464,76 @@ export function SupervisorView({
                 <li className="labores-empty">Sin labores para los filtros seleccionados.</li>
               )}
             </ul>
+          </section>
+        ) : null}
+
+        {supervisorTab === 'aprobaciones' ? (
+          <section className="panel-card">
+            <div className="labores-header">
+              <div className="labores-title-row">
+                <h2>Aprobaciones pendientes</h2>
+                <span className="labores-count">{pendingApprovals.length}</span>
+              </div>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Labores finalizadas (parciales o completas) que esperan tu visto bueno. Revisa el área antes de
+              aprobar — una vez aprobadas quedan listas para facturación.
+            </p>
+            {pendingApprovals.length === 0 ? (
+              <div className="empty-card" style={{ marginTop: 12 }}>
+                <h2>Todo al día ✓</h2>
+                <p>No hay labores pendientes por aprobar.</p>
+              </div>
+            ) : (
+              <ul className="labores-list">
+                {pendingApprovals.map((assignment) => {
+                  const meta = getStatusMeta(assignment)
+                  return (
+                    <li key={assignment.id} className="labor-item labor-item--tappable" onClick={() => setSelectedLabor(assignment)}>
+                      <span className="labor-title">
+                        {assignment.haciendaName}{' '}
+                        <span style={{ color: 'var(--color-ink-light)', fontWeight: 400 }}>·</span>{' '}
+                        {assignment.suerte}
+                      </span>
+                      <span className={`status-chip ${meta.tone}`}>{meta.label}</span>
+                      <span className="labor-name">
+                        {assignment.labor} — {assignment.operatorName || 'Sin operario'}
+                      </span>
+                      <div className="labor-meta">
+                        {assignment.kind === 'ASIGNADA' ? (
+                          <span className="kind-badge asignada">Prog.</span>
+                        ) : (
+                          <span className="kind-badge libre">Campo</span>
+                        )}
+                        <span className="labor-area">
+                          {formatArea(assignment.executedArea > 0 ? assignment.executedArea : assignment.area)} ejec.
+                        </span>
+                        <span className="subtle-copy">{executionDateKey(assignment)}</span>
+                      </div>
+                      <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="approve-btn"
+                          onClick={() => {
+                            if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
+                              setApproveTarget(assignment)
+                              setApproveCliente(assignment.cliente ?? '')
+                              setApproveZona(assignment.zone ?? '')
+                            } else {
+                              void handleApproveAssignment(assignment)
+                            }
+                          }}
+                        >
+                          Aprobar
+                        </button>
+                        <button className="cancel-btn" onClick={() => void handleRejectAssignment(assignment)}>
+                          Rechazar
+                        </button>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
           </section>
         ) : null}
 

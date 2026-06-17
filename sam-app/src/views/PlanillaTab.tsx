@@ -6,7 +6,28 @@ import {
   setPlanillaRevision,
   clearAllPlanillaRevisiones,
   loadOperarioNovedades,
+  setOperarioNovedades,
+  clearOperarioNovedades,
 } from '../services/samApi'
+
+// Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Guard 400 días.
+function datesInRange(desde: string, hasta: string): string[] {
+  if (!desde || !hasta || desde > hasta) return []
+  const [y1, m1, d1] = desde.split('-').map(Number)
+  const [y2, m2, d2] = hasta.split('-').map(Number)
+  const out: string[] = []
+  let cur = new Date(y1, m1 - 1, d1)
+  const end = new Date(y2, m2 - 1, d2)
+  let guard = 0
+  while (cur <= end && guard < 400) {
+    out.push(
+      `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`,
+    )
+    cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1)
+    guard++
+  }
+  return out
+}
 import {
   matchesSummaryFilter,
   buildMonthOptions,
@@ -45,6 +66,60 @@ export function PlanillaTab() {
 
   // Novedades de operario (V=vacaciones, T=taller). Clave `${operadorId}|${fecha}`.
   const [novedades, setNovedades] = useState<Map<string, 'V' | 'T'>>(new Map())
+
+  // Reportar/quitar novedad desde la Planilla (al oprimir el nombre del operario).
+  const [novTarget, setNovTarget] = useState<{ key: string; name: string } | null>(null)
+  const [novTipo, setNovTipo] = useState<'V' | 'T' | 'CLEAR'>('V')
+  const [novDesde, setNovDesde] = useState('')
+  const [novHasta, setNovHasta] = useState('')
+  const [savingNov, setSavingNov] = useState(false)
+
+  function openNovedad(key: string, name: string) {
+    setNovTarget({ key, name })
+    setNovTipo('V')
+    setNovDesde(todayKey)
+    setNovHasta(todayKey)
+    setError('')
+  }
+
+  async function applyNovedad() {
+    if (!novTarget) return
+    const fechas = datesInRange(novDesde, novHasta)
+    if (fechas.length === 0) {
+      setError('Selecciona una fecha de inicio y fin válidas.')
+      return
+    }
+    setSavingNov(true)
+    setError('')
+    try {
+      if (novTipo === 'CLEAR') {
+        await clearOperarioNovedades(novTarget.key, fechas)
+        setNovedades((prev) => {
+          const next = new Map(prev)
+          for (const f of fechas) next.delete(`${novTarget.key}|${f}`)
+          return next
+        })
+        setInfo(`Novedad quitada a ${novTarget.name}.`)
+      } else {
+        await setOperarioNovedades(novTarget.key, fechas, novTipo)
+        setNovedades((prev) => {
+          const next = new Map(prev)
+          for (const f of fechas) next.set(`${novTarget.key}|${f}`, novTipo)
+          return next
+        })
+        setInfo(
+          novTipo === 'V'
+            ? `Vacaciones registradas a ${novTarget.name}.`
+            : `Taller registrado a ${novTarget.name}.`,
+        )
+      }
+      setNovTarget(null)
+    } catch {
+      setError('No se pudo guardar la novedad. Revisa la conexión.')
+    } finally {
+      setSavingNov(false)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -385,7 +460,13 @@ export function PlanillaTab() {
                 const rowKey = r.id || r.name
                 return (
                   <tr key={rowKey}>
-                    <td className="planilla-sticky planilla-op">{r.name}</td>
+                    <td
+                      className="planilla-sticky planilla-op planilla-op--clickable"
+                      onClick={() => openNovedad(rowKey, r.name)}
+                      title="Reportar vacaciones / taller"
+                    >
+                      {r.name}
+                    </td>
                     {days.map((d) => {
                       const v = r.perDay[d.key] ?? 0
                       const revisada = revisadas.has(`${rowKey}|${d.key}`)
@@ -422,6 +503,60 @@ export function PlanillaTab() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* Reportar/quitar novedad (vacaciones/taller) al oprimir el nombre */}
+      {novTarget && (
+        <div className="modal-overlay open" onClick={() => { if (!savingNov) setNovTarget(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Novedad</p>
+                <h3>{novTarget.name}</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setNovTarget(null)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <div className="realizadas-seg" role="group" aria-label="Tipo de novedad" style={{ marginBottom: 10 }}>
+              {([['V', '🏖️ Vacaciones'], ['T', '🔧 Taller'], ['CLEAR', '🧹 Quitar']] as const).map(([val, lbl]) => (
+                <button
+                  key={val}
+                  type="button"
+                  className={`realizadas-seg__btn ${novTipo === val ? 'is-active' : ''}`}
+                  onClick={() => setNovTipo(val)}
+                  disabled={savingNov}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              {novTipo === 'CLEAR'
+                ? 'Se quitará la novedad de los días del rango.'
+                : <>Los días del rango quedarán marcados como <strong>{novTipo}</strong> en la planilla.</>}
+            </p>
+            <div className="novedad-fields">
+              <label>
+                <span>Desde</span>
+                <input type="date" value={novDesde} max={novHasta || undefined} onChange={(e) => setNovDesde(e.target.value)} disabled={savingNov} />
+              </label>
+              <label>
+                <span>Hasta</span>
+                <input type="date" value={novHasta} min={novDesde || undefined} onChange={(e) => setNovHasta(e.target.value)} disabled={savingNov} />
+              </label>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setNovTarget(null)} disabled={savingNov}>Cancelar</button>
+              <button
+                type="button"
+                className={novTipo === 'CLEAR' ? 'release-confirm-btn' : 'primary-button'}
+                onClick={() => void applyNovedad()}
+                disabled={savingNov || !novDesde || !novHasta}
+              >
+                {savingNov ? 'Guardando…' : novTipo === 'CLEAR' ? 'Quitar' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

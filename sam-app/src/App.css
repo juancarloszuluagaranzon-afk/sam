@@ -5247,6 +5247,10 @@ td.planilla-revisada {
   outline: 2px dashed rgba(40, 150, 225, 0.65);
   outline-offset: -2px;
 }
+/* Nombre del operario clickeable (reportar novedad desde la planilla) */
+.planilla-op--clickable { cursor: pointer; }
+.planilla-op--clickable:hover { text-decoration: underline; color: var(--color-brand, #1f6b3a); }
+
 /* Novedades del operario en la planilla: V (vacaciones), T (taller) */
 .planilla-nov { font-weight: 800; }
 .planilla-nov--v {

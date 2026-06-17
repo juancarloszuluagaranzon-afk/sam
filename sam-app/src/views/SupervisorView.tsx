@@ -703,6 +703,26 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
                   </div>
                 </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'realizadas' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('realizadas'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">☑</span>
+                  <div>
+                    <div className="more-sheet__label">Realizadas</div>
+                    <div className="more-sheet__desc">Labores ejecutadas, filtra por hacienda y labor</div>
+                  </div>
+                </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">⬦</span>
+                  <div>
+                    <div className="more-sheet__label">Reporte</div>
+                    <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
+                  </div>
+                </button>
               </>
             ) : (
               <>
@@ -1024,7 +1044,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'equipos' || supervisorTab === 'tablero' || supervisorTab === 'maestros' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'equipos' || supervisorTab === 'tablero' || supervisorTab === 'maestros' || supervisorTab === 'realizadas' || supervisorTab === 'reporte' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1600,7 +1620,7 @@ export function SupervisorView({
           <PlanillaTab />
         ) : null}
 
-        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'realizadas' ? (
+        {(session.role === 'owner' || session.role === 'administracion' || session.role === 'supervisor') && supervisorTab === 'realizadas' ? (
           <RealizadasTab />
         ) : null}
 
@@ -1608,7 +1628,7 @@ export function SupervisorView({
           <LaboresTab />
         ) : null}
 
-        {(session.role === 'administracion' || session.role === 'owner') && supervisorTab === 'reporte' ? (
+        {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor') && supervisorTab === 'reporte' ? (
           <section className="panel-card">
             <div className="panel-title">
               <h2>Reporte de Labores</h2>
@@ -1772,7 +1792,7 @@ export function SupervisorView({
                       <th>Ingenio</th>
                       <th>Estado</th>
                       <th>Operador</th>
-                      {canEditAssignments && <th>Acciones</th>}
+                      {(session.role === 'owner' || session.role === 'administracion') && <th>Acciones</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -1797,7 +1817,7 @@ export function SupervisorView({
                           <td>{ingenioLabel}</td>
                           <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
                           <td>{a.operatorName}</td>
-                          {canEditAssignments && (
+                          {(session.role === 'owner' || session.role === 'administracion') && (
                             <td>
                               <div className="report-row-actions">
                                 <button
@@ -2505,7 +2525,13 @@ export function SupervisorView({
                           <span className="kind-badge libre">Campo</span>
                         )}
                         <span className="labor-area">
-                          {formatArea(assignment.executedArea > 0 ? assignment.executedArea : assignment.area)} ejec.
+                          {(() => {
+                            const m = maestro.find(
+                              (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
+                            )
+                            const exec = assignment.executedArea > 0 ? assignment.executedArea : assignment.area
+                            return `${formatArea(exec)} / ${formatArea(m?.area ?? assignment.area)}`
+                          })()}
                         </span>
                         <span className="subtle-copy">{executionDateKey(assignment)}</span>
                       </div>

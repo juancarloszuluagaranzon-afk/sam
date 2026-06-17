@@ -5392,6 +5392,37 @@ td.planilla-revisada {
 }
 .planilla-nov-seg .realizadas-seg__btn { flex: 1 1 auto; }
 
+/* Panel "Operarios a mostrar" (checklist) */
+.ops-panel-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+.ops-panel-actions .planilla-search { flex: 1 1 160px; min-width: 140px; }
+.ops-checklist {
+  list-style: none;
+  margin: 0 0 4px;
+  padding: 0;
+  max-height: 48vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ops-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+.ops-check:hover { background: rgba(0, 0, 0, 0.04); }
+.ops-check input { width: 17px; height: 17px; cursor: pointer; flex-shrink: 0; }
+
 /* Botones de novedad del operario (V/T/NP/D/P/C) — grilla responsiva */
 .operator-novedades {
   display: grid;

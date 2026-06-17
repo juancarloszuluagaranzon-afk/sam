@@ -78,6 +78,42 @@ export function PlanillaTab() {
   const [detailOpen, setDetailOpen] = useState(false)
   const [confirmClearAll, setConfirmClearAll] = useState(false)
 
+  // Operarios OCULTOS de la planilla (el usuario decide cuáles ver). Se guarda
+  // por dispositivo en localStorage; por defecto no hay ninguno oculto (ver todos).
+  const HIDDEN_KEY = 'planilla-operarios-ocultos'
+  const [hiddenOps, setHiddenOps] = useState<Set<string>>(() => {
+    try {
+      const raw = window.localStorage.getItem(HIDDEN_KEY)
+      return raw ? new Set<string>(JSON.parse(raw)) : new Set<string>()
+    } catch {
+      return new Set<string>()
+    }
+  })
+  const [opsPanelOpen, setOpsPanelOpen] = useState(false)
+  const [opsSearch, setOpsSearch] = useState('')
+
+  function persistHidden(next: Set<string>) {
+    try {
+      window.localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(next)))
+    } catch {
+      // sin localStorage: queda solo en memoria de la sesión
+    }
+  }
+  function toggleHidden(id: string) {
+    setHiddenOps((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      persistHidden(next)
+      return next
+    })
+  }
+  function setAllVisible(visible: boolean) {
+    const next = visible ? new Set<string>() : new Set(operators.map((o) => o.id))
+    persistHidden(next)
+    setHiddenOps(next)
+  }
+
   // Novedades de operario (V/T/NP/D/P/C). Clave `${operadorId}|${fecha}`.
   const [novedades, setNovedades] = useState<Map<string, NovedadTipo>>(new Map())
 
@@ -319,9 +355,23 @@ export function PlanillaTab() {
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return rows
-    return rows.filter((r) => r.name.toLowerCase().includes(q))
-  }, [rows, search])
+    return rows.filter(
+      (r) => !hiddenOps.has(r.id) && (!q || r.name.toLowerCase().includes(q)),
+    )
+  }, [rows, search, hiddenOps])
+
+  // Catálogo de operarios (nombre recortado) ordenado, para el panel de selección.
+  const operatorsSorted = useMemo(
+    () =>
+      operators
+        .map((o) => ({ id: o.id, name: o.name.trim() }))
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })),
+    [operators],
+  )
+  const hiddenCount = useMemo(
+    () => operatorsSorted.filter((o) => hiddenOps.has(o.id)).length,
+    [operatorsSorted, hiddenOps],
+  )
 
   // Totales por columna (dia) y gran total.
   const dayTotals = useMemo(() => {
@@ -407,6 +457,14 @@ export function PlanillaTab() {
             title="Ver el detalle de las casillas resaltadas y limpiarlas"
           >
             📋 Resaltadas ({revisadas.size})
+          </button>
+          <button
+            type="button"
+            className={`inline-button${hiddenCount > 0 ? ' is-active' : ''}`}
+            onClick={() => { setOpsSearch(''); setOpsPanelOpen(true) }}
+            title="Elegir qué operarios mostrar en la planilla"
+          >
+            👁 Operarios{hiddenCount > 0 ? ` (${hiddenCount} ocultos)` : ''}
           </button>
           <button
             type="button"
@@ -536,6 +594,55 @@ export function PlanillaTab() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* Panel: elegir qué operarios mostrar en la planilla */}
+      {opsPanelOpen && (
+        <div className="modal-overlay open" onClick={() => setOpsPanelOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(460px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Planilla</p>
+                <h3>Operarios a mostrar</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setOpsPanelOpen(false)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Desmarca los operarios que no quieres ver. Se recuerda en este dispositivo.
+            </p>
+            <div className="ops-panel-actions">
+              <input
+                className="planilla-search"
+                type="search"
+                placeholder="Buscar operario…"
+                value={opsSearch}
+                onChange={(e) => setOpsSearch(e.target.value)}
+              />
+              <button type="button" className="inline-button" onClick={() => setAllVisible(true)}>Todos</button>
+              <button type="button" className="inline-button" onClick={() => setAllVisible(false)}>Ninguno</button>
+            </div>
+            <ul className="ops-checklist">
+              {operatorsSorted
+                .filter((o) => !opsSearch.trim() || o.name.toLowerCase().includes(opsSearch.trim().toLowerCase()))
+                .map((o) => (
+                  <li key={o.id}>
+                    <label className="ops-check">
+                      <input type="checkbox" checked={!hiddenOps.has(o.id)} onChange={() => toggleHidden(o.id)} />
+                      <span>{o.name}</span>
+                    </label>
+                  </li>
+                ))}
+              {operatorsSorted.length === 0 && (
+                <li><span className="subtle-copy">No hay operarios en el catálogo.</span></li>
+              )}
+            </ul>
+            <div className="modal-footer">
+              <button type="button" className="primary-button" onClick={() => setOpsPanelOpen(false)}>
+                Listo ({operatorsSorted.length - hiddenCount} visibles)
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

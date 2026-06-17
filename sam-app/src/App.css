@@ -5272,22 +5272,36 @@ td.planilla-revisada {
 .nav-aprobaciones.has-pending { animation: aprob-pulse 1.8s ease-in-out infinite; }
 @keyframes aprob-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-.approvals-banner {
+/* Banner compacto de UNA línea (aprobaciones / pendientes viejas) — responsivo */
+.mini-banner {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
+  margin: 0 0 8px;
+  padding: 7px 12px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  border-radius: 10px;
+  font-size: 0.82rem;
   text-align: left;
-  margin: 0 0 12px;
-  padding: 12px 14px;
-  border: 1.5px solid rgba(229, 57, 53, 0.5);
-  border-radius: 12px;
-  background: rgba(229, 57, 53, 0.08);
-  cursor: pointer;
+  line-height: 1.2;
 }
-.approvals-banner__dot {
-  width: 10px;
-  height: 10px;
+.mini-banner__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mini-banner__cta,
+.mini-banner__btn {
+  flex-shrink: 0;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.mini-banner__dot {
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #e53935;
   flex-shrink: 0;
@@ -5295,13 +5309,30 @@ td.planilla-revisada {
 }
 @keyframes aprob-dot {
   0% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.5); }
-  70% { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+  70% { box-shadow: 0 0 0 7px rgba(229, 57, 53, 0); }
   100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
 }
-.approvals-banner__text { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
-.approvals-banner__text strong { color: #c62828; font-size: 0.92rem; }
-.approvals-banner__text span { font-size: 0.8rem; color: var(--color-ink-mid); }
-.approvals-banner__cta { font-weight: 700; color: #c62828; flex-shrink: 0; white-space: nowrap; }
+.mini-banner--approve {
+  border-color: rgba(229, 57, 53, 0.45);
+  background: rgba(229, 57, 53, 0.08);
+  color: #c62828;
+  cursor: pointer;
+}
+.mini-banner--approve .mini-banner__cta { color: #c62828; }
+.mini-banner--stale {
+  border-color: rgba(180, 140, 20, 0.5);
+  background: rgba(230, 180, 40, 0.12);
+  color: #8a6d1a;
+}
+.mini-banner--stale .mini-banner__btn {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 140, 20, 0.6);
+  background: var(--color-surface, #fff);
+  color: #8a6d1a;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
 
 /* Novedades del operario en la planilla: V (vacaciones), T (taller) */
 .planilla-nov { font-weight: 800; }

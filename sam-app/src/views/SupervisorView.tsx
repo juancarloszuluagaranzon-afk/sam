@@ -2279,30 +2279,25 @@ export function SupervisorView({
             {pendingApprovals.length > 0 && (
               <button
                 type="button"
-                className="approvals-banner"
+                className="mini-banner mini-banner--approve"
                 onClick={() => setSupervisorTab('aprobaciones')}
               >
-                <span className="approvals-banner__dot" />
-                <span className="approvals-banner__text">
-                  <strong>{pendingApprovals.length} labor{pendingApprovals.length === 1 ? '' : 'es'} por aprobar</strong>
-                  <span>Toca para revisar el área y aprobar antes de facturación.</span>
+                <span className="mini-banner__dot" />
+                <span className="mini-banner__text">
+                  <strong>{pendingApprovals.length}</strong> por aprobar
                 </span>
-                <span className="approvals-banner__cta">Revisar →</span>
+                <span className="mini-banner__cta">Revisar →</span>
               </button>
             )}
 
             {canEditAssignments && stalePendientes.count > 0 && (
-              <div className="stale-banner">
-                <div className="stale-banner__text">
-                  <strong>{stalePendientes.count} labores pendientes sin iniciar</strong>
-                  <span>
-                    De hace más de {STALE_DAYS} días, nunca trabajadas ({stalePendientes.area.toFixed(1)} ha).
-                    Inflan el área asignada.
-                  </span>
-                </div>
+              <div className="mini-banner mini-banner--stale">
+                <span className="mini-banner__text">
+                  <strong>{stalePendientes.count}</strong> sin iniciar +{STALE_DAYS}d · {stalePendientes.area.toFixed(1)} ha
+                </span>
                 <button
                   type="button"
-                  className="danger-button stale-banner__btn"
+                  className="mini-banner__btn"
                   onClick={() => setShowStaleConfirm(true)}
                   disabled={cleaningStale}
                 >

@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { AppDataProvider, SESSION_KEY, useAppData } from './context/AppDataContext'
 import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
@@ -20,6 +20,10 @@ type OperatorTab = 'activas' | 'campo' | 'historial'
 // Guarda la sesión real del usuario de SOPORTE mientras impersona a otro rol,
 // para poder volver. Separado de SESSION_KEY (que es la sesión EFECTIVA).
 const SUPPORT_ORIGIN_KEY = 'sam:support-origin'
+
+// Recuerda la última selección del Historial del operario (mes + periodo) en el
+// dispositivo. Default = vista actual; si hay algo guardado, se restaura.
+const HISTORIAL_PREF_KEY = 'sam:historial-operario-pref'
 
 function isSupervisorOrOwner(role: UserProfile['role'] | undefined): boolean {
   return role === 'supervisor' || role === 'owner' || role === 'administracion'
@@ -61,10 +65,38 @@ function AppContent() {
     const valid: OperatorTab[] = ['activas', 'campo', 'historial']
     return valid.includes(tab as OperatorTab) ? (tab as OperatorTab) : 'activas'
   })
-  const [historyMonth, setHistoryMonth] = useState(() =>
-    new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
-  )
-  const [historyPeriod, setHistoryPeriod] = useState<'Q1' | 'Q2' | 'MES'>('MES')
+  // Historial del operario: por defecto la vista ACTUAL (mes en curso · mes
+  // completo). Si el operario dejó otra opción, se recuerda en el dispositivo
+  // (HISTORIAL_PREF_KEY) y se restaura al volver.
+  const [historyMonth, setHistoryMonth] = useState(() => {
+    const current = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }).slice(0, 7)
+    try {
+      const p = JSON.parse(window.localStorage.getItem(HISTORIAL_PREF_KEY) || '{}')
+      return typeof p.month === 'string' && p.month ? p.month : current
+    } catch {
+      return current
+    }
+  })
+  const [historyPeriod, setHistoryPeriod] = useState<'Q1' | 'Q2' | 'MES'>(() => {
+    try {
+      const p = JSON.parse(window.localStorage.getItem(HISTORIAL_PREF_KEY) || '{}')
+      return p.period === 'Q1' || p.period === 'Q2' || p.period === 'MES' ? p.period : 'MES'
+    } catch {
+      return 'MES'
+    }
+  })
+
+  // Persistir la selección del Historial al cambiarla (para restaurarla luego).
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        HISTORIAL_PREF_KEY,
+        JSON.stringify({ month: historyMonth, period: historyPeriod }),
+      )
+    } catch {
+      // sin localStorage: queda solo en memoria de la sesión
+    }
+  }, [historyMonth, historyPeriod])
   const [statusFilter, setStatusFilter] = useState('TODAS')
   const [operatorFilter, setOperatorFilter] = useState('TODOS')
   const [ingenioFilter, setIngenioFilter] = useState('TODOS')

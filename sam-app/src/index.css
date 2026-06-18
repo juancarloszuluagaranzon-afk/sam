@@ -161,6 +161,16 @@ a {
   font-weight: 500;
   color: var(--color-brand);
 }
+/* Opción "Buscar…" (móvil): activa el teclado. Pegada arriba del listado. */
+.searchable-select-search {
+  position: sticky;
+  top: 0;
+  background-color: #fff;
+  color: var(--color-brand);
+  font-weight: 700;
+  border-bottom: 1px solid var(--color-border);
+  z-index: 1;
+}
 .searchable-select-empty {
   color: var(--color-ink-light);
   cursor: default;

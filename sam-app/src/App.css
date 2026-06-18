@@ -4056,6 +4056,10 @@ button.movement-row--clickable:active {
 :root[data-theme="dark"] .searchable-select-item.selected {
   color: var(--color-brand-mid);
 }
+:root[data-theme="dark"] .searchable-select-search {
+  background-color: var(--color-bg-elevated);
+  color: var(--color-brand-mid);
+}
 
 /* Version badge */
 :root[data-theme="dark"] .side-version-badge {

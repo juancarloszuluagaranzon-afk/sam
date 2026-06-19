@@ -54,7 +54,22 @@ export function SearchableSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Al activar la búsqueda (móvil), enfocar el input para que aparezca el teclado.
+  // Activar la búsqueda en móvil. CLAVE para iOS: Safari solo levanta el teclado si
+  // focus() se llama de forma SÍNCRONA dentro del gesto del usuario y sobre un input
+  // que NO sea readOnly en ese instante. Por eso quitamos readOnly imperativamente en
+  // el DOM y enfocamos aquí mismo, en vez de diferirlo a un useEffect (que iOS ignora
+  // por considerarlo fuera del gesto). En Android/escritorio también funciona.
+  function activateSearch() {
+    const el = inputRef.current
+    if (el) {
+      el.readOnly = false
+      el.focus()
+    }
+    setSearching(true)
+  }
+
+  // Fallback (Android/escritorio): si por algo searching se activó sin pasar por
+  // activateSearch, asegurar el foco. En iOS este efecto NO basta por sí solo.
   useEffect(() => {
     if (searching) inputRef.current?.focus()
   }, [searching])
@@ -71,8 +86,8 @@ export function SearchableSelect({
       setSearching(false)
       setQuery('')
     } else if (!searching) {
-      // segundo toque sobre el campo → activar teclado para buscar
-      setSearching(true)
+      // segundo toque sobre el campo → activar teclado para buscar (síncrono p/ iOS)
+      activateSearch()
     }
   }
 
@@ -126,7 +141,7 @@ export function SearchableSelect({
               className="searchable-select-item searchable-select-search"
               onMouseDown={(e) => {
                 e.preventDefault()
-                setSearching(true)
+                activateSearch()
               }}
             >
               🔍 Buscar…

@@ -5360,8 +5360,8 @@ td.planilla-revisada {
 .planilla-nov--p { color: #138a8a; }   /* Permiso */
 .planilla-nov--e { color: #c0392b; }   /* Enfermedad */
 .planilla-nov--c { color: #8a5a2b; }   /* Camioneta (legado) */
-.planilla-nov--cd { color: #c2772e; }  /* Camioneta DÍA (ámbar) */
-.planilla-nov--cn { color: #3a5a8a; }  /* Camioneta NOCHE (azul) */
+.planilla-nov--cd { color: #8a5a2b; }  /* Camioneta día — mismo color */
+.planilla-nov--cn { color: #8a5a2b; }  /* Camioneta noche — mismo color */
 
 /* Color del número del área según estado de la(s) labor(es) del día.
    Sin prefijo `td` para que el dot del legend (<i>) también tome el color
@@ -5491,8 +5491,8 @@ td.planilla-revisada {
 .operator-novedad-btn.nov-p { border-color: rgba(19, 138, 138, 0.5); color: #138a8a; }
 .operator-novedad-btn.nov-e { border-color: rgba(192, 57, 43, 0.5); color: #c0392b; }
 .operator-novedad-btn.nov-c { border-color: rgba(138, 90, 43, 0.5); color: #8a5a2b; }
-.operator-novedad-btn.nov-cd { border-color: rgba(194, 119, 46, 0.5); color: #c2772e; }
-.operator-novedad-btn.nov-cn { border-color: rgba(58, 90, 138, 0.5); color: #3a5a8a; }
+.operator-novedad-btn.nov-cd { border-color: rgba(138, 90, 43, 0.5); color: #8a5a2b; }
+.operator-novedad-btn.nov-cn { border-color: rgba(138, 90, 43, 0.5); color: #8a5a2b; }
 .operator-novedad-btn:active { transform: scale(0.98); }
 .operator-novedad-btn.is-active {
   box-shadow: inset 0 0 0 2px currentColor;

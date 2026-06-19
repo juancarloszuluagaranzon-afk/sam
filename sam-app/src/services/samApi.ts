@@ -870,9 +870,10 @@ export const NOVEDAD_LABEL: Record<NovedadTipo, string> = {
   CN: 'Camioneta noche',
 }
 
-// Letra que se muestra en la celda de la Planilla (CD/CN/C → "C").
+// Letra/código que se muestra en la celda de la Planilla. Se muestra tal cual
+// (CD = camioneta día, CN = camioneta noche), todo en el mismo color.
 export function novLetter(tipo: NovedadTipo): string {
-  return tipo === 'C' || tipo === 'CD' || tipo === 'CN' ? 'C' : tipo
+  return tipo
 }
 
 function normalizeNovedad(value: unknown): NovedadTipo {

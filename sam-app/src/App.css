@@ -5365,6 +5365,8 @@ td.planilla-revisada {
    vía currentColor. Definido después de .planilla-cell para ganar el color. */
 .planilla-num--proceso { color: #d97706; font-weight: 700; }   /* naranja: en proceso */
 .planilla-num--terminada { color: #1f8a47; font-weight: 700; } /* verde: terminada */
+.planilla-cell--clickable { cursor: pointer; }
+.planilla-cell--clickable:hover { outline: 2px solid rgba(40, 150, 225, 0.5); outline-offset: -2px; }
 
 /* Convenciones (legend) de la planilla */
 .planilla-legend {

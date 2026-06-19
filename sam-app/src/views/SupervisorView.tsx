@@ -1618,7 +1618,7 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'planilla' ? (
-          <PlanillaTab />
+          <PlanillaTab onEditLabor={setSelectedLabor} />
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion' || session.role === 'supervisor') && supervisorTab === 'realizadas' ? (

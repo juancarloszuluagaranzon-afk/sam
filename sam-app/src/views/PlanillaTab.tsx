@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
+import { db } from '../lib/db'
+import type { Assignment } from '../domain/sam'
+import { deleteAssignment, formatTime } from '../services/samApi'
 import {
   executionDateKey,
   loadPlanillaRevisiones,
@@ -59,8 +62,8 @@ function fmt(value: number) {
   return value > 0 ? value.toFixed(1) : ''
 }
 
-export function PlanillaTab() {
-  const { assignments, operators, todayKey, session, setError, setInfo } = useAppData()
+export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => void } = {}) {
+  const { assignments, setAssignments, operators, todayKey, session, setError, setInfo } = useAppData()
 
   const [planillaMonth, setPlanillaMonth] = useState(() => todayKey.slice(0, 7))
   const [planillaQuincena, setPlanillaQuincena] = useState<SummaryQuincena>(() =>
@@ -379,6 +382,39 @@ export function PlanillaTab() {
     [operatorsSorted, hiddenOps],
   )
 
+  // Detalle de las labores de una celda (operario × día) al oprimir el número.
+  const [cellDetail, setCellDetail] = useState<{ rowKey: string; name: string; dateKey: string } | null>(null)
+  const [deleteLaborTarget, setDeleteLaborTarget] = useState<Assignment | null>(null)
+  const [deletingLabor, setDeletingLabor] = useState(false)
+
+  const cellLabors = useMemo(() => {
+    if (!cellDetail) return []
+    return assignments.filter((a) => {
+      if (a.status !== 'EN_PROCESO' && a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') return false
+      if (executionDateKey(a) !== cellDetail.dateKey) return false
+      const aKey = a.operatorId || `name:${(a.operatorName || 'Sin operador').trim().toUpperCase()}`
+      return aKey === cellDetail.rowKey
+    })
+  }, [cellDetail, assignments])
+
+  async function handleDeleteLabor() {
+    const target = deleteLaborTarget
+    if (!target) return
+    setDeletingLabor(true)
+    setError('')
+    try {
+      await deleteAssignment(target.id)
+      setAssignments((cur) => cur.filter((a) => a.id !== target.id))
+      void db.assignments.delete(target.id)
+      setInfo(`Labor eliminada: ${target.haciendaName} · ${target.suerte}.`)
+      setDeleteLaborTarget(null)
+    } catch {
+      setError('No se pudo eliminar la labor. Revisa la conexión.')
+    } finally {
+      setDeletingLabor(false)
+    }
+  }
+
   // Totales por columna (dia) y gran total.
   const dayTotals = useMemo(() => {
     const t: Record<string, number> = {}
@@ -586,16 +622,23 @@ export function PlanillaTab() {
                       const nov = novedades.get(`${rowKey}|${d.key}`)
                       const proceso = r.perDayProceso[d.key]
                       const numClass = v > 0 && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
+                      const canDetail = !markMode && v > 0 && !nov
                       return (
                         <td
                           key={d.key}
-                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
-                          onClick={markMode ? () => void toggleRevision(rowKey, d.key) : undefined}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${canDetail ? ' planilla-cell--clickable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
+                          onClick={
+                            markMode
+                              ? () => void toggleRevision(rowKey, d.key)
+                              : canDetail
+                                ? () => setCellDetail({ rowKey, name: r.name, dateKey: d.key })
+                                : undefined
+                          }
                           title={
                             nov
                               ? NOVEDAD_LABEL[nov]
-                              : v > 0
-                                ? proceso ? 'En proceso' : 'Terminada'
+                              : canDetail
+                                ? `Ver labores (${proceso ? 'en proceso' : 'terminada'})`
                                 : markMode ? 'Resaltar / quitar' : undefined
                           }
                         >
@@ -620,6 +663,85 @@ export function PlanillaTab() {
               </tr>
             </tfoot>
           </table>
+        </div>
+      )}
+
+      {/* Detalle de labores de una celda (operario × día) — editar/eliminar */}
+      {cellDetail && (
+        <div className="modal-overlay open" onClick={() => setCellDetail(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(560px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Planilla · {fmtFecha(cellDetail.dateKey)}</p>
+                <h3>{cellDetail.name}</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setCellDetail(null)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            {cellLabors.length === 0 ? (
+              <p className="subtle-copy" style={{ marginTop: 0 }}>Sin labores ese día.</p>
+            ) : (
+              <ul className="revisadas-list">
+                {cellLabors.map((a) => (
+                  <li key={a.id} className="revisadas-item">
+                    <div className="revisadas-item__main">
+                      <strong>{a.haciendaName} · {a.suerte}</strong>
+                      <span>
+                        {a.labor} · {a.area.toFixed(1)} ha ·{' '}
+                        {a.status === 'EN_PROCESO' ? 'En proceso' : a.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
+                        {a.finishedAt ? ` · ${formatTime(a.finishedAt)}` : a.startedAt ? ` · ${formatTime(a.startedAt)}` : ''}
+                      </span>
+                    </div>
+                    <div className="report-row-actions">
+                      {onEditLabor && (
+                        <button
+                          type="button"
+                          className="inline-button"
+                          onClick={() => { onEditLabor(a); setCellDetail(null) }}
+                        >
+                          Editar
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="inline-button maestro-delete-btn"
+                        onClick={() => setDeleteLaborTarget(a)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setCellDetail(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmar eliminación de una labor desde el detalle de la celda */}
+      {deleteLaborTarget && (
+        <div className="modal-overlay open" onClick={() => { if (!deletingLabor) setDeleteLaborTarget(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Eliminar labor</p>
+                <h3>¿Eliminar esta labor?</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setDeleteLaborTarget(null)} disabled={deletingLabor} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              <strong>{deleteLaborTarget.haciendaName} · {deleteLaborTarget.suerte}</strong> — {deleteLaborTarget.labor}
+            </p>
+            <p className="subtle-copy">Se borra de forma permanente (no se puede deshacer) y deja de contar en la planilla.</p>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setDeleteLaborTarget(null)} disabled={deletingLabor}>Cancelar</button>
+              <button type="button" className="release-confirm-btn" onClick={() => void handleDeleteLabor()} disabled={deletingLabor}>
+                {deletingLabor ? 'Eliminando…' : 'Sí, eliminar'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

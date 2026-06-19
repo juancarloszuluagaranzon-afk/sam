@@ -22,7 +22,7 @@ export function SearchableSelect({
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
   // En móvil (puntero "grueso") abrir NO debe levantar el teclado: la lista se
-  // ve completa. El teclado solo aparece cuando el usuario pide buscar.
+  // ve completa. El teclado solo aparece cuando el usuario toca el campo de nuevo.
   const [isCoarse] = useState(
     () => typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches,
   )
@@ -32,11 +32,15 @@ export function SearchableSelect({
 
   const selectedOption = options.find((opt) => opt.value === String(value))
   // "Escribiendo": en escritorio basta con estar abierto; en móvil, solo cuando
-  // el usuario activó la búsqueda.
+  // el input recibió foco real (segundo toque) → ahí mostramos el query.
   const typing = searching || (!isCoarse && isOpen)
   const displayValue = typing ? query : selectedOption ? selectedOption.label : ''
-  // El input es de solo lectura en móvil hasta que se pide buscar → sin teclado.
-  const readOnly = isCoarse && !searching
+  // CLAVE para iOS: el teclado solo aparece de forma confiable cuando el usuario
+  // TOCA DIRECTAMENTE un <input> que NO sea readOnly (el focus() por código lo
+  // bloquea Safari). Por eso el input es readOnly únicamente mientras la lista está
+  // CERRADA: el 1er toque abre la lista sin teclado; al quedar abierta el input ya
+  // es editable, y el 2º toque cae directo sobre él → iOS abre el teclado solo.
+  const readOnly = isCoarse && !isOpen
 
   function close() {
     setIsOpen(false)
@@ -54,26 +58,6 @@ export function SearchableSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Activar la búsqueda en móvil. CLAVE para iOS: Safari solo levanta el teclado si
-  // focus() se llama de forma SÍNCRONA dentro del gesto del usuario y sobre un input
-  // que NO sea readOnly en ese instante. Por eso quitamos readOnly imperativamente en
-  // el DOM y enfocamos aquí mismo, en vez de diferirlo a un useEffect (que iOS ignora
-  // por considerarlo fuera del gesto). En Android/escritorio también funciona.
-  function activateSearch() {
-    const el = inputRef.current
-    if (el) {
-      el.readOnly = false
-      el.focus()
-    }
-    setSearching(true)
-  }
-
-  // Fallback (Android/escritorio): si por algo searching se activó sin pasar por
-  // activateSearch, asegurar el foco. En iOS este efecto NO basta por sí solo.
-  useEffect(() => {
-    if (searching) inputRef.current?.focus()
-  }, [searching])
-
   const filteredOptions = options.filter((opt) =>
     opt.label.toLowerCase().includes(query.toLowerCase()) ||
     (opt.rightLabel && opt.rightLabel.toLowerCase().includes(query.toLowerCase())),
@@ -81,20 +65,19 @@ export function SearchableSelect({
 
   function handleInputClick() {
     if (!isCoarse) return // escritorio: el foco/typing lo maneja onFocus
+    // Primer toque (campo readOnly): abre la lista SIN teclado. El segundo toque cae
+    // sobre el input ya editable y iOS abre el teclado nativamente (sin focus por código).
     if (!isOpen) {
       setIsOpen(true)
       setSearching(false)
       setQuery('')
-    } else if (!searching) {
-      // segundo toque sobre el campo → activar teclado para buscar (síncrono p/ iOS)
-      activateSearch()
     }
   }
 
   const inputPlaceholder = typing
     ? `Buscar ${placeholder.toLowerCase()}...`
     : isOpen && isCoarse
-      ? 'Toca para buscar…'
+      ? 'Toca aquí para escribir…'
       : placeholder
 
   return (
@@ -112,9 +95,17 @@ export function SearchableSelect({
         }}
         onClick={handleInputClick}
         onFocus={() => {
-          // Escritorio: enfocar abre y limpia para escribir. Móvil: lo maneja el clic.
           if (!isCoarse) {
+            // Escritorio: enfocar abre y limpia para escribir.
             setIsOpen(true)
+            setQuery('')
+            return
+          }
+          // Móvil: el input solo recibe foco real cuando la lista YA está abierta
+          // (cerrada es readOnly y no se enfoca). El teclado lo abrió iOS solo al
+          // tocar el input editable; aquí entramos en modo escritura y limpiamos.
+          if (isOpen) {
+            setSearching(true)
             setQuery('')
           }
         }}
@@ -135,16 +126,13 @@ export function SearchableSelect({
       </div>
       {isOpen && (
         <ul className="searchable-select-options">
-          {/* Móvil sin teclado: opción explícita para activar la búsqueda */}
+          {/* Móvil en modo navegar: pista para que toque el campo y aparezca el teclado */}
           {isCoarse && !searching && (
             <li
-              className="searchable-select-item searchable-select-search"
-              onMouseDown={(e) => {
-                e.preventDefault()
-                activateSearch()
-              }}
+              className="searchable-select-item searchable-select-empty"
+              style={{ fontStyle: 'italic', opacity: 0.7 }}
             >
-              🔍 Buscar…
+              🔍 Toca el campo de arriba para escribir
             </li>
           )}
           <li

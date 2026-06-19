@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
 import type { Assignment } from '../domain/sam'
 import { deleteAssignment, formatTime } from '../services/samApi'
+import { isSameCycle } from '../utils/suerteCycle'
 import {
   executionDateKey,
   loadPlanillaRevisiones,
@@ -50,11 +51,12 @@ import {
 } from '../components/EntityHistoryModal'
 
 // Planilla quincenal: filas = operarios (orden alfabetico por nombre),
-// columnas = cada dia de la quincena. La celda suma el AREA de las labores que
-// el operario ABRIO/inicio ese dia (status iniciado: EN_PROCESO / PARCIAL /
-// COMPLETADA). "Abrir" = poner horometro inicial; en cuanto abre, su area entra
-// en el dia y se va sumando con las que abra despues. Misma logica de 1ra/2da
-// quincena del Resumen del propietario (matchesSummaryFilter + executionDateKey).
+// columnas = cada dia de la quincena. La celda suma el AREA REAL ejecutada por
+// dia: para labores CERRADAS (PARCIAL/COMPLETADA) su executedArea (lo hecho esa
+// sesion, atribuido por executionDateKey = finishedAt); para EN_PROCESO el
+// RESTANTE estimado (area - lo ya cerrado en la misma suerte+labor del ciclo),
+// asi una labor que cruza de dia NO se cuenta dos veces. Antes sumaba el area
+// PLANIFICADA al abrir, lo que duplicaba los cruces de dia (13.3+13.3=26.7).
 
 const WEEKDAY = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
 
@@ -331,7 +333,18 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     for (const o of operators) {
       map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, perDayProceso: {}, total: 0 })
     }
-    // 2) Sumar las labores ABIERTAS del periodo a su operario.
+    // Avance ya CERRADO (executedArea) por suerte+labor, para estimar el restante
+    // de las labores EN_PROCESO sin duplicar lo ya hecho en días anteriores.
+    const cerradoBySuerte = new Map<string, { date: string; exec: number }[]>()
+    for (const a of assignments) {
+      if (a.status !== 'COMPLETADA' && a.status !== 'PARCIAL') continue
+      const k = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
+      const arr = cerradoBySuerte.get(k) ?? []
+      arr.push({ date: executionDateKey(a), exec: a.executedArea ?? 0 })
+      cerradoBySuerte.set(k, arr)
+    }
+    // 2) Sumar el área REAL por día (executedArea de lo cerrado; restante estimado
+    //    de lo EN_PROCESO). Así una labor que cruza de día NO se cuenta dos veces.
     for (const a of assignments) {
       if (a.status !== 'EN_PROCESO' && a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') continue
       const dk = executionDateKey(a)
@@ -345,16 +358,40 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         row = { id: id || key, name, perDay: {}, perDayProceso: {}, total: 0 }
         map.set(key, row)
       }
-      row.perDay[dk] = (row.perDay[dk] ?? 0) + a.area
-      row.total += a.area
-      if (a.status === 'EN_PROCESO') row.perDayProceso[dk] = true
+      // Área real del día:
+      let val: number
+      if (a.status === 'EN_PROCESO') {
+        const sk = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
+        const yaCerrado = (cerradoBySuerte.get(sk) ?? [])
+          .filter((c) => isSameCycle(c.date, dk))
+          .reduce((s, c) => s + c.exec, 0)
+        val = Math.max(0, a.area - yaCerrado)
+        row.perDayProceso[dk] = true
+      } else {
+        val = a.executedArea ?? 0
+      }
+      row.perDay[dk] = (row.perDay[dk] ?? 0) + val
+      row.total += val
     }
-    // 3) Trabajadores con novedad en el periodo que no estén ya en la lista.
+    // 3) Trabajadores con novedad en el periodo que no estén ya en la lista
+    //    (p. ej. un operario INACTIVO con novedad reportada). Su nombre se
+    //    resuelve del catálogo activo y, si no está, de sus asignaciones
+    //    históricas — así nunca se ve el id pelado (info uniforme).
+    const nameFromAssignments = new Map<string, string>()
+    for (const a of assignments) {
+      if (a.operatorId && a.operatorName && !nameFromAssignments.has(a.operatorId)) {
+        nameFromAssignments.set(a.operatorId, a.operatorName.trim())
+      }
+    }
     const visibleDays = new Set(days.map((d) => d.key))
     for (const k of novedades.keys()) {
       const [opId, fecha] = k.split('|')
       if (!visibleDays.has(fecha) || map.has(opId)) continue
-      const name = (operators.find((o) => o.id === opId)?.name ?? opId).trim()
+      const name = (
+        operators.find((o) => o.id === opId)?.name ??
+        nameFromAssignments.get(opId) ??
+        opId
+      ).trim()
       map.set(opId, { id: opId, name, perDay: {}, perDayProceso: {}, total: 0 })
     }
     return Array.from(map.values()).sort((a, b) =>
@@ -520,8 +557,9 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       </div>
 
       <p className="planilla-caption">
-        Hectáreas de las labores que cada operario <strong>abrió</strong> ese día (área de las
-        suertes iniciadas, se suman a medida que abre más). {monthLabel} · {quincenaLabel}.
+        Hectáreas <strong>realmente ejecutadas</strong> por operario y día (lo cerrado cuenta su área hecha;
+        lo que está <strong>en proceso</strong>, el restante estimado). Una labor que cruza de día NO se cuenta
+        dos veces. {monthLabel} · {quincenaLabel}.
       </p>
 
       <div className="planilla-legend">

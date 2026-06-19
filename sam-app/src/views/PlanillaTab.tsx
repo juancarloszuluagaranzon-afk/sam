@@ -374,31 +374,17 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       row.perDay[dk] = (row.perDay[dk] ?? 0) + val
       row.total += val
     }
-    // 3) Trabajadores con novedad en el periodo que no estén ya en la lista
-    //    (p. ej. un operario INACTIVO con novedad reportada). Su nombre se
-    //    resuelve del catálogo activo y, si no está, de sus asignaciones
-    //    históricas — así nunca se ve el id pelado (info uniforme).
-    const nameFromAssignments = new Map<string, string>()
-    for (const a of assignments) {
-      if (a.operatorId && a.operatorName && !nameFromAssignments.has(a.operatorId)) {
-        nameFromAssignments.set(a.operatorId, a.operatorName.trim())
-      }
-    }
-    const visibleDays = new Set(days.map((d) => d.key))
-    for (const k of novedades.keys()) {
-      const [opId, fecha] = k.split('|')
-      if (!visibleDays.has(fecha) || map.has(opId)) continue
-      const name = (
-        operators.find((o) => o.id === opId)?.name ??
-        nameFromAssignments.get(opId) ??
-        opId
-      ).trim()
-      map.set(opId, { id: opId, name, perDay: {}, perDayProceso: {}, total: 0 })
-    }
+    // 3) Los operarios INACTIVOS (los que ya no están en el catálogo activo) NO se
+    //    muestran en la planilla, aunque tengan novedades registradas. Solo salen
+    //    operarios del catálogo (paso 1) y quienes tengan labores reales en el
+    //    periodo (paso 2). Las novedades de operarios ACTIVOS se pintan igual en su
+    //    propia fila (ya existe desde el paso 1); no se borra ningún dato, solo se
+    //    deja de surfacear al inactivo. Antes el paso 3 colaba al inactivo por traer
+    //    una novedad (p. ej. U019 con D/P y área 0.0) — eso es lo que se elimina.
     return Array.from(map.values()).sort((a, b) =>
       a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
     )
-  }, [assignments, operators, planillaMonth, planillaQuincena, todayKey, days, novedades])
+  }, [assignments, operators, planillaMonth, planillaQuincena, todayKey])
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()

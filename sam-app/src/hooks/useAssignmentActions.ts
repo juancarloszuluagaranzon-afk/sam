@@ -560,6 +560,10 @@ export function useAssignmentActions() {
     operatorName?: string
     status?: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADA' | 'CANCELADA' | 'PARCIAL'
     liberada?: boolean
+    // Permite corregir la FECHA de ejecución (cuando el operario registró tarde):
+    // mueve la labor al día correcto en la Planilla/Reporte.
+    startedAt?: string | null
+    finishedAt?: string | null
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {

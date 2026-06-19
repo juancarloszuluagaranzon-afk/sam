@@ -472,6 +472,7 @@ export function SupervisorView({
     notes: '',
     equipmentCode: '',
     operatorId: '',
+    fechaEjec: '',
   })
 
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
@@ -2748,6 +2749,7 @@ export function SupervisorView({
                             notes: selectedLabor.notes ?? '',
                             equipmentCode: selectedLabor.equipmentCode ?? '',
                             operatorId: selectedLabor.operatorId ?? '',
+                            fechaEjec: executionDateKey(selectedLabor),
                           })
                           setEditingLabor(true)
                         }}
@@ -2847,6 +2849,16 @@ export function SupervisorView({
                   </div>
                 ) : (
                   <div className="labor-detail-edit">
+                    <label className="assignment-detail-field">
+                      <span>Fecha de ejecución</span>
+                      <input
+                        type="date"
+                        value={editLaborDraft.fechaEjec}
+                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, fechaEjec: e.target.value }))}
+                      />
+                      <small>Corrige el día si el operario registró tarde (mueve la labor en la planilla).</small>
+                    </label>
+
                     <label className="assignment-detail-field">
                       <span>Hectáreas ejecutadas</span>
                       <input
@@ -2948,12 +2960,25 @@ export function SupervisorView({
                         const newOperatorName = operatorChanged
                           ? (operators.find((op) => op.id === newOperatorId)?.name ?? '')
                           : undefined
+                        // Fecha de ejecución: si cambió, se fijan fecha_inicio/fecha_fin
+                        // al nuevo día (12:00 hora Colombia, para que el dayKey en
+                        // America/Bogota caiga en ese día exacto, sin corrimientos).
+                        const fechaChanged =
+                          editLaborDraft.fechaEjec &&
+                          editLaborDraft.fechaEjec !== executionDateKey(selectedLabor)
+                        const fechaPatch = fechaChanged
+                          ? {
+                              startedAt: new Date(`${editLaborDraft.fechaEjec}T11:00:00-05:00`).toISOString(),
+                              finishedAt: new Date(`${editLaborDraft.fechaEjec}T12:00:00-05:00`).toISOString(),
+                            }
+                          : {}
                         const ok = await handleEditAssignment(selectedLabor, {
                           executedArea: isNaN(execNum) ? selectedLabor.executedArea : execNum,
                           horometroInicial: hiNum,
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
+                          ...fechaPatch,
                           ...(operatorChanged ? {
                             operatorId: newOperatorId,
                             operatorName: newOperatorName,

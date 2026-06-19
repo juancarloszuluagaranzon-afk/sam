@@ -313,15 +313,20 @@ export function PlanillaTab() {
   // no hayan trabajado), más cualquier trabajador con labores/novedad que no esté
   // en el catálogo. Orden: alfabético por nombre.
   const rows = useMemo(() => {
-    const map = new Map<
-      string,
-      { id: string; name: string; perDay: Record<string, number>; total: number }
-    >()
+    type Row = {
+      id: string
+      name: string
+      perDay: Record<string, number>
+      // true si ese día hay alguna labor EN_PROCESO (aún sin cerrar) → se pinta naranja.
+      perDayProceso: Record<string, boolean>
+      total: number
+    }
+    const map = new Map<string, Row>()
     // 1) Sembrar TODOS los operarios del catálogo (rol operador) con fila vacía.
     //    .trim() defensivo: algunos nombres en BD traen espacios/NBSP al inicio
     //    que rompían el orden alfabético (quedaban arriba de todo).
     for (const o of operators) {
-      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, total: 0 })
+      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, perDayProceso: {}, total: 0 })
     }
     // 2) Sumar las labores ABIERTAS del periodo a su operario.
     for (const a of assignments) {
@@ -334,11 +339,12 @@ export function PlanillaTab() {
       const key = id && map.has(id) ? id : id || `name:${name.trim().toUpperCase()}`
       let row = map.get(key)
       if (!row) {
-        row = { id: id || key, name, perDay: {}, total: 0 }
+        row = { id: id || key, name, perDay: {}, perDayProceso: {}, total: 0 }
         map.set(key, row)
       }
       row.perDay[dk] = (row.perDay[dk] ?? 0) + a.area
       row.total += a.area
+      if (a.status === 'EN_PROCESO') row.perDayProceso[dk] = true
     }
     // 3) Trabajadores con novedad en el periodo que no estén ya en la lista.
     const visibleDays = new Set(days.map((d) => d.key))
@@ -346,7 +352,7 @@ export function PlanillaTab() {
       const [opId, fecha] = k.split('|')
       if (!visibleDays.has(fecha) || map.has(opId)) continue
       const name = (operators.find((o) => o.id === opId)?.name ?? opId).trim()
-      map.set(opId, { id: opId, name, perDay: {}, total: 0 })
+      map.set(opId, { id: opId, name, perDay: {}, perDayProceso: {}, total: 0 })
     }
     return Array.from(map.values()).sort((a, b) =>
       a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
@@ -482,6 +488,18 @@ export function PlanillaTab() {
         suertes iniciadas, se suman a medida que abre más). {monthLabel} · {quincenaLabel}.
       </p>
 
+      <div className="planilla-legend">
+        <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-num--proceso" />En proceso</span>
+        <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-num--terminada" />Terminada</span>
+        <span className="planilla-legend__sep" />
+        <span className="planilla-legend__item"><b className="planilla-nov--v">V</b> Vacaciones</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--t">T</b> Taller</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--np">NP</b> No programado</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--d">D</b> Descanso</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--p">P</b> Permiso</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--c">C</b> Camioneta</span>
+      </div>
+
       {markMode && (
         <div className="planilla-mark-bar">
           <span className="planilla-mark-hint">🖍 Clic en una casilla para resaltarla (otra vez con el mismo color la quita). Color:</span>
@@ -566,12 +584,20 @@ export function PlanillaTab() {
                       const v = r.perDay[d.key] ?? 0
                       const hl = revisadas.get(`${rowKey}|${d.key}`)
                       const nov = novedades.get(`${rowKey}|${d.key}`)
+                      const proceso = r.perDayProceso[d.key]
+                      const numClass = v > 0 && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
                       return (
                         <td
                           key={d.key}
-                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${v > 0 && !nov ? ' planilla-has' : ''}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
                           onClick={markMode ? () => void toggleRevision(rowKey, d.key) : undefined}
-                          title={nov ? NOVEDAD_LABEL[nov] : markMode ? 'Resaltar / quitar' : undefined}
+                          title={
+                            nov
+                              ? NOVEDAD_LABEL[nov]
+                              : v > 0
+                                ? proceso ? 'En proceso' : 'Terminada'
+                                : markMode ? 'Resaltar / quitar' : undefined
+                          }
                         >
                           {nov ?? fmt(v)}
                         </td>

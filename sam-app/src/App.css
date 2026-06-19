@@ -5360,6 +5360,37 @@ td.planilla-revisada {
 .planilla-nov--p { color: #138a8a; }   /* Permiso */
 .planilla-nov--c { color: #8a5a2b; }   /* Camioneta */
 
+/* Color del número del área según estado de la(s) labor(es) del día.
+   Sin prefijo `td` para que el dot del legend (<i>) también tome el color
+   vía currentColor. Definido después de .planilla-cell para ganar el color. */
+.planilla-num--proceso { color: #d97706; font-weight: 700; }   /* naranja: en proceso */
+.planilla-num--terminada { color: #1f8a47; font-weight: 700; } /* verde: terminada */
+
+/* Convenciones (legend) de la planilla */
+.planilla-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 0 0 12px;
+  font-size: 0.78rem;
+  color: var(--color-ink-mid);
+}
+.planilla-legend__item { display: inline-flex; align-items: center; gap: 4px; }
+.planilla-legend__item b { font-weight: 800; }
+.planilla-legend__dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  background: currentColor;
+  display: inline-block;
+}
+.planilla-legend__sep {
+  width: 1px;
+  height: 14px;
+  background: var(--color-border, rgba(0, 0, 0, 0.15));
+}
+
 /* Resaltado por color (fondo pastel) — para la celda y los swatches del picker.
    Definido DESPUÉS de .planilla-has/.planilla-today para ganar el empate. */
 .planilla-hl--azul { background: #d6e9fb; }

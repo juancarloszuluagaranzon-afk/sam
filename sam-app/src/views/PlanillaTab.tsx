@@ -14,6 +14,7 @@ import {
   clearOperarioNovedades,
   NOVEDAD_TIPOS,
   NOVEDAD_LABEL,
+  novLetter,
   type NovedadTipo,
   type HighlightColor,
 } from '../services/samApi'
@@ -571,7 +572,9 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         <span className="planilla-legend__item"><b className="planilla-nov--np">NP</b> No programado</span>
         <span className="planilla-legend__item"><b className="planilla-nov--d">D</b> Descanso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--p">P</b> Permiso</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--c">C</b> Camioneta</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--e">E</b> Enfermedad</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--cd">C</b> Camioneta día</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--cn">C</b> Camioneta noche</span>
       </div>
 
       {markMode && (
@@ -680,7 +683,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                                 : markMode ? 'Resaltar / quitar' : undefined
                           }
                         >
-                          {nov ?? fmt(v)}
+                          {nov ? novLetter(nov) : fmt(v)}
                         </td>
                       )
                     })}
@@ -853,7 +856,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                   disabled={savingNov}
                   title={NOVEDAD_LABEL[t]}
                 >
-                  {t} · {NOVEDAD_LABEL[t]}
+                  {novLetter(t)} · {NOVEDAD_LABEL[t]}
                 </button>
               ))}
               <button
@@ -868,7 +871,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
             <p className="subtle-copy" style={{ marginTop: 0 }}>
               {novTipo === 'CLEAR'
                 ? 'Se quitará la novedad de los días del rango.'
-                : <>Los días del rango quedarán marcados como <strong>{novTipo}</strong> en la planilla.</>}
+                : <>Los días del rango quedarán marcados como <strong>{NOVEDAD_LABEL[novTipo]}</strong> (letra {novLetter(novTipo)}) en la planilla.</>}
             </p>
             <div className="novedad-fields">
               <label>

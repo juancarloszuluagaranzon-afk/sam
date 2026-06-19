@@ -45,7 +45,10 @@ const NOV_ICON: Record<NovedadTipo, string> = {
   NP: '⛔',
   D: '😴',
   P: '📄',
+  E: '🤒',
   C: '🚚',
+  CD: '🚚',
+  CN: '🌙',
 }
 
 const INGENIOS = [

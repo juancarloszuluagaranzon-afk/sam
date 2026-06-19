@@ -852,20 +852,32 @@ export async function clearAllLaborRevisiones(): Promise<void> {
 //   V = Vacaciones · T = Taller · NP = No programado · D = Descanso
 //   P = Permiso    · C = Camioneta
 
-export type NovedadTipo = 'V' | 'T' | 'NP' | 'D' | 'P' | 'C'
-export const NOVEDAD_TIPOS: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'C']
+// Camioneta se reporta con turno: CD = día, CN = noche (misma letra "C" en la
+// planilla, color distinto). 'C' pelado = legado (datos anteriores). 'E' = Enfermedad.
+export type NovedadTipo = 'V' | 'T' | 'NP' | 'D' | 'P' | 'E' | 'C' | 'CD' | 'CN'
+// Tipos ofrecidos en los botones (C se reporta como CD/CN).
+export const NOVEDAD_TIPOS: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'E', 'CD', 'CN']
+const ALL_NOVEDAD: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'E', 'C', 'CD', 'CN']
 export const NOVEDAD_LABEL: Record<NovedadTipo, string> = {
   V: 'Vacaciones',
   T: 'Taller',
   NP: 'No programado',
   D: 'Descanso',
   P: 'Permiso',
+  E: 'Enfermedad',
   C: 'Camioneta',
+  CD: 'Camioneta día',
+  CN: 'Camioneta noche',
+}
+
+// Letra que se muestra en la celda de la Planilla (CD/CN/C → "C").
+export function novLetter(tipo: NovedadTipo): string {
+  return tipo === 'C' || tipo === 'CD' || tipo === 'CN' ? 'C' : tipo
 }
 
 function normalizeNovedad(value: unknown): NovedadTipo {
   const v = String(value ?? '').trim().toUpperCase()
-  return (NOVEDAD_TIPOS as string[]).includes(v) ? (v as NovedadTipo) : 'V'
+  return (ALL_NOVEDAD as string[]).includes(v) ? (v as NovedadTipo) : 'V'
 }
 
 export interface OperarioNovedad {

@@ -52,6 +52,9 @@ export interface MaestroRow {
   // revisar y conciliar las marcadas como manuales.
   creadoManual?: boolean
   creadoPor?: string
+  // Tercero (cliente) asignado a la suerte. Campo ADICIONAL al ingenio; se
+  // edita en la pestaña Maestros y sale del catálogo `terceros`.
+  terceroId?: string
 }
 
 // Input para crear una suerte ad-hoc desde la app. La completa el
@@ -118,6 +121,21 @@ export interface Labor {
   nombre: string
   activa: boolean
   tipo: LaborTipo
+}
+
+// Catálogo de empresas (compañías operadas en el aplicativo). Solo CRUD por ahora.
+export interface Empresa {
+  id: string
+  nombre: string
+  activo: boolean
+}
+
+// Catálogo de terceros (clientes a los que se presta la labor). Los ingenios
+// son terceros; se pueden crear más y asignarse a suertes del maestro.
+export interface Tercero {
+  id: string
+  nombre: string
+  activo: boolean
 }
 
 export interface CreateAssignmentInput {

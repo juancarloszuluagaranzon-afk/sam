@@ -6,10 +6,12 @@ import type {
   CreateEquipmentInput,
   CreateAssignmentInput,
   DashboardMetrics,
+  Empresa,
   Equipment,
   Labor,
   LaborTipo,
   MaestroRow,
+  Tercero,
   UpdateAssignmentInput,
   UserProfile,
   Zone,
@@ -223,7 +225,7 @@ export async function loadMaestro(): Promise<{
     while (hasMore) {
       const { data, error } = await supabase
         .from('maestro_risaralda')
-        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por,tercero_id')
         .eq('activo', true)
         .order('hacienda')
         .order('suerte')
@@ -255,6 +257,7 @@ export async function loadMaestro(): Promise<{
         ingenio_id: String(row.ingenio_id ?? 'risaralda'),
         creadoManual: row.creado_manual === true,
         creadoPor: row.creado_por ?? undefined,
+        terceroId: row.tercero_id ?? undefined,
       }))
 
     void (async () => {
@@ -305,7 +308,7 @@ export async function createMaestroRow(
   const { data, error } = await supabase
     .from('maestro_risaralda')
     .insert(payload)
-    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por,tercero_id')
     .single()
 
   if (error) {
@@ -327,6 +330,7 @@ export async function createMaestroRow(
     ingenio_id: String(data.ingenio_id ?? 'risaralda'),
     creadoManual: data.creado_manual === true,
     creadoPor: data.creado_por ?? undefined,
+    terceroId: data.tercero_id ?? undefined,
   }
 
   // Refleja la nueva fila en el cache local de Dexie para que aparezca
@@ -348,11 +352,13 @@ export async function createMaestroRow(
  */
 export async function updateMaestroRow(
   key: { haciendaCode: string; suerte: string; ingenio_id: string },
-  changes: { area?: number; haciendaName?: string },
+  changes: { area?: number; haciendaName?: string; terceroId?: string | null },
 ): Promise<MaestroRow> {
   const payload: Record<string, unknown> = {}
   if (changes.area !== undefined) payload.area_neta = changes.area
   if (changes.haciendaName !== undefined) payload.nombre_hacienda = changes.haciendaName
+  // terceroId: '' / null → desasignar (NULL en BD); uuid → asignar.
+  if (changes.terceroId !== undefined) payload.tercero_id = changes.terceroId || null
 
   const { data, error } = await supabase
     .from('maestro_risaralda')
@@ -360,7 +366,7 @@ export async function updateMaestroRow(
     .eq('hacienda', key.haciendaCode)
     .eq('suerte', key.suerte)
     .eq('ingenio_id', key.ingenio_id)
-    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por,tercero_id')
     .single()
 
   if (error || !data) {
@@ -375,6 +381,7 @@ export async function updateMaestroRow(
     ingenio_id: String(data.ingenio_id ?? 'risaralda'),
     creadoManual: data.creado_manual === true,
     creadoPor: data.creado_por ?? undefined,
+    terceroId: data.tercero_id ?? undefined,
   }
 
   try {
@@ -752,6 +759,103 @@ export async function deleteLabor(id: string): Promise<void> {
   const { error } = await supabase.from('labores_catalogo').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar la labor')
   void db.labores.delete(id)
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Catálogos EMPRESAS y TERCEROS (migración 20260619120000_empresas_terceros).
+// Son catálogos de administración (anon_key, RLS abierta). No se cachean en
+// Dexie: si está offline, la carga cae a lista vacía y se reintenta al volver.
+
+function mapNamed(row: Record<string, unknown>): { id: string; nombre: string; activo: boolean } {
+  return {
+    id: String(row.id),
+    nombre: String(row.nombre ?? ''),
+    activo: row.activo == null ? true : Boolean(row.activo),
+  }
+}
+
+export async function loadEmpresas(): Promise<{ data: Empresa[]; source: Source }> {
+  try {
+    const { data, error } = await supabase.from('empresas').select('id,nombre,activo').order('nombre')
+    if (error || !data) throw error ?? new Error('empty')
+    return { data: data.map(mapNamed), source: 'supabase' }
+  } catch {
+    return { data: [], source: 'fallback' }
+  }
+}
+
+export async function createEmpresa(nombre: string): Promise<Empresa> {
+  const { data, error } = await supabase
+    .from('empresas')
+    .insert({ nombre: nombre.trim().toUpperCase() })
+    .select('id,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo crear la empresa')
+  return mapNamed(data)
+}
+
+export async function updateEmpresa(
+  id: string,
+  patch: { nombre?: string; activo?: boolean },
+): Promise<Empresa> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { data, error } = await supabase
+    .from('empresas')
+    .update(payload)
+    .eq('id', id)
+    .select('id,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo actualizar la empresa')
+  return mapNamed(data)
+}
+
+export async function deleteEmpresa(id: string): Promise<void> {
+  const { error } = await supabase.from('empresas').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar la empresa')
+}
+
+export async function loadTerceros(): Promise<{ data: Tercero[]; source: Source }> {
+  try {
+    const { data, error } = await supabase.from('terceros').select('id,nombre,activo').order('nombre')
+    if (error || !data) throw error ?? new Error('empty')
+    return { data: data.map(mapNamed), source: 'supabase' }
+  } catch {
+    return { data: [], source: 'fallback' }
+  }
+}
+
+export async function createTercero(nombre: string): Promise<Tercero> {
+  const { data, error } = await supabase
+    .from('terceros')
+    .insert({ nombre: nombre.trim().toUpperCase() })
+    .select('id,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo crear el tercero')
+  return mapNamed(data)
+}
+
+export async function updateTercero(
+  id: string,
+  patch: { nombre?: string; activo?: boolean },
+): Promise<Tercero> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { data, error } = await supabase
+    .from('terceros')
+    .update(payload)
+    .eq('id', id)
+    .select('id,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo actualizar el tercero')
+  return mapNamed(data)
+}
+
+export async function deleteTercero(id: string): Promise<void> {
+  const { error } = await supabase.from('terceros').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar el tercero')
 }
 
 // ──────────────────── Marcas de "revisado" de la Planilla ────────────────────

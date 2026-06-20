@@ -28,9 +28,11 @@ import { MaestrosTab } from './MaestrosTab'
 import { PlanillaTab } from './PlanillaTab'
 import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
+import { EmpresasTab } from './EmpresasTab'
+import { TercerosTab } from './TercerosTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -245,6 +247,8 @@ export function SupervisorView({
 
   const [isCreateAssignmentOpen, setIsCreateAssignmentOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
+  // Submenú "Catálogos" del more-sheet (Maestros, Labores, Empresas, Terceros).
+  const [catalogosOpen, setCatalogosOpen] = useState(false)
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   // Texto para filtrar el listado de suertes del formulario de asignar
   // (escribir en vez de solo hacer scroll, como en Hacienda). Se limpia al
@@ -779,26 +783,62 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Revisar qué falta diligenciar y exportar a Excel</div>
                   </div>
                 </button>
+                {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
-                  className={`more-sheet__item ${supervisorTab === 'maestros' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('maestros'); setMoreMenuOpen(false) }}
+                  className={`more-sheet__item ${['maestros', 'catalogo', 'empresas', 'terceros'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => setCatalogosOpen((v) => !v)}
+                  aria-expanded={catalogosOpen}
                 >
                   <span className="more-sheet__icon">▤</span>
                   <div>
-                    <div className="more-sheet__label">Maestros</div>
-                    <div className="more-sheet__desc">Catálogo de suertes — editar área neta</div>
+                    <div className="more-sheet__label">Catálogos {catalogosOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Maestros, Labores, Empresas y Terceros</div>
                   </div>
                 </button>
-                <button
-                  className={`more-sheet__item ${supervisorTab === 'catalogo' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('catalogo'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">🏷</span>
-                  <div>
-                    <div className="more-sheet__label">Labores</div>
-                    <div className="more-sheet__desc">Catálogo de labores — activar / desactivar</div>
+                {catalogosOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'maestros' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('maestros'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">▤</span>
+                      <div>
+                        <div className="more-sheet__label">Maestros</div>
+                        <div className="more-sheet__desc">Suertes — área neta y tercero</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'catalogo' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('catalogo'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🏷</span>
+                      <div>
+                        <div className="more-sheet__label">Labores</div>
+                        <div className="more-sheet__desc">Catálogo de labores — activar / desactivar</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'empresas' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('empresas'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🏢</span>
+                      <div>
+                        <div className="more-sheet__label">Empresas</div>
+                        <div className="more-sheet__desc">Compañías operadas (ej. Agroservicios Morales)</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'terceros' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('terceros'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🤝</span>
+                      <div>
+                        <div className="more-sheet__label">Terceros</div>
+                        <div className="more-sheet__desc">Clientes a los que se presta la labor</div>
+                      </div>
+                    </button>
                   </div>
-                </button>
+                )}
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
                     className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
@@ -1013,7 +1053,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1086,7 +1126,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1627,6 +1667,14 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'catalogo' ? (
           <LaboresTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (
+          <EmpresasTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'terceros' ? (
+          <TercerosTab />
         ) : null}
 
         {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor') && supervisorTab === 'reporte' ? (

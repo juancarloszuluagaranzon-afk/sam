@@ -1,14 +1,16 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
-import type { Assignment, Equipment, Labor, MaestroRow, UserProfile } from '../domain/sam'
+import type { Assignment, Empresa, Equipment, Labor, MaestroRow, Tercero, UserProfile } from '../domain/sam'
 import { WORKFLOW } from '../data/constants'
 import {
   loadAppUsers,
   loadAssignments,
+  loadEmpresas,
   loadEquipment,
   loadLabores,
   loadMaestro,
+  loadTerceros,
   summarizeAssignments,
 } from '../services/samApi'
 
@@ -33,6 +35,11 @@ interface AppDataContextValue {
   // Solo labores activas Y mecanizadas — para el picker del operario (tractor)
   // al tomar en campo, que no debe ver labores manuales.
   fieldLabores: string[]
+  // Catálogos de administración (CRUD): empresas y terceros (clientes).
+  empresas: Empresa[]
+  setEmpresas: React.Dispatch<React.SetStateAction<Empresa[]>>
+  terceros: Tercero[]
+  setTerceros: React.Dispatch<React.SetStateAction<Tercero[]>>
   loading: boolean
   setLoading: React.Dispatch<React.SetStateAction<boolean>>
   busy: boolean
@@ -70,6 +77,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<UserProfile[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [labores, setLabores] = useState<Labor[]>([])
+  const [empresas, setEmpresas] = useState<Empresa[]>([])
+  const [terceros, setTerceros] = useState<Tercero[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -186,13 +195,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     // sin bloquear el render — la UI ya esta visible. Si no habia cache, esta
     // fase actua como el load original (espera a que termine).
     try {
-      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult] =
+      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult, empresasResult, tercerosResult] =
         await Promise.all([
           loadMaestro(),
           loadAssignments(),
           loadAppUsers(),
           loadEquipment(),
           loadLabores(),
+          loadEmpresas(),
+          loadTerceros(),
         ])
       startTransition(() => {
         setMaestro(maestroResult.data)
@@ -200,6 +211,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setUsers(userResult.data)
         setEquipment(equipmentResult.data)
         setLabores(laboresResult.data)
+        setEmpresas(empresasResult.data)
+        setTerceros(tercerosResult.data)
         // Si el resync de asignaciones cayo en fallback con error, exponemos
         // el mensaje para que la UI muestre banner. El catch externo solo
         // dispara si Promise.all rechaza, lo cual no sucede aqui porque
@@ -274,6 +287,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         users, setUsers,
         equipment, setEquipment,
         labores, setLabores, activeLabores, fieldLabores,
+        empresas, setEmpresas, terceros, setTerceros,
         loading, setLoading,
         busy, setBusy,
         error, setError,

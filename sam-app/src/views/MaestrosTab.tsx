@@ -29,7 +29,18 @@ const ingenioNombre = (id: string) => INGENIOS.find((i) => i.id === id)?.nombre 
 const LIMIT = 300
 
 export function MaestrosTab() {
-  const { session, maestro, setMaestro, busy, setBusy, setError, setInfo } = useAppData()
+  const { session, maestro, setMaestro, terceros, busy, setBusy, setError, setInfo } = useAppData()
+
+  // id de tercero → nombre, para mostrar la columna y el selector.
+  const terceroNombre = useMemo(() => {
+    const m = new Map<string, string>()
+    terceros.forEach((t) => m.set(t.id, t.nombre))
+    return m
+  }, [terceros])
+  const tercerosOrdenados = useMemo(
+    () => [...terceros].filter((t) => t.activo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+    [terceros],
+  )
 
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -39,6 +50,7 @@ export function MaestrosTab() {
 
   const [editRow, setEditRow] = useState<MaestroRow | null>(null)
   const [editArea, setEditArea] = useState('')
+  const [editTercero, setEditTercero] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<MaestroRow | null>(null)
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   const [isBulkOpen, setIsBulkOpen] = useState(false)
@@ -100,6 +112,7 @@ export function MaestrosTab() {
   function openEdit(r: MaestroRow) {
     setEditRow(r)
     setEditArea(String(r.area))
+    setEditTercero(r.terceroId ?? '')
     setError('')
   }
 
@@ -115,7 +128,7 @@ export function MaestrosTab() {
     try {
       const updated = await updateMaestroRow(
         { haciendaCode: editRow.haciendaCode, suerte: editRow.suerte, ingenio_id: editRow.ingenio_id },
-        { area },
+        { area, terceroId: editTercero || null },
       )
       setMaestro((prev) =>
         prev.map((r) =>
@@ -281,6 +294,7 @@ export function MaestrosTab() {
               <th>Hacienda</th>
               <th>Suerte</th>
               <th className="num">Área (ha)</th>
+              <th>Tercero</th>
               <th></th>
             </tr>
           </thead>
@@ -296,6 +310,9 @@ export function MaestrosTab() {
                 </td>
                 <td>{r.suerte}</td>
                 <td className="num">{r.area.toFixed(2)}</td>
+                <td className="nowrap">
+                  {r.terceroId ? (terceroNombre.get(r.terceroId) ?? '—') : <span className="subtle-copy">—</span>}
+                </td>
                 <td>
                   <div className="maestro-row-actions">
                     <button type="button" className="inline-button" onClick={() => openEdit(r)}>Editar</button>
@@ -312,7 +329,7 @@ export function MaestrosTab() {
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={5} className="validacion-empty">
+                <td colSpan={6} className="validacion-empty">
                   Sin suertes para estos filtros. Usa la búsqueda o cambia los filtros.
                 </td>
               </tr>
@@ -358,6 +375,22 @@ export function MaestrosTab() {
                 autoFocus
               />
             </label>
+            <label>
+              Tercero (cliente)
+              <select value={editTercero} onChange={(e) => setEditTercero(e.target.value)} disabled={busy}>
+                <option value="">— Sin tercero —</option>
+                {editTercero && !tercerosOrdenados.some((t) => t.id === editTercero) && (
+                  <option value={editTercero}>{terceroNombre.get(editTercero) ?? 'Tercero actual (inactivo)'}</option>
+                )}
+                {tercerosOrdenados.map((t) => (
+                  <option key={t.id} value={t.id}>{t.nombre}</option>
+                ))}
+              </select>
+            </label>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              El tercero es el cliente al que se le presta la labor. Es adicional al ingenio. Gestiónalos en
+              <strong> Catálogos → Terceros</strong>.
+            </p>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setEditRow(null)} disabled={busy}>
                 Cancelar

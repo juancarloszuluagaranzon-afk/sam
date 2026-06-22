@@ -30,9 +30,10 @@ import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
 import { EmpresasTab } from './EmpresasTab'
 import { TercerosTab } from './TercerosTab'
+import { ZonasTab } from './ZonasTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros' | 'zonas'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -235,8 +236,17 @@ export function SupervisorView({
     isOnline, outboxCount, busy, error, info,
     operators, users, setUsers, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
-    activeLabores, labores,
+    activeLabores, labores, zonas,
   } = useAppData()
+
+  // Zonas activas para el selector del formulario de usuario (solo supervisores).
+  const zonasActivas = useMemo(
+    () => [...zonas].filter((z) => z.activo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+    [zonas],
+  )
+  // Zona del supervisor logueado, para auto-llenar al aprobar. Owner/admin no
+  // tienen zona → cae a la zona ya registrada en la labor (o vacía).
+  const miZona = useMemo(() => users.find((u) => u.id === session?.id)?.zona ?? '', [users, session?.id])
 
   // Nombres (en mayúsculas) de labores MANUALES, para advertir si se asignan a
   // un operador (que en este negocio es de tractor).
@@ -785,7 +795,7 @@ export function SupervisorView({
                 </button>
                 {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
-                  className={`more-sheet__item ${['maestros', 'catalogo', 'empresas', 'terceros'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
+                  className={`more-sheet__item ${['maestros', 'catalogo', 'empresas', 'terceros', 'zonas'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
                   onClick={() => setCatalogosOpen((v) => !v)}
                   aria-expanded={catalogosOpen}
                 >
@@ -835,6 +845,16 @@ export function SupervisorView({
                       <div>
                         <div className="more-sheet__label">Terceros</div>
                         <div className="more-sheet__desc">Clientes a los que se presta la labor</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'zonas' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('zonas'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🗺️</span>
+                      <div>
+                        <div className="more-sheet__label">Zonas</div>
+                        <div className="more-sheet__desc">Zonas de trabajo (se asignan a supervisores)</div>
                       </div>
                     </button>
                   </div>
@@ -1053,7 +1073,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1126,7 +1146,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1677,6 +1697,10 @@ export function SupervisorView({
           <TercerosTab />
         ) : null}
 
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'zonas' ? (
+          <ZonasTab />
+        ) : null}
+
         {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor') && supervisorTab === 'reporte' ? (
           <section className="panel-card">
             <div className="panel-title">
@@ -2027,7 +2051,7 @@ export function SupervisorView({
                 className="primary-button users-new-btn"
                 onClick={() => {
                   setEditingUserId(null)
-                  setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                  setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '' })
                   setIsUserFormOpen(true)
                 }}
               >
@@ -2056,7 +2080,7 @@ export function SupervisorView({
                   const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', soporte: 'Soporte' }
                   const openEdit = () => {
                     setEditingUserId(u.id)
-                    setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode })
+                    setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode, zona: u.zona ?? '' })
                     setIsUserFormOpen(true)
                   }
                   return (
@@ -2091,7 +2115,7 @@ export function SupervisorView({
           const closeUserModal = () => {
             setIsUserFormOpen(false)
             setEditingUserId(null)
-            setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+            setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '' })
           }
           return (
             <div className="modal-overlay open" onClick={closeUserModal}>
@@ -2195,6 +2219,25 @@ export function SupervisorView({
                       options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
+                  {userForm.rol === 'supervisor' && (
+                    <label>
+                      Zona del supervisor <span className="field-optional">(se auto-llena al aprobar)</span>
+                      <select
+                        value={userForm.zona}
+                        onChange={(e) => setUserForm((f) => ({ ...f, zona: e.target.value }))}
+                      >
+                        <option value="">— Sin zona —</option>
+                        {userForm.zona && !zonasActivas.some((z) => z.codigo === userForm.zona) && (
+                          <option value={userForm.zona}>
+                            {zonas.find((z) => z.codigo === userForm.zona)?.nombre ?? userForm.zona}
+                          </option>
+                        )}
+                        {zonasActivas.map((z) => (
+                          <option key={z.id} value={z.codigo}>{z.nombre}</option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <div className="modal-footer user-form__actions">
                     {editingUserId && (
                       <button
@@ -2259,7 +2302,7 @@ export function SupervisorView({
                       setConfirmDeleteUser(null)
                       setIsUserFormOpen(false)
                       setEditingUserId(null)
-                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '' })
+                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '' })
                     } catch (err: unknown) {
                       setError(err instanceof Error ? err.message : 'Error al eliminar usuario')
                     } finally {
@@ -2498,7 +2541,7 @@ export function SupervisorView({
                               if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
                                 setApproveTarget(assignment)
                                 setApproveCliente(assignment.cliente ?? '')
-                                setApproveZona(assignment.zone ?? '')
+                                setApproveZona(assignment.zone ?? miZona ?? '')
                               } else {
                                 void handleApproveAssignment(assignment)
                               }
@@ -3118,8 +3161,12 @@ export function SupervisorView({
                 <span>Zona</span>
                 <select value={approveZona} onChange={(e) => setApproveZona(e.target.value)} disabled={busy}>
                   <option value="">Seleccionar…</option>
-                  <option value="NORTE">Norte</option>
-                  <option value="SUR">Sur</option>
+                  {approveZona && !zonasActivas.some((z) => z.codigo === approveZona) && (
+                    <option value={approveZona}>{zonas.find((z) => z.codigo === approveZona)?.nombre ?? approveZona}</option>
+                  )}
+                  {zonasActivas.map((z) => (
+                    <option key={z.id} value={z.codigo}>{z.nombre}</option>
+                  ))}
                 </select>
               </label>
               <div className="modal-footer">

@@ -7,6 +7,7 @@ interface UserFormState {
   rol: string
   pin: string
   equipoCodigo: string
+  zona: string
 }
 
 const EMPTY_USER_FORM: UserFormState = {
@@ -15,6 +16,7 @@ const EMPTY_USER_FORM: UserFormState = {
   rol: '',
   pin: '',
   equipoCodigo: '',
+  zona: '',
 }
 
 export function useUserForm() {

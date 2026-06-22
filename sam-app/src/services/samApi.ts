@@ -12,6 +12,7 @@ import type {
   LaborTipo,
   MaestroRow,
   Tercero,
+  Zona,
   UpdateAssignmentInput,
   UserProfile,
   Zone,
@@ -603,7 +604,7 @@ export async function loadAppUsers(): Promise<{
   try {
     const { data, error } = await supabase
       .from('app_usuarios')
-      .select('id,nombre_completo,rol,equipo_codigo,foto_url')
+      .select('id,nombre_completo,rol,equipo_codigo,foto_url,zona')
       .eq('activo', true)
       .order('orden')
 
@@ -615,6 +616,7 @@ export async function loadAppUsers(): Promise<{
       role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
       photoUrl: row.foto_url ? String(row.foto_url) : undefined,
+      zona: row.zona ? String(row.zona) : undefined,
     }))
     void db.users.clear().then(() => db.users.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }
@@ -851,6 +853,69 @@ export async function updateTercero(
 export async function deleteTercero(id: string): Promise<void> {
   const { error } = await supabase.from('terceros').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar el tercero')
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Catálogo de ZONAS (migración 20260621120000_zonas_supervisor). codigo = valor
+// guardado (NORTE/SUR y futuros); nombre = etiqueta. Sin caché Dexie.
+
+function mapZona(row: Record<string, unknown>): Zona {
+  return {
+    id: String(row.id),
+    codigo: String(row.codigo ?? ''),
+    nombre: String(row.nombre ?? ''),
+    activo: row.activo == null ? true : Boolean(row.activo),
+  }
+}
+
+// Deriva un código a partir del nombre (mayúsculas, sin acentos ni espacios).
+function zonaCodigoFromNombre(nombre: string): string {
+  return nombre
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .trim().toUpperCase().replace(/\s+/g, '_').replace(/[^A-Z0-9_]/g, '')
+}
+
+export async function loadZonas(): Promise<{ data: Zona[]; source: Source }> {
+  try {
+    const { data, error } = await supabase.from('zonas').select('id,codigo,nombre,activo').order('nombre')
+    if (error || !data) throw error ?? new Error('empty')
+    return { data: data.map(mapZona), source: 'supabase' }
+  } catch {
+    return { data: [], source: 'fallback' }
+  }
+}
+
+export async function createZona(nombre: string): Promise<Zona> {
+  const codigo = zonaCodigoFromNombre(nombre)
+  const { data, error } = await supabase
+    .from('zonas')
+    .insert({ codigo, nombre: nombre.trim() })
+    .select('id,codigo,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo crear la zona')
+  return mapZona(data)
+}
+
+export async function updateZona(
+  id: string,
+  patch: { nombre?: string; activo?: boolean },
+): Promise<Zona> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim()
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { data, error } = await supabase
+    .from('zonas')
+    .update(payload)
+    .eq('id', id)
+    .select('id,codigo,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo actualizar la zona')
+  return mapZona(data)
+}
+
+export async function deleteZona(id: string): Promise<void> {
+  const { error } = await supabase.from('zonas').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar la zona')
 }
 
 // ──────────────────── Marcas de "revisado" de la Planilla ────────────────────
@@ -1104,6 +1169,7 @@ export async function createAppUser(input: {
   rol: string
   pin: string
   equipoCodigo: string
+  zona?: string
 }) {
   const { error } = await supabase.rpc('app_create_user', {
     p_id: input.id.toUpperCase(),
@@ -1111,6 +1177,7 @@ export async function createAppUser(input: {
     p_rol: input.rol,
     p_pin: input.pin,
     p_equipo_codigo: input.equipoCodigo || null,
+    p_zona: input.zona || null,
   })
 
   if (error) {
@@ -1126,6 +1193,7 @@ export async function updateAppUser(input: {
   rol: string
   pin: string
   equipoCodigo: string
+  zona?: string
 }) {
   const { error } = await supabase.rpc('app_update_user', {
     p_id: input.id.toUpperCase(),
@@ -1133,6 +1201,7 @@ export async function updateAppUser(input: {
     p_rol: input.rol,
     p_pin: input.pin || null,
     p_equipo_codigo: input.equipoCodigo || null,
+    p_zona: input.zona || null,
   })
 
   if (error) {

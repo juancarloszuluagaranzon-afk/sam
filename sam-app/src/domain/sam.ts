@@ -19,6 +19,9 @@ export interface UserProfile {
   role: Role
   equipmentCode: string
   photoUrl?: string
+  // Zona asignada (solo aplica a supervisores). Es el `codigo` del catálogo
+  // `zonas`; se usa para auto-llenar la zona al aprobar labores.
+  zona?: string
 }
 
 export interface Equipment {
@@ -131,6 +134,16 @@ export interface Empresa {
 // son terceros; se pueden crear más y asignarse a suertes del maestro.
 export interface Tercero {
   id: string
+  nombre: string
+  activo: boolean
+}
+
+// Catálogo de zonas. `codigo` es el valor que se guarda (NORTE/SUR y futuros);
+// `nombre` es la etiqueta visible. Se asigna a supervisores para auto-llenar la
+// zona al aprobar.
+export interface Zona {
+  id: string
+  codigo: string
   nombre: string
   activo: boolean
 }

@@ -2634,7 +2634,7 @@ export function SupervisorView({
                             if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
                               setApproveTarget(assignment)
                               setApproveCliente(assignment.cliente ?? '')
-                              setApproveZona(assignment.zone ?? '')
+                              setApproveZona(assignment.zone ?? miZona ?? '')
                             } else {
                               void handleApproveAssignment(assignment)
                             }

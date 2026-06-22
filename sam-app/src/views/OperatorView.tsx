@@ -531,6 +531,27 @@ export function OperatorView({
     })
   }, [historyAssignments, historyMonth, historyPeriod])
 
+  // Novedades del operario dentro del mes/quincena seleccionados del Historial.
+  const historyNovedades = useMemo(() => {
+    const [year, month] = historyMonth.split('-').map(Number)
+    if (!year || !month) return []
+    const lastDay = new Date(year, month, 0).getDate()
+    let d1 = 1
+    let d2 = lastDay
+    if (historyPeriod === 'Q1') { d1 = 1; d2 = 15 } else if (historyPeriod === 'Q2') { d1 = 16; d2 = lastDay }
+    const start = `${historyMonth}-${String(d1).padStart(2, '0')}`
+    const end = `${historyMonth}-${String(d2).padStart(2, '0')}`
+    return misNovedades.filter((n) => n.fecha >= start && n.fecha <= end)
+  }, [misNovedades, historyMonth, historyPeriod])
+
+  // Labores cerradas + novedades, intercaladas por fecha (más reciente primero).
+  const historyItems = useMemo(() => {
+    const items: Array<{ date: string; labor?: Assignment; nov?: OperarioNovedad }> = []
+    for (const a of filteredHistory) items.push({ date: executionDateKey(a) || '', labor: a })
+    for (const n of historyNovedades) items.push({ date: n.fecha, nov: n })
+    return items.sort((a, b) => (a.date < b.date ? 1 : -1))
+  }, [filteredHistory, historyNovedades])
+
   if (!session) return null
 
   // Callback compartido para todos los botones de dictado: muestra al
@@ -1293,7 +1314,35 @@ export function OperatorView({
             })()}
 
             <div className="list-rows">
-              {filteredHistory.map((assignment) => {
+              {historyItems.map((item) => {
+                // Fila de NOVEDAD (taller/permiso/descanso/etc.): día no laborado.
+                if (item.nov) {
+                  const n = item.nov
+                  return (
+                    <div key={`nov-${n.fecha}-${n.tipo}`} className="movement-row">
+                      <div>
+                        <strong>{NOV_ICON[n.tipo]} {NOVEDAD_LABEL[n.tipo]}</strong>
+                        <span>Novedad — día no laborado</span>
+                      </div>
+                      <div className="movement-side">
+                        <span
+                          style={{
+                            fontSize: '0.78rem',
+                            fontWeight: 600,
+                            color: 'var(--color-ink-mid)',
+                            background: 'var(--color-bg-soft)',
+                            padding: '2px 8px',
+                            borderRadius: 999,
+                          }}
+                        >
+                          Novedad
+                        </span>
+                        <small style={{ textTransform: 'capitalize' }}>{fmtNovFecha(n.fecha)}</small>
+                      </div>
+                    </div>
+                  )
+                }
+                const assignment = item.labor!
                 const meta = getStatusMeta(assignment)
                 return (
                   <div key={assignment.id} className="movement-row">
@@ -1319,8 +1368,8 @@ export function OperatorView({
                   </div>
                 )
               })}
-              {!filteredHistory.length ? (
-                <p className="muted-text">Aun no hay labores cerradas.</p>
+              {!historyItems.length ? (
+                <p className="muted-text">Aun no hay labores ni novedades en este periodo.</p>
               ) : null}
             </div>
           </section>

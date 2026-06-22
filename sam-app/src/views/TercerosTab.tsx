@@ -11,7 +11,7 @@ import type { Tercero } from '../domain/sam'
  * 20260619120000); se pueden crear más y asignarlos a las suertes en Maestros.
  */
 export function TercerosTab() {
-  const { terceros, setTerceros, maestro, busy, setBusy, setError, setInfo } = useAppData()
+  const { terceros, setTerceros, busy, setBusy, setError, setInfo } = useAppData()
 
   const [nuevo, setNuevo] = useState('')
   const [editTarget, setEditTarget] = useState<Tercero | null>(null)
@@ -23,15 +23,6 @@ export function TercerosTab() {
     [terceros],
   )
   const activos = ordenados.filter((t) => t.activo).length
-
-  // Cuántas suertes tiene asignada cada tercero (para avisar antes de eliminar).
-  const suertesPorTercero = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const r of maestro) {
-      if (r.terceroId) map.set(r.terceroId, (map.get(r.terceroId) ?? 0) + 1)
-    }
-    return map
-  }, [maestro])
 
   async function handleCreate() {
     const nombre = nuevo.trim().toUpperCase()
@@ -113,7 +104,7 @@ export function TercerosTab() {
     try {
       await deleteTercero(t.id)
       setTerceros((prev) => prev.filter((x) => x.id !== t.id))
-      setInfo(`Tercero "${t.nombre}" eliminado. Las suertes que lo tenían quedan sin tercero.`)
+      setInfo(`Tercero "${t.nombre}" eliminado.`)
       setDeleteTarget(null)
     } catch (err) {
       const e = err as { message?: string }
@@ -132,8 +123,8 @@ export function TercerosTab() {
         </span>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Clientes a los que se les presta la labor (los ingenios ya están sembrados como terceros).
-        Crea, renombra, activa o desactiva. Asigna terceros a las suertes desde <strong>Maestros</strong>.
+        Catálogo informativo de ingenios y terceros (clientes a los que se les presta la labor).
+        Crea, renombra, activa o desactiva. Es una lista de referencia, no condiciona la operación.
       </p>
 
       <div className="labor-cat-add">
@@ -157,7 +148,6 @@ export function TercerosTab() {
           <thead>
             <tr>
               <th>Tercero</th>
-              <th className="num">Suertes</th>
               <th>Estado</th>
               <th></th>
             </tr>
@@ -166,7 +156,6 @@ export function TercerosTab() {
             {ordenados.map((t) => (
               <tr key={t.id} className={t.activo ? '' : 'labor-cat-row--off'}>
                 <td><strong>{t.nombre}</strong></td>
-                <td className="num">{suertesPorTercero.get(t.id) ?? 0}</td>
                 <td>
                   <span className={`labor-cat-chip ${t.activo ? 'on' : 'off'}`}>
                     {t.activo ? 'Activo' : 'Inactivo'}
@@ -194,7 +183,7 @@ export function TercerosTab() {
             ))}
             {ordenados.length === 0 && (
               <tr>
-                <td colSpan={4} className="validacion-empty">
+                <td colSpan={3} className="validacion-empty">
                   Sin terceros en el catálogo. Agrega el primero arriba.
                 </td>
               </tr>
@@ -240,10 +229,7 @@ export function TercerosTab() {
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}><strong>{deleteTarget.nombre}</strong></p>
             <p className="subtle-copy">
-              {(suertesPorTercero.get(deleteTarget.id) ?? 0) > 0 ? (
-                <>Tiene <strong>{suertesPorTercero.get(deleteTarget.id)}</strong> suerte(s) asignada(s); quedarán <strong>sin tercero</strong> (no se borran). </>
-              ) : null}
-              Si solo quieres que deje de aparecer, usa <strong>Desactivar</strong>.
+              Se quita del catálogo. Si solo quieres que deje de aparecer, usa <strong>Desactivar</strong>.
             </p>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setDeleteTarget(null)} disabled={busy}>Cancelar</button>

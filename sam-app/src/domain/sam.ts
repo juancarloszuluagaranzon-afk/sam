@@ -52,9 +52,6 @@ export interface MaestroRow {
   // revisar y conciliar las marcadas como manuales.
   creadoManual?: boolean
   creadoPor?: string
-  // Tercero (cliente) asignado a la suerte. Campo ADICIONAL al ingenio; se
-  // edita en la pestaña Maestros y sale del catálogo `terceros`.
-  terceroId?: string
 }
 
 // Input para crear una suerte ad-hoc desde la app. La completa el

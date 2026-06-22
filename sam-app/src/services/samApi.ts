@@ -225,7 +225,7 @@ export async function loadMaestro(): Promise<{
     while (hasMore) {
       const { data, error } = await supabase
         .from('maestro_risaralda')
-        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por,tercero_id')
+        .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
         .eq('activo', true)
         .order('hacienda')
         .order('suerte')
@@ -257,7 +257,6 @@ export async function loadMaestro(): Promise<{
         ingenio_id: String(row.ingenio_id ?? 'risaralda'),
         creadoManual: row.creado_manual === true,
         creadoPor: row.creado_por ?? undefined,
-        terceroId: row.tercero_id ?? undefined,
       }))
 
     void (async () => {
@@ -308,7 +307,7 @@ export async function createMaestroRow(
   const { data, error } = await supabase
     .from('maestro_risaralda')
     .insert(payload)
-    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por,tercero_id')
+    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
     .single()
 
   if (error) {
@@ -330,7 +329,6 @@ export async function createMaestroRow(
     ingenio_id: String(data.ingenio_id ?? 'risaralda'),
     creadoManual: data.creado_manual === true,
     creadoPor: data.creado_por ?? undefined,
-    terceroId: data.tercero_id ?? undefined,
   }
 
   // Refleja la nueva fila en el cache local de Dexie para que aparezca
@@ -352,13 +350,11 @@ export async function createMaestroRow(
  */
 export async function updateMaestroRow(
   key: { haciendaCode: string; suerte: string; ingenio_id: string },
-  changes: { area?: number; haciendaName?: string; terceroId?: string | null },
+  changes: { area?: number; haciendaName?: string },
 ): Promise<MaestroRow> {
   const payload: Record<string, unknown> = {}
   if (changes.area !== undefined) payload.area_neta = changes.area
   if (changes.haciendaName !== undefined) payload.nombre_hacienda = changes.haciendaName
-  // terceroId: '' / null → desasignar (NULL en BD); uuid → asignar.
-  if (changes.terceroId !== undefined) payload.tercero_id = changes.terceroId || null
 
   const { data, error } = await supabase
     .from('maestro_risaralda')
@@ -366,7 +362,7 @@ export async function updateMaestroRow(
     .eq('hacienda', key.haciendaCode)
     .eq('suerte', key.suerte)
     .eq('ingenio_id', key.ingenio_id)
-    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por,tercero_id')
+    .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
     .single()
 
   if (error || !data) {
@@ -381,7 +377,6 @@ export async function updateMaestroRow(
     ingenio_id: String(data.ingenio_id ?? 'risaralda'),
     creadoManual: data.creado_manual === true,
     creadoPor: data.creado_por ?? undefined,
-    terceroId: data.tercero_id ?? undefined,
   }
 
   try {

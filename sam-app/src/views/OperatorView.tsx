@@ -283,6 +283,13 @@ export function OperatorView({
     [misNovedades],
   )
 
+  // Última novedad OCURRIDA (fecha <= hoy) para la tarjeta de Activas. Si todas
+  // son futuras, cae a la más próxima registrada. La lista completa va en Historial.
+  const ultimaNovedad = useMemo(() => {
+    const ocurridas = misNovedadesOrden.filter((n) => n.fecha <= todayKey)
+    return ocurridas[0] ?? misNovedadesOrden[0] ?? null
+  }, [misNovedadesOrden, todayKey])
+
   async function submitNovedad() {
     if (!session) return
     const fechas = datesInRange(novDesde, novHasta)
@@ -865,28 +872,31 @@ export function OperatorView({
               </button>
             </div>
 
-            {/* Novedades que el operario YA registró (días en taller/permiso/descanso…). */}
-            {misNovedadesOrden.length > 0 && (
+            {/* Solo la ÚLTIMA novedad del operario. La lista completa está en Historial. */}
+            {ultimaNovedad && (
               <div className="panel-card" style={{ padding: '12px 14px', marginBottom: 12 }}>
                 <div className="panel-title split" style={{ marginBottom: 8 }}>
-                  <h2 style={{ fontSize: '0.98rem', margin: 0 }}>📋 Mis novedades</h2>
-                  <span className="subtle-copy">
-                    {misNovedadesOrden.length} día{misNovedadesOrden.length === 1 ? '' : 's'}
-                  </span>
+                  <h2 style={{ fontSize: '0.98rem', margin: 0 }}>📋 Última novedad</h2>
+                  {misNovedadesOrden.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setOperatorTab('historial')}
+                      className="subtle-copy"
+                      style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                      Ver todas ({misNovedadesOrden.length})
+                    </button>
+                  )}
                 </div>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {misNovedadesOrden.map((n) => (
-                    <li key={`${n.fecha}-${n.tipo}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: '1.15rem' }} aria-hidden="true">{NOV_ICON[n.tipo]}</span>
-                      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-                        <strong style={{ fontSize: '0.92rem' }}>{NOVEDAD_LABEL[n.tipo]}</strong>
-                        <span className="subtle-copy" style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
-                          {fmtNovFecha(n.fecha)}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: '1.15rem' }} aria-hidden="true">{NOV_ICON[ultimaNovedad.tipo]}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                    <strong style={{ fontSize: '0.92rem' }}>{NOVEDAD_LABEL[ultimaNovedad.tipo]}</strong>
+                    <span className="subtle-copy" style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
+                      {fmtNovFecha(ultimaNovedad.fecha)}
+                    </span>
+                  </div>
+                </div>
               </div>
             )}
 

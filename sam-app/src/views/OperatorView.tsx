@@ -15,7 +15,7 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -49,6 +49,17 @@ const NOV_ICON: Record<NovedadTipo, string> = {
   C: '🚚',
   CD: '🚚',
   CN: '🌙',
+}
+
+// Formatea 'YYYY-MM-DD' a fecha corta en español (ej. "lun, 16 jun").
+function fmtNovFecha(f: string): string {
+  const [y, m, d] = f.split('-').map(Number)
+  if (!y || !m || !d) return f
+  return new Date(y, m - 1, d).toLocaleDateString('es-CO', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  })
 }
 
 const INGENIOS = [
@@ -248,6 +259,30 @@ export function OperatorView({
   const [novHasta, setNovHasta] = useState('')
   const [savingNov, setSavingNov] = useState(false)
 
+  // Novedades YA registradas por este operario, para que pueda VER cuándo tomó
+  // taller/permiso/descanso/etc. Se cargan al entrar y se refrescan al reportar.
+  const [misNovedades, setMisNovedades] = useState<OperarioNovedad[]>([])
+
+  async function refreshMisNovedades() {
+    if (!session) return
+    try {
+      setMisNovedades(await loadOperarioNovedades(session.id))
+    } catch {
+      /* sin conexión: se queda con lo último cargado */
+    }
+  }
+
+  useEffect(() => {
+    void refreshMisNovedades()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id])
+
+  // Más reciente / futura primero.
+  const misNovedadesOrden = useMemo(
+    () => [...misNovedades].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)),
+    [misNovedades],
+  )
+
   async function submitNovedad() {
     if (!session) return
     const fechas = datesInRange(novDesde, novHasta)
@@ -265,6 +300,7 @@ export function OperatorView({
       setNovOpen(false)
       setNovDesde('')
       setNovHasta('')
+      void refreshMisNovedades()
     } catch {
       setError('No se pudo reportar la novedad. Revisa la conexión.')
     } finally {
@@ -807,6 +843,31 @@ export function OperatorView({
                 📋 Registrar novedad
               </button>
             </div>
+
+            {/* Novedades que el operario YA registró (días en taller/permiso/descanso…). */}
+            {misNovedadesOrden.length > 0 && (
+              <div className="panel-card" style={{ padding: '12px 14px', marginBottom: 12 }}>
+                <div className="panel-title split" style={{ marginBottom: 8 }}>
+                  <h2 style={{ fontSize: '0.98rem', margin: 0 }}>📋 Mis novedades</h2>
+                  <span className="subtle-copy">
+                    {misNovedadesOrden.length} día{misNovedadesOrden.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {misNovedadesOrden.map((n) => (
+                    <li key={`${n.fecha}-${n.tipo}`} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: '1.15rem' }} aria-hidden="true">{NOV_ICON[n.tipo]}</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                        <strong style={{ fontSize: '0.92rem' }}>{NOVEDAD_LABEL[n.tipo]}</strong>
+                        <span className="subtle-copy" style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
+                          {fmtNovFecha(n.fecha)}
+                        </span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {activeAssignments.map((assignment) => {
               const progress = getSuerteProgress(assignment, assignments)

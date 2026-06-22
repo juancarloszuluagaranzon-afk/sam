@@ -986,10 +986,11 @@ export interface OperarioNovedad {
   tipo: NovedadTipo
 }
 
-export async function loadOperarioNovedades(): Promise<OperarioNovedad[]> {
-  const { data, error } = await supabase
-    .from('operario_novedades')
-    .select('operador_id,fecha,tipo')
+export async function loadOperarioNovedades(operadorId?: string): Promise<OperarioNovedad[]> {
+  let query = supabase.from('operario_novedades').select('operador_id,fecha,tipo')
+  // Filtro opcional: la vista del operario solo necesita SUS novedades.
+  if (operadorId) query = query.eq('operador_id', operadorId)
+  const { data, error } = await query
   if (error || !data) return []
   return data.map((r) => ({
     operadorId: String(r.operador_id),

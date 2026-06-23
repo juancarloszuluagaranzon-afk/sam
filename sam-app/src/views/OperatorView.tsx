@@ -279,19 +279,6 @@ export function OperatorView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id])
 
-  // Más reciente / futura primero.
-  const misNovedadesOrden = useMemo(
-    () => [...misNovedades].sort((a, b) => (a.fecha < b.fecha ? 1 : -1)),
-    [misNovedades],
-  )
-
-  // Última novedad OCURRIDA (fecha <= hoy) para la tarjeta de Activas. Si todas
-  // son futuras, cae a la más próxima registrada. La lista completa va en Historial.
-  const ultimaNovedad = useMemo(() => {
-    const ocurridas = misNovedadesOrden.filter((n) => n.fecha <= todayKey)
-    return ocurridas[0] ?? misNovedadesOrden[0] ?? null
-  }, [misNovedadesOrden, todayKey])
-
   // ── Solicitudes de insumos (fase 2) ──
   const activeInsumos = useMemo(
     () => insumos.filter((i) => i.activo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
@@ -914,6 +901,12 @@ export function OperatorView({
 
       <div className="dashboard-shell">
         <section className="toolbar-card">
+          {/* Nombre del usuario: solo visible en móvil (donde el nav baja al fondo
+              y este recuadro queda vacío). En escritorio se oculta por CSS. */}
+          <div className="operator-mobile-name">
+            <strong>{session.name}</strong>
+            <span>{getRoleLabel(session.role)}</span>
+          </div>
           <nav className="tab-nav floating-nav operator-tab-nav" aria-label="Navegacion principal">
             <button
               className={operatorTab === 'activas' ? 'active' : ''}
@@ -987,34 +980,6 @@ export function OperatorView({
                 🛢️ Solicitar insumos
               </button>
             </div>
-
-            {/* Solo la ÚLTIMA novedad del operario. La lista completa está en Historial. */}
-            {ultimaNovedad && (
-              <div className="panel-card" style={{ padding: '12px 14px', marginBottom: 12 }}>
-                <div className="panel-title split" style={{ marginBottom: 8 }}>
-                  <h2 style={{ fontSize: '0.98rem', margin: 0 }}>📋 Última novedad</h2>
-                  {misNovedadesOrden.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => setOperatorTab('historial')}
-                      className="subtle-copy"
-                      style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                      Ver todas ({misNovedadesOrden.length})
-                    </button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '1.15rem' }} aria-hidden="true">{NOV_ICON[ultimaNovedad.tipo]}</span>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
-                    <strong style={{ fontSize: '0.92rem' }}>{NOVEDAD_LABEL[ultimaNovedad.tipo]}</strong>
-                    <span className="subtle-copy" style={{ fontSize: '0.82rem', textTransform: 'capitalize' }}>
-                      {fmtNovFecha(ultimaNovedad.fecha)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {misSolicitudes.length > 0 && (
               <div className="panel-card" style={{ padding: '12px 14px', marginBottom: 12 }}>

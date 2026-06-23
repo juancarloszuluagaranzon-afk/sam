@@ -1400,6 +1400,21 @@ th {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+/* Nombre del usuario en el recuadro superior: solo en móvil (en escritorio ahí
+   van las pestañas). En móvil el nav baja al fondo y este recuadro queda libre. */
+.operator-mobile-name { display: none; }
+@media (max-width: 767px) {
+  .operator-mobile-name {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 6px;
+  }
+  .operator-mobile-name strong { font-size: 1rem; }
+  .operator-mobile-name span { color: var(--color-ink-mid); font-size: 0.8rem; white-space: nowrap; }
+}
+
 .operator-mobile-stack {
   gap: 12px;
 }

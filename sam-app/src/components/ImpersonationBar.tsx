@@ -27,16 +27,17 @@ function roleLabel(role: UserProfile['role']): string {
  * soporte. "Volver a Soporte" sale del modo impersonación.
  */
 export function ImpersonationBar({ current, users, onSwitch, onExit }: ImpersonationBarProps) {
+  const act = (u: UserProfile) => u.active !== false
   const operators = useMemo(
-    () => users.filter((u) => u.role === 'operador').sort((a, b) => a.name.localeCompare(b.name)),
+    () => users.filter((u) => u.role === 'operador' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
   const supervisors = useMemo(
-    () => users.filter((u) => u.role === 'supervisor').sort((a, b) => a.name.localeCompare(b.name)),
+    () => users.filter((u) => u.role === 'supervisor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
-  const owners = useMemo(() => users.filter((u) => u.role === 'owner'), [users])
-  const admins = useMemo(() => users.filter((u) => u.role === 'administracion'), [users])
+  const owners = useMemo(() => users.filter((u) => u.role === 'owner' && act(u)), [users])
+  const admins = useMemo(() => users.filter((u) => u.role === 'administracion' && act(u)), [users])
   const ownerTarget: UserProfile =
     owners[0] ?? { id: current.id, name: 'Propietario', role: 'owner', equipmentCode: '' }
   const adminTarget: UserProfile =

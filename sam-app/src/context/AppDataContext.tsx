@@ -238,8 +238,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const supervisors = useMemo(() => users.filter((u) => u.role === 'supervisor'), [users])
-  const operators = useMemo(() => users.filter((u) => u.role === 'operador'), [users])
+  // Selectores y asignación solo usan usuarios ACTIVOS (loadAppUsers ahora trae
+  // todos, incluidos los inactivos, para que la gestión de Usuarios los liste).
+  const supervisors = useMemo(() => users.filter((u) => u.role === 'supervisor' && u.active !== false), [users])
+  const operators = useMemo(() => users.filter((u) => u.role === 'operador' && u.active !== false), [users])
   const todayKey = useMemo(
     () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }),
     [],

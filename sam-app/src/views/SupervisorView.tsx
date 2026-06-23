@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo } from '../services/samApi'
 import { db } from '../lib/db'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
@@ -259,6 +259,23 @@ export function SupervisorView({
       setEquipoConsumoRows(await loadKardexDeEquipo(item.code))
     } finally {
       setEquipoConsumoLoading(false)
+    }
+  }
+
+  // Activar / desactivar un usuario (lo usa la pestaña Usuarios).
+  async function toggleUserActivo(u: UserProfile) {
+    const isActive = u.active !== false
+    setBusy(true)
+    setError('')
+    try {
+      await setAppUserActivo(u.id, !isActive)
+      const refreshed = await loadAppUsers()
+      setUsers(refreshed.data)
+      setInfo(isActive ? `${u.name} desactivado.` : `${u.name} activado.`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cambiar el estado del usuario.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -2108,11 +2125,16 @@ export function SupervisorView({
               {users
                 .filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase()))
                 .sort((a, b) => {
+                  // Activos primero; entre activos, ocupados primero.
+                  const aAct = a.active !== false ? 0 : 1
+                  const bAct = b.active !== false ? 0 : 1
+                  if (aAct !== bAct) return aAct - bAct
                   const aOcupado = operatorStatusMap.get(a.id) === 'ocupado' ? 0 : 1
                   const bOcupado = operatorStatusMap.get(b.id) === 'ocupado' ? 0 : 1
                   return aOcupado - bOcupado
                 })
                 .map((u) => {
+                  const isActive = u.active !== false
                   const status = operatorStatusMap.get(u.id) ?? 'disponible'
                   const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', soporte: 'Soporte' }
                   const openEdit = () => {
@@ -2121,26 +2143,35 @@ export function SupervisorView({
                     setIsUserFormOpen(true)
                   }
                   return (
-                    <li key={u.id} className="user-card" onClick={openEdit} style={{ cursor: 'pointer' }}>
+                    <li key={u.id} className="user-card" onClick={openEdit} style={{ cursor: 'pointer', opacity: isActive ? 1 : 0.55 }}>
                       <span className="user-card__name">{u.name}</span>
                       <span className="user-card__role">{rolLabels[u.role] ?? u.role}</span>
-                      {(u.role === 'operador' || u.role === 'supervisor') && (
+                      {!isActive ? (
+                        <span className="user-status-badge" style={{ background: 'var(--color-bg-soft)', color: 'var(--color-ink-mid)' }}>Inactivo</span>
+                      ) : (u.role === 'operador' || u.role === 'supervisor') ? (
                         <span className={`user-status-badge user-status-badge--${status}`}>
                           {status === 'ocupado' ? 'Ocupado' : 'Libre'}
                         </span>
-                      )}
+                      ) : null}
                       {u.equipmentCode && (
                         <div className="user-card__meta">Equipo: {u.equipmentCode}</div>
                       )}
-                      <button
-                        className="user-card__edit-btn"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openEdit()
-                        }}
-                      >
-                        Editar
-                      </button>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button
+                          className="user-card__edit-btn"
+                          onClick={(e) => { e.stopPropagation(); openEdit() }}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          className="user-card__edit-btn"
+                          disabled={busy || u.id === session.id}
+                          title={u.id === session.id ? 'No puedes desactivar tu propio usuario' : undefined}
+                          onClick={(e) => { e.stopPropagation(); void toggleUserActivo(u) }}
+                        >
+                          {isActive ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </div>
                     </li>
                   )
                 })}
@@ -2183,7 +2214,7 @@ export function SupervisorView({
                     {
                       const nombreNorm = userForm.nombreCompleto.trim().toLowerCase()
                       const dup = users.find(
-                        (u) => u.id !== userForm.id && u.name.trim().toLowerCase() === nombreNorm,
+                        (u) => u.id !== userForm.id && u.active !== false && u.name.trim().toLowerCase() === nombreNorm,
                       )
                       if (dup) {
                         setError(`Ya existe un usuario llamado "${userForm.nombreCompleto.trim()}" (${dup.id}). No se permiten nombres duplicados.`)

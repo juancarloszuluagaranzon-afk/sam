@@ -22,6 +22,9 @@ export interface UserProfile {
   // Zona asignada (solo aplica a supervisores). Es el `codigo` del catálogo
   // `zonas`; se usa para auto-llenar la zona al aprobar labores.
   zona?: string
+  // Activo/inactivo. La gestión de Usuarios carga TODOS; los selectores y la
+  // asignación solo usan los activos (operators/supervisors filtran active).
+  active?: boolean
 }
 
 export interface Equipment {

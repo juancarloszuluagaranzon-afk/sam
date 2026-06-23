@@ -611,8 +611,7 @@ export async function loadAppUsers(): Promise<{
   try {
     const { data, error } = await supabase
       .from('app_usuarios')
-      .select('id,nombre_completo,rol,equipo_codigo,foto_url,zona')
-      .eq('activo', true)
+      .select('id,nombre_completo,rol,equipo_codigo,foto_url,zona,activo')
       .order('orden')
 
     if (error || !data) throw error ?? new Error('empty')
@@ -624,6 +623,7 @@ export async function loadAppUsers(): Promise<{
       equipmentCode: String(row.equipo_codigo ?? ''),
       photoUrl: row.foto_url ? String(row.foto_url) : undefined,
       zona: row.zona ? String(row.zona) : undefined,
+      active: row.activo == null ? true : Boolean(row.activo),
     }))
     void db.users.clear().then(() => db.users.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }
@@ -1555,6 +1555,20 @@ export async function deleteAppUser(id: string) {
   const { error } = await supabase.rpc('app_delete_user', { p_id: id.toUpperCase() })
   if (error) {
     throw new Error(error.message || 'No se pudo eliminar el usuario')
+  }
+  return true
+}
+
+// Activa/desactiva un usuario (RPC app_set_user_activo, migración 20260623160000).
+// Reactivar un nombre que ya tiene otro usuario ACTIVO falla por el índice único
+// app_usuarios_nombre_activo_uniq — se traduce a un mensaje claro.
+export async function setAppUserActivo(id: string, activo: boolean) {
+  const { error } = await supabase.rpc('app_set_user_activo', { p_id: id.toUpperCase(), p_activo: activo })
+  if (error) {
+    if ((error as { code?: string }).code === '23505' || /unique|duplicate/i.test(error.message || '')) {
+      throw new Error('Ya existe un usuario ACTIVO con ese nombre. Desactiva o renombra el otro primero.')
+    }
+    throw new Error(error.message || 'No se pudo cambiar el estado del usuario')
   }
   return true
 }

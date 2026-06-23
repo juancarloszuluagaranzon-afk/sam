@@ -17,18 +17,20 @@ interface SupportSwitcherProps {
  * intercambia en App.tsx (enterImpersonation); una barra flotante permite volver.
  */
 export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcherProps) {
+  // Solo se puede impersonar usuarios ACTIVOS (los inactivos no pueden loguear).
+  const act = (u: UserProfile) => u.active !== false
   const operators = useMemo(
-    () => users.filter((u) => u.role === 'operador').sort((a, b) => a.name.localeCompare(b.name)),
+    () => users.filter((u) => u.role === 'operador' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
   const supervisors = useMemo(
-    () => users.filter((u) => u.role === 'supervisor').sort((a, b) => a.name.localeCompare(b.name)),
+    () => users.filter((u) => u.role === 'supervisor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
-  const owners = useMemo(() => users.filter((u) => u.role === 'owner'), [users])
-  const admins = useMemo(() => users.filter((u) => u.role === 'administracion'), [users])
+  const owners = useMemo(() => users.filter((u) => u.role === 'owner' && act(u)), [users])
+  const admins = useMemo(() => users.filter((u) => u.role === 'administracion' && act(u)), [users])
   const insumosSups = useMemo(
-    () => users.filter((u) => u.role === 'supervisor_insumos').sort((a, b) => a.name.localeCompare(b.name)),
+    () => users.filter((u) => u.role === 'supervisor_insumos' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
 

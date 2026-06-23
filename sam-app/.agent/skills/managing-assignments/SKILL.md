@@ -292,6 +292,12 @@ Actualmente lo abre `EntityHistoryModal` al hacer click en una fila `.movement-r
 
 Si exponés un campo nuevo en `Assignment` que un supervisor quiera ver, agregalo aquí — es el render path único para detalle desde el modal histórico.
 
+## Scope por supervisor: Reporte y Resumen consistentes (id, no nombre)
+
+Tanto el **Resumen** (`scopedAssignments`, SupervisorView) como el **Reporte** (`filteredReport`, App.tsx) filtran `supervisorId === session.id` cuando `role === 'supervisor'` (owner/admin/soporte ven TODO). Antes el Reporte mostraba todo a un supervisor → inconsistente con su Resumen (2026-06-23). El agrupamiento por persona es por **id**, nunca por nombre.
+
+⚠️ **Si una labor aparece en el Reporte pero NO en el Resumen** (o viceversa) para un supervisor: casi seguro su `supervisor_id` no es el del supervisor logueado — típicamente por un **usuario duplicado con el mismo nombre pero id distinto** (caso JULIO CESAR NIÑO U033/U040). Ver el gotcha en `managing-supabase` (consolidar al id real + índice único `app_usuarios_nombre_activo_uniq` + guard anti-duplicados en el form).
+
 ## Filtro de búsqueda en secciones del Resumen
 
 Pestaña Resumen tiene un `<input className="user-search-input" type="search">` arriba del grid de cards en las secciones **Por Operador** y **Por Equipo**. Estados independientes (`summaryOperatorSearch`, `summaryEquipmentSearch`). Memos `filteredOperators` / `filteredEquipment` filtran case-insensitive por `.name` DESPUÉS del agrupamiento — no recalcula métricas globales ni la sección "Por Labor".

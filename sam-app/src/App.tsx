@@ -253,6 +253,9 @@ function AppContent() {
     const yesterdayKey = `${yDate.getFullYear()}-${String(yDate.getMonth() + 1).padStart(2, '0')}-${String(yDate.getDate()).padStart(2, '0')}`
     return assignments
       .filter((a) => {
+        // Mismo scope que el Resumen: un SUPERVISOR solo ve SUS labores
+        // (las que él asignó). Owner/administración/soporte ven todas.
+        if (session?.role === 'supervisor' && a.supervisorId !== session.id) return false
         const execDate = executionDateKey(a)
         // Filtro de período: CUSTOM usa desde/hasta manuales, AYER compara contra
         // ayer, los demás usan matchesSummaryFilter (misma lógica que el Resumen).
@@ -280,7 +283,7 @@ function AppContent() {
         return true
       })
       .sort((a, b) => executionDateKey(b).localeCompare(executionDateKey(a)))
-  }, [assignments, reportFilters, todayKey, maestro])
+  }, [assignments, reportFilters, todayKey, maestro, session])
 
   const handleChangePin = async (e: FormEvent) => {
     e.preventDefault()

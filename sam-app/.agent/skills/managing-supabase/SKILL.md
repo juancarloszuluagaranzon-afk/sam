@@ -30,12 +30,16 @@ return { data: mapped, source: 'supabase' }
 | `asignaciones` | `id`, `suerte_codigo`, `numero_suerte`, `codigo_hacienda`, `nombre_hacienda`, `labor_nombre`, `tractor`, `equipo_codigo`, `equipo_nombre`, `area_asignada`, `estado`, `fecha_inicio`, `fecha_fin`, `area_realizada`, `observaciones`, `supervisor_id`, `supervisor_nombre`, `operador_id`, `operador_nombre`, `tipo_registro`, `created_at` |
 | `maestro_risaralda` | `hacienda`, `nombre_hacienda`, `suerte`, `area_neta`, `ingenio_id`, `activo`, `creado_manual`, `creado_por`, `creado_en` |
 | `app_usuarios` | `id`, `nombre_completo`, `rol`, `equipo_codigo`, `activo`, `orden` |
-| `equipos` | `codigo`, `nombre`, `activo` |
+| `equipos` | `id` (serial), `codigo`, `nombre`, `tipo` (enum `tipo_equipo`, def `tractor`), `estado` (enum `estado_equipo`: `activo`/`en_mantenimiento`/`inactivo`), `marca`, `modelo`, `año` (con ñ), `placa`, `numero_serie`, `observaciones`, `activo` (bool). **RLS de escritura: mig. `20260623130000`** (antes solo SELECT → crear equipo desde la app fallaba). |
 | `labor_sesiones` | log inmutable de cada sesión (inicio→cierre): `asignacion_id`, `fecha`, `horometro_inicial/final`, `horas`, `area_ejecutada` (mig. `20260614120000`) |
 | `labores_catalogo` | catálogo CRUD de TIPOS de labor: `id` (uuid), `nombre` (unique), `activa` (bool), `tipo` (`MECANIZADA`/`MANUAL`), `created_at`, `updated_at` (migs. `20260615120000` + `20260615130000`) |
 | `planilla_revisiones` | **resaltado** de celdas (operario×día) de la Planilla: `id`, `operador_id`, `fecha`, `color` (`azul`/`rojo`/`amarillo`/`verde`, def `azul`, mig. `20260617120000`), `revisado_por`, UNIQUE(`operador_id`,`fecha`) (mig. `20260615140000`) |
 | `labor_revisiones` | **(creada pero SIN USO en el cliente — el marcado de tarjetas se revirtió)** `id`, `asignacion_id` (unique), `revisado_por` (mig. `20260615150000`) |
 | `operario_novedades` | novedad/disponibilidad por día del operario: `id`, `operador_id`, `fecha`, `tipo` (texto: `V`/`T`/`NP`/`D`/`P`/`C` = Vacaciones/Taller/No-programado/Descanso/Permiso/Camioneta), UNIQUE(`operador_id`,`fecha`) (mig. `20260616130000`). El `tipo` es texto libre → agregar nuevos tipos NO requiere migración. |
+| `empresas` | catálogo SOLO informativo (CRUD): `id`, `nombre` (unique), `activo` (mig. `20260619120000`). NO se liga a nada (decisión del usuario). |
+| `terceros` | catálogo informativo de ingenios/terceros: `id`, `nombre` (unique), `activo` (mig. `20260619120000`). NO se enlaza a suertes (se quitó el `tercero_id`). |
+| `zonas` | catálogo: `id`, `codigo` (unique, p.ej. `NORTE`), `nombre`, `activo` (mig. `20260621120000`). `app_usuarios.zona` (= codigo) se asigna al SUPERVISOR para auto-llenar la zona al aprobar. |
+| `insumos`, `insumos_kardex`, `insumos_solicitudes`, `insumos_solicitud_items` | **Módulo Insumos y Combustible** (catálogo/kardex, solicitudes, despachos con evidencia, costeo por máquina). Ver el skill **`managing-insumos`** para detalle completo. |
 
 > ⚠️ **NO confundir `labores_catalogo` (nuestro) con `labores` (singular).** Existe una tabla `labores` que pertenece a OTRO módulo (recibos/nómina): es transaccional, `id` **entero serial**, ~18 columnas (`tipo_labor_id`, `maestro_id`, `hacienda`, `nombre_hacienda`…), y tiene una FK desde `recibos` (`recibos_labor_id_fkey`) + policy `operario_ver_sus_recibos`. **NUNCA hacer DROP ni ALTER de `labores`.** Por eso el catálogo de labores se llama `labores_catalogo`.
 
@@ -43,7 +47,7 @@ return { data: mapped, source: 'supabase' }
 
 - `asignaciones_estado_check`: `estado IN ('PENDIENTE', 'EN_PROCESO', 'COMPLETADA', 'CANCELADA', 'PARCIAL')`
 - `uniq_maestro_suerte`: UNIQUE `(hacienda, suerte, ingenio_id)` en `maestro_risaralda` — evita duplicados ad-hoc cross-supervisores. Violación → error 23505 (PostgREST `unique_violation`).
-- `app_usuarios.rol` CHECK: `('supervisor', 'operador', 'owner', 'administracion', 'soporte')` (soporte añadido en migración `20260611120000`).
+- `app_usuarios.rol` CHECK: `('supervisor', 'operador', 'owner', 'administracion', 'soporte', 'supervisor_insumos')` (soporte en mig. `20260611120000`; **`supervisor_insumos` en mig. `20260623140000`**). ⚠️ **SÍ existe el CHECK** (confirmado 2026-06-23) → cualquier rol nuevo DEBE agregarse al CHECK o crear el usuario falla con 23514. La mig. `20260623140000` busca el CHECK por su nombre real (DO block) y lo recrea. Verificar: `SELECT conname, pg_get_constraintdef(oid) FROM pg_constraint WHERE conrelid='public.app_usuarios'::regclass AND contype='c';`
 - **Rol `soporte` (impersonación):** entra a una pantalla "Ver como…" (`SupportSwitcher`) que intercambia la sesión efectiva para ver/actuar como propietario, administración, o un supervisor/operario concreto. **GOTCHA:** el rol DB→app se mapea en DOS sitios de `samApi.ts` — `loadAppUsers` Y **`appLogin`**. Si agregas un rol y solo tocas uno, el login lo manda al fallback `'operador'`. Actualizar AMBOS.
 
 ## mapAssignment — mapeo canónico

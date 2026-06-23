@@ -289,6 +289,7 @@ export function OperatorView({
   const [solNota, setSolNota] = useState('')
   const [savingSol, setSavingSol] = useState(false)
   const [misSolicitudes, setMisSolicitudes] = useState<SolicitudInsumo[]>([])
+  const [solHistOpen, setSolHistOpen] = useState(false)
 
   async function refreshMisSolicitudes() {
     if (!session) return
@@ -1427,6 +1428,44 @@ export function OperatorView({
                 </div>
               )
             })()}
+
+            {/* Historial de solicitudes de insumos (desplegable) */}
+            <div style={{ marginBottom: 12 }}>
+              <button
+                type="button"
+                className="inline-button"
+                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                onClick={() => setSolHistOpen((v) => !v)}
+                aria-expanded={solHistOpen}
+              >
+                <span>🛢️ Solicitudes de insumos ({misSolicitudes.length})</span>
+                <span>{solHistOpen ? '▾' : '▸'}</span>
+              </button>
+              {solHistOpen && (
+                misSolicitudes.length === 0 ? (
+                  <p className="muted-text" style={{ padding: '8px 2px' }}>Aún no has hecho solicitudes.</p>
+                ) : (
+                  <div className="list-rows" style={{ marginTop: 8 }}>
+                    {misSolicitudes.map((s) => {
+                      const estadoTxt = s.estado.charAt(0) + s.estado.slice(1).toLowerCase()
+                      const color = s.estado === 'ENTREGADA' ? 'var(--color-brand)' : s.estado === 'RECHAZADA' ? '#b3261e' : s.estado === 'PROGRAMADA' ? '#b06a00' : 'var(--color-ink-mid)'
+                      const fecha = s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : ''
+                      return (
+                        <div key={s.id} className="movement-row">
+                          <div>
+                            <strong>{s.items.map((it) => `${it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}</strong>
+                            <span>{fecha}{s.motivoRechazo ? ` · ${s.motivoRechazo}` : ''}</span>
+                          </div>
+                          <div className="movement-side">
+                            <span style={{ fontSize: '0.76rem', fontWeight: 700, color, whiteSpace: 'nowrap' }}>{estadoTxt}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              )}
+            </div>
 
             <div className="list-rows">
               {historyItems.map((item) => {

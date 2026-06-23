@@ -1018,6 +1018,18 @@ export async function loadKardex(insumoId?: string, limit = 200): Promise<Insumo
   return data.map(mapKardex)
 }
 
+// Carga TODOS los movimientos del kardex cargados a un equipo concreto.
+export async function loadKardexDeEquipo(equipoCodigo: string, limit = 500): Promise<InsumoKardex[]> {
+  const { data, error } = await supabase
+    .from('insumos_kardex')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
+    .eq('equipo_codigo', equipoCodigo)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (error || !data) return []
+  return data.map(mapKardex)
+}
+
 // Carga las SALIDAS del kardex que tienen máquina asignada (para el reporte de
 // consumo por equipo / acumulador de costos por tractor).
 export async function loadKardexSalidasEquipo(limit = 1000): Promise<InsumoKardex[]> {

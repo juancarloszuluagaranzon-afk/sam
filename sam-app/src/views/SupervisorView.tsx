@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo } from '../services/samApi'
 import { db } from '../lib/db'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
@@ -20,7 +20,7 @@ import {
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
 import { WORKFLOW } from '../data/constants'
-import type { Assignment, MaestroRow, UserProfile } from '../domain/sam'
+import type { Assignment, Equipment, InsumoKardex, MaestroRow, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 import { ValidationTab } from './ValidationTab'
@@ -238,8 +238,29 @@ export function SupervisorView({
     isOnline, outboxCount, busy, error, info,
     operators, users, setUsers, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
-    activeLabores, labores, zonas,
+    activeLabores, labores, zonas, insumos,
   } = useAppData()
+
+  // Consumo de insumos cargado a un equipo (modal al tocar una tarjeta de equipo).
+  const [equipoConsumo, setEquipoConsumo] = useState<Equipment | null>(null)
+  const [equipoConsumoRows, setEquipoConsumoRows] = useState<InsumoKardex[]>([])
+  const [equipoConsumoLoading, setEquipoConsumoLoading] = useState(false)
+  const insumoInfoMap = useMemo(() => {
+    const m = new Map<string, { nombre: string; unidad: string }>()
+    insumos.forEach((i) => m.set(i.id, { nombre: i.nombre, unidad: i.unidad }))
+    return m
+  }, [insumos])
+
+  async function openEquipoConsumo(item: Equipment) {
+    setEquipoConsumo(item)
+    setEquipoConsumoRows([])
+    setEquipoConsumoLoading(true)
+    try {
+      setEquipoConsumoRows(await loadKardexDeEquipo(item.code))
+    } finally {
+      setEquipoConsumoLoading(false)
+    }
+  }
 
   // Zonas activas para el selector del formulario de usuario (solo supervisores).
   const zonasActivas = useMemo(
@@ -2795,7 +2816,15 @@ export function SupervisorView({
                     .reduce((sum, assignment) => sum + assignment.area, 0)
 
                   return (
-                    <article key={item.code} className="equipment-card">
+                    <article
+                      key={item.code}
+                      className="equipment-card"
+                      style={{ cursor: 'pointer' }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => void openEquipoConsumo(item)}
+                      title="Ver materiales cargados a esta máquina"
+                    >
                       <div className="equipment-card-head">
                         <div>
                           <h3>{item.name}</h3>
@@ -2820,6 +2849,60 @@ export function SupervisorView({
             </article>
           </section>
         ) : null}
+
+        {equipoConsumo && (
+          <div className="modal-overlay open" onClick={() => setEquipoConsumo(null)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(520px, calc(100vw - 32px))' }}>
+              <div className="labor-detail-header">
+                <div><p className="eyebrow">Máquina</p><h3>🚜 {equipoConsumo.name}</h3></div>
+                <button type="button" className="modal-close-btn" onClick={() => setEquipoConsumo(null)} aria-label="Cerrar">&#x2715;</button>
+              </div>
+              <p className="subtle-copy" style={{ marginTop: 0 }}>Materiales y combustible cargados a esta máquina.</p>
+              {(() => {
+                const salidas = equipoConsumoRows.filter((m) => m.tipo === 'SALIDA')
+                const totales = new Map<string, number>()
+                salidas.forEach((m) => totales.set(m.insumoId, (totales.get(m.insumoId) ?? 0) + m.cantidad))
+                if (equipoConsumoLoading) return <p className="muted-text">Cargando…</p>
+                if (salidas.length === 0) return <p className="muted-text">A esta máquina aún no se le ha cargado material.</p>
+                return (
+                  <>
+                    <strong style={{ fontSize: '0.9rem' }}>Total cargado</strong>
+                    <ul style={{ listStyle: 'none', margin: '6px 0 12px', padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {Array.from(totales.entries()).map(([insumoId, total]) => {
+                        const info = insumoInfoMap.get(insumoId)
+                        return (
+                          <li key={insumoId} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span>{info?.nombre ?? insumoId}</span>
+                            <strong>{total} {info?.unidad ?? ''}</strong>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                    <strong style={{ fontSize: '0.9rem' }}>Despachos ({salidas.length})</strong>
+                    <div className="list-rows" style={{ marginTop: 6, maxHeight: '40vh', overflowY: 'auto' }}>
+                      {salidas.map((m) => {
+                        const info = insumoInfoMap.get(m.insumoId)
+                        const fecha = m.createdAt ? new Date(m.createdAt).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+                        return (
+                          <div key={m.id} className="movement-row">
+                            <div>
+                              <strong>{m.cantidad} {info?.unidad ?? ''} {info?.nombre ?? ''}</strong>
+                              <span>{m.motivo ?? ''}</span>
+                            </div>
+                            <div className="movement-side"><small>{fecha}</small></div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              })()}
+              <div className="modal-footer">
+                <button type="button" className="primary-button" onClick={() => setEquipoConsumo(null)}>Cerrar</button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {selectedLabor && (() => {
           const meta = getStatusMeta(selectedLabor)

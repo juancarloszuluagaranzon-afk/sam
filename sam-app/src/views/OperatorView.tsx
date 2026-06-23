@@ -15,7 +15,8 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
+import type { SolicitudInsumo } from '../domain/sam'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
 
@@ -248,7 +249,7 @@ export function OperatorView({
   handleChangePin,
   onSaveSession,
 }: Props) {
-  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores } = useAppData()
+  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos } = useAppData()
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
 
@@ -290,6 +291,55 @@ export function OperatorView({
     const ocurridas = misNovedadesOrden.filter((n) => n.fecha <= todayKey)
     return ocurridas[0] ?? misNovedadesOrden[0] ?? null
   }, [misNovedadesOrden, todayKey])
+
+  // ── Solicitudes de insumos (fase 2) ──
+  const activeInsumos = useMemo(
+    () => insumos.filter((i) => i.activo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+    [insumos],
+  )
+  const [solOpen, setSolOpen] = useState(false)
+  const [solItems, setSolItems] = useState<{ insumoId: string; cantidad: string }[]>([{ insumoId: '', cantidad: '' }])
+  const [solNota, setSolNota] = useState('')
+  const [savingSol, setSavingSol] = useState(false)
+  const [misSolicitudes, setMisSolicitudes] = useState<SolicitudInsumo[]>([])
+
+  async function refreshMisSolicitudes() {
+    if (!session) return
+    try {
+      setMisSolicitudes(await loadSolicitudes({ operarioId: session.id, limit: 30 }))
+    } catch { /* offline: conserva lo último */ }
+  }
+  useEffect(() => {
+    void refreshMisSolicitudes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id])
+
+  function openSolicitud() {
+    setSolItems([{ insumoId: '', cantidad: '' }])
+    setSolNota('')
+    setError('')
+    setSolOpen(true)
+  }
+
+  async function submitSolicitud() {
+    if (!session) return
+    const items = solItems
+      .filter((r) => r.insumoId && Number(r.cantidad) > 0)
+      .map((r) => {
+        const ins = insumos.find((i) => i.id === r.insumoId)
+        return { insumoId: r.insumoId, insumoNombre: ins?.nombre ?? '', unidad: ins?.unidad ?? '', cantidad: Number(r.cantidad) }
+      })
+    if (items.length === 0) { setError('Agrega al menos un insumo con cantidad.'); return }
+    setSavingSol(true); setError('')
+    try {
+      await createSolicitud({ operarioId: session.id, operarioNombre: session.name, nota: solNota.trim() || undefined, items })
+      setInfo(`Solicitud enviada (${items.length} ítem${items.length === 1 ? '' : 's'}).`)
+      setSolOpen(false)
+      void refreshMisSolicitudes()
+    } catch {
+      setError('No se pudo enviar la solicitud. Revisa la conexión.')
+    } finally { setSavingSol(false) }
+  }
 
   async function submitNovedad() {
     if (!session) return
@@ -751,6 +801,68 @@ export function OperatorView({
         </div>
       )}
 
+      {/* Solicitar insumos */}
+      {solOpen && (
+        <div className="modal-overlay open" onClick={() => { if (!savingSol) setSolOpen(false) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(480px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Insumos</p><h3>🛢️ Solicitar insumos</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setSolOpen(false)} disabled={savingSol} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            {activeInsumos.length === 0 ? (
+              <p className="subtle-copy">Aún no hay insumos en el catálogo. Pídele al supervisor que los cree.</p>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {solItems.map((row, idx) => {
+                    const ins = insumos.find((i) => i.id === row.insumoId)
+                    return (
+                      <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                        <select
+                          value={row.insumoId}
+                          onChange={(e) => setSolItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: e.target.value } : r)))}
+                          disabled={savingSol}
+                          style={{ flex: 1, minWidth: 0 }}
+                        >
+                          <option value="">Insumo…</option>
+                          {activeInsumos.map((i) => (
+                            <option key={i.id} value={i.id}>{i.nombre} ({i.unidad})</option>
+                          ))}
+                        </select>
+                        <input
+                          type="number" min={0} step="any" placeholder="Cant."
+                          value={row.cantidad}
+                          onChange={(e) => setSolItems((prev) => prev.map((r, i) => (i === idx ? { ...r, cantidad: e.target.value } : r)))}
+                          disabled={savingSol}
+                          style={{ width: 80 }}
+                        />
+                        <span className="subtle-copy" style={{ width: 48, fontSize: '0.78rem' }}>{ins?.unidad ?? ''}</span>
+                        {solItems.length > 1 && (
+                          <button type="button" className="modal-close-btn" onClick={() => setSolItems((prev) => prev.filter((_, i) => i !== idx))} disabled={savingSol} aria-label="Quitar">&#x2715;</button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                <button type="button" className="inline-button" style={{ marginTop: 8 }} onClick={() => setSolItems((prev) => [...prev, { insumoId: '', cantidad: '' }])} disabled={savingSol}>
+                  + Agregar otro insumo
+                </button>
+                <label style={{ marginTop: 10 }}>
+                  Nota <span className="field-optional">(opcional)</span>
+                  <input type="text" placeholder="Para qué / dónde…" value={solNota} onChange={(e) => setSolNota(e.target.value)} disabled={savingSol} />
+                </label>
+              </>
+            )}
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setSolOpen(false)} disabled={savingSol}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void submitSolicitud()} disabled={savingSol || activeInsumos.length === 0}>
+                {savingSol ? 'Enviando…' : 'Enviar solicitud'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <NewSuerteModal
         open={isNewSuerteOpen}
         onClose={() => setIsNewSuerteOpen(false)}
@@ -867,9 +979,12 @@ export function OperatorView({
               </article>
             </div>
 
-            <div className="operator-novedades-bar">
-              <button type="button" className="operator-novedad-trigger" onClick={openNovedadModal}>
+            <div className="operator-novedades-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" className="operator-novedad-trigger" onClick={openNovedadModal} style={{ flex: 1 }}>
                 📋 Registrar novedad
+              </button>
+              <button type="button" className="operator-novedad-trigger" onClick={openSolicitud} style={{ flex: 1 }}>
+                🛢️ Solicitar insumos
               </button>
             </div>
 
@@ -898,6 +1013,30 @@ export function OperatorView({
                     </span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {misSolicitudes.length > 0 && (
+              <div className="panel-card" style={{ padding: '12px 14px', marginBottom: 12 }}>
+                <div className="panel-title split" style={{ marginBottom: 8 }}>
+                  <h2 style={{ fontSize: '0.98rem', margin: 0 }}>🛢️ Mis solicitudes de insumos</h2>
+                  <span className="subtle-copy">{misSolicitudes.length}</span>
+                </div>
+                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {misSolicitudes.slice(0, 8).map((s) => {
+                    const estadoTxt = s.estado.charAt(0) + s.estado.slice(1).toLowerCase()
+                    const color = s.estado === 'ENTREGADA' ? 'var(--color-brand)' : s.estado === 'RECHAZADA' ? '#b3261e' : s.estado === 'PROGRAMADA' ? '#b06a00' : 'var(--color-ink-mid)'
+                    return (
+                      <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+                        <div style={{ minWidth: 0 }}>
+                          <strong style={{ fontSize: '0.9rem' }}>{s.items.map((it) => `${it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}</strong>
+                          {s.motivoRechazo && <div className="subtle-copy" style={{ fontSize: '0.78rem' }}>Motivo: {s.motivoRechazo}</div>}
+                        </div>
+                        <span style={{ fontSize: '0.76rem', fontWeight: 700, color, whiteSpace: 'nowrap' }}>{estadoTxt}</span>
+                      </li>
+                    )
+                  })}
+                </ul>
               </div>
             )}
 

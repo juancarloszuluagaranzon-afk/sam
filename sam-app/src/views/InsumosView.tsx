@@ -1,7 +1,7 @@
 import { useAppData } from '../context/AppDataContext'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../components/ThemeToggle'
-import { InsumosInventarioTab } from './InsumosInventarioTab'
+import { InsumosModule } from './InsumosModule'
 
 /**
  * Vista del rol "Supervisor de insumos" (módulo Insumos y Combustible).
@@ -42,7 +42,7 @@ export function InsumosView({ onLogout }: { onLogout: () => void }) {
       )}
 
       <div style={{ padding: '12px 0' }}>
-        <InsumosInventarioTab />
+        <InsumosModule />
       </div>
     </main>
   )

@@ -176,6 +176,30 @@ export interface InsumoKardex {
   createdAt: string
 }
 
+// Solicitud de insumos del operario (fase 2). PENDIENTE→PROGRAMADA/RECHAZADA;
+// ENTREGADA la marca el despacho (fase 3).
+export type SolicitudEstado = 'PENDIENTE' | 'PROGRAMADA' | 'ENTREGADA' | 'RECHAZADA' | 'CANCELADA'
+
+export interface SolicitudItem {
+  id?: string
+  insumoId?: string
+  insumoNombre: string
+  unidad: string
+  cantidad: number
+}
+
+export interface SolicitudInsumo {
+  id: string
+  operarioId: string
+  operarioNombre?: string
+  estado: SolicitudEstado
+  nota?: string
+  zona?: string
+  motivoRechazo?: string
+  createdAt: string
+  items: SolicitudItem[]
+}
+
 export interface CreateAssignmentInput {
   haciendaCode: string
   haciendaName: string

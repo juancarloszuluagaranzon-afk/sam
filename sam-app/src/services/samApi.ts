@@ -12,6 +12,9 @@ import type {
   InsumoCategoria,
   InsumoKardex,
   KardexTipo,
+  SolicitudEstado,
+  SolicitudInsumo,
+  SolicitudItem,
   Labor,
   LaborTipo,
   MaestroRow,
@@ -1060,6 +1063,91 @@ export async function registrarMovimientoInsumo(input: {
     .single()
   if (e3 || !upd) throw e3 ?? new Error('No se pudo actualizar el stock')
   return mapInsumo(upd)
+}
+
+// ── Solicitudes de insumos (fase 2) ─────────────────────────────────────────
+
+function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
+  const estado = String(row.estado ?? 'PENDIENTE').trim().toUpperCase() as SolicitudEstado
+  const rawItems = Array.isArray(row.items) ? (row.items as Record<string, unknown>[]) : []
+  return {
+    id: String(row.id),
+    operarioId: String(row.operario_id),
+    operarioNombre: row.operario_nombre ? String(row.operario_nombre) : undefined,
+    estado: (['PENDIENTE', 'PROGRAMADA', 'ENTREGADA', 'RECHAZADA', 'CANCELADA'] as string[]).includes(estado) ? estado : 'PENDIENTE',
+    nota: row.nota ? String(row.nota) : undefined,
+    zona: row.zona ? String(row.zona) : undefined,
+    motivoRechazo: row.motivo_rechazo ? String(row.motivo_rechazo) : undefined,
+    createdAt: String(row.created_at ?? ''),
+    items: rawItems.map((it) => ({
+      id: String(it.id),
+      insumoId: it.insumo_id ? String(it.insumo_id) : undefined,
+      insumoNombre: String(it.insumo_nombre ?? ''),
+      unidad: String(it.unidad ?? ''),
+      cantidad: Number(it.cantidad ?? 0),
+    })),
+  }
+}
+
+export async function createSolicitud(input: {
+  operarioId: string
+  operarioNombre?: string
+  nota?: string
+  zona?: string
+  items: SolicitudItem[]
+}): Promise<SolicitudInsumo> {
+  const { data: sol, error: e1 } = await supabase
+    .from('insumos_solicitudes')
+    .insert({
+      operario_id: input.operarioId,
+      operario_nombre: input.operarioNombre ?? null,
+      nota: input.nota ?? null,
+      zona: input.zona ?? null,
+    })
+    .select('*')
+    .single()
+  if (e1 || !sol) throw e1 ?? new Error('No se pudo crear la solicitud')
+
+  const rows = input.items.map((it) => ({
+    solicitud_id: sol.id,
+    insumo_id: it.insumoId ?? null,
+    insumo_nombre: it.insumoNombre,
+    unidad: it.unidad,
+    cantidad: it.cantidad,
+  }))
+  if (rows.length) {
+    const { error: e2 } = await supabase.from('insumos_solicitud_items').insert(rows)
+    if (e2) throw new Error(e2.message || 'No se pudieron guardar los ítems')
+  }
+  return mapSolicitud({ ...sol, items: rows.map((r, i) => ({ id: `tmp-${i}`, ...r })) })
+}
+
+export async function loadSolicitudes(opts?: {
+  operarioId?: string
+  estados?: SolicitudEstado[]
+  limit?: number
+}): Promise<SolicitudInsumo[]> {
+  let query = supabase
+    .from('insumos_solicitudes')
+    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad)')
+    .order('created_at', { ascending: false })
+    .limit(opts?.limit ?? 200)
+  if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
+  if (opts?.estados && opts.estados.length) query = query.in('estado', opts.estados)
+  const { data, error } = await query
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapSolicitud)
+}
+
+export async function updateSolicitudEstado(
+  id: string,
+  estado: SolicitudEstado,
+  motivoRechazo?: string,
+): Promise<void> {
+  const payload: Record<string, unknown> = { estado, updated_at: new Date().toISOString() }
+  if (motivoRechazo !== undefined) payload.motivo_rechazo = motivoRechazo || null
+  const { error } = await supabase.from('insumos_solicitudes').update(payload).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo actualizar la solicitud')
 }
 
 // ──────────────────── Marcas de "revisado" de la Planilla ────────────────────

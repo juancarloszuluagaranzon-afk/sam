@@ -31,7 +31,7 @@ import { LaboresTab } from './LaboresTab'
 import { EmpresasTab } from './EmpresasTab'
 import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
-import { InsumosInventarioTab } from './InsumosInventarioTab'
+import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
 export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros' | 'zonas' | 'insumos'
@@ -1714,7 +1714,7 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumos' ? (
-          <InsumosInventarioTab />
+          <InsumosModule />
         ) : null}
 
         {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor') && supervisorTab === 'reporte' ? (

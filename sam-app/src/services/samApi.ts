@@ -540,15 +540,25 @@ export async function loadAssignments(): Promise<{
       return { data: all, source: 'supabase', error: null }
     }
 
-    // Sync completo (primera carga o cache vacio)
-    const { data, error } = await supabase
-      .from('asignaciones')
-      .select('*')
-      .order('created_at', { ascending: false })
+    // Sync completo (primera carga o cache vacio).
+    // PostgREST capa el response (~1000 filas). Ordenando por created_at, las
+    // asignaciones VIEJAS se salen de la ventana → una programada/abierta de
+    // hace tiempo desaparecía de Activas en cada full sync. Para evitarlo,
+    // hacemos DOS consultas y las combinamos (dedupe por id):
+    //   1) TODAS las ABIERTAS (no cerradas) — sin importar antigüedad.
+    //   2) Las recientes — historial (acotado por el cap).
+    // Así una abierta nunca se pierde hasta que se cierre (COMPLETADA) o cancele.
+    const [openRes, recentRes] = await Promise.all([
+      supabase.from('asignaciones').select('*').not('estado', 'in', '(COMPLETADA,CANCELADA,FINALIZADO)'),
+      supabase.from('asignaciones').select('*').order('created_at', { ascending: false }),
+    ])
+    const error = openRes.error ?? recentRes.error
+    const rawRows = [...(openRes.data ?? []), ...(recentRes.data ?? [])]
+    if (error || rawRows.length === 0) throw error ?? new Error('empty')
 
-    if (error || !data) throw error ?? new Error('empty')
-
-    const mapped = data.map((row) => mapAssignment(row as Record<string, unknown>))
+    const byId = new Map<string, Record<string, unknown>>()
+    for (const r of rawRows) byId.set(String((r as Record<string, unknown>).id), r as Record<string, unknown>)
+    const mapped = Array.from(byId.values()).map((row) => mapAssignment(row))
 
     // Antes de clear()+bulkPut(), rescatamos las filas locales con cambios
     // pendientes en outbox. Sin esto, un full sync (ej. al login o al forzar

@@ -1001,6 +1001,7 @@ function mapKardex(row: Record<string, unknown>): InsumoKardex {
     referencia: row.referencia ? String(row.referencia) : undefined,
     creadoPor: row.creado_por ? String(row.creado_por) : undefined,
     createdAt: String(row.created_at ?? ''),
+    equipoCodigo: row.equipo_codigo ? String(row.equipo_codigo) : undefined,
   }
 }
 
@@ -1008,7 +1009,7 @@ function mapKardex(row: Record<string, unknown>): InsumoKardex {
 export async function loadKardex(insumoId?: string, limit = 200): Promise<InsumoKardex[]> {
   let query = supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (insumoId) query = query.eq('insumo_id', insumoId)
@@ -1030,6 +1031,7 @@ export async function registrarMovimientoInsumo(input: {
   motivo?: string
   referencia?: string
   creadoPor?: string
+  equipoCodigo?: string
 }): Promise<Insumo> {
   const { data: actual, error: e1 } = await supabase
     .from('insumos')
@@ -1052,6 +1054,7 @@ export async function registrarMovimientoInsumo(input: {
       motivo: input.motivo ?? null,
       referencia: input.referencia ?? null,
       creado_por: input.creadoPor ?? null,
+      equipo_codigo: input.equipoCodigo ?? null,
     })
   if (e2) throw new Error(e2.message || 'No se pudo registrar el movimiento')
 
@@ -1084,6 +1087,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     ruta: row.ruta ? String(row.ruta) : undefined,
     evidenciaUrls: Array.isArray(row.evidencia_urls) ? (row.evidencia_urls as unknown[]).map(String) : undefined,
     horometro: row.horometro == null ? undefined : Number(row.horometro),
+    equipoCodigo: row.equipo_codigo ? String(row.equipo_codigo) : undefined,
     items: rawItems.map((it) => ({
       id: String(it.id),
       insumoId: it.insumo_id ? String(it.insumo_id) : undefined,
@@ -1135,7 +1139,7 @@ export async function loadSolicitudes(opts?: {
 }): Promise<SolicitudInsumo[]> {
   let query = supabase
     .from('insumos_solicitudes')
-    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,entregado_en,despachado_por,ruta,evidencia_urls,horometro,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad,cantidad_despachada)')
+    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,entregado_en,despachado_por,ruta,evidencia_urls,horometro,equipo_codigo,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad,cantidad_despachada)')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 200)
   if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
@@ -1179,6 +1183,7 @@ export async function entregarSolicitud(input: {
   despachadoPor?: string
   ruta?: string
   horometro?: number
+  equipoCodigo?: string
   evidenciaUrls: string[]
   items: { itemId?: string; insumoId?: string; cantidadDespachada: number }[]
 }): Promise<Insumo[]> {
@@ -1192,6 +1197,7 @@ export async function entregarSolicitud(input: {
         motivo: 'Despacho de solicitud',
         referencia: input.solicitudId,
         creadoPor: input.despachadoPor,
+        equipoCodigo: input.equipoCodigo,
       })
       actualizados.push(upd)
     }
@@ -1211,6 +1217,7 @@ export async function entregarSolicitud(input: {
       despachado_por: input.despachadoPor ?? null,
       ruta: input.ruta ?? null,
       horometro: input.horometro ?? null,
+      equipo_codigo: input.equipoCodigo ?? null,
       evidencia_urls: input.evidenciaUrls,
       updated_at: new Date().toISOString(),
     })

@@ -20,7 +20,14 @@ const ESTADO_LABEL: Record<SolicitudEstado, string> = {
 }
 
 export function BandejaInsumosTab() {
-  const { users, session, insumos, setInsumos, busy, setBusy, setError, setInfo } = useAppData()
+  const { users, session, insumos, setInsumos, sortedEquipment, busy, setBusy, setError, setInfo } = useAppData()
+
+  const equipoNombre = useMemo(() => {
+    const m = new Map<string, string>()
+    sortedEquipment.forEach((e) => m.set(e.code, e.name))
+    return m
+  }, [sortedEquipment])
+  const equipoDeOperario = (operarioId: string) => users.find((u) => u.id === operarioId)?.equipmentCode ?? ''
 
   const [filtro, setFiltro] = useState<'PENDIENTE' | 'PROGRAMADA' | 'TODAS'>('PENDIENTE')
   const [solicitudes, setSolicitudes] = useState<SolicitudInsumo[]>([])
@@ -32,6 +39,7 @@ export function BandejaInsumosTab() {
   const [entregaTarget, setEntregaTarget] = useState<SolicitudInsumo | null>(null)
   const [entregaItems, setEntregaItems] = useState<{ itemId?: string; insumoId?: string; insumoNombre: string; unidad: string; cantidad: string }[]>([])
   const [entregaRuta, setEntregaRuta] = useState('')
+  const [entregaEquipo, setEntregaEquipo] = useState('')
   const [entregaHorometro, setEntregaHorometro] = useState('')
   const [evidencias, setEvidencias] = useState<string[]>([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
@@ -90,6 +98,7 @@ export function BandejaInsumosTab() {
       cantidad: String(it.cantidad),
     })))
     setEntregaRuta('')
+    setEntregaEquipo(equipoDeOperario(s.operarioId))
     setEntregaHorometro('')
     setEvidencias([])
     setError('')
@@ -115,6 +124,7 @@ export function BandejaInsumosTab() {
       .map((r) => ({ itemId: r.itemId, insumoId: r.insumoId, cantidadDespachada: Number(r.cantidad) }))
       .filter((r) => r.cantidadDespachada > 0)
     if (items.length === 0) { setError('Indica al menos una cantidad a despachar.'); return }
+    if (!entregaEquipo) { setError('Selecciona la máquina a la que se carga el material.'); return }
     const horometro = Number(entregaHorometro)
     if (!entregaHorometro.trim() || isNaN(horometro) || horometro < 0) {
       setError('El horómetro de la máquina es obligatorio.'); return
@@ -125,6 +135,7 @@ export function BandejaInsumosTab() {
         solicitudId: entregaTarget.id,
         despachadoPor: session?.id,
         ruta: entregaRuta.trim() || undefined,
+        equipoCodigo: entregaEquipo,
         horometro,
         evidenciaUrls: evidencias,
         items,
@@ -202,6 +213,7 @@ export function BandejaInsumosTab() {
               <div className="subtle-copy" style={{ fontSize: '0.82rem' }}>
                 Entregado {s.entregadoEn ? fmtFecha(s.entregadoEn) : ''}
                 {s.despachadoPor ? ` · por ${userName.get(s.despachadoPor) ?? s.despachadoPor}` : ''}
+                {s.equipoCodigo ? ` · Máquina: ${equipoNombre.get(s.equipoCodigo) ?? s.equipoCodigo}` : ''}
                 {s.horometro != null ? ` · Horómetro: ${s.horometro}` : ''}
                 {s.ruta ? ` · Ruta: ${s.ruta}` : ''}
                 {s.items.some((it) => it.cantidadDespachada != null) && (
@@ -280,8 +292,17 @@ export function BandejaInsumosTab() {
               />
             </label>
             <label style={{ marginTop: 10 }}>
-              Ruta <span className="field-optional">(opcional)</span>
-              <input type="text" placeholder="Ruta / lugar de entrega" value={entregaRuta} onChange={(e) => setEntregaRuta(e.target.value)} disabled={busy} />
+              Máquina (tractor) <span style={{ color: '#b3261e' }}>*</span>
+              <select value={entregaEquipo} onChange={(e) => setEntregaEquipo(e.target.value)} disabled={busy}>
+                <option value="">Seleccionar máquina…</option>
+                {entregaEquipo && !sortedEquipment.some((eq) => eq.code === entregaEquipo) && (
+                  <option value={entregaEquipo}>{equipoNombre.get(entregaEquipo) ?? entregaEquipo}</option>
+                )}
+                {sortedEquipment.map((eq) => (
+                  <option key={eq.code} value={eq.code}>{eq.name}</option>
+                ))}
+              </select>
+              <span className="field-hint" style={{ fontSize: '0.76rem' }}>Por defecto el equipo del operario. El material se carga a esta máquina.</span>
             </label>
             <div style={{ marginTop: 10 }}>
               <span className="subtle-copy" style={{ display: 'block', marginBottom: 6 }}>Evidencia (fotos)</span>
@@ -297,7 +318,7 @@ export function BandejaInsumosTab() {
             </div>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setEntregaTarget(null)} disabled={busy}>Cancelar</button>
-              <button type="button" className="primary-button" onClick={() => void confirmarEntrega()} disabled={busy || subiendoFoto || !entregaHorometro.trim()}>
+              <button type="button" className="primary-button" onClick={() => void confirmarEntrega()} disabled={busy || subiendoFoto || !entregaHorometro.trim() || !entregaEquipo}>
                 {busy ? 'Guardando…' : 'Confirmar entrega'}
               </button>
             </div>

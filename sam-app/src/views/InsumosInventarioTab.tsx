@@ -21,7 +21,13 @@ function fmtFecha(iso: string): string {
 }
 
 export function InsumosInventarioTab() {
-  const { insumos, setInsumos, users, session, busy, setBusy, setError, setInfo } = useAppData()
+  const { insumos, setInsumos, users, session, sortedEquipment, busy, setBusy, setError, setInfo } = useAppData()
+
+  const equipoNombre = useMemo(() => {
+    const m = new Map<string, string>()
+    sortedEquipment.forEach((e) => m.set(e.code, e.name))
+    return m
+  }, [sortedEquipment])
 
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [nuevoCat, setNuevoCat] = useState<InsumoCategoria>('MATERIAL')
@@ -278,7 +284,7 @@ export function InsumosInventarioTab() {
                     <strong style={{ color: m.tipo === 'SALIDA' ? 'var(--color-danger, #b3261e)' : 'var(--color-brand)' }}>
                       {m.tipo === 'SALIDA' ? '−' : '+'}{m.cantidad} {kardexTarget.unidad}
                     </strong>
-                    <span>{m.tipo}{m.motivo ? ` · ${m.motivo}` : ''}{m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}</span>
+                    <span>{m.tipo}{m.equipoCodigo ? ` · 🚜 ${equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo}` : ''}{m.motivo ? ` · ${m.motivo}` : ''}{m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}</span>
                   </div>
                   <div className="movement-side">
                     <span className="status-pill">Saldo {m.saldo}</span>

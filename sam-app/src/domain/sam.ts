@@ -174,6 +174,8 @@ export interface InsumoKardex {
   referencia?: string
   creadoPor?: string
   createdAt: string
+  // Máquina/tractor a la que se cargó el movimiento (acumulador de costos).
+  equipoCodigo?: string
 }
 
 // Solicitud de insumos del operario (fase 2). PENDIENTE→PROGRAMADA/RECHAZADA;
@@ -206,6 +208,8 @@ export interface SolicitudInsumo {
   ruta?: string
   evidenciaUrls?: string[]
   horometro?: number
+  // Máquina/tractor a la que se cargó la entrega (acumulador de costos).
+  equipoCodigo?: string
 }
 
 export interface CreateAssignmentInput {

@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos'
 
 export type UserId = 'U002' | 'U003' | 'U004'
 
@@ -146,6 +146,34 @@ export interface Zona {
   codigo: string
   nombre: string
   activo: boolean
+}
+
+// ── Módulo Insumos y Combustible ───────────────────────────────────────────
+export type InsumoCategoria = 'COMBUSTIBLE' | 'MATERIAL'
+
+// Catálogo de insumos con stock actual (combustibles y materiales).
+export interface Insumo {
+  id: string
+  nombre: string
+  categoria: InsumoCategoria
+  unidad: string
+  stock: number
+  activo: boolean
+}
+
+export type KardexTipo = 'ENTRADA' | 'SALIDA' | 'AJUSTE'
+
+// Un movimiento de inventario (kardex). `saldo` = stock del insumo tras el mov.
+export interface InsumoKardex {
+  id: string
+  insumoId: string
+  tipo: KardexTipo
+  cantidad: number
+  saldo: number
+  motivo?: string
+  referencia?: string
+  creadoPor?: string
+  createdAt: string
 }
 
 export interface CreateAssignmentInput {

@@ -4,6 +4,7 @@ import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { SupportSwitcher } from './views/SupportSwitcher'
+import { InsumosView } from './views/InsumosView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
@@ -463,6 +464,17 @@ function AppContent() {
       onExit={exitImpersonation}
     />
   ) : null
+
+  // Rol Supervisor de insumos → módulo Insumos y Combustible (vista propia).
+  if (session.role === 'supervisor_insumos') {
+    return (
+      <>
+        {impersonationBar}
+        {syncErrorBanner}
+        <InsumosView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
 
   if (isSupervisorOrOwner(session.role)) {
     return (

@@ -8,6 +8,10 @@ import type {
   DashboardMetrics,
   Empresa,
   Equipment,
+  Insumo,
+  InsumoCategoria,
+  InsumoKardex,
+  KardexTipo,
   Labor,
   LaborTipo,
   MaestroRow,
@@ -613,7 +617,7 @@ export async function loadAppUsers(): Promise<{
     const mapped: UserProfile[] = data.map((row) => ({
       id: String(row.id),
       name: String(row.nombre_completo),
-      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : 'operador',
+      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : row.rol === 'supervisor_insumos' ? 'supervisor_insumos' : 'operador',
       equipmentCode: String(row.equipo_codigo ?? ''),
       photoUrl: row.foto_url ? String(row.foto_url) : undefined,
       zona: row.zona ? String(row.zona) : undefined,
@@ -916,6 +920,146 @@ export async function updateZona(
 export async function deleteZona(id: string): Promise<void> {
   const { error } = await supabase.from('zonas').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar la zona')
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// MÓDULO INSUMOS — catálogo + inventario (kardex). Migración 20260622120000.
+// Sin caché Dexie (lo usan supervisor de insumos / owner / admin, en línea).
+
+function mapInsumo(row: Record<string, unknown>): Insumo {
+  const cat = String(row.categoria ?? 'MATERIAL').trim().toUpperCase()
+  return {
+    id: String(row.id),
+    nombre: String(row.nombre ?? ''),
+    categoria: cat === 'COMBUSTIBLE' ? 'COMBUSTIBLE' : 'MATERIAL',
+    unidad: String(row.unidad ?? 'unidad'),
+    stock: Number(row.stock ?? 0),
+    activo: row.activo == null ? true : Boolean(row.activo),
+  }
+}
+
+export async function loadInsumos(): Promise<{ data: Insumo[]; source: Source }> {
+  try {
+    const { data, error } = await supabase.from('insumos').select('id,nombre,categoria,unidad,stock,activo').order('nombre')
+    if (error || !data) throw error ?? new Error('empty')
+    return { data: data.map(mapInsumo), source: 'supabase' }
+  } catch {
+    return { data: [], source: 'fallback' }
+  }
+}
+
+export async function createInsumo(
+  nombre: string,
+  categoria: InsumoCategoria,
+  unidad: string,
+): Promise<Insumo> {
+  const { data, error } = await supabase
+    .from('insumos')
+    .insert({ nombre: nombre.trim().toUpperCase(), categoria, unidad: unidad.trim() || 'unidad' })
+    .select('id,nombre,categoria,unidad,stock,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo crear el insumo')
+  return mapInsumo(data)
+}
+
+export async function updateInsumo(
+  id: string,
+  patch: { nombre?: string; categoria?: InsumoCategoria; unidad?: string; activo?: boolean },
+): Promise<Insumo> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
+  if (patch.categoria !== undefined) payload.categoria = patch.categoria
+  if (patch.unidad !== undefined) payload.unidad = patch.unidad.trim() || 'unidad'
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { data, error } = await supabase
+    .from('insumos')
+    .update(payload)
+    .eq('id', id)
+    .select('id,nombre,categoria,unidad,stock,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo actualizar el insumo')
+  return mapInsumo(data)
+}
+
+export async function deleteInsumo(id: string): Promise<void> {
+  const { error } = await supabase.from('insumos').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar el insumo')
+}
+
+function mapKardex(row: Record<string, unknown>): InsumoKardex {
+  const tipo = String(row.tipo ?? 'ENTRADA').trim().toUpperCase()
+  return {
+    id: String(row.id),
+    insumoId: String(row.insumo_id),
+    tipo: tipo === 'SALIDA' ? 'SALIDA' : tipo === 'AJUSTE' ? 'AJUSTE' : 'ENTRADA',
+    cantidad: Number(row.cantidad ?? 0),
+    saldo: Number(row.saldo ?? 0),
+    motivo: row.motivo ? String(row.motivo) : undefined,
+    referencia: row.referencia ? String(row.referencia) : undefined,
+    creadoPor: row.creado_por ? String(row.creado_por) : undefined,
+    createdAt: String(row.created_at ?? ''),
+  }
+}
+
+// Carga movimientos del kardex (de un insumo, o todos), recientes primero.
+export async function loadKardex(insumoId?: string, limit = 200): Promise<InsumoKardex[]> {
+  let query = supabase
+    .from('insumos_kardex')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+  if (insumoId) query = query.eq('insumo_id', insumoId)
+  const { data, error } = await query
+  if (error || !data) return []
+  return data.map(mapKardex)
+}
+
+/**
+ * Registra un movimiento de inventario y actualiza el stock del insumo.
+ * ENTRADA/AJUSTE(+) suman; SALIDA resta. Devuelve el insumo con el stock nuevo.
+ * Nota: la consistencia stock↔kardex se hace en dos pasos (sin transacción);
+ * suficiente para el volumen actual. Si se vuelve crítico, pasar a una RPC.
+ */
+export async function registrarMovimientoInsumo(input: {
+  insumoId: string
+  tipo: KardexTipo
+  cantidad: number
+  motivo?: string
+  referencia?: string
+  creadoPor?: string
+}): Promise<Insumo> {
+  const { data: actual, error: e1 } = await supabase
+    .from('insumos')
+    .select('id,nombre,categoria,unidad,stock,activo')
+    .eq('id', input.insumoId)
+    .single()
+  if (e1 || !actual) throw e1 ?? new Error('Insumo no encontrado')
+
+  const cant = Math.abs(Number(input.cantidad))
+  const delta = input.tipo === 'SALIDA' ? -cant : cant
+  const saldo = Number(actual.stock ?? 0) + delta
+
+  const { error: e2 } = await supabase
+    .from('insumos_kardex')
+    .insert({
+      insumo_id: input.insumoId,
+      tipo: input.tipo,
+      cantidad: cant,
+      saldo,
+      motivo: input.motivo ?? null,
+      referencia: input.referencia ?? null,
+      creado_por: input.creadoPor ?? null,
+    })
+  if (e2) throw new Error(e2.message || 'No se pudo registrar el movimiento')
+
+  const { data: upd, error: e3 } = await supabase
+    .from('insumos')
+    .update({ stock: saldo, updated_at: new Date().toISOString() })
+    .eq('id', input.insumoId)
+    .select('id,nombre,categoria,unidad,stock,activo')
+    .single()
+  if (e3 || !upd) throw e3 ?? new Error('No se pudo actualizar el stock')
+  return mapInsumo(upd)
 }
 
 // ──────────────────── Marcas de "revisado" de la Planilla ────────────────────

@@ -27,9 +27,14 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
   )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner'), [users])
   const admins = useMemo(() => users.filter((u) => u.role === 'administracion'), [users])
+  const insumosSups = useMemo(
+    () => users.filter((u) => u.role === 'supervisor_insumos').sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
 
   const [supId, setSupId] = useState('')
   const [opId, setOpId] = useState('')
+  const [insId, setInsId] = useState('')
 
   // Para roles "globales" usamos un usuario real si existe (su id no afecta:
   // ven todo). Si no hay, sintetizamos uno con la identidad de soporte.
@@ -129,6 +134,31 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
             Ver
           </button>
         </div>
+
+        {insumosSups.length > 0 && (
+          <div className="support-pick">
+            <label className="support-pick__field">
+              <span className="support-pick__label">Supervisor de insumos</span>
+              <SearchableSelect
+                value={insId}
+                onChange={setInsId}
+                options={insumosSups.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Buscar…"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button support-pick__btn"
+              disabled={!insId}
+              onClick={() => {
+                const u = insumosSups.find((s) => s.id === insId)
+                if (u) onView({ ...u })
+              }}
+            >
+              Ver
+            </button>
+          </div>
+        )}
       </section>
     </main>
   )

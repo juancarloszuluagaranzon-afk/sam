@@ -1,13 +1,14 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
-import type { Assignment, Empresa, Equipment, Labor, MaestroRow, Tercero, UserProfile, Zona } from '../domain/sam'
+import type { Assignment, Empresa, Equipment, Insumo, Labor, MaestroRow, Tercero, UserProfile, Zona } from '../domain/sam'
 import { WORKFLOW } from '../data/constants'
 import {
   loadAppUsers,
   loadAssignments,
   loadEmpresas,
   loadEquipment,
+  loadInsumos,
   loadLabores,
   loadMaestro,
   loadTerceros,
@@ -43,6 +44,8 @@ interface AppDataContextValue {
   setTerceros: React.Dispatch<React.SetStateAction<Tercero[]>>
   zonas: Zona[]
   setZonas: React.Dispatch<React.SetStateAction<Zona[]>>
+  insumos: Insumo[]
+  setInsumos: React.Dispatch<React.SetStateAction<Insumo[]>>
   loading: boolean
   setLoading: React.Dispatch<React.SetStateAction<boolean>>
   busy: boolean
@@ -83,6 +86,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [terceros, setTerceros] = useState<Tercero[]>([])
   const [zonas, setZonas] = useState<Zona[]>([])
+  const [insumos, setInsumos] = useState<Insumo[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -199,7 +203,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     // sin bloquear el render — la UI ya esta visible. Si no habia cache, esta
     // fase actua como el load original (espera a que termine).
     try {
-      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult, empresasResult, tercerosResult, zonasResult] =
+      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult, empresasResult, tercerosResult, zonasResult, insumosResult] =
         await Promise.all([
           loadMaestro(),
           loadAssignments(),
@@ -209,6 +213,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           loadEmpresas(),
           loadTerceros(),
           loadZonas(),
+          loadInsumos(),
         ])
       startTransition(() => {
         setMaestro(maestroResult.data)
@@ -219,6 +224,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setEmpresas(empresasResult.data)
         setTerceros(tercerosResult.data)
         setZonas(zonasResult.data)
+        setInsumos(insumosResult.data)
         // Si el resync de asignaciones cayo en fallback con error, exponemos
         // el mensaje para que la UI muestre banner. El catch externo solo
         // dispara si Promise.all rechaza, lo cual no sucede aqui porque
@@ -295,6 +301,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         labores, setLabores, activeLabores, fieldLabores,
         empresas, setEmpresas, terceros, setTerceros,
         zonas, setZonas,
+        insumos, setInsumos,
         loading, setLoading,
         busy, setBusy,
         error, setError,

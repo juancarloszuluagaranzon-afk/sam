@@ -16,6 +16,7 @@ function roleLabel(role: UserProfile['role']): string {
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
   if (role === 'soporte') return 'Soporte'
+  if (role === 'supervisor_insumos') return 'Supervisor de insumos'
   return 'Operario'
 }
 

@@ -1079,12 +1079,17 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     zona: row.zona ? String(row.zona) : undefined,
     motivoRechazo: row.motivo_rechazo ? String(row.motivo_rechazo) : undefined,
     createdAt: String(row.created_at ?? ''),
+    entregadoEn: row.entregado_en ? String(row.entregado_en) : undefined,
+    despachadoPor: row.despachado_por ? String(row.despachado_por) : undefined,
+    ruta: row.ruta ? String(row.ruta) : undefined,
+    evidenciaUrls: Array.isArray(row.evidencia_urls) ? (row.evidencia_urls as unknown[]).map(String) : undefined,
     items: rawItems.map((it) => ({
       id: String(it.id),
       insumoId: it.insumo_id ? String(it.insumo_id) : undefined,
       insumoNombre: String(it.insumo_nombre ?? ''),
       unidad: String(it.unidad ?? ''),
       cantidad: Number(it.cantidad ?? 0),
+      cantidadDespachada: it.cantidad_despachada == null ? undefined : Number(it.cantidad_despachada),
     })),
   }
 }
@@ -1129,7 +1134,7 @@ export async function loadSolicitudes(opts?: {
 }): Promise<SolicitudInsumo[]> {
   let query = supabase
     .from('insumos_solicitudes')
-    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad)')
+    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,entregado_en,despachado_por,ruta,evidencia_urls,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad,cantidad_despachada)')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 200)
   if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
@@ -1148,6 +1153,68 @@ export async function updateSolicitudEstado(
   if (motivoRechazo !== undefined) payload.motivo_rechazo = motivoRechazo || null
   const { error } = await supabase.from('insumos_solicitudes').update(payload).eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo actualizar la solicitud')
+}
+
+// Sube una foto de evidencia de despacho al bucket `avatars` (público) y
+// devuelve su URL. Reutiliza el mismo storage de las fotos de usuario.
+export async function uploadEvidencia(solicitudId: string, file: File, idx: number): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const path = `despachos/${solicitudId}-${idx}-${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+  if (error) throw error
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  return data.publicUrl
+}
+
+/**
+ * Entrega (despacha) una solicitud: por cada ítem genera una SALIDA en el kardex
+ * y descuenta el stock; guarda evidencia/ruta/quién y marca la solicitud como
+ * ENTREGADA. Devuelve los insumos actualizados (para refrescar el inventario).
+ */
+export async function entregarSolicitud(input: {
+  solicitudId: string
+  despachadoPor?: string
+  ruta?: string
+  evidenciaUrls: string[]
+  items: { itemId?: string; insumoId?: string; cantidadDespachada: number }[]
+}): Promise<Insumo[]> {
+  const actualizados: Insumo[] = []
+  for (const it of input.items) {
+    if (it.insumoId && it.cantidadDespachada > 0) {
+      const upd = await registrarMovimientoInsumo({
+        insumoId: it.insumoId,
+        tipo: 'SALIDA',
+        cantidad: it.cantidadDespachada,
+        motivo: 'Despacho de solicitud',
+        referencia: input.solicitudId,
+        creadoPor: input.despachadoPor,
+      })
+      actualizados.push(upd)
+    }
+    if (it.itemId) {
+      await supabase
+        .from('insumos_solicitud_items')
+        .update({ cantidad_despachada: it.cantidadDespachada })
+        .eq('id', it.itemId)
+    }
+  }
+
+  const { error } = await supabase
+    .from('insumos_solicitudes')
+    .update({
+      estado: 'ENTREGADA',
+      entregado_en: new Date().toISOString(),
+      despachado_por: input.despachadoPor ?? null,
+      ruta: input.ruta ?? null,
+      evidencia_urls: input.evidenciaUrls,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.solicitudId)
+  if (error) throw new Error(error.message || 'No se pudo registrar la entrega')
+
+  return actualizados
 }
 
 // ──────────────────── Marcas de "revisado" de la Planilla ────────────────────

@@ -186,6 +186,8 @@ export interface SolicitudItem {
   insumoNombre: string
   unidad: string
   cantidad: number
+  // Cantidad realmente despachada al entregar (fase 3); puede diferir de la pedida.
+  cantidadDespachada?: number
 }
 
 export interface SolicitudInsumo {
@@ -198,6 +200,11 @@ export interface SolicitudInsumo {
   motivoRechazo?: string
   createdAt: string
   items: SolicitudItem[]
+  // Entrega / despacho (fase 3)
+  entregadoEn?: string
+  despachadoPor?: string
+  ruta?: string
+  evidenciaUrls?: string[]
 }
 
 export interface CreateAssignmentInput {

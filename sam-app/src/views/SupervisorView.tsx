@@ -2177,6 +2177,19 @@ export function SupervisorView({
                       setError('Completa nombre y rol.')
                       return
                     }
+                    // Anti-duplicados: no permitir dos usuarios (activos) con el mismo
+                    // nombre. Evita el caso de "JULIO CESAR NIÑO" repetido con ids
+                    // distintos, que descuadraba el Resumen (filtra por id de sesión).
+                    {
+                      const nombreNorm = userForm.nombreCompleto.trim().toLowerCase()
+                      const dup = users.find(
+                        (u) => u.id !== userForm.id && u.name.trim().toLowerCase() === nombreNorm,
+                      )
+                      if (dup) {
+                        setError(`Ya existe un usuario llamado "${userForm.nombreCompleto.trim()}" (${dup.id}). No se permiten nombres duplicados.`)
+                        return
+                      }
+                    }
                     if (!isEditing && !userForm.pin) {
                       setError('El PIN es obligatorio al crear un usuario.')
                       return

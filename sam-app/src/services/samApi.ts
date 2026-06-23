@@ -608,6 +608,9 @@ export async function loadAppUsers(): Promise<{
   data: UserProfile[]
   source: Source
 }> {
+  // Carga TODOS los usuarios (activos e inactivos). La gestión de Usuarios los
+  // lista con su estado; los selectores/asignación filtran activos aparte.
+  // (Rebuild marker 2026-06-23: sin filtro .eq('activo', true).)
   try {
     const { data, error } = await supabase
       .from('app_usuarios')

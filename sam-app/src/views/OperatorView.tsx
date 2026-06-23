@@ -982,30 +982,6 @@ export function OperatorView({
               </button>
             </div>
 
-            {misSolicitudes.length > 0 && (
-              <div className="panel-card" style={{ padding: '12px 14px', marginBottom: 12 }}>
-                <div className="panel-title split" style={{ marginBottom: 8 }}>
-                  <h2 style={{ fontSize: '0.98rem', margin: 0 }}>🛢️ Mis solicitudes de insumos</h2>
-                  <span className="subtle-copy">{misSolicitudes.length}</span>
-                </div>
-                <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {misSolicitudes.slice(0, 8).map((s) => {
-                    const estadoTxt = s.estado.charAt(0) + s.estado.slice(1).toLowerCase()
-                    const color = s.estado === 'ENTREGADA' ? 'var(--color-brand)' : s.estado === 'RECHAZADA' ? '#b3261e' : s.estado === 'PROGRAMADA' ? '#b06a00' : 'var(--color-ink-mid)'
-                    return (
-                      <li key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                        <div style={{ minWidth: 0 }}>
-                          <strong style={{ fontSize: '0.9rem' }}>{s.items.map((it) => `${it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}</strong>
-                          {s.motivoRechazo && <div className="subtle-copy" style={{ fontSize: '0.78rem' }}>Motivo: {s.motivoRechazo}</div>}
-                        </div>
-                        <span style={{ fontSize: '0.76rem', fontWeight: 700, color, whiteSpace: 'nowrap' }}>{estadoTxt}</span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-            )}
-
             {activeAssignments.map((assignment) => {
               const progress = getSuerteProgress(assignment, assignments)
               // Status derivado: si DB dice PENDIENTE pero otro operario ya

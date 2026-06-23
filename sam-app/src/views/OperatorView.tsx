@@ -425,31 +425,40 @@ export function OperatorView({
     return { todayPlanned, todayExecuted, completion, inProgress, pending }
   }, [operatorAssignments, todayKey])
 
-  const activeAssignments = useMemo(
-    () =>
-      operatorAssignments
-        .filter(
-          (a) =>
-            (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL') &&
-            // Liberada por el operario: no la mostramos en SUS Activas (sigue
-            // abierta para el supervisor / re-toma en campo).
-            !a.liberada,
-        )
-        // Si la suerte ya esta completa por trabajo conjunto en el mismo ciclo
-        // (remaining = 0 a nivel global de la suerte), no hay nada que el
-        // operario pueda hacer aqui — la asignacion sigue en DB con su
-        // executedArea propio pero no debe aparecer en Activas. El operario
-        // la vera en Historial con su aporte (5.00 ha) y el sistema preserva
-        // la atribucion. Aplica tanto a PARCIAL propia como a PENDIENTE puras
-        // (operario asignado que no aporto pero la suerte ya cerro).
-        .filter((a) => {
-          const progress = getSuerteProgress(a, assignments)
-          // Si la propia esta EN_PROCESO la dejamos siempre (operario adentro)
-          if (a.status === 'EN_PROCESO') return true
-          return progress.remaining > 0
-        }),
-    [operatorAssignments, assignments],
-  )
+  const activeAssignments = useMemo(() => {
+    // Regla: una labor creada hace más de 72 h sale de Activas (se considera
+    // vencida — queda en Historial y para el supervisor). Excepción: EN_PROCESO
+    // (el operario está adentro) no se retira a media jornada.
+    const STALE_MS = 72 * 60 * 60 * 1000
+    const now = Date.now()
+    return operatorAssignments
+      .filter(
+        (a) =>
+          (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL') &&
+          // Liberada por el operario: no la mostramos en SUS Activas (sigue
+          // abierta para el supervisor / re-toma en campo).
+          !a.liberada,
+      )
+      // Si la suerte ya esta completa por trabajo conjunto en el mismo ciclo
+      // (remaining = 0 a nivel global de la suerte), no hay nada que el
+      // operario pueda hacer aqui — la asignacion sigue en DB con su
+      // executedArea propio pero no debe aparecer en Activas. El operario
+      // la vera en Historial con su aporte (5.00 ha) y el sistema preserva
+      // la atribucion. Aplica tanto a PARCIAL propia como a PENDIENTE puras
+      // (operario asignado que no aporto pero la suerte ya cerro).
+      .filter((a) => {
+        const progress = getSuerteProgress(a, assignments)
+        // Si la propia esta EN_PROCESO la dejamos siempre (operario adentro)
+        if (a.status === 'EN_PROCESO') return true
+        return progress.remaining > 0
+      })
+      .filter((a) => {
+        if (a.status === 'EN_PROCESO') return true
+        const created = new Date(a.createdAt).getTime()
+        if (Number.isNaN(created)) return true // sin fecha válida → no la vencemos
+        return now - created <= STALE_MS
+      })
+  }, [operatorAssignments, assignments])
 
   const [selectedActiveAssignment, setSelectedActiveAssignment] = useState<Assignment | null>(null)
 

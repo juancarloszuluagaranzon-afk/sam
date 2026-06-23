@@ -205,6 +205,7 @@ export interface SolicitudInsumo {
   despachadoPor?: string
   ruta?: string
   evidenciaUrls?: string[]
+  horometro?: number
 }
 
 export interface CreateAssignmentInput {

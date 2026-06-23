@@ -1083,6 +1083,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     despachadoPor: row.despachado_por ? String(row.despachado_por) : undefined,
     ruta: row.ruta ? String(row.ruta) : undefined,
     evidenciaUrls: Array.isArray(row.evidencia_urls) ? (row.evidencia_urls as unknown[]).map(String) : undefined,
+    horometro: row.horometro == null ? undefined : Number(row.horometro),
     items: rawItems.map((it) => ({
       id: String(it.id),
       insumoId: it.insumo_id ? String(it.insumo_id) : undefined,
@@ -1134,7 +1135,7 @@ export async function loadSolicitudes(opts?: {
 }): Promise<SolicitudInsumo[]> {
   let query = supabase
     .from('insumos_solicitudes')
-    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,entregado_en,despachado_por,ruta,evidencia_urls,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad,cantidad_despachada)')
+    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,entregado_en,despachado_por,ruta,evidencia_urls,horometro,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad,cantidad_despachada)')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 200)
   if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
@@ -1177,6 +1178,7 @@ export async function entregarSolicitud(input: {
   solicitudId: string
   despachadoPor?: string
   ruta?: string
+  horometro?: number
   evidenciaUrls: string[]
   items: { itemId?: string; insumoId?: string; cantidadDespachada: number }[]
 }): Promise<Insumo[]> {
@@ -1208,6 +1210,7 @@ export async function entregarSolicitud(input: {
       entregado_en: new Date().toISOString(),
       despachado_por: input.despachadoPor ?? null,
       ruta: input.ruta ?? null,
+      horometro: input.horometro ?? null,
       evidencia_urls: input.evidenciaUrls,
       updated_at: new Date().toISOString(),
     })

@@ -32,6 +32,7 @@ export function BandejaInsumosTab() {
   const [entregaTarget, setEntregaTarget] = useState<SolicitudInsumo | null>(null)
   const [entregaItems, setEntregaItems] = useState<{ itemId?: string; insumoId?: string; insumoNombre: string; unidad: string; cantidad: string }[]>([])
   const [entregaRuta, setEntregaRuta] = useState('')
+  const [entregaHorometro, setEntregaHorometro] = useState('')
   const [evidencias, setEvidencias] = useState<string[]>([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const fotoInputRef = useRef<HTMLInputElement>(null)
@@ -89,6 +90,7 @@ export function BandejaInsumosTab() {
       cantidad: String(it.cantidad),
     })))
     setEntregaRuta('')
+    setEntregaHorometro('')
     setEvidencias([])
     setError('')
   }
@@ -113,12 +115,17 @@ export function BandejaInsumosTab() {
       .map((r) => ({ itemId: r.itemId, insumoId: r.insumoId, cantidadDespachada: Number(r.cantidad) }))
       .filter((r) => r.cantidadDespachada > 0)
     if (items.length === 0) { setError('Indica al menos una cantidad a despachar.'); return }
+    const horometro = Number(entregaHorometro)
+    if (!entregaHorometro.trim() || isNaN(horometro) || horometro < 0) {
+      setError('El horómetro de la máquina es obligatorio.'); return
+    }
     setBusy(true); setError('')
     try {
       const actualizados = await entregarSolicitud({
         solicitudId: entregaTarget.id,
         despachadoPor: session?.id,
         ruta: entregaRuta.trim() || undefined,
+        horometro,
         evidenciaUrls: evidencias,
         items,
       })
@@ -195,6 +202,7 @@ export function BandejaInsumosTab() {
               <div className="subtle-copy" style={{ fontSize: '0.82rem' }}>
                 Entregado {s.entregadoEn ? fmtFecha(s.entregadoEn) : ''}
                 {s.despachadoPor ? ` · por ${userName.get(s.despachadoPor) ?? s.despachadoPor}` : ''}
+                {s.horometro != null ? ` · Horómetro: ${s.horometro}` : ''}
                 {s.ruta ? ` · Ruta: ${s.ruta}` : ''}
                 {s.items.some((it) => it.cantidadDespachada != null) && (
                   <div>Despachado: {s.items.filter((it) => it.cantidadDespachada != null).map((it) => `${it.cantidadDespachada} ${it.unidad} ${it.insumoNombre}`).join(', ')}</div>
@@ -262,6 +270,16 @@ export function BandejaInsumosTab() {
               })}
             </div>
             <label style={{ marginTop: 10 }}>
+              Horómetro de la máquina <span style={{ color: '#b3261e' }}>*</span>
+              <input
+                type="number" min={0} step="any" inputMode="decimal" placeholder="Lectura del horómetro"
+                value={entregaHorometro}
+                onChange={(e) => setEntregaHorometro(e.target.value)}
+                disabled={busy}
+                required
+              />
+            </label>
+            <label style={{ marginTop: 10 }}>
               Ruta <span className="field-optional">(opcional)</span>
               <input type="text" placeholder="Ruta / lugar de entrega" value={entregaRuta} onChange={(e) => setEntregaRuta(e.target.value)} disabled={busy} />
             </label>
@@ -279,7 +297,7 @@ export function BandejaInsumosTab() {
             </div>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setEntregaTarget(null)} disabled={busy}>Cancelar</button>
-              <button type="button" className="primary-button" onClick={() => void confirmarEntrega()} disabled={busy || subiendoFoto}>
+              <button type="button" className="primary-button" onClick={() => void confirmarEntrega()} disabled={busy || subiendoFoto || !entregaHorometro.trim()}>
                 {busy ? 'Guardando…' : 'Confirmar entrega'}
               </button>
             </div>

@@ -108,17 +108,20 @@ con `app_login`. NUNCA `crypt`/`gen_salt`/bcrypt (esos PINs nunca podrían
 loguearse y `gen_salt` falla fuera del search_path).
 
 ```ts
-// crear (samApi.createAppUser) — id se fuerza a UPPER, pin obligatorio
-supabase.rpc('app_create_user', { p_id, p_nombre, p_rol, p_pin, p_equipo_codigo })
+// crear (samApi.createAppUser) — el id lo GENERA EL SERVIDOR (ver abajo); p_pin obligatorio
+supabase.rpc('app_create_user', { p_id, p_nombre, p_rol, p_pin, p_equipo_codigo, p_zona })
 // editar (samApi.updateAppUser) — p_pin NULL/'' deja el hash sin tocar
-supabase.rpc('app_update_user', { p_id, p_nombre, p_rol, p_pin, p_equipo_codigo })
+supabase.rpc('app_update_user', { p_id, p_nombre, p_rol, p_pin, p_equipo_codigo, p_zona })
 // eliminar (samApi.deleteAppUser) — SOFT delete: activo=false
 supabase.rpc('app_delete_user', { p_id })
+// activar/desactivar (samApi.setAppUserActivo) — mig. 20260623160000
+supabase.rpc('app_set_user_activo', { p_id, p_activo })
 ```
 
-- **`app_delete_user` es soft-delete** (`activo=false`). `loadAppUsers` filtra
-  `.eq('activo', true)`, así que el usuario desaparece de la UI y no puede
-  loguearse, pero su histórico de labores (FK por `operador_id`) se conserva.
+- **[2026-06-24] `app_create_user` GENERA el id en el servidor** (mig. `20260623170000`): `U + (max número existente + 1)` sobre TODOS los usuarios (activos o no). `p_id` se ignora. Antes el cliente calculaba el id sobre la lista cargada; si esa lista no traía inactivos, repetía un id ocupado → `duplicate key app_usuarios_pkey` al crear. Con el id server-side **nunca colisiona**.
+- **[2026-06-24] Activar/desactivar usuarios:** `app_set_user_activo(p_id, p_activo)` (SECURITY DEFINER). La pestaña Usuarios lista activos e inactivos (chip "Inactivo" + botón Activar/Desactivar; no auto-desactivarse). `setAppUserActivo` cachea 23505 (índice único de nombre) → "Ya existe un usuario ACTIVO con ese nombre."
+- **[2026-06-24] `loadAppUsers` ya NO filtra `activo`** (carga TODOS y mapea `active`). Los selectores/asignación filtran activos aparte (`AppDataContext`: operators/supervisors con `active !== false`; `ImpersonationBar`/`SupportSwitcher` no impersonan inactivos).
+- **`app_delete_user` es soft-delete** (`activo=false`); el histórico de labores (FK por `operador_id`) se conserva.
 - **Quién puede gestionar usuarios:** `owner` Y `administracion`. La pestaña
   Usuarios y el modal en `SupervisorView` están gateados a
   `role === 'owner' || role === 'administracion'`. `administracion` tiene su
@@ -155,6 +158,9 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-06-24] ⚠️ RLS, no el cliente: los INACTIVOS no llegaban aunque el query no filtrara.** Síntoma: tras quitar `.eq('activo', true)` de `loadAppUsers`, los usuarios inactivos **seguían sin aparecer** — ni en incógnito ni tras rebuild. **Causa:** la policy de SELECT de `app_usuarios` restringía a `activo=true` → RLS los filtra **en el servidor** para el rol `anon` (Studio/`postgres` los ve porque bypassa RLS — pista clásica). **Fix:** mig. `20260623180000` agrega policy permisiva `app_usuarios_select_all ... FOR SELECT TO anon, authenticated USING (true)` (las permisivas se combinan con OR → con `USING(true)` pasan todos). `pin_hash` nunca se selecciona. **Regla:** si una fila existe en Studio pero el cliente anon no la recibe pese a un query sin filtro, sospechar de la policy de SELECT (su `USING`), no del frontend ni de la caché.
+- **[2026-06-24] `loadAssignments` (full sync) carga SIEMPRE todas las ABIERTAS — anti-cap de PostgREST.** Antes hacía `select('*').order('created_at', desc)` sin paginar → PostgREST capa en ~1000 filas; ordenando por `created_at`, las asignaciones VIEJAS (incluidas programadas/abiertas) se salían de la ventana y **desaparecían de Activas en cada full sync** (caso real con 1020 filas totales). **Fix:** dos consultas combinadas (dedupe por id): (1) `not('estado','in','(COMPLETADA,CANCELADA,FINALIZADO)')` = TODAS las abiertas sin importar antigüedad; (2) las recientes para historial. Una abierta nunca se pierde hasta cerrarse/cancelarse. El delta sync no se tocó (acumula).
+- **[2026-06-24] `updateAssignment` ganó `created_at` + `supervisor_id`/`supervisor_nombre`.** `UpdateAssignmentInput` acepta `createdAt`, `supervisorId`, `supervisorName`. Se usan al **reutilizar** una línea PENDIENTE (re-toma/re-asignación): resetear `created_at` a hoy reinicia el reloj de 72h y reaparece en Activas; cambiar el supervisor deja la reasignación bajo quien la toma (scope correcto). Detalle del flujo en `managing-assignments` → "Reutilizar la línea PENDIENTE original".
 - **[2026-06-23]** **Usuarios DUPLICADOS por nombre descuadran el Resumen vs el Reporte.** Existían dos `app_usuarios` "JULIO CESAR NIÑO" (U033 real + U040 dup); una labor quedó con `supervisor_id='U040'`. **Síntoma:** la labor salía en el **Reporte** pero no en el **Resumen**. **Causa:** el Resumen (`scopedAssignments`) filtra `supervisorId === session.id` (id, NO nombre); como el id de sesión era U033, excluía la de U040. El Reporte no scopeaba → la mostraba. **Diagnóstico clave:** `select supervisor_id, supervisor_nombre, count(*) from asignaciones where operador_nombre ilike '%X%' group by 1,2;` revela dos ids con el mismo nombre. **Arreglo de datos:** reasignar TODAS las referencias del dup al id real ANTES de borrarlo — `asignaciones.supervisor_id`/`operador_id`, `insumos_solicitudes.operario_id`/`despachado_por`, `insumos_kardex.creado_por`, `operario_novedades.operador_id`, `planilla_revisiones.operador_id`/`revisado_por` (en las tablas con UNIQUE(operador_id,fecha), borrar primero las del dup que choquen) → luego `update app_usuarios set activo=false where id=dup`. **Prevención (doble):** (1) índice único parcial `app_usuarios_nombre_activo_uniq on (lower(btrim(nombre_completo))) where activo=true` (mig. `20260623150000`) — imposible crear dos activos con igual nombre; (2) guard en el form de Usuarios (`SupervisorView`) que bloquea nombres repetidos contra la lista `users`. **Regla general: el scope/agrupación por persona SIEMPRE debe ser por `id`, no por nombre; y los nombres de usuario deben ser únicos.**
 - **[2026-06-23]** **Reporte y Resumen ahora scopean IGUAL por supervisor.** `filteredReport` (App.tsx) filtra `supervisorId === session.id` cuando `role==='supervisor'` (owner/admin/soporte ven todo), igual que `scopedAssignments` del Resumen. Antes el Reporte mostraba TODO a un supervisor (inconsistente con su Resumen). Si una labor no aparece para un supervisor en ninguno de los dos, revisar que su `supervisor_id` sea el del supervisor (ver gotcha anterior).
 - **[2026-06-18]** **Nombres de `app_usuarios.nombre_completo` con espacio/NBSP al inicio rompen el orden alfabético** (quedan arriba de todo porque el espacio ordena antes que las letras). Diagnóstico: `select '['||nombre_completo||']', ascii(left(nombre_completo,1)) from app_usuarios where ...` (32=espacio, 160=NBSP). Limpieza de raíz: `UPDATE app_usuarios SET nombre_completo = btrim(replace(nombre_completo, chr(160), ' ')) WHERE nombre_completo IS DISTINCT FROM btrim(...);`. El cliente además hace `.trim()` defensivo al ordenar (Planilla) — `.trim()` de JS quita espacio Y NBSP.

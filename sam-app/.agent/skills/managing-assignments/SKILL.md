@@ -66,9 +66,21 @@ Tres puntos de chequeo:
 2. **`useFreeFieldForm.takeFreeField`** (operario toma en campo): chequea contra sí mismo.
 3. **`useAssignmentActions.editAssignment`** (supervisor reasigna): chequea cuando `patch.operatorId` cambia.
 
-"Activa" = PENDIENTE + EN_PROCESO + PARCIAL. COMPLETADA y CANCELADA no bloquean (se puede reprogramar la misma labor en otro ciclo).
+"Activa" = ~~PENDIENTE +~~ EN_PROCESO + PARCIAL. COMPLETADA y CANCELADA no bloquean. **[2026-06-24] PENDIENTE ya NO bloquea: se REUSA** (ver sección "Reutilizar la línea PENDIENTE original" abajo) — `hasActiveDuplicate` en `useFreeFieldForm`/`useAssignmentForm` ahora solo considera `EN_PROCESO`/`PARCIAL`.
 
-**Permitido a propósito:** asignar la misma labor en la misma suerte a operarios distintos (el supervisor puede repartir trabajo entre dos operarios para acelerar).
+**Permitido a propósito:** asignar la misma labor en la misma suerte a operarios distintos (el supervisor puede repartir trabajo entre dos operarios para acelerar — ver el par operador1/operador2).
+
+## Reutilizar la línea PENDIENTE original — NO duplicar programadas [2026-06-24]
+
+**Regla de negocio:** una suerte+labor **nunca** debe quedar programada dos/tres veces. Si una labor se **abrió y quedó PENDIENTE** (incluida una vencida por la regla de 72h — sigue PENDIENTE en la base, solo oculta de Activas), al **re-tomarla en campo** o **re-asignarla** (al mismo operario o a otro) se **reutiliza esa misma fila**, cambiando operario/equipo/supervisor/fecha — NO se crea otra línea. Reasignar la misma programación 10 veces en 10 meses → **1 sola línea**, no 10.
+
+**COMPLETADA real es "otra situación":** una labor que SÍ se trabajó y cerró NO se reusa → crea línea nueva = re-laboreo (preserva el histórico del ciclo anterior). El STATUS separa los dos casos solo.
+
+- Helper único: `findReusableAssignment(assignments, suerteCode, labor, excludeIds?)` en `src/utils/suerteCycle.ts` → línea `PENDIENTE && !startedAt && executedArea===0 && !liberada` (el `excludeIds` evita que el par-2 tome la misma que reusó el par-1).
+- `useFreeFieldForm.takeFreeField` y `useAssignmentForm.createAssignment`: por cada suerte (y por cada operario del par) deciden **reuse-or-create**, online (`updateAssignment`) **y** offline (outbox `UPDATE`). Mensaje "N reutilizada(s) de la programación existente".
+- **Al reutilizar se resetea `createdAt` a hoy** (vía `UpdateAssignmentInput.createdAt` → `payload.created_at`) → reinicia el reloj de 72h y la labor **reaparece en Activas** (no queda oculta). `dateKey` se recalcula de `created_at`.
+- `UpdateAssignmentInput` ganó `createdAt`, `supervisorId`, `supervisorName` (la reasignación queda bajo el supervisor que la toma, para el scope correcto). `updateAssignment` mapea `created_at`/`supervisor_id`/`supervisor_nombre`.
+- El botón manual `reuseExisting` (supervisor) sigue existiendo y ahora también resetea fecha + supervisor (consistente con el auto-reuse).
 
 ## Agrupación por CICLO en avance compartido (`isSameCycle`, ventana de días)
 
@@ -92,6 +104,12 @@ Si la suerte se cierra por trabajo conjunto (otro operario aportó lo suficiente
 - Si `remaining = 0` y status PENDIENTE/PARCIAL → **oculta** (suerte cerrada, nada que hacer)
 
 La asignación sigue en DB con su `executedArea` propio (no se borra ni modifica el status) — preserva atribución para métricas y reportes. El operario la ve en **Historial** con su aporte real.
+
+### Regla de 72h + orden de Activas [2026-06-24]
+
+`activeAssignments` (OperatorView) aplica además, al final del chain:
+- **Vencimiento a 72h:** una labor **creada hace más de 72 h** sale de Activas (`now - createdAt > 72h`). **Excepción: `EN_PROCESO`** (operario adentro) NO se retira. Si `createdAt` es inválido, no se vence (visible por seguridad). Es solo filtro de **vista** — la fila sigue PENDIENTE en DB, por eso se puede REUSAR (ver sección de reuse). El `STALE_MS = 72*60*60*1000`.
+- **Orden:** siempre **más recientes primero** → `.sort((a,b) => b.createdAt.localeCompare(a.createdAt))` (ISO ordena cronológico como texto).
 
 ## Avance compartido entre operarios (multi-operario en la misma suerte)
 
@@ -325,6 +343,19 @@ El tablero tiene tres filtros combinados que se aplican simultáneamente:
 En estos dos componentes específicos, `getStatusMeta(assignment)` usa **"Programada"** para `status === 'PENDIENTE'` (en lugar del "Pendiente" del resto de la app). Decisión textual del usuario (2026-05-11): "completada, parcial o programada" como los tres estados que quería ver en el modal histórico.
 
 La regla "Parcial" (`COMPLETADA && executedArea > 0 && executedArea < area`) es idéntica a la de SupervisorView/OperatorView — solo cambia el label de PENDIENTE.
+
+## Dashboards/KPIs abren en la QUINCENA ACTUAL [2026-06-24]
+
+Todos los dashboards de indicadores **arrancan filtrados en la quincena en curso** (no "todo el mes" ni la quincena pasada). Helper único: `currentQuincena(todayKey)` en `EntityHistoryModal.tsx` → `'PRIMERA'` (día 1–15) | `'SEGUNDA'` (16–fin). Se usa como **default del state**, sigue siendo cambiable a otros períodos por el usuario.
+
+| Módulo | State | Archivo |
+|---|---|---|
+| **Resumen** (supervisor/owner) | `summaryQuincena` | SupervisorView |
+| **Reporte** | `reportFilters.period` | App.tsx |
+| **Realizadas** | `dateSeg` | RealizadasTab |
+| **Planilla** | `planillaQuincena` | PlanillaTab (ya lo hacía; unificada al helper) |
+
+**NO** se aplicó a **Validación** (cola de aprobaciones) ni al **Historial del operario** (navegador histórico) — ahí el default amplio es deseable (ocultar la quincena anterior escondería pendientes/registros que sí se necesitan ver).
 
 ## Gotchas
 

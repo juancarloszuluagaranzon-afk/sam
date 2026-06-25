@@ -354,8 +354,11 @@ Todos los dashboards de indicadores **arrancan filtrados en la quincena en curso
 | **Reporte** | `reportFilters.period` | App.tsx |
 | **Realizadas** | `dateSeg` | RealizadasTab |
 | **Planilla** | `planillaQuincena` | PlanillaTab (ya lo hacía; unificada al helper) |
+| **Historial del operario** | `historyMonth` + `historyPeriod` | App.tsx (mes actual + Q1/Q2 según el día) |
 
-**NO** se aplicó a **Validación** (cola de aprobaciones) ni al **Historial del operario** (navegador histórico) — ahí el default amplio es deseable (ocultar la quincena anterior escondería pendientes/registros que sí se necesitan ver).
+**Historial del operario [2026-06-24]:** SIEMPRE abre en mes actual + quincena en curso. Se **ELIMINÓ** la persistencia en localStorage (`HISTORIAL_PREF_KEY`/`sam:historial-operario-pref`, lazy-init + efecto de persistencia) **y** el `useEffect` de auto-salto al "mes más reciente con datos" (contradecía "siempre la quincena actual"). `historyMonths` ahora **siempre incluye el mes actual** (`todayKey.slice(0,7)`) para que sea opción aunque esté vacío. Si el corte actual no tiene labores, se ve vacío y el operario navega manualmente. `historyPeriod` sigue siendo `'Q1'|'Q2'|'MES'` (el usuario puede cambiar a mes completo).
+
+**NO** se aplicó a **Validación** (cola de aprobaciones) — ahí el default amplio es deseable (ocultar la quincena anterior escondería pendientes que sí se necesitan ver).
 
 ## Gotchas
 
@@ -369,7 +372,7 @@ Todos los dashboards de indicadores **arrancan filtrados en la quincena en curso
 
 - **[2026-06-17]** **Realizadas consolida por CICLO, no por día.** Agrupa por `suerteCode|labor` y dentro clusteriza por ciclo (`isSameCycle`, adyacentes ≤21 días) → una tarjeta por corte con `Σ executedArea / área asignada (maestro)`, rango de fechas, "N parciales". Clic → detalle de cada parcial (operario · fecha · ha · estado). Un re-laboreo en otro ciclo = otra tarjeta.
 
-- **[2026-06-17]** **Historial del operario: recuerda la última selección** (mes + periodo) en `localStorage` (`sam:historial-operario-pref`, lazy-init en App.tsx + persist en `useEffect`). Default = vista actual cuando no hay nada guardado. Convive con el `useEffect` que salta a `historyMonths[0]` si el mes guardado no tiene datos.
+- ~~**[2026-06-17]** Historial del operario recuerda la última selección en `localStorage`~~ **REVERTIDO [2026-06-24]:** se eliminó la persistencia (`sam:historial-operario-pref`) Y el auto-salto a `historyMonths[0]`. El Historial ahora SIEMPRE abre en mes actual + quincena en curso (ver sección "Dashboards/KPIs abren en la quincena actual"). No reintroducir la persistencia.
 
 - **[2026-06-16]** **Reporte (owner/admin) ahora EDITA y ELIMINA líneas** (ajuste de liquidación final). Vista "Por labor", columna **Acciones** gateada a `canEditAssignments`: **Editar** abre el modal `selectedLabor` existente (`setSelectedLabor(a)` — edita área ejecutada/operario/horómetros/equipo/notas para cualquier estado) y **Eliminar** abre un modal de confirmación (`deleteReportTarget`) → `handleDeleteReportRow` → `samApi.deleteAssignment(id)` (**DELETE real, irreversible**) + `setAssignments(filter)` + `db.assignments.delete(id)`. **Requiere la policy `asignaciones_delete`** (mig. `20260616120000`) — sin ella el delete borra 0 filas en server y la fila REAPARECE al sync (ver managing-supabase). El modal de confirmación es obligatorio (el usuario lo pidió explícito). El "Editar" NO toca cliente/fecha/estado (solo lo del modal); si lo piden, extender `editLaborDraft` + `editAssignment`/`UpdateAssignmentInput`.
 

@@ -541,6 +541,10 @@ export function OperatorView({
 
   const historyMonths = useMemo(() => {
     const set = new Set<string>()
+    // El MES ACTUAL siempre es una opción (aunque aún no tenga labores): el
+    // Historial abre por defecto en el corte vigente, así que ese mes debe ser
+    // seleccionable aunque esté vacío.
+    set.add(todayKey.slice(0, 7))
     // Usar la fecha de EJECUCIÓN (igual que filteredHistory), NO la de creación.
     // Una labor creada el 31-may pero finalizada el 1-jun se EJECUTA en junio:
     // si el desplegable se armara por `dateKey` (creación = mayo), junio nunca
@@ -551,18 +555,12 @@ export function OperatorView({
       if (k) set.add(k.slice(0, 7))
     })
     return Array.from(set).sort((a, b) => b.localeCompare(a))
-  }, [historyAssignments])
+  }, [historyAssignments, todayKey])
 
-  // El Historial arranca en el MES ACTUAL (default en App.tsx). Al cambiar de
-  // mes (ej. 1-jun) ese mes nuevo esta vacio y "desaparece" el historial de la
-  // quincena pasada aunque el dato siga en la base. Si el mes seleccionado NO
-  // tiene labores del operario pero SI hay historial en otros meses, saltamos
-  // automaticamente al mes mas reciente con datos.
-  useEffect(() => {
-    if (historyMonths.length > 0 && !historyMonths.includes(historyMonth)) {
-      setHistoryMonth(historyMonths[0])
-    }
-  }, [historyMonths, historyMonth, setHistoryMonth])
+  // NOTA: NO hay auto-salto al "mes más reciente con datos". El dueño pidió
+  // (2026-06-24) que el Historial SIEMPRE abra en la quincena actual; saltar a
+  // otro mes con datos lo contradecía. Si el corte actual está vacío, se ve
+  // vacío y el operario navega manualmente.
 
   const filteredHistory = useMemo(() => {
     const [year, month] = historyMonth.split('-').map(Number)

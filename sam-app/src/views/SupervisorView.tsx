@@ -16,6 +16,7 @@ import {
   EntityHistoryModal,
   matchesSummaryFilter,
   buildMonthOptions,
+  currentQuincena,
   type SummaryEntity,
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
@@ -503,7 +504,9 @@ export function SupervisorView({
   }
 
   const [summaryMonth, setSummaryMonth] = useState(() => todayKey.slice(0, 7))
-  const [summaryQuincena, setSummaryQuincena] = useState<SummaryQuincena>('TODO')
+  // Default = quincena EN CURSO (no "todo el mes"): el dashboard siempre abre
+  // mostrando los KPIs de la quincena del corte actual.
+  const [summaryQuincena, setSummaryQuincena] = useState<SummaryQuincena>(() => currentQuincena(todayKey))
   const [selectedEntity, setSelectedEntity] = useState<SummaryEntity | null>(null)
   const [summaryOperatorSearch, setSummaryOperatorSearch] = useState('')
   const [summaryEquipmentSearch, setSummaryEquipmentSearch] = useState('')

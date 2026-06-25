@@ -253,8 +253,16 @@ export interface UpdateAssignmentInput {
   approvedAt?: string | null
   operatorId?: string
   operatorName?: string
+  // Permite cambiar de supervisor al REUTILIZAR una línea PENDIENTE (la
+  // reasignación queda bajo el supervisor que la toma, para el scope correcto).
+  supervisorId?: string
+  supervisorName?: string
   liberada?: boolean
   // El supervisor diligencia cliente y zona al APROBAR una labor de campo.
   cliente?: 'ingenios' | 'proveedores'
   zone?: Zone | null
+  // Reinicia la fecha de creación al REUTILIZAR una línea PENDIENTE vencida
+  // (regla de 72h): vuelve a contar como "programada hoy" y reaparece en
+  // Activas, en vez de crear una línea duplicada.
+  createdAt?: string
 }

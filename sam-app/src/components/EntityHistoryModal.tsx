@@ -32,6 +32,16 @@ export function matchesSummaryFilter(
   return true
 }
 
+/**
+ * Quincena EN CURSO segun el dia del corte: 1–15 → PRIMERA, 16–fin → SEGUNDA.
+ * Es el default de TODOS los dashboards/KPIs: siempre arrancan en la quincena
+ * actual, nunca en "todo el mes" ni en la quincena anterior.
+ */
+export function currentQuincena(todayKey: string): 'PRIMERA' | 'SEGUNDA' {
+  const day = Number(todayKey.slice(8, 10))
+  return day >= 16 ? 'SEGUNDA' : 'PRIMERA'
+}
+
 export function buildMonthOptions(reference: string): { value: string; label: string }[] {
   const [y, m] = reference.split('-').map(Number)
   const base = new Date(y, m - 1, 1)

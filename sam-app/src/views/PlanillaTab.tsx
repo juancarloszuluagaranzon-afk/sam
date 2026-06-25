@@ -48,6 +48,7 @@ function datesInRange(desde: string, hasta: string): string[] {
 import {
   matchesSummaryFilter,
   buildMonthOptions,
+  currentQuincena,
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
 
@@ -70,7 +71,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
 
   const [planillaMonth, setPlanillaMonth] = useState(() => todayKey.slice(0, 7))
   const [planillaQuincena, setPlanillaQuincena] = useState<SummaryQuincena>(() =>
-    Number(todayKey.slice(8, 10)) >= 16 ? 'SEGUNDA' : 'PRIMERA',
+    currentQuincena(todayKey),
   )
   const [search, setSearch] = useState('')
   const [exporting, setExporting] = useState(false)

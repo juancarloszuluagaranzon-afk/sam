@@ -28,6 +28,7 @@ interface RealizadaGroup {
 import {
   matchesSummaryFilter,
   buildMonthOptions,
+  currentQuincena,
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
 
@@ -63,7 +64,8 @@ export function RealizadasTab() {
   const { assignments, maestro, todayKey } = useAppData()
   const [haciendaCode, setHaciendaCode] = useState('')
   const [labor, setLabor] = useState('')
-  const [dateSeg, setDateSeg] = useState<DateSeg>('TODAS')
+  // Default = quincena EN CURSO (no "todas"): abre en el corte actual.
+  const [dateSeg, setDateSeg] = useState<DateSeg>(() => currentQuincena(todayKey))
   const [mes, setMes] = useState(() => todayKey.slice(0, 7))
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')

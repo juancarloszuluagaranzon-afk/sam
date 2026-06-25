@@ -1,10 +1,10 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import type { Assignment } from '../domain/sam'
+import type { Assignment, UpdateAssignmentInput } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
-import { createAssignment as apiCreateAssignment, loadAssignments } from '../services/samApi'
-import { isSameCycle } from '../utils/suerteCycle'
+import { createAssignment as apiCreateAssignment, loadAssignments, updateAssignment } from '../services/samApi'
+import { findReusableAssignment, isSameCycle } from '../utils/suerteCycle'
 
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
@@ -50,10 +50,10 @@ function generateTempId() {
 }
 
 /**
- * True si ya existe una asignacion ACTIVA (PENDIENTE / EN_PROCESO /
- * PARCIAL) con el mismo trio suerteCode + labor + operatorId. Evita
- * que el operario tome dos veces en campo la misma labor en la misma
- * suerte; debe continuar la existente desde "Activas".
+ * True si el operario ya esta TRABAJANDO esa suerte+labor (EN_PROCESO o
+ * PARCIAL): debe continuarla desde "Activas", no tomarla otra vez. Una
+ * PENDIENTE NO bloquea aqui: se REUSA (ver findReusableAssignment) para no
+ * dejar la suerte programada dos veces.
  */
 function hasActiveDuplicate(
   assignments: Assignment[],
@@ -70,7 +70,7 @@ function hasActiveDuplicate(
       // Una labor LIBERADA no cuenta como "activa" para bloquear: justamente
       // el operario la solto y puede querer retomar el restante en campo.
       !a.liberada &&
-      (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
+      (a.status === 'EN_PROCESO' || a.status === 'PARCIAL'),
   )
 }
 
@@ -230,92 +230,67 @@ export function useFreeFieldForm(options?: Options) {
     setError('')
 
     try {
+      const now = new Date().toISOString()
+      // Por cada suerte decidimos: REUSAR la PENDIENTE existente (la misma linea
+      // original, vencida o no) o CREAR una nueva. Asi una suerte nunca queda
+      // programada dos veces. Al reusar reiniciamos createdAt → vuelve a contar
+      // como "programada hoy" y reaparece en Activas.
+      const usedReusableIds = new Set<string>()
+      const plan = maestroRows.map((maestroRow) => {
+        const suerteCode = `${maestroRow.haciendaCode}-${maestroRow.suerte}`
+        const area = getRemainingArea(assignments, suerteCode, freeFieldForm.labor, maestroRow.area, todayKey)
+        const reusable = findReusableAssignment(assignments, suerteCode, freeFieldForm.labor, usedReusableIds)
+        if (reusable) usedReusableIds.add(reusable.id)
+        return { maestroRow, suerteCode, area, reusable }
+      })
+      const reusedCount = plan.filter((p) => p.reusable).length
+
       if (!isOnline) {
-        const now = new Date().toISOString()
-        const localAssignments: Assignment[] = []
+        const newLocals: Assignment[] = []
+        const reusedLocals = new Map<string, Assignment>()
 
-        for (const maestroRow of maestroRows) {
-          const tempId = generateTempId()
-          const area = getRemainingArea(
-            assignments,
-            `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
-            freeFieldForm.labor,
-            maestroRow.area,
-            todayKey,
-          )
-          const createInput: Parameters<typeof apiCreateAssignment>[0] = {
-            haciendaCode: maestroRow.haciendaCode,
-            haciendaName: maestroRow.haciendaName,
-            suerte: maestroRow.suerte,
-            labor: freeFieldForm.labor,
-            area,
-            supervisorId: selectedSupervisor.id,
-            supervisorName: selectedSupervisor.name,
-            operatorId: operator.id,
-            operatorName: operator.name,
-            equipmentCode: equipmentItem.code,
-            equipmentName: equipmentItem.name,
-            notes: freeFieldForm.notes,
-            cliente: undefined,
-            kind: 'LIBRE',
-            initialStatus: 'PENDIENTE',
-            approval: 'PENDIENTE',
-            zone: null,
-          }
-          const local: Assignment = {
-            id: tempId,
-            createdAt: now,
-            dateKey: todayKey,
-            haciendaCode: maestroRow.haciendaCode,
-            haciendaName: maestroRow.haciendaName,
-            suerte: maestroRow.suerte,
-            suerteCode: `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
-            labor: freeFieldForm.labor,
-            area,
-            status: 'PENDIENTE',
-            operatorId: operator.id,
-            operatorName: operator.name,
-            supervisorId: selectedSupervisor.id,
-            equipmentCode: equipmentItem.code,
-            equipmentName: equipmentItem.name,
-            startedAt: null,
-            finishedAt: null,
-            executedArea: 0,
-            notes: freeFieldForm.notes,
-            kind: 'LIBRE',
-            horometroInicial: null,
-            horometroFinal: null,
-            cliente: undefined,
-            approval: 'PENDIENTE',
-            approvedBy: null,
-            approvedAt: null,
-            zone: null,
-          }
-          await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
-          await db.assignments.put(local)
-          localAssignments.push(local)
-        }
-
-        setAssignments((current) => [...localAssignments, ...current])
-        setOutboxCount((c) => c + maestroRows.length)
-        setInfo(
-          `${maestroRows.length} labor(es) creadas localmente. Se sincronizaran al recuperar senal.`,
-        )
-      } else {
-        await Promise.all(
-          maestroRows.map((maestroRow) =>
-            apiCreateAssignment({
+        for (const { maestroRow, suerteCode, area, reusable } of plan) {
+          if (reusable) {
+            const updatePayload: UpdateAssignmentInput = {
+              operatorId: operator.id,
+              operatorName: operator.name,
+              supervisorId: selectedSupervisor.id,
+              supervisorName: selectedSupervisor.name,
+              equipmentCode: equipmentItem.code,
+              equipmentName: equipmentItem.name,
+              notes: freeFieldForm.notes,
+              approval: 'PENDIENTE',
+              approvedBy: null,
+              approvedAt: null,
+              liberada: false,
+              createdAt: now,
+            }
+            await db.outbox.add({ type: 'UPDATE', assignmentId: reusable.id, updatePayload, queuedAt: now, status: 'pending' })
+            const updated: Assignment = {
+              ...reusable,
+              operatorId: operator.id,
+              operatorName: operator.name,
+              supervisorId: selectedSupervisor.id,
+              equipmentCode: equipmentItem.code,
+              equipmentName: equipmentItem.name,
+              notes: freeFieldForm.notes,
+              approval: 'PENDIENTE',
+              approvedBy: null,
+              approvedAt: null,
+              liberada: false,
+              createdAt: now,
+              dateKey: todayKey,
+            }
+            await db.assignments.put(updated)
+            reusedLocals.set(updated.id, updated)
+          } else {
+            const tempId = generateTempId()
+            const createInput: Parameters<typeof apiCreateAssignment>[0] = {
               haciendaCode: maestroRow.haciendaCode,
               haciendaName: maestroRow.haciendaName,
               suerte: maestroRow.suerte,
               labor: freeFieldForm.labor,
-              area: getRemainingArea(
-                assignments,
-                `${maestroRow.haciendaCode}-${maestroRow.suerte}`,
-                freeFieldForm.labor,
-                maestroRow.area,
-                todayKey,
-              ),
+              area,
               supervisorId: selectedSupervisor.id,
               supervisorName: selectedSupervisor.name,
               operatorId: operator.id,
@@ -328,11 +303,96 @@ export function useFreeFieldForm(options?: Options) {
               initialStatus: 'PENDIENTE',
               approval: 'PENDIENTE',
               zone: null,
-            }),
-          ),
+            }
+            const local: Assignment = {
+              id: tempId,
+              createdAt: now,
+              dateKey: todayKey,
+              haciendaCode: maestroRow.haciendaCode,
+              haciendaName: maestroRow.haciendaName,
+              suerte: maestroRow.suerte,
+              suerteCode,
+              labor: freeFieldForm.labor,
+              area,
+              status: 'PENDIENTE',
+              operatorId: operator.id,
+              operatorName: operator.name,
+              supervisorId: selectedSupervisor.id,
+              equipmentCode: equipmentItem.code,
+              equipmentName: equipmentItem.name,
+              startedAt: null,
+              finishedAt: null,
+              executedArea: 0,
+              notes: freeFieldForm.notes,
+              kind: 'LIBRE',
+              horometroInicial: null,
+              horometroFinal: null,
+              cliente: undefined,
+              approval: 'PENDIENTE',
+              approvedBy: null,
+              approvedAt: null,
+              zone: null,
+            }
+            await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
+            await db.assignments.put(local)
+            newLocals.push(local)
+          }
+        }
+
+        setAssignments((current) => [
+          ...newLocals,
+          ...current.map((a) => reusedLocals.get(a.id) ?? a),
+        ])
+        setOutboxCount((c) => c + plan.length)
+        setInfo(
+          `${plan.length} labor(es) registradas localmente. Se sincronizaran al recuperar senal.`,
+        )
+      } else {
+        await Promise.all(
+          plan.map(({ maestroRow, area, reusable }) => {
+            if (reusable) {
+              return updateAssignment(reusable.id, {
+                operatorId: operator.id,
+                operatorName: operator.name,
+                supervisorId: selectedSupervisor.id,
+                supervisorName: selectedSupervisor.name,
+                equipmentCode: equipmentItem.code,
+                equipmentName: equipmentItem.name,
+                notes: freeFieldForm.notes,
+                approval: 'PENDIENTE',
+                approvedBy: null,
+                approvedAt: null,
+                liberada: false,
+                createdAt: now,
+              })
+            }
+            return apiCreateAssignment({
+              haciendaCode: maestroRow.haciendaCode,
+              haciendaName: maestroRow.haciendaName,
+              suerte: maestroRow.suerte,
+              labor: freeFieldForm.labor,
+              area,
+              supervisorId: selectedSupervisor.id,
+              supervisorName: selectedSupervisor.name,
+              operatorId: operator.id,
+              operatorName: operator.name,
+              equipmentCode: equipmentItem.code,
+              equipmentName: equipmentItem.name,
+              notes: freeFieldForm.notes,
+              cliente: undefined,
+              kind: 'LIBRE',
+              initialStatus: 'PENDIENTE',
+              approval: 'PENDIENTE',
+              zone: null,
+            })
+          }),
         )
         await refreshAssignments()
-        setInfo(`${maestroRows.length} labor(es) tomadas en campo libre.`)
+        setInfo(
+          reusedCount > 0
+            ? `${plan.length} labor(es) tomadas en campo (${reusedCount} reutilizada(s) de la programacion existente).`
+            : `${plan.length} labor(es) tomadas en campo libre.`,
+        )
       }
 
       const savedEquipment = freeFieldForm.equipmentCode || session.equipmentCode

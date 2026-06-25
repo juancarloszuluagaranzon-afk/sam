@@ -458,6 +458,9 @@ export function OperatorView({
         if (Number.isNaN(created)) return true // sin fecha válida → no la vencemos
         return now - created <= STALE_MS
       })
+      // Siempre las MÁS RECIENTES primero (por fecha de creación; ISO ordena
+      // cronológicamente como texto).
+      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
   }, [operatorAssignments, assignments])
 
   const [selectedActiveAssignment, setSelectedActiveAssignment] = useState<Assignment | null>(null)

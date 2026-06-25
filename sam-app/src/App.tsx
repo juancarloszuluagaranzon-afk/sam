@@ -8,7 +8,7 @@ import { InsumosView } from './views/InsumosView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
-import { matchesSummaryFilter, type SummaryQuincena } from './components/EntityHistoryModal'
+import { matchesSummaryFilter, currentQuincena, type SummaryQuincena } from './components/EntityHistoryModal'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
 import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getAssignmentIngenioId } from './services/samApi'
@@ -107,7 +107,11 @@ function AppContent() {
   const [laborSearch, setLaborSearch] = useState('')
   const [selectedLabor, setSelectedLabor] = useState<Assignment | null>(null)
   const [reportFilters, setReportFilters] = useState({
-    period: 'MES' as ReportPeriod,
+    // Default = quincena EN CURSO (no "todo el mes"): los indicadores del
+    // Reporte abren en la quincena del corte actual.
+    period: currentQuincena(
+      new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }),
+    ) as ReportPeriod,
     view: 'labor' as 'labor' | 'maquina',
     // Mes (YYYY-MM) al que aplican los períodos PRIMERA/SEGUNDA/MES. Default =
     // mes actual; permite filtrar el mes anterior o cualquier otro.

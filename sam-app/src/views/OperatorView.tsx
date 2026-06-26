@@ -290,6 +290,7 @@ export function OperatorView({
   const [savingSol, setSavingSol] = useState(false)
   const [misSolicitudes, setMisSolicitudes] = useState<SolicitudInsumo[]>([])
   const [solHistOpen, setSolHistOpen] = useState(false)
+  const [historySearch, setHistorySearch] = useState('')
 
   async function refreshMisSolicitudes() {
     if (!session) return
@@ -607,6 +608,25 @@ export function OperatorView({
     for (const n of historyNovedades) items.push({ date: n.fecha, nov: n })
     return items.sort((a, b) => (a.date < b.date ? 1 : -1))
   }, [filteredHistory, historyNovedades])
+
+  // Búsqueda libre del Historial: filtra la LISTA por hacienda/suerte/labor (y
+  // el nombre de la novedad). NO afecta los KPIs del período (esos son totales).
+  const visibleHistoryItems = useMemo(() => {
+    const q = historySearch.trim().toLowerCase()
+    if (!q) return historyItems
+    return historyItems.filter((item) => {
+      if (item.labor) {
+        const a = item.labor
+        return (
+          a.haciendaName.toLowerCase().includes(q) ||
+          a.suerte.toLowerCase().includes(q) ||
+          a.labor.toLowerCase().includes(q)
+        )
+      }
+      if (item.nov) return NOVEDAD_LABEL[item.nov.tipo].toLowerCase().includes(q)
+      return false
+    })
+  }, [historyItems, historySearch])
 
   if (!session) return null
 
@@ -1453,8 +1473,17 @@ export function OperatorView({
               )}
             </div>
 
+            <input
+              className="user-search-input"
+              type="search"
+              placeholder="Buscar por hacienda, suerte o labor…"
+              value={historySearch}
+              onChange={(e) => setHistorySearch(e.target.value)}
+              style={{ marginBottom: 10 }}
+            />
+
             <div className="list-rows">
-              {historyItems.map((item) => {
+              {visibleHistoryItems.map((item) => {
                 // Fila de NOVEDAD (taller/permiso/descanso/etc.): día no laborado.
                 if (item.nov) {
                   const n = item.nov
@@ -1508,8 +1537,12 @@ export function OperatorView({
                   </div>
                 )
               })}
-              {!historyItems.length ? (
-                <p className="muted-text">Aun no hay labores ni novedades en este periodo.</p>
+              {!visibleHistoryItems.length ? (
+                <p className="muted-text">
+                  {historySearch.trim()
+                    ? 'Sin coincidencias para la búsqueda.'
+                    : 'Aun no hay labores ni novedades en este periodo.'}
+                </p>
               ) : null}
             </div>
           </section>

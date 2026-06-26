@@ -29,7 +29,19 @@ const ingenioNombre = (id: string) => INGENIOS.find((i) => i.id === id)?.nombre 
 const LIMIT = 300
 
 export function MaestrosTab() {
-  const { session, maestro, setMaestro, busy, setBusy, setError, setInfo } = useAppData()
+  const { session, maestro, setMaestro, assignments, busy, setBusy, setError, setInfo } = useAppData()
+
+  // suerteCodes ("hacienda-suerte") con labor activa → el cargue masivo avisa
+  // antes de desactivar una suerte que está en uso.
+  const activeSuerteCodes = useMemo(() => {
+    const s = new Set<string>()
+    for (const a of assignments) {
+      if (a.status === 'PENDIENTE' || a.status === 'EN_PROCESO' || a.status === 'PARCIAL') {
+        s.add(`${a.haciendaCode}-${a.suerte}`)
+      }
+    }
+    return s
+  }, [assignments])
 
   const [search, setSearch] = useState('')
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -426,17 +438,40 @@ export function MaestrosTab() {
         onClose={() => setIsBulkOpen(false)}
         maestro={maestro}
         createdBy={session?.id ?? ''}
-        onInserted={(rows) => {
-          if (rows.length === 0) {
-            setInfo('No se crearon suertes nuevas (todas ya existían).')
-            return
-          }
+        activeSuerteCodes={activeSuerteCodes}
+        onApplied={({ inserted, updated, deactivated }) => {
+          const key = (r: { ingenio_id: string; haciendaCode: string; suerte: string }) =>
+            `${r.ingenio_id}|${r.haciendaCode}|${r.suerte}`
           setMaestro((prev) => {
-            const keys = new Set(prev.map((r) => `${r.ingenio_id}|${r.haciendaCode}|${r.suerte}`))
-            const add = rows.filter((r) => !keys.has(`${r.ingenio_id}|${r.haciendaCode}|${r.suerte}`))
-            return [...prev, ...add]
+            let next = prev
+            // Agregar nuevas/reactivadas (sin duplicar).
+            if (inserted.length) {
+              const have = new Set(next.map(key))
+              const add = inserted.filter((r) => !have.has(key(r)))
+              if (add.length) next = [...next, ...add]
+            }
+            // Aplicar áreas cambiadas.
+            if (updated.length) {
+              const upMap = new Map(updated.map((u) => [key(u), u.area]))
+              next = next.map((r) => {
+                const a = upMap.get(key(r))
+                return a !== undefined ? { ...r, area: a } : r
+              })
+            }
+            // Quitar desactivadas.
+            if (deactivated.length) {
+              const del = new Set(deactivated.map(key))
+              next = next.filter((r) => !del.has(key(r)))
+            }
+            return next
           })
-          setInfo(`Cargue masivo: ${rows.length} suerte(s) creadas.`)
+          if (inserted.length === 0 && updated.length === 0 && deactivated.length === 0) {
+            setInfo('Catálogo revisado: no había cambios que aplicar.')
+          } else {
+            setInfo(
+              `Catálogo actualizado: ${inserted.length} agregada(s)/reactivada(s), ${updated.length} área(s) cambiada(s), ${deactivated.length} desactivada(s).`,
+            )
+          }
         }}
       />
     </section>

@@ -475,6 +475,114 @@ export async function bulkInsertMaestro(
   return inserted
 }
 
+/**
+ * Actualiza el área neta de varias suertes EXISTENTES (reconciliación del cargue
+ * masivo). Clave por (ingenio, hacienda, suerte). Requiere la policy RLS de
+ * UPDATE del maestro (mig. 20260601150000). Devuelve cuántas se actualizaron.
+ */
+export async function bulkUpdateMaestroArea(
+  rows: { haciendaCode: string; suerte: string; ingenio_id: string; area: number }[],
+): Promise<number> {
+  let updated = 0
+  const CHUNK = 25
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await Promise.all(
+      rows.slice(i, i + CHUNK).map(async (r) => {
+        const { error } = await supabase
+          .from('maestro_risaralda')
+          .update({ area_neta: r.area })
+          .eq('hacienda', r.haciendaCode)
+          .eq('suerte', r.suerte)
+          .eq('ingenio_id', r.ingenio_id)
+        if (!error) {
+          updated++
+          try { await db.maestro.update([r.haciendaCode, r.suerte], { area: r.area }) } catch { /* sin cache */ }
+        }
+      }),
+    )
+  }
+  return updated
+}
+
+/**
+ * Reactiva (activo=true) + fija el área de suertes que REAPARECEN en el catálogo
+ * (estaban soft-deleted). El cargue masivo las detecta como "nuevas" que en
+ * realidad chocan con una fila inactiva (bulkInsertMaestro las omite por el
+ * ON CONFLICT). Devuelve las filas reactivadas (para sumarlas al estado activo).
+ */
+export async function bulkReactivateMaestro(
+  rows: { haciendaCode: string; haciendaName: string; suerte: string; ingenio_id: string; area: number }[],
+): Promise<MaestroRow[]> {
+  const out: MaestroRow[] = []
+  const CHUNK = 25
+  for (let i = 0; i < rows.length; i += CHUNK) {
+    await Promise.all(
+      rows.slice(i, i + CHUNK).map(async (r) => {
+        const { data, error } = await supabase
+          .from('maestro_risaralda')
+          .update({ activo: true, area_neta: r.area })
+          .eq('hacienda', r.haciendaCode)
+          .eq('suerte', r.suerte)
+          .eq('ingenio_id', r.ingenio_id)
+          .select('hacienda,nombre_hacienda,suerte,area_neta,ingenio_id,creado_manual,creado_por')
+          .maybeSingle()
+        if (!error && data) {
+          const row: MaestroRow = {
+            haciendaCode: String(data.hacienda),
+            haciendaName: String(data.nombre_hacienda ?? r.haciendaName),
+            suerte: String(data.suerte),
+            area: Number(data.area_neta),
+            ingenio_id: String(data.ingenio_id ?? 'risaralda'),
+            creadoManual: data.creado_manual === true,
+            creadoPor: data.creado_por ? String(data.creado_por) : undefined,
+          }
+          out.push(row)
+          try { await db.maestro.put(row) } catch { /* sin cache */ }
+        }
+      }),
+    )
+  }
+  return out
+}
+
+/**
+ * Desactiva (soft-delete, activo=false) suertes que DESAPARECIERON del catálogo
+ * nuevo. Agrupa por (ingenio, hacienda) → una query con .in('suerte'). NO borra:
+ * conserva el histórico de labores. Devuelve cuántas se desactivaron.
+ */
+export async function bulkDeactivateMaestro(
+  keys: { haciendaCode: string; suerte: string; ingenio_id: string }[],
+): Promise<number> {
+  if (keys.length === 0) return 0
+  const groups = new Map<string, { ingenio_id: string; haciendaCode: string; suertes: string[] }>()
+  for (const k of keys) {
+    const gk = `${k.ingenio_id}|${k.haciendaCode}`
+    const g = groups.get(gk) ?? { ingenio_id: k.ingenio_id, haciendaCode: k.haciendaCode, suertes: [] }
+    g.suertes.push(k.suerte)
+    groups.set(gk, g)
+  }
+  let deactivated = 0
+  const CHUNK = 200
+  for (const g of groups.values()) {
+    for (let i = 0; i < g.suertes.length; i += CHUNK) {
+      const slice = g.suertes.slice(i, i + CHUNK)
+      const { error } = await supabase
+        .from('maestro_risaralda')
+        .update({ activo: false })
+        .eq('ingenio_id', g.ingenio_id)
+        .eq('hacienda', g.haciendaCode)
+        .in('suerte', slice)
+      if (!error) {
+        deactivated += slice.length
+        for (const s of slice) {
+          try { await db.maestro.delete([g.haciendaCode, s]) } catch { /* sin cache */ }
+        }
+      }
+    }
+  }
+  return deactivated
+}
+
 // IDs de asignaciones con un cambio local pendiente de enviar (outbox
 // status='pending', type='UPDATE'). Los usamos en loadAssignments para NO
 // sobrescribir esas filas con la version del servidor: si lo hicieramos,

@@ -4945,6 +4945,49 @@ button.movement-row--clickable:active {
 .bulk-errores ul { margin: 6px 0 0; padding-left: 18px; }
 .bulk-errores li { margin: 2px 0; }
 
+/* Listas de reconciliación del cargue masivo (áreas cambiadas / desaparecidas) */
+.bulk-recon {
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: var(--color-bg-soft);
+}
+.bulk-recon__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.bulk-recon__list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow: auto;
+}
+.bulk-recon__list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  border-top: 1px solid var(--color-border);
+  font-size: 0.82rem;
+}
+.bulk-recon__list label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  min-width: 0;
+}
+.bulk-recon__list label span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bulk-recon__delta { white-space: nowrap; color: var(--color-ink-mid); }
+.bulk-recon__warn { color: var(--color-status-cancel); font-weight: 600; }
+.bulk-recon__more { justify-content: flex-start; color: var(--color-ink-mid); font-style: italic; }
+
 /* Barra de búsqueda + Filtros del Resumen (reusa .labores-search-row) */
 .summary-search-bar { margin: 0 0 14px; }
 

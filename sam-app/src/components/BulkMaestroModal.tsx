@@ -1,5 +1,10 @@
 import { useRef, useState } from 'react'
-import { bulkInsertMaestro } from '../services/samApi'
+import {
+  bulkInsertMaestro,
+  bulkUpdateMaestroArea,
+  bulkReactivateMaestro,
+  bulkDeactivateMaestro,
+} from '../services/samApi'
 import type { MaestroRow } from '../domain/sam'
 
 const INGENIOS = [
@@ -20,8 +25,6 @@ function normIng(s: unknown) {
     .replace(/[_\s]+/g, ' ')
     .trim()
 }
-// Resuelve la celda "Ingenio" (acepta id 'risaralda', 'san_carlos', o nombre
-// 'Ingenio Risaralda', 'San Carlos', etc.) → id canónico, o null si no calza.
 function resolveIngenio(cell: unknown): string | null {
   const n = normIng(cell)
   if (!n) return null
@@ -38,9 +41,33 @@ interface ParsedRow {
   suerte: string
   area: number
 }
+interface ChangedRow {
+  ingenio_id: string
+  haciendaCode: string
+  haciendaName: string
+  suerte: string
+  oldArea: number
+  newArea: number
+  apply: boolean
+}
+interface RemovedRow {
+  ingenio_id: string
+  haciendaCode: string
+  haciendaName: string
+  suerte: string
+  area: number
+  hasActiveLabor: boolean
+  apply: boolean
+}
 interface ErrRow {
   fila: number
   motivo: string
+}
+
+export interface BulkApplyResult {
+  inserted: MaestroRow[]
+  updated: { ingenio_id: string; haciendaCode: string; suerte: string; area: number }[]
+  deactivated: { ingenio_id: string; haciendaCode: string; suerte: string }[]
 }
 
 interface Props {
@@ -48,27 +75,41 @@ interface Props {
   onClose: () => void
   maestro: MaestroRow[]
   createdBy: string
-  onInserted: (rows: MaestroRow[]) => void
+  /** suerteCodes ("hacienda-suerte") con labor activa → aviso al desactivar. */
+  activeSuerteCodes: Set<string>
+  onApplied: (result: BulkApplyResult) => void
 }
 
-export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted }: Props) {
+const k3 = (ing: string, cod: string, sue: string) => `${ing}|${cod}|${sue}`
+
+export function BulkMaestroModal({ open, onClose, maestro, createdBy, activeSuerteCodes, onApplied }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const [valid, setValid] = useState<ParsedRow[]>([])
+  const [parsed, setParsed] = useState(false)
+  const [nuevas, setNuevas] = useState<ParsedRow[]>([])
+  const [changed, setChanged] = useState<ChangedRow[]>([])
+  const [removed, setRemoved] = useState<RemovedRow[]>([])
+  const [unchanged, setUnchanged] = useState(0)
   const [errores, setErrores] = useState<ErrRow[]>([])
-  const [nuevas, setNuevas] = useState(0)
-  const [existentes, setExistentes] = useState(0)
 
   function reset() {
     setFileName('')
-    setValid([])
+    setParsed(false)
+    setNuevas([])
+    setChanged([])
+    setRemoved([])
+    setUnchanged(0)
     setErrores([])
-    setNuevas(0)
-    setExistentes(0)
     setError('')
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function closeAll() {
+    if (busy) return
+    reset()
+    onClose()
   }
 
   async function downloadTemplate() {
@@ -97,11 +138,7 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
 
   async function onFile(file: File) {
     setBusy(true)
-    setError('')
-    setValid([])
-    setErrores([])
-    setNuevas(0)
-    setExistentes(0)
+    reset()
     setFileName(file.name)
     try {
       const XLSX = await import('xlsx')
@@ -132,12 +169,10 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
         setError('Faltan columnas. La plantilla debe tener: Ingenio, Codigo hacienda, Nombre hacienda, Suerte, Area neta.')
         return
       }
-      const existeSet = new Set(maestro.map((r) => `${r.ingenio_id}|${r.haciendaCode}|${r.suerte}`))
+
       const dedup = new Set<string>()
       const ok: ParsedRow[] = []
       const errs: ErrRow[] = []
-      let nuevasN = 0
-      let existN = 0
       for (let i = 1; i < aoa.length; i++) {
         const r = aoa[i]
         const ingCell = r[iIng]
@@ -145,7 +180,6 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
         const nom = String(r[iNom] ?? '').trim().toUpperCase()
         const sue = String(r[iSue] ?? '').trim()
         const areaRaw = r[iArea]
-        // fila totalmente vacía → ignorar sin error
         if (!String(ingCell ?? '').trim() && !cod && !nom && !sue && !String(areaRaw ?? '').trim()) continue
         const ing = resolveIngenio(ingCell)
         const area = typeof areaRaw === 'number' ? areaRaw : parseFloat(String(areaRaw ?? '').replace(/,/g, '.'))
@@ -154,17 +188,62 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
         if (!nom) { errs.push({ fila: i + 1, motivo: 'falta nombre de hacienda' }); continue }
         if (!sue) { errs.push({ fila: i + 1, motivo: 'falta número de suerte' }); continue }
         if (!area || isNaN(area) || area <= 0) { errs.push({ fila: i + 1, motivo: 'área inválida (> 0)' }); continue }
-        const key = `${ing}|${cod}|${sue}`
+        const key = k3(ing, cod, sue)
         if (dedup.has(key)) { errs.push({ fila: i + 1, motivo: 'duplicada dentro del archivo' }); continue }
         dedup.add(key)
-        if (existeSet.has(key)) existN++
-        else nuevasN++
         ok.push({ ingenio_id: ing, haciendaCode: cod, haciendaName: nom, suerte: sue, area })
       }
-      setValid(ok)
+
+      // --- Reconciliación contra el catálogo ACTUAL (solo activas) ---
+      const currentByKey = new Map(maestro.map((r) => [k3(r.ingenio_id, r.haciendaCode, r.suerte), r]))
+      const parsedKeys = new Set(ok.map((r) => k3(r.ingenio_id, r.haciendaCode, r.suerte)))
+      // Alcance "desaparecidas" = solo haciendas presentes en el archivo.
+      const haciendasInFile = new Set(ok.map((r) => `${r.ingenio_id}|${r.haciendaCode}`))
+
+      const news: ParsedRow[] = []
+      const chg: ChangedRow[] = []
+      let unch = 0
+      for (const r of ok) {
+        const cur = currentByKey.get(k3(r.ingenio_id, r.haciendaCode, r.suerte))
+        if (!cur) { news.push(r); continue }
+        if (Math.abs(cur.area - r.area) > 0.001) {
+          chg.push({
+            ingenio_id: r.ingenio_id,
+            haciendaCode: r.haciendaCode,
+            haciendaName: r.haciendaName,
+            suerte: r.suerte,
+            oldArea: cur.area,
+            newArea: r.area,
+            apply: true,
+          })
+        } else {
+          unch++
+        }
+      }
+      const rem: RemovedRow[] = []
+      for (const r of maestro) {
+        if (!haciendasInFile.has(`${r.ingenio_id}|${r.haciendaCode}`)) continue
+        if (parsedKeys.has(k3(r.ingenio_id, r.haciendaCode, r.suerte))) continue
+        const hasActiveLabor = activeSuerteCodes.has(`${r.haciendaCode}-${r.suerte}`)
+        rem.push({
+          ingenio_id: r.ingenio_id,
+          haciendaCode: r.haciendaCode,
+          haciendaName: r.haciendaName,
+          suerte: r.suerte,
+          area: r.area,
+          hasActiveLabor,
+          // Default: desactivar — PERO si tiene labor activa arranca SIN marcar
+          // (decisión consciente para no quitar algo en uso).
+          apply: !hasActiveLabor,
+        })
+      }
+
+      setNuevas(news)
+      setChanged(chg)
+      setRemoved(rem)
+      setUnchanged(unch)
       setErrores(errs)
-      setNuevas(nuevasN)
-      setExistentes(existN)
+      setParsed(true)
       if (ok.length === 0 && errs.length === 0) setError('El archivo no tiene filas con datos.')
     } catch {
       setError('No se pudo leer el archivo. Verifica que sea .xlsx válido.')
@@ -173,18 +252,67 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
     }
   }
 
+  function toggleChanged(idx: number) {
+    setChanged((prev) => prev.map((c, i) => (i === idx ? { ...c, apply: !c.apply } : c)))
+  }
+  function toggleRemoved(idx: number) {
+    setRemoved((prev) => prev.map((c, i) => (i === idx ? { ...c, apply: !c.apply } : c)))
+  }
+  function setAllChanged(v: boolean) {
+    setChanged((prev) => prev.map((c) => ({ ...c, apply: v })))
+  }
+  function setAllRemoved(v: boolean) {
+    setRemoved((prev) => prev.map((c) => ({ ...c, apply: v })))
+  }
+
+  const updatesSel = changed.filter((c) => c.apply)
+  const removalsSel = removed.filter((c) => c.apply)
+  const totalActions = nuevas.length + updatesSel.length + removalsSel.length
+
   async function confirmar() {
-    if (valid.length === 0) return
+    if (totalActions === 0) return
     setBusy(true)
     setError('')
     try {
-      const insertadas = await bulkInsertMaestro(valid, createdBy)
-      onInserted(insertadas)
+      const newPayload = nuevas.map((r) => ({
+        haciendaCode: r.haciendaCode,
+        haciendaName: r.haciendaName,
+        suerte: r.suerte,
+        area: r.area,
+        ingenio_id: r.ingenio_id,
+      }))
+      const inserted = await bulkInsertMaestro(newPayload, createdBy)
+      // Las "nuevas" que NO volvieron del insert = chocaron con una fila
+      // inactiva (suerte que REAPARECE) → reactivar.
+      const insertedKeys = new Set(inserted.map((r) => k3(r.ingenio_id, r.haciendaCode, r.suerte)))
+      const reappeared = newPayload.filter((r) => !insertedKeys.has(k3(r.ingenio_id, r.haciendaCode, r.suerte)))
+      const reactivated = reappeared.length ? await bulkReactivateMaestro(reappeared) : []
+
+      const updatePayload = updatesSel.map((c) => ({
+        ingenio_id: c.ingenio_id,
+        haciendaCode: c.haciendaCode,
+        suerte: c.suerte,
+        area: c.newArea,
+      }))
+      if (updatePayload.length) await bulkUpdateMaestroArea(updatePayload)
+
+      const deactivatePayload = removalsSel.map((c) => ({
+        ingenio_id: c.ingenio_id,
+        haciendaCode: c.haciendaCode,
+        suerte: c.suerte,
+      }))
+      if (deactivatePayload.length) await bulkDeactivateMaestro(deactivatePayload)
+
+      onApplied({
+        inserted: [...inserted, ...reactivated],
+        updated: updatePayload,
+        deactivated: deactivatePayload,
+      })
       reset()
       onClose()
     } catch (err) {
       const e = err as { message?: string }
-      setError(`No se pudo cargar. (${e?.message ?? 'error'}) — verifica conexión y/o avisa al admin.`)
+      setError(`No se pudo aplicar. (${e?.message ?? 'error'}) — verifica conexión y/o avisa al admin.`)
     } finally {
       setBusy(false)
     }
@@ -193,21 +321,22 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
   if (!open) return null
 
   return (
-    <div className="modal-overlay open" onClick={() => { if (!busy) { reset(); onClose() } }}>
+    <div className="modal-overlay open" onClick={closeAll}>
       <div className="modal-card bulk-maestro-card" onClick={(e) => e.stopPropagation()}>
         <div className="labor-detail-header">
           <div>
             <p className="eyebrow">Maestro</p>
-            <h3>Cargue masivo de suertes</h3>
+            <h3>Actualizar catálogo (cargue masivo)</h3>
           </div>
-          <button type="button" className="modal-close-btn" onClick={() => { reset(); onClose() }} disabled={busy} aria-label="Cerrar">
+          <button type="button" className="modal-close-btn" onClick={closeAll} disabled={busy} aria-label="Cerrar">
             &#x2715;
           </button>
         </div>
 
         <ol className="bulk-steps">
-          <li>Descarga la plantilla, llénala (borra las filas de ejemplo) y guárdala.</li>
-          <li>Súbela aquí: validamos y te mostramos cuántas se van a crear.</li>
+          <li>Descarga la plantilla, llénala con el catálogo del ingenio y guárdala.</li>
+          <li>Súbela: comparo contra el catálogo actual y te muestro qué cambia.</li>
+          <li>Revisa y <strong>decide</strong> qué hacer con áreas cambiadas y desaparecidas. Nada se aplica hasta confirmar.</li>
         </ol>
 
         <div className="bulk-actions">
@@ -232,32 +361,103 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, onInserted
         {fileName && <p className="subtle-copy" style={{ margin: '4px 0' }}>📄 {fileName}</p>}
         {error && <div className="feedback error">{error}</div>}
 
-        {(valid.length > 0 || errores.length > 0) && (
-          <div className="bulk-summary">
-            <div className="bulk-kpi bulk-kpi--green"><strong>{nuevas}</strong><span>nuevas a crear</span></div>
-            <div className="bulk-kpi"><strong>{existentes}</strong><span>ya existen (se omiten)</span></div>
-            <div className="bulk-kpi bulk-kpi--red"><strong>{errores.length}</strong><span>con error</span></div>
-          </div>
-        )}
+        {parsed && (
+          <>
+            <div className="bulk-summary">
+              <div className="bulk-kpi bulk-kpi--green"><strong>{nuevas.length}</strong><span>nuevas</span></div>
+              <div className="bulk-kpi" style={{ color: '#b06a00' }}><strong>{changed.length}</strong><span>área cambiada</span></div>
+              <div className="bulk-kpi bulk-kpi--red"><strong>{removed.length}</strong><span>desaparecidas</span></div>
+              <div className="bulk-kpi"><strong>{unchanged}</strong><span>sin cambios</span></div>
+              {errores.length > 0 && (
+                <div className="bulk-kpi bulk-kpi--red"><strong>{errores.length}</strong><span>con error</span></div>
+              )}
+            </div>
 
-        {errores.length > 0 && (
-          <div className="bulk-errores">
-            <strong>Filas con error (no se cargan):</strong>
-            <ul>
-              {errores.slice(0, 30).map((e, i) => (
-                <li key={i}>Fila {e.fila}: {e.motivo}</li>
-              ))}
-              {errores.length > 30 && <li>…y {errores.length - 30} más.</li>}
-            </ul>
-          </div>
+            <p className="field-hint" style={{ marginTop: 4 }}>
+              Las <strong>desaparecidas</strong> se evalúan solo en las haciendas que vienen en el archivo (una hacienda ausente del archivo no se toca).
+            </p>
+
+            {/* ÁREAS CAMBIADAS */}
+            {changed.length > 0 && (
+              <div className="bulk-recon">
+                <div className="bulk-recon__head">
+                  <strong>🟡 Área cambiada ({changed.length})</strong>
+                  <span>
+                    <button type="button" className="inline-button" onClick={() => setAllChanged(true)}>Todas</button>
+                    {' · '}
+                    <button type="button" className="inline-button" onClick={() => setAllChanged(false)}>Ninguna</button>
+                  </span>
+                </div>
+                <p className="field-hint">Marcadas = se actualiza al área nueva. Desmárcala para conservar la actual.</p>
+                <ul className="bulk-recon__list">
+                  {changed.slice(0, 60).map((c, i) => (
+                    <li key={k3(c.ingenio_id, c.haciendaCode, c.suerte)}>
+                      <label>
+                        <input type="checkbox" checked={c.apply} onChange={() => toggleChanged(i)} disabled={busy} />
+                        <span>{c.haciendaCode} {c.haciendaName} · {c.suerte}</span>
+                      </label>
+                      <span className="bulk-recon__delta">
+                        {c.oldArea.toFixed(2)} → <strong>{c.newArea.toFixed(2)}</strong> ha
+                      </span>
+                    </li>
+                  ))}
+                  {changed.length > 60 && <li className="bulk-recon__more">…y {changed.length - 60} más (se aplican según el estado de marcado masivo).</li>}
+                </ul>
+              </div>
+            )}
+
+            {/* DESAPARECIDAS */}
+            {removed.length > 0 && (
+              <div className="bulk-recon">
+                <div className="bulk-recon__head">
+                  <strong>🔴 Desaparecidas ({removed.length})</strong>
+                  <span>
+                    <button type="button" className="inline-button" onClick={() => setAllRemoved(true)}>Todas</button>
+                    {' · '}
+                    <button type="button" className="inline-button" onClick={() => setAllRemoved(false)}>Ninguna</button>
+                  </span>
+                </div>
+                <p className="field-hint">Marcadas = se desactivan (salen del catálogo, conservan histórico). Las que tienen labor activa arrancan sin marcar.</p>
+                <ul className="bulk-recon__list">
+                  {removed.slice(0, 60).map((c, i) => (
+                    <li key={k3(c.ingenio_id, c.haciendaCode, c.suerte)}>
+                      <label>
+                        <input type="checkbox" checked={c.apply} onChange={() => toggleRemoved(i)} disabled={busy} />
+                        <span>{c.haciendaCode} {c.haciendaName} · {c.suerte}</span>
+                      </label>
+                      <span className="bulk-recon__delta">
+                        {c.area.toFixed(2)} ha
+                        {c.hasActiveLabor && <span className="bulk-recon__warn"> ⚠ labor activa</span>}
+                      </span>
+                    </li>
+                  ))}
+                  {removed.length > 60 && <li className="bulk-recon__more">…y {removed.length - 60} más (se aplican según el estado de marcado masivo).</li>}
+                </ul>
+              </div>
+            )}
+
+            {errores.length > 0 && (
+              <div className="bulk-errores">
+                <strong>Filas con error (no se procesan):</strong>
+                <ul>
+                  {errores.slice(0, 20).map((e, i) => (
+                    <li key={i}>Fila {e.fila}: {e.motivo}</li>
+                  ))}
+                  {errores.length > 20 && <li>…y {errores.length - 20} más.</li>}
+                </ul>
+              </div>
+            )}
+          </>
         )}
 
         <div className="modal-footer">
-          <button type="button" className="inline-button" onClick={() => { reset(); onClose() }} disabled={busy}>
+          <button type="button" className="inline-button" onClick={closeAll} disabled={busy}>
             Cerrar
           </button>
-          <button type="button" className="primary-button" onClick={() => void confirmar()} disabled={busy || valid.length === 0}>
-            {busy ? 'Cargando…' : `Crear ${nuevas} suerte${nuevas === 1 ? '' : 's'}`}
+          <button type="button" className="primary-button" onClick={() => void confirmar()} disabled={busy || totalActions === 0}>
+            {busy
+              ? 'Aplicando…'
+              : `Aplicar (+${nuevas.length} · ~${updatesSel.length} · −${removalsSel.length})`}
           </button>
         </div>
       </div>

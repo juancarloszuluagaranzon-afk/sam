@@ -511,6 +511,23 @@ export function SupervisorView({
   const [summaryOperatorSearch, setSummaryOperatorSearch] = useState('')
   const [summaryEquipmentSearch, setSummaryEquipmentSearch] = useState('')
 
+  // Búsqueda libre de "Últimos movimientos" (pestaña Asignar): filtra por
+  // hacienda, suerte, labor, operario o equipo.
+  const [movSearch, setMovSearch] = useState('')
+  const visibleRecent = useMemo(() => {
+    const q = movSearch.trim().toLowerCase()
+    if (!q) return recentAssignments
+    return recentAssignments.filter(
+      (a) =>
+        a.haciendaName.toLowerCase().includes(q) ||
+        a.suerte.toLowerCase().includes(q) ||
+        a.labor.toLowerCase().includes(q) ||
+        (a.operatorName ?? '').toLowerCase().includes(q) ||
+        (a.equipmentName ?? '').toLowerCase().includes(q) ||
+        (a.equipmentCode ?? '').toLowerCase().includes(q),
+    )
+  }, [recentAssignments, movSearch])
+
   // Aprobación de labor de campo: si le faltan cliente/zona, el supervisor los
   // diligencia OBLIGATORIamente en este modal antes de aprobar.
   const [approveTarget, setApproveTarget] = useState<Assignment | null>(null)
@@ -1540,8 +1557,16 @@ export function SupervisorView({
               <div className="panel-title">
                 <h2>Ultimos movimientos</h2>
               </div>
+              <input
+                className="user-search-input"
+                type="search"
+                placeholder="Buscar por hacienda, suerte, labor, operario o equipo…"
+                value={movSearch}
+                onChange={(e) => setMovSearch(e.target.value)}
+                style={{ marginBottom: 10 }}
+              />
               <ul className="movement-list">
-                {recentAssignments.map((assignment) => {
+                {visibleRecent.map((assignment) => {
                   const meta = getStatusMeta(assignment)
                   return (
                     <li key={assignment.id}>
@@ -1581,8 +1606,10 @@ export function SupervisorView({
                     </li>
                   )
                 })}
-                {recentAssignments.length === 0 && (
-                  <li className="movement-empty">Sin movimientos recientes.</li>
+                {visibleRecent.length === 0 && (
+                  <li className="movement-empty">
+                    {movSearch.trim() ? 'Sin coincidencias para la búsqueda.' : 'Sin movimientos recientes.'}
+                  </li>
                 )}
               </ul>
             </article>

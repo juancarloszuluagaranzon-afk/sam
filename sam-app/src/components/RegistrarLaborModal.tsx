@@ -93,16 +93,14 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
       if (field === 'haciendaCode') return { ...f, haciendaCode: value as string, suerte: '', hectareas: '', isComplete: false }
       if (field === 'suerte') {
         const sue = value as string
-        const row = maestro.find(
-          (r) => r.ingenio_id === f.ingenioId && r.haciendaCode === f.haciendaCode && r.suerte === sue,
-        )
-        // Al elegir la suerte, autocompleta las hectáreas con su área y activa
-        // el 100% (el supervisor lo apaga si fue parcial).
+        // Al elegir la suerte NO se asume el 100%: el toggle queda apagado y las
+        // hectáreas vacías para que el supervisor las ingrese (o active el 100%).
+        // El área de la suerte se muestra siempre como referencia.
         return {
           ...f,
           suerte: sue,
-          hectareas: row ? row.area.toFixed(2) : f.hectareas,
-          isComplete: row != null,
+          hectareas: '',
+          isComplete: false,
         }
       }
       if (field === 'operatorId') {
@@ -264,6 +262,25 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
           />
         </label>
 
+        {suerteArea != null && (
+          <div
+            className="suerte-area-info"
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '8px 12px',
+              marginTop: -4,
+              borderRadius: 10,
+              background: 'rgba(30,77,26,0.12)',
+              border: '1px solid rgba(30,77,26,0.25)',
+            }}
+          >
+            <span className="complete-toggle-label">Área de la suerte</span>
+            <strong>{suerteArea.toFixed(2)} ha</strong>
+          </div>
+        )}
+
         <label className="field">
           <span>Labor realizada</span>
           <SearchableSelect
@@ -304,7 +321,7 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
               <span className="complete-toggle-hint">
                 {form.isComplete
                   ? `Se registran las ${suerteArea.toFixed(2)} ha completas`
-                  : 'Apágalo para registrar un área parcial'}
+                  : `Actívalo si hizo toda la suerte (${suerteArea.toFixed(2)} ha)`}
               </span>
             </div>
             <button

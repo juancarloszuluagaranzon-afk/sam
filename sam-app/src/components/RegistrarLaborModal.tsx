@@ -29,6 +29,7 @@ const EMPTY = {
   horometroInicial: '',
   horometroFinal: '',
   hectareas: '',
+  isComplete: false,
 }
 
 /**
@@ -77,16 +78,49 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
       .sort((a, b) => a.value.localeCompare(b.value))
   }, [maestro, form.haciendaCode, form.ingenioId])
 
+  // Área de la suerte seleccionada (del maestro) → default de "hectáreas".
+  const suerteArea = useMemo(() => {
+    if (!form.suerte) return null
+    const row = maestro.find(
+      (r) => r.ingenio_id === form.ingenioId && r.haciendaCode === form.haciendaCode && r.suerte === form.suerte,
+    )
+    return row ? row.area : null
+  }, [maestro, form.ingenioId, form.haciendaCode, form.suerte])
+
   function set<K extends keyof typeof EMPTY>(field: K, value: (typeof EMPTY)[K]) {
     setForm((f) => {
-      if (field === 'ingenioId') return { ...f, ingenioId: value as string, haciendaCode: '', suerte: '' }
-      if (field === 'haciendaCode') return { ...f, haciendaCode: value as string, suerte: '' }
+      if (field === 'ingenioId') return { ...f, ingenioId: value as string, haciendaCode: '', suerte: '', hectareas: '', isComplete: false }
+      if (field === 'haciendaCode') return { ...f, haciendaCode: value as string, suerte: '', hectareas: '', isComplete: false }
+      if (field === 'suerte') {
+        const sue = value as string
+        const row = maestro.find(
+          (r) => r.ingenio_id === f.ingenioId && r.haciendaCode === f.haciendaCode && r.suerte === sue,
+        )
+        // Al elegir la suerte, autocompleta las hectáreas con su área y activa
+        // el 100% (el supervisor lo apaga si fue parcial).
+        return {
+          ...f,
+          suerte: sue,
+          hectareas: row ? row.area.toFixed(2) : f.hectareas,
+          isComplete: row != null,
+        }
+      }
       if (field === 'operatorId') {
         const op = operators.find((o) => o.id === value)
         // Auto-rellena el equipo con el del operario si aún no se eligió uno.
         return { ...f, operatorId: value as string, equipmentCode: f.equipmentCode || op?.equipmentCode || '' }
       }
       return { ...f, [field]: value }
+    })
+  }
+
+  function toggleComplete() {
+    setForm((f) => {
+      const next = !f.isComplete
+      // Encender 100% → hectáreas = área de la suerte. Apagar → editable.
+      return next && suerteArea != null
+        ? { ...f, isComplete: true, hectareas: suerteArea.toFixed(2) }
+        : { ...f, isComplete: next }
     })
   }
 
@@ -263,10 +297,34 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
           </label>
         </div>
 
+        {suerteArea != null && (
+          <div className="complete-toggle-row" style={{ marginTop: 4 }}>
+            <div>
+              <span className="complete-toggle-label">Hizo el 100% de la suerte</span>
+              <span className="complete-toggle-hint">
+                {form.isComplete
+                  ? `Se registran las ${suerteArea.toFixed(2)} ha completas`
+                  : 'Apágalo para registrar un área parcial'}
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={form.isComplete}
+              className={`toggle-switch ${form.isComplete ? 'on' : ''}`}
+              onClick={toggleComplete}
+              disabled={busy}
+            >
+              <span className="toggle-thumb" />
+            </button>
+          </div>
+        )}
+
         <label className="field">
           <span>Hectáreas realizadas</span>
           <input type="number" inputMode="decimal" min={0.01} step="0.01" value={form.hectareas}
-            onChange={(e) => set('hectareas', e.target.value)} disabled={busy} autoFocus={false} />
+            onChange={(e) => set('hectareas', e.target.value)}
+            disabled={busy || (form.isComplete && suerteArea != null)} />
         </label>
 
         {error && <div className="feedback error">{error}</div>}

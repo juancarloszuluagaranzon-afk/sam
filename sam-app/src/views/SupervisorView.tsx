@@ -12,6 +12,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { NewSuerteModal } from '../components/NewSuerteModal'
+import { RegistrarLaborModal } from '../components/RegistrarLaborModal'
 import {
   EntityHistoryModal,
   matchesSummaryFilter,
@@ -301,6 +302,7 @@ export function SupervisorView({
   // Submenú "Catálogos" del more-sheet (Maestros, Labores, Empresas, Terceros).
   const [catalogosOpen, setCatalogosOpen] = useState(false)
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
+  const [isRegistrarLaborOpen, setIsRegistrarLaborOpen] = useState(false)
   // Texto para filtrar el listado de suertes del formulario de asignar
   // (escribir en vez de solo hacer scroll, como en Hacienda). Se limpia al
   // cambiar de hacienda/ingenio para no arrastrar un filtro de otra lista.
@@ -1017,6 +1019,11 @@ export function SupervisorView({
         />
       )}
 
+      <RegistrarLaborModal
+        open={isRegistrarLaborOpen}
+        onClose={() => setIsRegistrarLaborOpen(false)}
+      />
+
       <NewSuerteModal
         open={isNewSuerteOpen}
         onClose={() => setIsNewSuerteOpen(false)}
@@ -1550,6 +1557,14 @@ export function SupervisorView({
                 title="Crear una suerte que aun no este en el maestro del ingenio"
               >
                 + Nueva suerte
+              </button>
+              <button
+                type="button"
+                className="primary-button outline assign-cta-secondary"
+                onClick={() => setIsRegistrarLaborOpen(true)}
+                title="Anotar una labor YA realizada por un operario (registro rápido)"
+              >
+                ✓ Registrar labor realizada
               </button>
             </div>
 

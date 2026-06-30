@@ -1708,6 +1708,72 @@ export async function createAssignment(input: CreateAssignmentInput) {
   return mapAssignment(data as Record<string, unknown>)
 }
 
+export interface RegistrarLaborInput {
+  haciendaCode: string
+  haciendaName: string
+  suerte: string
+  labor: string
+  operatorId: string
+  operatorName: string
+  supervisorId: string
+  supervisorName: string
+  equipmentCode: string
+  equipmentName: string
+  area: number
+  horometroInicial: number | null
+  horometroFinal: number | null
+  cliente: 'ingenios' | 'proveedores'
+  zone: Zone | null
+  notes?: string
+}
+
+/**
+ * Registro RÁPIDO por el supervisor de una labor YA REALIZADA por un operario
+ * (los ~5% poco afines a la tecnología). Un solo INSERT que nace COMPLETADA y
+ * APROBADA, con horómetro inicial+final y área ejecutada en una sola pantalla.
+ * Supervisor y zona vienen del supervisor logueado (no se piden). area_asignada
+ * = area_realizada = hectáreas registradas.
+ */
+export async function registrarLaborRealizada(input: RegistrarLaborInput) {
+  const now = new Date().toISOString()
+  const payload = {
+    suerte_codigo: `${input.haciendaCode}-${input.suerte}`,
+    numero_suerte: input.suerte,
+    codigo_hacienda: input.haciendaCode,
+    nombre_hacienda: input.haciendaName,
+    labor_nombre: input.labor,
+    tractor: input.equipmentName || input.equipmentCode,
+    equipo_codigo: input.equipmentCode,
+    equipo_nombre: input.equipmentName || input.equipmentCode,
+    area_asignada: input.area,
+    area_realizada: input.area,
+    estado: 'COMPLETADA',
+    fecha_inicio: now,
+    fecha_fin: now,
+    horometro_inicial: input.horometroInicial,
+    horometro_final: input.horometroFinal,
+    tipo_area: 'NETA',
+    observaciones: input.notes ?? '',
+    supervisor_id: input.supervisorId,
+    supervisor_nombre: input.supervisorName,
+    operador_id: input.operatorId,
+    operador_nombre: input.operatorName,
+    tipo_registro: 'ASIGNADA',
+    cliente: input.cliente,
+    aprobacion: 'APROBADA',
+    aprobada_por: input.supervisorId,
+    aprobada_en: now,
+    zona: input.zone,
+  }
+  const { data, error } = await supabase
+    .from('asignaciones')
+    .insert(payload)
+    .select('*')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo registrar la labor')
+  return mapAssignment(data as Record<string, unknown>)
+}
+
 export async function updateAssignment(
   assignmentId: string,
   input: UpdateAssignmentInput,

@@ -564,6 +564,12 @@ export function useAssignmentActions() {
     // mueve la labor al día correcto en la Planilla/Reporte.
     startedAt?: string | null
     finishedAt?: string | null
+    // Al cambiar el ESTADO desde el Reporte, se ajusta la aprobación: pasar a
+    // COMPLETADA/PARCIAL la deja PENDIENTE (cae en la bandeja del supervisor);
+    // volver a PENDIENTE/EN_PROCESO la deja APROBADA (sale de la bandeja).
+    approval?: 'APROBADA' | 'PENDIENTE' | 'RECHAZADA'
+    approvedBy?: string | null
+    approvedAt?: string | null
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {

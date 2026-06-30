@@ -549,6 +549,7 @@ export function SupervisorView({
     equipmentCode: '',
     operatorId: '',
     fechaEjec: '',
+    status: 'PENDIENTE' as Assignment['status'],
   })
 
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
@@ -3030,6 +3031,7 @@ export function SupervisorView({
                             equipmentCode: selectedLabor.equipmentCode ?? '',
                             operatorId: selectedLabor.operatorId ?? '',
                             fechaEjec: executionDateKey(selectedLabor),
+                            status: selectedLabor.status,
                           })
                           setEditingLabor(true)
                         }}
@@ -3129,6 +3131,30 @@ export function SupervisorView({
                   </div>
                 ) : (
                   <div className="labor-detail-edit">
+                    <label className="assignment-detail-field">
+                      <span>Estado</span>
+                      <select
+                        value={editLaborDraft.status}
+                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, status: e.target.value as Assignment['status'] }))}
+                      >
+                        <option value="PENDIENTE">Programada / Pendiente</option>
+                        <option value="EN_PROCESO">Laborando (en proceso)</option>
+                        <option value="PARCIAL">Parcial</option>
+                        <option value="COMPLETADA">Terminada</option>
+                      </select>
+                      {editLaborDraft.status !== selectedLabor.status && (
+                        (editLaborDraft.status === 'COMPLETADA' || editLaborDraft.status === 'PARCIAL') ? (
+                          <small style={{ color: 'var(--color-status-progress)', marginTop: 4 }}>
+                            Quedará <strong>pendiente de aprobación</strong> del supervisor.
+                          </small>
+                        ) : (
+                          <small style={{ marginTop: 4 }}>
+                            Vuelve a las Activas del operario (sin avance) y queda aprobada.
+                          </small>
+                        )
+                      )}
+                    </label>
+
                     <label className="assignment-detail-field">
                       <span>Fecha de ejecución</span>
                       <input
@@ -3231,6 +3257,7 @@ export function SupervisorView({
                       disabled={busy}
                       onClick={async () => {
                         const execNum = Number(editLaborDraft.executedArea)
+                        const execEntered = isNaN(execNum) ? selectedLabor.executedArea : execNum
                         const hiNum = editLaborDraft.horometroInicial.trim() === '' ? null : Number(editLaborDraft.horometroInicial)
                         const hfNum = editLaborDraft.horometroFinal.trim() === '' ? null : Number(editLaborDraft.horometroFinal)
                         // Si el operador cambia, resolvemos su nombre desde el catalogo
@@ -3240,25 +3267,45 @@ export function SupervisorView({
                         const newOperatorName = operatorChanged
                           ? (operators.find((op) => op.id === newOperatorId)?.name ?? '')
                           : undefined
-                        // Fecha de ejecución: si cambió, se fijan fecha_inicio/fecha_fin
-                        // al nuevo día (12:00 hora Colombia, para que el dayKey en
-                        // America/Bogota caiga en ese día exacto, sin corrimientos).
-                        const fechaChanged =
-                          editLaborDraft.fechaEjec &&
-                          editLaborDraft.fechaEjec !== executionDateKey(selectedLabor)
-                        const fechaPatch = fechaChanged
-                          ? {
-                              startedAt: new Date(`${editLaborDraft.fechaEjec}T11:00:00-05:00`).toISOString(),
-                              finishedAt: new Date(`${editLaborDraft.fechaEjec}T12:00:00-05:00`).toISOString(),
-                            }
-                          : {}
+
+                        const newStatus = editLaborDraft.status
+                        const statusChanged = newStatus !== selectedLabor.status
+                        const nowIso = new Date().toISOString()
+                        // Fecha de ejecución elegida → 11:00/12:00 hora Colombia (para que
+                        // el dayKey en America/Bogota caiga en ese día exacto).
+                        const dayAt = (h: number) =>
+                          editLaborDraft.fechaEjec
+                            ? new Date(`${editLaborDraft.fechaEjec}T${String(h).padStart(2, '0')}:00:00-05:00`).toISOString()
+                            : null
+
+                        // El ESTADO define fechas, área ejecutada y aprobación.
+                        const isDone = newStatus === 'COMPLETADA' || newStatus === 'PARCIAL'
+                        const startedAt = isDone || newStatus === 'EN_PROCESO'
+                          ? (dayAt(11) ?? selectedLabor.startedAt ?? nowIso)
+                          : null
+                        const finishedAt = isDone ? (dayAt(12) ?? selectedLabor.finishedAt ?? nowIso) : null
+                        const executedArea = isDone
+                          ? (execEntered > 0 ? execEntered : selectedLabor.area)
+                          : newStatus === 'EN_PROCESO' ? execEntered : 0
+                        // Aprobación: solo se toca si el estado CAMBIÓ. Terminada/Parcial →
+                        // PENDIENTE (cae en la bandeja del supervisor); Programada/En
+                        // proceso → APROBADA (sale de la bandeja).
+                        const approvalPatch = !statusChanged
+                          ? {}
+                          : isDone
+                            ? { approval: 'PENDIENTE' as const, approvedBy: null, approvedAt: null }
+                            : { approval: 'APROBADA' as const, approvedBy: session?.id ?? null, approvedAt: nowIso }
+
                         const ok = await handleEditAssignment(selectedLabor, {
-                          executedArea: isNaN(execNum) ? selectedLabor.executedArea : execNum,
+                          status: newStatus,
+                          startedAt,
+                          finishedAt,
+                          executedArea,
                           horometroInicial: hiNum,
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
-                          ...fechaPatch,
+                          ...approvalPatch,
                           ...(operatorChanged ? {
                             operatorId: newOperatorId,
                             operatorName: newOperatorName,

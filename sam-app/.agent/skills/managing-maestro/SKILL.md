@@ -59,9 +59,24 @@ Acciones:
 - **+ Nueva suerte** (header) → reusa `NewSuerteModal` (mismo flujo de `createMaestroRow`).
 - **Editar** (por fila) → modal que cambia `area_neta` vía `samApi.updateMaestroRow(key, { area })`. La clave es `(haciendaCode, suerte, ingenio_id)`. Requiere la **policy RLS de UPDATE** (migración `20260601150000_maestro_rls_update.sql`).
 - **Eliminar** (por fila) → confirmación → `samApi.deleteMaestroRow(key)` que hace **soft-delete** (`activo = false`), NO DELETE físico. Sale del catálogo/dropdowns (`loadMaestro` filtra `activo=true`) pero NO rompe el histórico de asignaciones que referencian la suerte. Reusa la MISMA policy de UPDATE — no necesita policy de DELETE.
-- **Cargue masivo** (header) → `BulkMaestroModal`: descarga plantilla .xlsx (cols: Ingenio, Codigo hacienda, Nombre hacienda, Suerte, Area neta), sube el archivo, autodetecta hoja+columnas, valida (ingenio resuelto por id o nombre, área>0, sin duplicados internos), muestra preview (nuevas / ya existen / con error) y crea con `samApi.bulkInsertMaestro(rows, createdBy)`. Este hace `upsert` con `ignoreDuplicates:true` (ON CONFLICT DO NOTHING) → inserta solo las que NO existen (todas `creado_manual=true`, pasa la policy de INSERT), en chunks de 500, y devuelve SOLO las realmente insertadas. Las existentes se omiten (no se tocan). NO requiere migración.
+- **Cargue masivo** (header) → `BulkMaestroModal`. **[2026-06-29] Pasó de "solo insertar" a RECONCILIACIÓN completa** (el ingenio actualiza su catálogo: aparecen/desaparecen suertes y cambian áreas). Ver la sección "Cargue masivo = reconciliación" abajo.
 
 Tras editar/eliminar/crear, el componente actualiza `setMaestro` (in-memory) y `db.maestro` (Dexie) para reflejar el cambio al instante. La autorización por rol es en la UI (auth por PIN propia, todos usan anon_key a nivel DB).
+
+## Cargue masivo = reconciliación [2026-06-29]
+
+`BulkMaestroModal` (sube .xlsx, autodetecta hoja+columnas, valida ingenio/área>0/dedup interno) ahora **compara el archivo contra el catálogo ACTIVO** y muestra un **preview en 4 grupos** antes de tocar nada (decisión consciente del usuario para no duplicar ni variar arbitrariamente):
+
+- 🟢 **Nuevas** (en archivo, no en catálogo) → se insertan (`bulkInsertMaestro`, ON CONFLICT DO NOTHING, `creado_manual=true`).
+- 🟡 **Área cambiada** (misma suerte, área distinta) → lista con **checkbox por fila** (default marcado). Marcadas → `bulkUpdateMaestroArea`. Desmarcar = conservar el área actual.
+- 🔴 **Desaparecidas** (en catálogo, no en archivo) → checkbox por fila → `bulkDeactivateMaestro` (soft-delete `activo=false`, conserva histórico). **ALCANCE por hacienda:** solo se evalúan desaparecidas en las **haciendas presentes en el archivo** (una hacienda ausente NO se toca) → seguro para cargas parciales. **Aviso ⚠ "labor activa":** una suerte a desactivar que tiene labor PENDIENTE/EN_PROCESO/PARCIAL **arranca SIN marcar** (no desactivar algo en uso).
+- ⚪ **Sin cambios** → no se tocan.
+
+**Reaparición:** una suerte que estaba soft-deleted y vuelve en el archivo se detecta como "nueva" que choca con la fila inactiva (el insert la omite) → el modal la **reactiva** con `bulkReactivateMaestro` (`activo=true` + área). Por eso el resultado del modal (`BulkApplyResult`) trae `inserted` (incluye reactivadas), `updated`, `deactivated`; `MaestrosTab.onApplied` actualiza `setMaestro` (agrega/actualiza área/quita) en consecuencia.
+
+Funciones nuevas en `samApi` (todas reusan la policy RLS de UPDATE del maestro, mig. `20260601150000` — **NO requieren migración**): `bulkUpdateMaestroArea(rows)`, `bulkReactivateMaestro(rows)`, `bulkDeactivateMaestro(keys)`. Para el aviso de labor activa, `MaestrosTab` arma un `Set` de `"hacienda-suerte"` con labor activa desde `assignments` y se lo pasa al modal.
+
+> ⚠️ La reconciliación depende de que `loadMaestro` traiga TODO el catálogo activo (pagina hasta ~20K). Si en algún momento se capa, las "desaparecidas" saldrían falsas (filas más allá del cap). Hoy pagina completo — no romper eso.
 
 ## Convenciones de datos
 

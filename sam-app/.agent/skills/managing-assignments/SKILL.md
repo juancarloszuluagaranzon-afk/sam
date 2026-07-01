@@ -360,6 +360,33 @@ Todos los dashboards de indicadores **arrancan filtrados en la quincena en curso
 
 **NO** se aplicó a **Validación** (cola de aprobaciones) — ahí el default amplio es deseable (ocultar la quincena anterior escondería pendientes que sí se necesitan ver).
 
+## Registro rápido de labor REALIZADA por el supervisor [2026-06-29]
+
+Para el ~5% de operarios poco afines a la tecnología, el supervisor anota lo que hicieron desde **Asignar → "✓ Registrar labor realizada"** (`RegistrarLaborModal`, autónomo vía `useAppData`). Una sola pantalla: operario, tipo de cliente, ingenio, hacienda, suerte, labor, equipo, horómetro inicial+final (opcionales), hectáreas. **Supervisor y zona NO se piden** — salen del supervisor logueado (`users.find(session.id).zona`).
+
+- Crea la labor en UN paso vía `samApi.registrarLaborRealizada(input)`: INSERT que nace **`estado=COMPLETADA`**, **`aprobacion=APROBADA`** (el supervisor la respalda), `area_asignada = area_realizada = hectáreas`, `fecha_inicio = fecha_fin = now`, `tipo_registro='ASIGNADA'`.
+- **Equipo** se autocompleta con el del operario (`operator.equipmentCode`), editable.
+- **Toggle "Hizo el 100% de la suerte"** (APAGADO por default): el área de la suerte se muestra siempre como referencia (recuadro `suerte-area-info`); encender el toggle pone las hectáreas = área completa y bloquea el campo; apagado = editable (parcial).
+- Online-only (si `!isOnline`, pide conexión). Tras crear: `setAssignments(prev => [created, ...prev])` + `db.assignments.put`.
+
+## Editar el ESTADO de una labor desde el Reporte [2026-06-29]
+
+El modal **Editar** del Reporte (`selectedLabor` + `editLaborDraft` en SupervisorView) ahora incluye un selector **Estado**: Programada/Pendiente · Laborando · Parcial · Terminada. Al guardar (`handleEditAssignment`), el estado define **fechas, área ejecutada y aprobación** de forma coherente:
+
+| Cambia a… | aprobación (si el estado CAMBIÓ) | fechas | executedArea |
+|---|---|---|---|
+| **COMPLETADA / PARCIAL** | → **PENDIENTE** (cae en la bandeja del supervisor dueño) | fija `finishedAt` (día elegido o now) | ha ingresadas, o `area` si quedó vacío |
+| **EN_PROCESO** | → APROBADA | fija `startedAt`, limpia `finishedAt` | conserva |
+| **PENDIENTE** | → APROBADA | limpia inicio y fin | **0** (no cuenta avance) |
+
+- `EditPatch` (useAssignmentActions) ganó `approval`/`approvedBy`/`approvedAt` (fluyen a `updateAssignment`). La aprobación **solo se toca si el estado cambió** — editar otros campos no saca de la bandeja lo ya aprobado.
+- Fijar bien `finishedAt`/`startedAt` es CRÍTICO: `executionDateKey` agrupa por esas fechas → sin ellas la labor caería en el día equivocado en Planilla/Reporte/Historial.
+- **Bordes conocidos:** (1) revertir a Programada una labor creada hace +72h → no sale en Activas del operario (regla 72h), sigue en el sistema; (2) pasar a estado activo cuando el operario ya tiene esa suerte+labor activa puede duplicar la tarjeta (la validación de duplicados solo corre al cambiar de operario).
+
+## Barras de búsqueda (patrón `user-search-input`) [2026-06-29]
+
+Listas con búsqueda libre que filtra SOLO la vista (no los KPIs): **Historial del operario** (`historySearch` en OperatorView, filtra `visibleHistoryItems` por hacienda/suerte/labor + nombre de novedad) y **"Últimos movimientos"** del supervisor (`movSearch` en SupervisorView, filtra `visibleRecent` por hacienda/suerte/labor/operario/equipo). Mismo input `user-search-input` del Resumen. Empty state contextual: "Sin coincidencias…".
+
 ## Gotchas
 
 - **[2026-06-18]** **Aprobación OBLIGATORIA al finalizar (asignadas y de campo).** Antes solo las LIBRE pedían aprobación; las ASIGNADAS nacían `APROBADA` y nadie revisaba el área → facturación recibía áreas que no cuadraban. Fix: `finishAssignment` (useAssignmentActions) ahora pone `approval: 'PENDIENTE'` en el `finishPayload` (y en el path offline) → TODA labor finalizada (parcial o completa) vuelve a "por aprobar". `decideApproval` se relajó: aprueban el supervisor asignado **O** owner/administración. Bandeja: pestaña `'aprobaciones'` (`pendingApprovals` = `scopedAssignments` con `approval==='PENDIENTE'` y status COMPLETADA/PARCIAL), botón nav **✔ Aprobar** con badge rojo (`.nav-badge`, pulso `.has-pending`) + banner `.mini-banner--approve` en Labores. Aprobar/Rechazar reusa `handleApproveAssignment`/`handleRejectAssignment` (LIBRE sin cliente/zona abre el modal `approveTarget`). **Los dashboards/Planilla siguen sumando área independiente de la aprobación** (el estado es solo gate/flag; si piden "facturar solo aprobadas" hay que filtrar por `approval==='APROBADA'`).

@@ -347,6 +347,8 @@ function AppContent() {
     setError('')
     try {
       const { utils, writeFile } = await import('xlsx')
+      // id → nombre para mostrar nombres (no códigos) en el Excel.
+      const nombrePorId = new Map(users.map((u) => [u.id, u.name]))
       const rows = filteredReport.map((a) => ({
         'Fecha (ejecución)': executionDateKey(a),
         'Fecha asignación': a.dateKey,
@@ -360,7 +362,7 @@ function AppContent() {
         'Cliente': a.cliente === 'ingenios' ? 'Ingenio' : a.cliente === 'proveedores' ? 'Proveedor' : '—',
         'Ingenio': getIngenioName(a, maestro) ?? '—',
         'Operador': a.operatorName,
-        'Supervisor': a.supervisorId,
+        'Supervisor': nombrePorId.get(a.supervisorId) ?? a.supervisorId,
         'Equipo': a.equipmentName,
         'Inicio': a.startedAt ?? '',
         'Fin': a.finishedAt ?? '',
@@ -369,7 +371,7 @@ function AppContent() {
         'Zona': a.zone ?? '',
         'Tipo': a.kind,
         'Aprobación': a.approval,
-        'Aprobado por': a.approvedBy ?? '',
+        'Aprobado por': a.approvedBy ? (nombrePorId.get(a.approvedBy) ?? a.approvedBy) : '',
         'Aprobado en': a.approvedAt ?? '',
         'Notas': a.notes,
       }))

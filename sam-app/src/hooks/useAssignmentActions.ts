@@ -322,6 +322,7 @@ export function useAssignmentActions() {
       // Aplica a ASIGNADA y LIBRE. Si era APROBADA y el operario re-finaliza una
       // parcial, vuelve a PENDIENTE (hay área nueva que verificar).
       approval: 'PENDIENTE' as const,
+      editadoPor: session?.id,
     }
 
     const successMessage =
@@ -390,8 +391,8 @@ export function useAssignmentActions() {
         delete next[assignment.id]
         return next
       })
-    } catch {
-      setError('No se pudo finalizar la labor.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo finalizar la labor.')
     } finally {
       setBusy(false)
     }
@@ -570,6 +571,7 @@ export function useAssignmentActions() {
     approval?: 'APROBADA' | 'PENDIENTE' | 'RECHAZADA'
     approvedBy?: string | null
     approvedAt?: string | null
+    editadoPor?: string
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {
@@ -621,6 +623,8 @@ export function useAssignmentActions() {
       const eq = equipment.find((e) => e.code === patch.equipmentCode)
       if (eq) finalPatch.equipmentName = eq.name
     }
+    // Auditoría: quién hace esta edición.
+    if (session?.id) finalPatch.editadoPor = session.id
 
     // Reasignar a otro operario "des-libera" la labor: el nuevo operario
     // debe verla en SUS Activas para continuarla. Si seguia marcada como
@@ -651,8 +655,8 @@ export function useAssignmentActions() {
         setInfo(`Asignacion actualizada.`)
       }
       return true
-    } catch {
-      setError('No se pudo actualizar la asignacion.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar la asignacion.')
       return false
     } finally {
       setBusy(false)

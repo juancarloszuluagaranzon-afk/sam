@@ -147,6 +147,8 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     approvedAt: row.aprobada_en ? String(row.aprobada_en) : null,
     zone: normalizeZone(row.zona as string | null | undefined),
     liberada: Boolean(row.liberada ?? false),
+    updatedAt: row.updated_at ? String(row.updated_at) : undefined,
+    editadoPor: row.editado_por ? String(row.editado_por) : undefined,
   }
 }
 
@@ -1694,6 +1696,23 @@ export async function setAppUserActivo(id: string, activo: boolean) {
   return true
 }
 
+// Traduce los errores del blindaje de BD a mensajes accionables para el usuario.
+export function traducirErrorAsignacion(error: unknown): Error {
+  const msg = (error as { message?: string })?.message ?? ''
+  const code = (error as { code?: string })?.code ?? ''
+  if (msg.includes('AREA_EXCEDIDA')) {
+    return new Error(
+      'Esta suerte ya tiene su área registrada en el ciclo; este registro EXCEDERÍA el área de la suerte. Probablemente es un duplicado — revísalo.',
+    )
+  }
+  if (code === '23505' && msg.includes('asignaciones_activa_uniq')) {
+    return new Error(
+      'Ya existe una labor ACTIVA idéntica (misma suerte, labor y operario). Continúala/reasígnala en vez de crear otra.',
+    )
+  }
+  return error instanceof Error ? error : new Error('No se pudo guardar la asignación.')
+}
+
 export async function createAssignment(input: CreateAssignmentInput) {
   const { data, error } = await supabase
     .from('asignaciones')
@@ -1702,7 +1721,7 @@ export async function createAssignment(input: CreateAssignmentInput) {
     .single()
 
   if (error || !data) {
-    throw error ?? new Error('No se pudo crear la asignacion')
+    throw traducirErrorAsignacion(error ?? new Error('No se pudo crear la asignacion'))
   }
 
   return mapAssignment(data as Record<string, unknown>)
@@ -1764,14 +1783,40 @@ export async function registrarLaborRealizada(input: RegistrarLaborInput) {
     aprobada_por: input.supervisorId,
     aprobada_en: now,
     zona: input.zone,
+    editado_por: input.supervisorId,
   }
   const { data, error } = await supabase
     .from('asignaciones')
     .insert(payload)
     .select('*')
     .single()
-  if (error || !data) throw error ?? new Error('No se pudo registrar la labor')
+  if (error || !data) throw traducirErrorAsignacion(error ?? new Error('No se pudo registrar la labor'))
   return mapAssignment(data as Record<string, unknown>)
+}
+
+export interface AsignacionAuditoria {
+  id: number
+  accion: 'INSERT' | 'UPDATE'
+  cambios: Record<string, unknown> | null
+  editadoPor: string | null
+  editadoEn: string
+}
+
+/** Historial de cambios (auditoría) de una labor, más reciente primero. */
+export async function loadAuditoria(assignmentId: string): Promise<AsignacionAuditoria[]> {
+  const { data, error } = await supabase
+    .from('asignaciones_auditoria')
+    .select('id,accion,cambios,editado_por,editado_en')
+    .eq('asignacion_id', assignmentId)
+    .order('editado_en', { ascending: false })
+  if (error || !data) return []
+  return data.map((r) => ({
+    id: Number(r.id),
+    accion: r.accion === 'INSERT' ? 'INSERT' : 'UPDATE',
+    cambios: (r.cambios ?? null) as Record<string, unknown> | null,
+    editadoPor: r.editado_por ? String(r.editado_por) : null,
+    editadoEn: String(r.editado_en ?? ''),
+  }))
 }
 
 export async function updateAssignment(
@@ -1803,6 +1848,7 @@ export async function updateAssignment(
   if (input.cliente !== undefined) payload.cliente = input.cliente
   if (input.zone !== undefined) payload.zona = input.zone
   if (input.createdAt !== undefined) payload.created_at = input.createdAt
+  if (input.editadoPor !== undefined) payload.editado_por = input.editadoPor
 
   const { data, error } = await supabase
     .from('asignaciones')
@@ -1812,7 +1858,7 @@ export async function updateAssignment(
     .single()
 
   if (error || !data) {
-    throw error ?? new Error('No se pudo actualizar la asignacion')
+    throw traducirErrorAsignacion(error ?? new Error('No se pudo actualizar la asignacion'))
   }
 
   return mapAssignment(data as Record<string, unknown>)

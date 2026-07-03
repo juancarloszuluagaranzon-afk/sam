@@ -5,7 +5,7 @@ import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo, loadAuditoria, type AsignacionAuditoria } from '../services/samApi'
 import { db } from '../lib/db'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
@@ -552,6 +552,32 @@ export function SupervisorView({
     status: 'PENDIENTE' as Assignment['status'],
   })
 
+  // Auditoría de ediciones (historial de cambios de una labor).
+  const [auditFor, setAuditFor] = useState<Assignment | null>(null)
+  const [auditRows, setAuditRows] = useState<AsignacionAuditoria[]>([])
+  const [auditLoading, setAuditLoading] = useState(false)
+  async function openAudit(labor: Assignment) {
+    setAuditFor(labor)
+    setAuditRows([])
+    setAuditLoading(true)
+    try {
+      setAuditRows(await loadAuditoria(labor.id))
+    } finally {
+      setAuditLoading(false)
+    }
+  }
+  const fmtEditFecha = (iso: string) =>
+    iso ? new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : ''
+  const nombreUsuario = (id: string | null | undefined) =>
+    id ? users.find((u) => u.id === id)?.name ?? id : 'sistema'
+  const renderCambios = (c: Record<string, unknown> | null): string => {
+    if (!c) return ''
+    const fmt = (v: unknown) => (v === null || v === undefined || v === '' ? '—' : String(v))
+    return Object.entries(c)
+      .map(([k, v]) => (Array.isArray(v) && v.length === 2 ? `${k}: ${fmt(v[0])} → ${fmt(v[1])}` : `${k}: ${fmt(v)}`))
+      .join(' · ')
+  }
+
   const summaryMonthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
   // Suertes que tienen labores (para el filtro del Reporte). Si hay una hacienda
@@ -1024,6 +1050,43 @@ export function SupervisorView({
         open={isRegistrarLaborOpen}
         onClose={() => setIsRegistrarLaborOpen(false)}
       />
+
+      {auditFor && (
+        <div className="modal-overlay open" onClick={() => setAuditFor(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(560px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Auditoría</p><h3>Historial de cambios</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setAuditFor(null)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              {auditFor.haciendaName} · Suerte {auditFor.suerte} · {auditFor.labor}
+            </p>
+            <div className="list-rows" style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+              {auditLoading ? (
+                <p className="muted-text">Cargando…</p>
+              ) : auditRows.length === 0 ? (
+                <p className="muted-text">Sin cambios registrados (o la migración de auditoría aún no está aplicada).</p>
+              ) : (
+                auditRows.map((r) => (
+                  <div key={r.id} className="movement-row">
+                    <div>
+                      <strong>{r.accion === 'INSERT' ? 'Creación' : 'Edición'}</strong>
+                      <span>{renderCambios(r.cambios)}</span>
+                    </div>
+                    <div className="movement-side">
+                      <span className="status-pill">{nombreUsuario(r.editadoPor)}</span>
+                      <small>{fmtEditFecha(r.editadoEn)}</small>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="primary-button" onClick={() => setAuditFor(null)}>Cerrar</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <NewSuerteModal
         open={isNewSuerteOpen}
@@ -3126,6 +3189,25 @@ export function SupervisorView({
                       <>
                         <span className="labor-label">Notas</span>
                         <span className="labor-value">{selectedLabor.notes}</span>
+                      </>
+                    )}
+
+                    {(selectedLabor.updatedAt || selectedLabor.editadoPor) && (
+                      <>
+                        <span className="labor-label">Última edición</span>
+                        <span className="labor-value">
+                          {nombreUsuario(selectedLabor.editadoPor)}
+                          {selectedLabor.updatedAt ? ` · ${fmtEditFecha(selectedLabor.updatedAt)}` : ''}
+                          {' '}
+                          <button
+                            type="button"
+                            className="inline-button"
+                            style={{ marginLeft: 6, padding: '2px 8px' }}
+                            onClick={() => void openAudit(selectedLabor)}
+                          >
+                            Ver historial
+                          </button>
+                        </span>
                       </>
                     )}
                   </div>

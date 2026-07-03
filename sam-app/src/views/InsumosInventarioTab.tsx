@@ -33,6 +33,7 @@ export function InsumosInventarioTab() {
   const [nuevoCat, setNuevoCat] = useState<InsumoCategoria>('MATERIAL')
   const [nuevoUnidad, setNuevoUnidad] = useState('unidad')
   const [catFilter, setCatFilter] = useState<'TODOS' | InsumoCategoria>('TODOS')
+  const [search, setSearch] = useState('')
 
   const [editTarget, setEditTarget] = useState<Insumo | null>(null)
   const [editNombre, setEditNombre] = useState('')
@@ -56,10 +57,12 @@ export function InsumosInventarioTab() {
   }, [users])
 
   const ordenados = useMemo(() => {
+    const q = search.trim().toLowerCase()
     return [...insumos]
       .filter((i) => catFilter === 'TODOS' || i.categoria === catFilter)
+      .filter((i) => !q || i.nombre.toLowerCase().includes(q) || i.unidad.toLowerCase().includes(q))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
-  }, [insumos, catFilter])
+  }, [insumos, catFilter, search])
 
   async function handleCreate() {
     const nombre = nuevoNombre.trim().toUpperCase()
@@ -199,6 +202,15 @@ export function InsumosInventarioTab() {
         ))}
       </div>
 
+      <input
+        className="user-search-input"
+        type="search"
+        placeholder="Buscar insumo…"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        style={{ marginTop: 12 }}
+      />
+
       <div className="table-wrap validacion-table-wrap" style={{ marginTop: 12 }}>
         <table className="validacion-table">
           <thead>
@@ -231,7 +243,9 @@ export function InsumosInventarioTab() {
               </tr>
             ))}
             {ordenados.length === 0 && (
-              <tr><td colSpan={4} className="validacion-empty">Sin insumos. Agrega el primero arriba.</td></tr>
+              <tr><td colSpan={4} className="validacion-empty">
+                {search.trim() ? 'Sin coincidencias para la búsqueda.' : 'Sin insumos. Agrega el primero arriba.'}
+              </td></tr>
             )}
           </tbody>
         </table>

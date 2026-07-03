@@ -105,6 +105,9 @@ export interface Assignment {
   // (status sin cambiar) para que el supervisor la reasigne/cancele o el
   // operario la retome en campo. Al reasignar se vuelve a poner en false.
   liberada?: boolean
+  // Auditoría: última edición (lo estampa el trigger / el cliente).
+  updatedAt?: string
+  editadoPor?: string
 }
 
 export interface DashboardMetrics {
@@ -265,4 +268,6 @@ export interface UpdateAssignmentInput {
   // (regla de 72h): vuelve a contar como "programada hoy" y reaparece en
   // Activas, en vez de crear una línea duplicada.
   createdAt?: string
+  // Auditoría: quién hace esta edición (se guarda en asignaciones.editado_por).
+  editadoPor?: string
 }

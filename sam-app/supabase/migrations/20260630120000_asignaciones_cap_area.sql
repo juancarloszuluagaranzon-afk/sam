@@ -29,6 +29,14 @@ begin
     return NEW;
   end if;
 
+  -- En UPDATE, permitir SIEMPRE si NO se aumenta el área: reducir, reasignar,
+  -- corregir o cancelar un registro existente nunca empeora el excedente, y el
+  -- dueño necesita poder ARREGLAR las suertes ya duplicadas. Solo se topa cuando
+  -- se INSERTA o se AUMENTA el área.
+  if TG_OP = 'UPDATE' and coalesce(NEW.area_realizada,0) <= coalesce(OLD.area_realizada,0) then
+    return NEW;
+  end if;
+
   -- Área del maestro (match por hacienda+suerte+NOMBRE para evitar el código
   -- de hacienda compartido entre ingenios). Si no se encuentra, no se bloquea.
   select m.area_neta into v_area_neta

@@ -1698,19 +1698,28 @@ export async function setAppUserActivo(id: string, activo: boolean) {
 
 // Traduce los errores del blindaje de BD a mensajes accionables para el usuario.
 export function traducirErrorAsignacion(error: unknown): Error {
-  const msg = (error as { message?: string })?.message ?? ''
-  const code = (error as { code?: string })?.code ?? ''
-  if (msg.includes('AREA_EXCEDIDA')) {
+  const e = error as { message?: string; details?: string; hint?: string; code?: string }
+  // Los errores de Supabase NO son instancias de Error → hay que leer el objeto.
+  const blob = `${e?.message ?? ''} ${e?.details ?? ''} ${e?.hint ?? ''}`
+  const code = e?.code ?? ''
+  if (blob.includes('AREA_EXCEDIDA')) {
     return new Error(
       'Esta suerte ya tiene su área registrada en el ciclo; este registro EXCEDERÍA el área de la suerte. Probablemente es un duplicado — revísalo.',
     )
   }
-  if (code === '23505' && msg.includes('asignaciones_activa_uniq')) {
+  if (code === '23505' && blob.includes('asignaciones_activa_uniq')) {
     return new Error(
       'Ya existe una labor ACTIVA idéntica (misma suerte, labor y operario). Continúala/reasígnala en vez de crear otra.',
     )
   }
-  return error instanceof Error ? error : new Error('No se pudo guardar la asignación.')
+  // Falta de columna (migración sin correr) u otro error → mostrar el mensaje
+  // REAL para no esconder la causa (antes caía a un genérico inútil).
+  if (code === '42703' || blob.toLowerCase().includes('column')) {
+    return new Error(`Falta una columna en la base de datos (¿migración sin correr?). Detalle: ${e?.message ?? blob}`)
+  }
+  if (error instanceof Error) return error
+  if (e?.message) return new Error(e.message)
+  return new Error('No se pudo guardar la asignación.')
 }
 
 export async function createAssignment(input: CreateAssignmentInput) {

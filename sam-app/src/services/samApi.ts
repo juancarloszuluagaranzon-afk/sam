@@ -1476,10 +1476,10 @@ export async function clearAllLaborRevisiones(): Promise<void> {
 
 // Camioneta se reporta con turno: CD = día, CN = noche (misma letra "C" en la
 // planilla, color distinto). 'C' pelado = legado (datos anteriores). 'E' = Enfermedad.
-export type NovedadTipo = 'V' | 'T' | 'NP' | 'D' | 'P' | 'E' | 'C' | 'CD' | 'CN'
+export type NovedadTipo = 'V' | 'T' | 'NP' | 'D' | 'P' | 'E' | 'C' | 'CD' | 'CN' | 'MV'
 // Tipos ofrecidos en los botones (C se reporta como CD/CN).
-export const NOVEDAD_TIPOS: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'E', 'CD', 'CN']
-const ALL_NOVEDAD: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'E', 'C', 'CD', 'CN']
+export const NOVEDAD_TIPOS: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'E', 'MV', 'CD', 'CN']
+const ALL_NOVEDAD: NovedadTipo[] = ['V', 'T', 'NP', 'D', 'P', 'E', 'C', 'CD', 'CN', 'MV']
 export const NOVEDAD_LABEL: Record<NovedadTipo, string> = {
   V: 'Vacaciones',
   T: 'Taller',
@@ -1490,6 +1490,7 @@ export const NOVEDAD_LABEL: Record<NovedadTipo, string> = {
   C: 'Camioneta',
   CD: 'Camioneta día',
   CN: 'Camioneta noche',
+  MV: 'Máquina varada',
 }
 
 // Letra/código que se muestra en la celda de la Planilla. Se muestra tal cual

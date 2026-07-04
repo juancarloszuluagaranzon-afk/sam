@@ -69,3 +69,7 @@ DROP TRIGGER IF EXISTS trg_asignaciones_audit ON public.asignaciones;
 CREATE TRIGGER trg_asignaciones_audit
   AFTER INSERT OR UPDATE ON public.asignaciones
   FOR EACH ROW EXECUTE FUNCTION public.asignaciones_audit();
+
+-- Refresca la caché de esquema de PostgREST para que reconozca `editado_por`
+-- de inmediato (si no, sigue diciendo "column not found in the schema cache").
+NOTIFY pgrst, 'reload schema';

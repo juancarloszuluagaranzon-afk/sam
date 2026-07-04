@@ -50,6 +50,7 @@ const NOV_ICON: Record<NovedadTipo, string> = {
   C: '🚚',
   CD: '🚚',
   CN: '🌙',
+  MV: '🚜',
 }
 
 // Formatea 'YYYY-MM-DD' a fecha corta en español (ej. "lun, 16 jun").

@@ -560,6 +560,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         <span className="planilla-legend__item"><b className="planilla-nov--d">D</b> Descanso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--p">P</b> Permiso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--e">E</b> Enfermedad</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--mv">MV</b> Máquina varada</span>
         <span className="planilla-legend__item"><b className="planilla-nov--cd">CD</b> Camioneta día</span>
         <span className="planilla-legend__item"><b className="planilla-nov--cn">CN</b> Camioneta noche</span>
       </div>

@@ -5420,6 +5420,7 @@ td.planilla-revisada {
 .planilla-nov--c { color: #8a5a2b; }   /* Camioneta (legado) */
 .planilla-nov--cd { color: #8a5a2b; }  /* Camioneta día — mismo color */
 .planilla-nov--cn { color: #8a5a2b; }  /* Camioneta noche — mismo color */
+.planilla-nov--mv { color: #c2410c; }  /* Máquina varada */
 
 /* Color del número del área según estado de la(s) labor(es) del día.
    Sin prefijo `td` para que el dot del legend (<i>) también tome el color

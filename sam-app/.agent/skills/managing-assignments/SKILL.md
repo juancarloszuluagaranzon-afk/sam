@@ -387,6 +387,17 @@ El modal **Editar** del Reporte (`selectedLabor` + `editLaborDraft` en Superviso
 
 Listas con búsqueda libre que filtra SOLO la vista (no los KPIs): **Historial del operario** (`historySearch` en OperatorView, filtra `visibleHistoryItems` por hacienda/suerte/labor + nombre de novedad) y **"Últimos movimientos"** del supervisor (`movSearch` en SupervisorView, filtra `visibleRecent` por hacienda/suerte/labor/operario/equipo). Mismo input `user-search-input` del Resumen. Empty state contextual: "Sin coincidencias…".
 
+## Correcciones de la auditoría integral [2026-07-05]
+
+Barrido con 6 agentes (correctitud, seguridad, integridad, sync, performance, calidad). Fixes de correctitud aplicados — NO revertir:
+
+- **Doble-conteo del área CORREGIDO en el Resumen/dashboard.** `summarizeAssignments` (samApi) y `summaryMetrics` (SupervisorView) sumaban `a.area` de TODAS las filas → el split de cruce-de-día y el multi-operario (varias filas con el área COMPLETA de la misma suerte) inflaban el planificado (bug de facturación). Ahora `plannedArea` **deduplica por `suerteCode|labor` tomando el MAX**. `executedArea` SÍ se suma (cada aporte real). La Planilla ya lo hacía; esto lo alineó. (Pendiente menor: las cards "Por Operador/Labor/Equipo" pueden tener aún un sobre-conteo en *planificado*.)
+- **`finishAssignment`: el cap final usa `suerteTotalArea`, no `assignment.area`** (`useAssignmentActions.ts:282`). Antes truncaba el área en una RE-TOMA del restante (fila con área reducida 7.32) → perdía el acumulado (12.20+7.32→7.32).
+- **`getSuerteProgress` cuenta EN_PROCESO solo de la PROPIA asignación** (`a.id === assignment.id`). Antes el EN_PROCESO ajeno (área "en vuelo") cerraba prematuramente la card de un tercero (zombie).
+- **`decideApproval` NO pisa la zona con null**: solo setea `cliente`/`zone` si el supervisor los diligenció (antes el spread crudo de `extra` con `zone:null` borraba una zona válida → la labor caía de los filtros del Tablero). También estampa `editadoPor`.
+- **Registro rápido**: avisa si el área excede lo ya ejecutado de la suerte (aviso cliente antes del trigger de BD) y crea traza en `labor_sesiones` (antes no aparecía en horas-máquina).
+- **`mapRole` único** (samApi): el mapeo rol DB→app estaba duplicado en `loadAppUsers` y `appLogin`, y `appLogin` omitía `supervisor_insumos` → ese usuario entraba degradado a operador. Fuente única ahora.
+
 ## Gotchas
 
 - **[2026-06-18]** **Aprobación OBLIGATORIA al finalizar (asignadas y de campo).** Antes solo las LIBRE pedían aprobación; las ASIGNADAS nacían `APROBADA` y nadie revisaba el área → facturación recibía áreas que no cuadraban. Fix: `finishAssignment` (useAssignmentActions) ahora pone `approval: 'PENDIENTE'` en el `finishPayload` (y en el path offline) → TODA labor finalizada (parcial o completa) vuelve a "por aprobar". `decideApproval` se relajó: aprueban el supervisor asignado **O** owner/administración. Bandeja: pestaña `'aprobaciones'` (`pendingApprovals` = `scopedAssignments` con `approval==='PENDIENTE'` y status COMPLETADA/PARCIAL), botón nav **✔ Aprobar** con badge rojo (`.nav-badge`, pulso `.has-pending`) + banner `.mini-banner--approve` en Labores. Aprobar/Rechazar reusa `handleApproveAssignment`/`handleRejectAssignment` (LIBRE sin cliente/zona abre el modal `approveTarget`). **Los dashboards/Planilla siguen sumando área independiente de la aprobación** (el estado es solo gate/flag; si piden "facturar solo aprobadas" hay que filtrar por `approval==='APROBADA'`).

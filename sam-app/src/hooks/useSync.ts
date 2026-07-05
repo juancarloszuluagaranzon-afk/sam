@@ -36,40 +36,49 @@ export function useSync({
   const [outboxCount, setOutboxCount] = useState(0)
 
   const syncOutbox = useCallback(async () => {
-    const pending = await db.outbox.where('status').equals('pending').toArray()
-    if (pending.length === 0) return
+    // Reintenta pendientes Y los que quedaron en 'error' (recuperación de fallos
+    // transitorios de red). Un rechazo permanente (duplicado/área) volverá a
+    // 'error' — pero NO se pierde ni se oculta: el contador lo sigue reflejando.
+    const items = await db.outbox.where('status').anyOf(['pending', 'error']).toArray()
+    if (items.length === 0) { setOutboxCount(0); return }
 
     // tempId → realId map built from CREATE results
     const tempIdMap: Record<string, string> = {}
     let synced = 0
+    const errMsg = (err: unknown) => String((err as { message?: string })?.message ?? err)
 
     // Pass 1: CREATE items first so temp IDs can be resolved for subsequent UPDATEs
-    for (const item of pending.filter((i) => i.type === 'CREATE')) {
+    for (const item of items.filter((i) => i.type === 'CREATE')) {
       try {
         const real = await createAssignment(item.createInput!)
         tempIdMap[item.tempId!] = real.id
         await db.outbox.delete(item.id!)
         await db.assignments.delete(item.tempId!)
         synced++
-      } catch {
-        await db.outbox.update(item.id!, { status: 'error' })
+      } catch (err) {
+        await db.outbox.update(item.id!, { status: 'error', errorMessage: errMsg(err) })
       }
     }
 
     // Pass 2: UPDATE items (START, FINISH, CANCEL) — resolve temp IDs if needed
-    for (const item of pending.filter((i) => i.type === 'UPDATE')) {
+    for (const item of items.filter((i) => i.type === 'UPDATE')) {
       const realId = tempIdMap[item.assignmentId!] ?? item.assignmentId!
       try {
         await updateAssignment(realId, item.updatePayload!)
         await db.outbox.delete(item.id!)
         synced++
-      } catch {
-        await db.outbox.update(item.id!, { status: 'error' })
+      } catch (err) {
+        await db.outbox.update(item.id!, { status: 'error', errorMessage: errMsg(err) })
       }
     }
 
+    // Recontar SIEMPRE desde Dexie (pendientes + error). Antes se reseteaba a 0
+    // aunque quedara trabajo en 'error' → el badge mentía "todo sincronizado" y
+    // el operario perdía cierres sin enterarse. Ahora el contador es honesto.
+    const remaining = await db.outbox.where('status').anyOf(['pending', 'error']).count()
+    setOutboxCount(remaining)
+
     if (synced > 0) {
-      setOutboxCount(0)
       const result = await loadAssignments()
       onAssignmentsReloaded(result.data)
       onSyncError(result.error)
@@ -78,8 +87,8 @@ export function useSync({
   }, [onAssignmentsReloaded, onInfo, onSyncError])
 
   useEffect(() => {
-    // Check pending outbox on startup
-    void db.outbox.where('status').equals('pending').count().then((count) => {
+    // Check pending outbox on startup (incluye 'error' para no ocultar trabajo).
+    void db.outbox.where('status').anyOf(['pending', 'error']).count().then((count) => {
       setOutboxCount(count)
     })
 
@@ -111,22 +120,36 @@ export function useSync({
     // El delta sync de loadAssignments hace que la recarga sea barata
     // (solo trae las filas tocadas en los ultimos segundos).
     let realtimeDebounce: number | null = null
+    // Borrados pendientes de reconciliar: el delta-sync NO trae DELETEs (solo
+    // filas creadas/modificadas), así que una fila borrada en otro equipo
+    // "resucitaba" en la caché de los demás. Aquí capturamos el id del evento
+    // DELETE y lo quitamos de Dexie antes del refresh.
+    const pendingDeletes = new Set<string>()
     const channel = supabase
       .channel('asignaciones-changes')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'asignaciones' },
-        () => {
+        (payload: { eventType?: string; old?: { id?: string | number } }) => {
+          if (payload.eventType === 'DELETE' && payload.old?.id != null) {
+            pendingDeletes.add(String(payload.old.id))
+          }
           // Debounce: si llegan varios eventos en rafaga (sync de outbox que
           // dispara 5 INSERTs por ejemplo), agrupamos en un solo refresh.
           if (realtimeDebounce !== null) window.clearTimeout(realtimeDebounce)
           realtimeDebounce = window.setTimeout(() => {
             realtimeDebounce = null
             if (!navigator.onLine) return
-            void loadAssignments().then((r) => {
+            void (async () => {
+              if (pendingDeletes.size > 0) {
+                const ids = [...pendingDeletes]
+                pendingDeletes.clear()
+                try { await db.assignments.bulkDelete(ids) } catch { /* sin cache */ }
+              }
+              const r = await loadAssignments()
               onAssignmentsReloaded(r.data)
               onSyncError(r.error)
-            })
+            })()
           }, 500)
         },
       )

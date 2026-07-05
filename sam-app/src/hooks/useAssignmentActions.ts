@@ -277,10 +277,13 @@ export function useAssignmentActions() {
     } else {
       executedArea = sessionDraftValue
     }
-    // Defensa final: el executedArea propio nunca debe exceder el area
-    // planificada de SU asignacion (cap individual).
-    if (executedArea > assignment.area) {
-      executedArea = assignment.area
+    // Defensa final: el executedArea propio nunca debe exceder el ÁREA TOTAL de
+    // la suerte (no el `assignment.area` crudo). En una RE-TOMA del restante la
+    // fila nace con área reducida (ej. 7.32); usar assignment.area truncaba el
+    // acumulado (12.20 + 7.32 → 7.32, perdiendo avance real). suerteTotalArea es
+    // el MAX del ciclo, el área real de la suerte.
+    if (executedArea > suerteTotalArea) {
+      executedArea = suerteTotalArea
     }
 
     const horometroFinalRaw = draft?.horometroFinal ?? ''
@@ -421,12 +424,17 @@ export function useAssignmentActions() {
     setError('')
 
     const now = new Date().toISOString()
-    const payload = {
+    const payload: import('../domain/sam').UpdateAssignmentInput = {
       approval: decision,
       approvedBy: session.id,
       approvedAt: now,
-      ...(extra ?? {}),
+      editadoPor: session.id,
     }
+    // cliente/zona SOLO si el supervisor los diligenció. Antes se hacía spread
+    // crudo de `extra`, así que `zone: null` PISABA una zona ya válida y la labor
+    // se caía de los filtros de zona del Tablero/Resumen.
+    if (extra?.cliente) payload.cliente = extra.cliente
+    if (extra?.zone === 'NORTE' || extra?.zone === 'SUR') payload.zone = extra.zone
 
     try {
       if (!isOnline) {

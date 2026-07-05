@@ -55,10 +55,14 @@ begin
   v_ref := coalesce(NEW.fecha_fin, NEW.created_at, now());
 
   -- Suma de OTRAS filas de la misma suerte+labor, mismo ciclo (±21 días).
+  -- Filtra TAMBIÉN por nombre_hacienda: el código de hacienda `1`+mayagüez lo
+  -- comparten LA FLORESTA TASCON y Santa Fe → sin este filtro mezclaría el área
+  -- de dos haciendas distintas contra el area_neta de una sola.
   select coalesce(sum(a.area_realizada),0) into v_sum
   from public.asignaciones a
   where a.suerte_codigo = NEW.suerte_codigo
     and upper(btrim(a.labor_nombre)) = upper(btrim(NEW.labor_nombre))
+    and upper(btrim(a.nombre_hacienda)) = upper(btrim(NEW.nombre_hacienda))
     and a.estado in ('COMPLETADA','PARCIAL')
     and coalesce(a.area_realizada,0) > 0
     and a.id <> NEW.id

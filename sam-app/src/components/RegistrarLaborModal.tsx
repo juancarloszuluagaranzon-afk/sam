@@ -42,7 +42,7 @@ const EMPTY = {
 export function RegistrarLaborModal({ open, onClose }: Props) {
   const {
     session, users, operators, equipment, sortedEquipment, maestro, activeLabores,
-    setAssignments, isOnline, busy, setBusy, setError, setInfo, error,
+    assignments, setAssignments, isOnline, busy, setBusy, setError, setInfo, error,
   } = useAppData()
 
   const [form, setForm] = useState(EMPTY)
@@ -152,6 +152,25 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
     if (hi !== null && isNaN(hi)) return setError('Horómetro inicial inválido.')
     if (hf !== null && isNaN(hf)) return setError('Horómetro final inválido.')
     if (hi !== null && hf !== null && hf < hi) return setError('El horómetro final no puede ser menor al inicial.')
+
+    // Aviso de sobre-registro / duplicado ANTES de insertar (el trigger de BD
+    // igual lo bloquea, pero aquí damos el aviso claro sin ir al servidor).
+    const scode = `${mrow.haciendaCode}-${mrow.suerte}`
+    const laborK = form.labor.trim().toUpperCase()
+    const yaEjec = assignments
+      .filter(
+        (a) =>
+          a.suerteCode === scode &&
+          a.labor.trim().toUpperCase() === laborK &&
+          (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
+      )
+      .reduce((s, a) => s + (a.executedArea || 0), 0)
+    if (suerteArea != null && yaEjec + area > suerteArea + 0.05) {
+      return setError(
+        `Esta suerte ya tiene ${yaEjec.toFixed(2)} ha de ${suerteArea.toFixed(2)} registradas; estas ${area.toFixed(2)} ha la exceden. ¿Es un duplicado?`,
+      )
+    }
+
     if (!isOnline) return setError('Necesitas conexión para registrar la labor.')
 
     setBusy(true)

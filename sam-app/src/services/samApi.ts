@@ -592,7 +592,11 @@ export async function bulkDeactivateMaestro(
 // que syncOutbox lo envie y vuelva a traerlo. Aunque eventualmente convergen,
 // el "parpadeo" confunde al operador. Esta proteccion lo elimina.
 async function getPendingOutboxIds(): Promise<Set<string>> {
-  const pending = await db.outbox.where('status').equals('pending').toArray()
+  // Incluye 'error' además de 'pending': una edición que falló al sincronizar
+  // sigue siendo un cambio local no confirmado; si no la protegiéramos, el
+  // siguiente delta la pisaría con la versión vieja del servidor y el cambio
+  // desaparecería sin rastro (se reintenta en cada syncOutbox).
+  const pending = await db.outbox.where('status').anyOf(['pending', 'error']).toArray()
   const ids = new Set<string>()
   for (const item of pending) {
     if (item.type === 'UPDATE' && item.assignmentId) {
@@ -632,22 +636,29 @@ export async function loadAssignments(): Promise<{
 
       if (error) throw error
 
-      const deltas = (data ?? []).map((row) => mapAssignment(row as Record<string, unknown>))
-      // No sobrescribir filas con cambios locales pendientes en outbox: la
-      // version del servidor todavia no incluye esos cambios (estan en cola
-      // de envio), asi que aplicarla "borra" temporalmente el cambio del
-      // operador hasta que syncOutbox lo reenvie. Filtramos esas filas y
-      // dejamos que la version local sobreviva en db.assignments.
-      const pendingIds = await getPendingOutboxIds()
-      const safeDeltas =
-        pendingIds.size > 0 ? deltas.filter((d) => !pendingIds.has(d.id)) : deltas
-      if (safeDeltas.length > 0) {
-        await db.assignments.bulkPut(safeDeltas)
+      const rawDelta = data ?? []
+      // Si el delta llega al tope de PostgREST (~1000 filas), pudo dejar cambios
+      // FUERA de la ventana → no es confiable. Caemos al full sync (que sí tiene
+      // el anti-cap open+recent). Solo confiamos en el delta si vino corto.
+      if (rawDelta.length < 1000) {
+        const deltas = rawDelta.map((row) => mapAssignment(row as Record<string, unknown>))
+        // No sobrescribir filas con cambios locales pendientes en outbox: la
+        // version del servidor todavia no incluye esos cambios (estan en cola
+        // de envio), asi que aplicarla "borra" temporalmente el cambio del
+        // operador hasta que syncOutbox lo reenvie. Filtramos esas filas y
+        // dejamos que la version local sobreviva en db.assignments.
+        const pendingIds = await getPendingOutboxIds()
+        const safeDeltas =
+          pendingIds.size > 0 ? deltas.filter((d) => !pendingIds.has(d.id)) : deltas
+        if (safeDeltas.length > 0) {
+          await db.assignments.bulkPut(safeDeltas)
+        }
+        const all = await db.assignments.toArray()
+        all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+        void db.meta.put({ key: 'assignments_last_sync', value: now })
+        return { data: all, source: 'supabase', error: null }
       }
-      const all = await db.assignments.toArray()
-      all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
-      void db.meta.put({ key: 'assignments_last_sync', value: now })
-      return { data: all, source: 'supabase', error: null }
+      // rawDelta.length >= 1000 → posible cap; continúa al full sync abajo.
     }
 
     // Sync completo (primera carga o cache vacio).
@@ -724,6 +735,17 @@ export async function loadAssignments(): Promise<{
   }
 }
 
+// Mapeo ÚNICO rol DB → app. Antes estaba copiado en loadAppUsers y appLogin y
+// derivó: appLogin omitía `supervisor_insumos` → ese usuario entraba degradado
+// a operador. Fuente única para evitar que vuelva a divergir.
+export function mapRole(rol: unknown): UserProfile['role'] {
+  const r = String(rol ?? '')
+  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos') {
+    return r
+  }
+  return 'operador'
+}
+
 export async function loadAppUsers(): Promise<{
   data: UserProfile[]
   source: Source
@@ -742,7 +764,7 @@ export async function loadAppUsers(): Promise<{
     const mapped: UserProfile[] = data.map((row) => ({
       id: String(row.id),
       name: String(row.nombre_completo),
-      role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : row.rol === 'supervisor_insumos' ? 'supervisor_insumos' : 'operador',
+      role: mapRole(row.rol),
       equipmentCode: String(row.equipo_codigo ?? ''),
       photoUrl: row.foto_url ? String(row.foto_url) : undefined,
       zona: row.zona ? String(row.zona) : undefined,
@@ -1579,7 +1601,7 @@ export async function appLogin(userId: string, pin: string) {
   return {
     id: String(row.id),
     name: String(row.nombre_completo),
-    role: row.rol === 'supervisor' ? 'supervisor' : row.rol === 'owner' ? 'owner' : row.rol === 'administracion' ? 'administracion' : row.rol === 'soporte' ? 'soporte' : 'operador',
+    role: mapRole(row.rol),
     equipmentCode: String(row.equipo_codigo ?? ''),
     photoUrl: fotoRow?.foto_url ? String(fotoRow.foto_url) : undefined,
   } as UserProfile
@@ -1801,7 +1823,30 @@ export async function registrarLaborRealizada(input: RegistrarLaborInput) {
     .select('*')
     .single()
   if (error || !data) throw traducirErrorAsignacion(error ?? new Error('No se pudo registrar la labor'))
-  return mapAssignment(data as Record<string, unknown>)
+  const created = mapAssignment(data as Record<string, unknown>)
+  // Traza en labor_sesiones (horas-máquina / eficiencia), igual que un cierre
+  // normal — antes el registro rápido no aparecía en esos reportes.
+  const horas =
+    input.horometroInicial != null && input.horometroFinal != null
+      ? Number((input.horometroFinal - input.horometroInicial).toFixed(2))
+      : null
+  void createLaborSesion({
+    asignacionId: created.id,
+    suerteCodigo: created.suerteCode,
+    numeroSuerte: created.suerte,
+    nombreHacienda: created.haciendaName,
+    laborNombre: created.labor,
+    operadorId: created.operatorId,
+    operadorNombre: created.operatorName,
+    equipoCodigo: created.equipmentCode,
+    equipoNombre: created.equipmentName,
+    fecha: dayKey(now),
+    horometroInicial: input.horometroInicial,
+    horometroFinal: input.horometroFinal,
+    horas,
+    areaEjecutada: input.area,
+  }).catch(() => { /* la traza no bloquea el registro */ })
+  return created
 }
 
 export interface AsignacionAuditoria {
@@ -1902,9 +1947,16 @@ export function summarizeAssignments(
         ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') &&
           dayKey(a.finishedAt) === targetDate)),
   )
-  const plannedArea = relevant.reduce((sum, a) => sum + a.area, 0)
-  // PARCIAL aun esta activa, pero el area ya ejecutada cuenta para el
-  // avance del dia (lo hecho es hecho aunque la labor siga abierta).
+  // plannedArea DEDUP por suerte+labor: el split de cruce-de-día y el
+  // multi-operario crean varias filas con el ÁREA COMPLETA de la misma suerte;
+  // sumarlas duplica el planificado. Se toma el MAX por suerte+labor (el área
+  // real de la suerte, una sola vez). executedArea SÍ se suma (cada aporte real).
+  const plannedBySuerte = new Map<string, number>()
+  for (const a of relevant) {
+    const key = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
+    plannedBySuerte.set(key, Math.max(plannedBySuerte.get(key) ?? 0, a.area))
+  }
+  const plannedArea = [...plannedBySuerte.values()].reduce((s, v) => s + v, 0)
   const executedArea = relevant
     .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
     .reduce((sum, a) => sum + a.executedArea, 0)

@@ -640,7 +640,15 @@ export function SupervisorView({
   )
 
   const summaryMetrics = useMemo(() => {
-    const planned = summaryAssignments.reduce((s, a) => s + a.area, 0)
+    // plannedArea DEDUP por suerte+labor: el split de cruce-de-día y el
+    // multi-operario crean varias filas con el área completa de la misma suerte;
+    // sumarlas inflaba el planificado (bug de facturación). MAX por suerte+labor.
+    const plannedBySuerte = new Map<string, number>()
+    for (const a of summaryAssignments) {
+      const key = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
+      plannedBySuerte.set(key, Math.max(plannedBySuerte.get(key) ?? 0, a.area))
+    }
+    const planned = [...plannedBySuerte.values()].reduce((s, v) => s + v, 0)
     // PARCIAL aporta a executed igual que COMPLETADA — refleja lo
     // realmente hecho en el periodo.
     const executed = summaryAssignments

@@ -143,12 +143,13 @@ function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[])
       a.suerteCode === assignment.suerteCode &&
       normalizeText(a.labor) === normalizeText(assignment.labor) &&
       isSameCycle(a.dateKey, assignment.dateKey) &&
-      // EN_PROCESO también cuenta su `executedArea`: una PARCIAL re-iniciada
-      // (el operario vuelve a poner horómetro inicial para retomar) pasa a
-      // EN_PROCESO conservando su avance previo; si no se contara, su área ya
-      // hecha "desaparecería" del cálculo del restante mientras la retoma. Un
-      // EN_PROCESO recién iniciado tiene executedArea=0, así que suma 0 (inocuo).
-      (a.status === 'COMPLETADA' || a.status === 'PARCIAL' || a.status === 'EN_PROCESO'),
+      // EN_PROCESO cuenta su `executedArea` SOLO para la PROPIA asignación: una
+      // PARCIAL re-iniciada conserva su avance y no debe "desaparecer" al
+      // retomar. Pero el EN_PROCESO de OTRO operario (área "en vuelo", aún no
+      // registrada) NO debe cerrar prematuramente la card de un tercero (zombie).
+      (a.status === 'COMPLETADA' ||
+        a.status === 'PARCIAL' ||
+        (a.status === 'EN_PROCESO' && a.id === assignment.id)),
   )
   const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
   const ownExecuted = assignment.executedArea ?? 0

@@ -3456,7 +3456,12 @@ export function SupervisorView({
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
+                          // Solo se manda factura_numero si (a) es dueño/admin Y
+                          // (b) REALMENTE cambió. Así una edición normal (estado/
+                          // área) NO depende de esa columna y no se rompe si la
+                          // migración de factura aún no se corrió.
                           ...((session.role === 'owner' || session.role === 'administracion')
+                            && editLaborDraft.facturaNumero.trim() !== (selectedLabor.facturaNumero ?? '')
                             ? { facturaNumero: editLaborDraft.facturaNumero.trim() || null }
                             : {}),
                           ...approvalPatch,

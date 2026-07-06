@@ -590,6 +590,30 @@ export function useAssignmentActions() {
         setError('El area ejecutada debe ser un numero >= 0.')
         return false
       }
+      // TOPE: el área ejecutada de una labor NO puede superar el ÁREA REAL de la
+      // suerte (MAX del ciclo). Sin este tope una edición dejaba ejec > plan
+      // (p.ej. 4.00 sobre una suerte de 2.00 = 200% de cumplimiento) → como se
+      // paga por área ejecutada, eso es sobrepago/sobrefacturación. El cierre ya
+      // topa (finishAssignment); la edición y el registro rápido no lo hacían.
+      const normLabor = assignment.labor.trim().toUpperCase()
+      const suerteTotalArea = Math.max(
+        assignment.area,
+        ...assignments
+          .filter(
+            (a) =>
+              a.suerteCode === assignment.suerteCode &&
+              a.labor.trim().toUpperCase() === normLabor &&
+              isSameCycle(a.dateKey, assignment.dateKey) &&
+              a.status !== 'CANCELADA',
+          )
+          .map((a) => a.area),
+      )
+      if (patch.executedArea > suerteTotalArea + 0.001) {
+        setError(
+          `El área ejecutada (${patch.executedArea.toFixed(2)} ha) no puede superar el área de la suerte ${assignment.suerte} (${suerteTotalArea.toFixed(2)} ha). Si el área de la suerte cambió, corrige primero el área planificada.`,
+        )
+        return false
+      }
     }
     if (patch.horometroInicial != null && isNaN(patch.horometroInicial)) {
       setError('El horometro inicial debe ser un numero valido.')

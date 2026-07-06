@@ -131,11 +131,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
   const [novHasta, setNovHasta] = useState('')
   const [savingNov, setSavingNov] = useState(false)
 
-  function openNovedad(key: string, name: string) {
+  function openNovedad(key: string, name: string, day?: string) {
     setNovTarget({ key, name })
-    setNovTipo('V')
-    setNovDesde(todayKey)
-    setNovHasta(todayKey)
+    // Al abrir desde una casilla vacía la intención típica es marcar la falta.
+    setNovTipo(day ? 'F' : 'V')
+    setNovDesde(day ?? todayKey)
+    setNovHasta(day ?? todayKey)
     setError('')
   }
 
@@ -560,9 +561,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         <span className="planilla-legend__item"><b className="planilla-nov--d">D</b> Descanso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--p">P</b> Permiso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--e">E</b> Enfermedad</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--f">F</b> Falta sin justa causa</span>
         <span className="planilla-legend__item"><b className="planilla-nov--mv">MV</b> Máquina varada</span>
         <span className="planilla-legend__item"><b className="planilla-nov--cd">CD</b> Camioneta día</span>
         <span className="planilla-legend__item"><b className="planilla-nov--cn">CN</b> Camioneta noche</span>
+        <span className="planilla-legend__sep" />
+        <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-vacio-dot" />Sin registro (hasta hoy)</span>
       </div>
 
       {markMode && (
@@ -652,23 +656,31 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                       const proceso = r.perDayProceso[d.key]
                       const numClass = v > 0 && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
                       const canDetail = !markMode && v > 0 && !nov
+                      // Casilla VACÍA hasta el día de hoy (sin área, sin novedad y sin
+                      // resaltado manual) → se pinta amarillo como "falta por registrar".
+                      // Clic (fuera de modo resaltar) abre la novedad de ese día (default F).
+                      const vacio = v <= 0 && !nov && !hl && d.key <= todayKey
                       return (
                         <td
                           key={d.key}
-                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${canDetail ? ' planilla-cell--clickable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${canDetail || (vacio && !markMode) ? ' planilla-cell--clickable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}${vacio ? ' planilla-vacio' : ''}`}
                           onClick={
                             markMode
                               ? () => void toggleRevision(rowKey, d.key)
                               : canDetail
                                 ? () => setCellDetail({ rowKey, name: r.name, dateKey: d.key })
-                                : undefined
+                                : vacio
+                                  ? () => openNovedad(rowKey, r.name, d.key)
+                                  : undefined
                           }
                           title={
                             nov
                               ? NOVEDAD_LABEL[nov]
                               : canDetail
                                 ? `Ver labores (${proceso ? 'en proceso' : 'terminada'})`
-                                : markMode ? 'Resaltar / quitar' : undefined
+                                : vacio
+                                  ? 'Sin registro — clic para marcar novedad (falta, permiso…)'
+                                  : markMode ? 'Resaltar / quitar' : undefined
                           }
                         >
                           {nov ? novLetter(nov) : fmt(v)}

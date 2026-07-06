@@ -5428,6 +5428,14 @@ td.planilla-revisada {
 .planilla-nov--cd { color: #8a5a2b; }  /* Camioneta día — mismo color */
 .planilla-nov--cn { color: #8a5a2b; }  /* Camioneta noche — mismo color */
 .planilla-nov--mv { color: #c2410c; }  /* Máquina varada */
+.planilla-nov--f { color: #b91c1c; font-weight: 800; }  /* Falta sin justa causa */
+
+/* Casilla VACÍA hasta hoy (sin área, sin novedad, sin resaltado): amarillo =
+   "falta por registrar". `td.` para ganarle al fondo de .planilla-today. */
+td.planilla-vacio { background: #fef9c3; }
+td.planilla-vacio.planilla-today { background: #fde68a; }
+td.planilla-vacio:hover { background: #fde047; }
+.planilla-vacio-dot { color: #fde047; }  /* dot del legend (currentColor) */
 
 /* Facturación: barra de asignación en lote + chip de factura */
 .factura-bulk-bar {

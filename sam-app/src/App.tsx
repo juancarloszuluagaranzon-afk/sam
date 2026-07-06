@@ -360,7 +360,13 @@ function AppContent() {
         'Código Suerte': a.suerteCode,
         'Labor': a.labor,
         'Área Plan. (ha)': a.area,
-        'Área Ejec. (ha)': a.executedArea > 0 ? a.executedArea : '',
+        // Área ejecutada = MISMA fórmula que la pantalla: una COMPLETADA/PARCIAL
+        // sin área ejecutada registrada cuenta su área planificada (así el Excel
+        // cuadra con el Reporte y con lo que se paga). Pendiente/en proceso = ''.
+        'Área Ejec. (ha)':
+          (a.status === 'COMPLETADA' || a.status === 'PARCIAL')
+            ? (a.executedArea > 0 ? a.executedArea : a.area)
+            : (a.executedArea > 0 ? a.executedArea : ''),
         'Estado': a.status,
         'Cliente': a.cliente === 'ingenios' ? 'Ingenio' : a.cliente === 'proveedores' ? 'Proveedor' : '—',
         'Ingenio': getIngenioName(a, maestro) ?? '—',

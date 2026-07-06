@@ -2076,7 +2076,8 @@ export function SupervisorView({
                       <th>Hacienda</th>
                       <th>Suerte</th>
                       <th>Labor</th>
-                      <th>Área</th>
+                      <th>Ha plan.</th>
+                      <th>Ha ejec.</th>
                       <th>Cliente</th>
                       <th>Ingenio</th>
                       <th>Estado</th>
@@ -2097,10 +2098,11 @@ export function SupervisorView({
                           <td>{a.haciendaName}</td>
                           <td>{a.suerte}</td>
                           <td>{a.labor}</td>
+                          <td className="num-cell">{formatArea(a.area)}</td>
                           <td className="num-cell">
                             {a.status === 'COMPLETADA' || a.status === 'PARCIAL'
                               ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
-                              : formatArea(a.area)}
+                              : '—'}
                           </td>
                           <td>{clienteLabel}</td>
                           <td>{ingenioLabel}</td>

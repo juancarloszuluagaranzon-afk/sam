@@ -3382,6 +3382,13 @@ button.movement-row--clickable:active {
 .day-status-bar--large .day-status-item--amber strong { color: #b08020; }
 .day-status-bar--large .day-status-item--red strong { color: #b03030; }
 
+/* Área EJECUTADA y FACTURADA destacadas: número más grande que los demás KPIs. */
+.day-status-bar--large .day-status-item--emph strong { font-size: 1.85rem; line-height: 1.05; }
+.day-status-bar--large .day-status-item--emph span { font-weight: 800; letter-spacing: 0.01em; }
+.day-status-item--emph strong { font-size: 1.7rem; }
+.day-status-bar--large .day-status-item--billed strong,
+.day-status-item--billed strong { color: #6d28d9; }  /* facturada = morado, la diferencia de la ejecutada */
+
 @media (max-width: 480px) {
   .day-status-bar--large .day-status-bar__items {
     grid-template-columns: repeat(2, 1fr);

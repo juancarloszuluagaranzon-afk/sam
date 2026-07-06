@@ -550,6 +550,7 @@ export function SupervisorView({
     operatorId: '',
     fechaEjec: '',
     status: 'PENDIENTE' as Assignment['status'],
+    facturaNumero: '',
   })
 
   // Auditoría de ediciones (historial de cambios de una labor).
@@ -1320,9 +1321,13 @@ export function SupervisorView({
                 <strong>{scopedMetrics.plannedArea.toFixed(2)}</strong>
                 <span>Ha planif.</span>
               </div>
-              <div className="day-status-item day-status-item--green">
+              <div className="day-status-item day-status-item--green day-status-item--emph">
                 <strong>{scopedMetrics.executedArea.toFixed(2)}</strong>
                 <span>Ha ejecut.</span>
+              </div>
+              <div className="day-status-item day-status-item--emph day-status-item--billed">
+                <strong>{scopedMetrics.billedArea.toFixed(2)}</strong>
+                <span>Área facturada</span>
               </div>
               <div className={`day-status-item ${scopedMetrics.completion >= 70 ? 'day-status-item--green' : scopedMetrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
                 <strong>{scopedMetrics.completion}%</strong>
@@ -1989,6 +1994,9 @@ export function SupervisorView({
                 .reduce((s, a) => s + (a.executedArea > 0 ? a.executedArea : a.area), 0)
               const cumpl = planif ? Math.round((ejec / planif) * 100) : 0
               const enProc = activos.filter((a) => a.status === 'EN_PROCESO').length
+              const facturada = activos
+                .filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && !!(a.facturaNumero && a.facturaNumero.trim()))
+                .reduce((s, a) => s + (a.executedArea > 0 ? a.executedArea : a.area), 0)
               const mesLabel = summaryMonthOptions.find((o) => o.value === reportFilters.mes)?.label ?? reportFilters.mes
               const periodLabel =
                 reportFilters.period === 'HOY' ? 'Hoy' :
@@ -2005,9 +2013,13 @@ export function SupervisorView({
                       <strong>{planif.toFixed(2)}</strong>
                       <span>Ha planif.</span>
                     </div>
-                    <div className="day-status-item day-status-item--green">
+                    <div className="day-status-item day-status-item--green day-status-item--emph">
                       <strong>{ejec.toFixed(2)}</strong>
                       <span>Ha ejecut.</span>
+                    </div>
+                    <div className="day-status-item day-status-item--emph day-status-item--billed">
+                      <strong>{facturada.toFixed(2)}</strong>
+                      <span>Área facturada</span>
                     </div>
                     <div className={`day-status-item ${cumpl >= 70 ? 'day-status-item--green' : cumpl >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
                       <strong>{cumpl}%</strong>
@@ -3103,6 +3115,7 @@ export function SupervisorView({
                             operatorId: selectedLabor.operatorId ?? '',
                             fechaEjec: executionDateKey(selectedLabor),
                             status: selectedLabor.status,
+                            facturaNumero: selectedLabor.facturaNumero ?? '',
                           })
                           setEditingLabor(true)
                         }}
@@ -3328,6 +3341,17 @@ export function SupervisorView({
                         placeholder="Notas / observaciones"
                       />
                     </label>
+
+                    <label className="assignment-detail-field">
+                      <span>N° de factura <span className="field-optional">(facturación)</span></span>
+                      <input
+                        type="text"
+                        value={editLaborDraft.facturaNumero}
+                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, facturaNumero: e.target.value }))}
+                        placeholder="Sin facturar"
+                      />
+                      <small>Al asignar un N°, esta labor cuenta en el KPI "Área facturada". Déjalo vacío para desfacturar.</small>
+                    </label>
                   </div>
                 )}
 
@@ -3395,6 +3419,7 @@ export function SupervisorView({
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
+                          facturaNumero: editLaborDraft.facturaNumero.trim() || null,
                           ...approvalPatch,
                           ...(operatorChanged ? {
                             operatorId: newOperatorId,

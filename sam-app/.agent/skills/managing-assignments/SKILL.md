@@ -398,6 +398,17 @@ Barrido con 6 agentes (correctitud, seguridad, integridad, sync, performance, ca
 - **Registro rápido**: avisa si el área excede lo ya ejecutado de la suerte (aviso cliente antes del trigger de BD) y crea traza en `labor_sesiones` (antes no aparecía en horas-máquina).
 - **`mapRole` único** (samApi): el mapeo rol DB→app estaba duplicado en `loadAppUsers` y `appLogin`, y `appLogin` omitía `supervisor_insumos` → ese usuario entraba degradado a operador. Fuente única ahora.
 
+## Facturación — Área facturada [2026-07-05]
+
+Administración asigna un **N° de factura** a las labores YA realizadas. Columna `asignaciones.factura_numero text` (mig. `20260705150000`, idempotente, sin FK; `factura_numero` no vacío = facturada). `Assignment.facturaNumero` (`string | null`), `UpdateAssignmentInput.facturaNumero`, `EditPatch.facturaNumero`. `updateAssignment` mapea `factura_numero` (`|| null` para desfacturar).
+
+- **Asignar factura:** en el modal Editar del Reporte/Labores hay un campo **"N° de factura"** (`editLaborDraft.facturaNumero`) → `handleEditAssignment({ facturaNumero: ... || null })`. Ese es el "módulo" MVP donde admin ve las realizadas y les pone factura. En el Excel del Reporte hay columna **Factura**.
+- **KPI "Área facturada":** `summarizeAssignments` devuelve `billedArea` (Σ `executedArea` de COMPLETADA/PARCIAL con `facturaNumero`). Aparece en la franja "Hoy"/Reporte junto a "Ha ejecut.", **ambas destacadas** (clase `day-status-item--emph`, número más grande) y facturada en morado (`--billed`). El Reporte lo recalcula inline (`facturada`).
+
+## Novedad "Máquina varada" (MV) [2026-06-30]
+
+Tipo de novedad `MV` = "Máquina varada" (día no trabajado por daño de la máquina en campo). Agregado a `NovedadTipo`/`NOVEDAD_TIPOS`/`NOVEDAD_LABEL`/`NOV_ICON` (🚜) + color `.planilla-nov--mv` (naranja-rojo) + leyenda. Aparece como botón automático en la Planilla (clic en el nombre del operario) y en "Registrar novedad" del operario. Sin migración (`operario_novedades.tipo` es texto libre).
+
 ## Gotchas
 
 - **[2026-06-18]** **Aprobación OBLIGATORIA al finalizar (asignadas y de campo).** Antes solo las LIBRE pedían aprobación; las ASIGNADAS nacían `APROBADA` y nadie revisaba el área → facturación recibía áreas que no cuadraban. Fix: `finishAssignment` (useAssignmentActions) ahora pone `approval: 'PENDIENTE'` en el `finishPayload` (y en el path offline) → TODA labor finalizada (parcial o completa) vuelve a "por aprobar". `decideApproval` se relajó: aprueban el supervisor asignado **O** owner/administración. Bandeja: pestaña `'aprobaciones'` (`pendingApprovals` = `scopedAssignments` con `approval==='PENDIENTE'` y status COMPLETADA/PARCIAL), botón nav **✔ Aprobar** con badge rojo (`.nav-badge`, pulso `.has-pending`) + banner `.mini-banner--approve` en Labores. Aprobar/Rechazar reusa `handleApproveAssignment`/`handleRejectAssignment` (LIBRE sin cliente/zona abre el modal `approveTarget`). **Los dashboards/Planilla siguen sumando área independiente de la aprobación** (el estado es solo gate/flag; si piden "facturar solo aprobadas" hay que filtrar por `approval==='APROBADA'`).

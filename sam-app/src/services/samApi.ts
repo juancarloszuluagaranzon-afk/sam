@@ -149,6 +149,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     liberada: Boolean(row.liberada ?? false),
     updatedAt: row.updated_at ? String(row.updated_at) : undefined,
     editadoPor: row.editado_por ? String(row.editado_por) : undefined,
+    facturaNumero: row.factura_numero ? String(row.factura_numero) : null,
   }
 }
 
@@ -1904,6 +1905,7 @@ export async function updateAssignment(
   if (input.zone !== undefined) payload.zona = input.zone
   if (input.createdAt !== undefined) payload.created_at = input.createdAt
   if (input.editadoPor !== undefined) payload.editado_por = input.editadoPor
+  if (input.facturaNumero !== undefined) payload.factura_numero = input.facturaNumero || null
 
   const { data, error } = await supabase
     .from('asignaciones')
@@ -1961,12 +1963,17 @@ export function summarizeAssignments(
     .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
     .reduce((sum, a) => sum + a.executedArea, 0)
   const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
+  // Área facturada: área ejecutada de labores que YA tienen N° de factura.
+  const billedArea = relevant
+    .filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && !!(a.facturaNumero && a.facturaNumero.trim()))
+    .reduce((sum, a) => sum + a.executedArea, 0)
 
   return {
     plannedArea,
     executedArea,
     completion: plannedArea ? Math.round((executedArea / plannedArea) * 100) : 0,
     inProgress,
+    billedArea,
   }
 }
 

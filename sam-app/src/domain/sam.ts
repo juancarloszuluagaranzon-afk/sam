@@ -108,6 +108,8 @@ export interface Assignment {
   // Auditoría: última edición (lo estampa el trigger / el cliente).
   updatedAt?: string
   editadoPor?: string
+  // Facturación: N° de factura asignado por administración (null = sin facturar).
+  facturaNumero?: string | null
 }
 
 export interface DashboardMetrics {
@@ -115,6 +117,8 @@ export interface DashboardMetrics {
   executedArea: number
   completion: number
   inProgress: number
+  // Área ejecutada que YA tiene factura asignada.
+  billedArea: number
 }
 
 // Catálogo de labores (CRUD). Vive en la tabla `labores`. Las inactivas dejan
@@ -270,4 +274,6 @@ export interface UpdateAssignmentInput {
   createdAt?: string
   // Auditoría: quién hace esta edición (se guarda en asignaciones.editado_por).
   editadoPor?: string
+  // Facturación: N° de factura (o null/'' para desfacturar).
+  facturaNumero?: string | null
 }

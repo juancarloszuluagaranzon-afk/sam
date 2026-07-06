@@ -580,6 +580,7 @@ export function useAssignmentActions() {
     approvedBy?: string | null
     approvedAt?: string | null
     editadoPor?: string
+    facturaNumero?: string | null
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {

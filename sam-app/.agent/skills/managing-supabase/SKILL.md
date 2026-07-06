@@ -158,6 +158,7 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+- **[2026-07-05] Facturación: `asignaciones.factura_numero text`** (mig. `20260705150000` + índice parcial). Administración le pone N° de factura a labores realizadas (desde el modal Editar); alimenta el KPI "Área facturada" (`summarizeAssignments.billedArea`). `updateAssignment` mapea `factura_numero` (`|| null`). Detalle en `managing-assignments`.
 - **[2026-07-05] Auditoría integral (6 agentes) — correcciones aplicadas.**
   - **Sync/offline (críticos):** (1) el outbox ya **recuenta incluyendo `error`** (antes `setOutboxCount(0)` ocultaba trabajo rechazado → pérdida silenciosa), **reintenta** los `error` y guarda `errorMessage`; `getPendingOutboxIds` incluye `error`. (2) **DELETE reconciliado en Realtime** (`useSync.ts`): el delta NO trae borrados → se captura el `payload.old.id` del evento DELETE y se hace `db.assignments.bulkDelete` (antes la fila borrada "resucitaba" en los otros equipos). (3) **Anti-cap también en el delta**: si el delta trae ≥1000 filas, cae al full sync (que sí tiene open+recent).
   - **Trigger cap-área (fix):** la suma del ciclo ahora filtra TAMBIÉN por `nombre_hacienda` (`20260630120000` re-corrida) — el código de hacienda compartido (`1`+mayagüez) mezclaba dos haciendas. Re-correr la migración.

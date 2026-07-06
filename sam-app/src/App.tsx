@@ -371,6 +371,7 @@ function AppContent() {
         'Zona': a.zone ?? '',
         'Tipo': a.kind,
         'Aprobación': a.approval,
+        'Factura': a.facturaNumero ?? '',
         'Aprobado por': a.approvedBy ? (nombrePorId.get(a.approvedBy) ?? a.approvedBy) : '',
         'Aprobado en': a.approvedAt ?? '',
         'Notas': a.notes,

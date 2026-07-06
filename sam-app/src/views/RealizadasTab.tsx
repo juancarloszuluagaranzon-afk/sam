@@ -134,7 +134,7 @@ export function RealizadasTab() {
 
     const build = (rows: Assignment[]) => {
       const rep = rows[0]
-      const executed = rows.reduce((s, r) => s + (r.executedArea ?? 0), 0)
+      const executed = rows.reduce((s, r) => s + ((r.executedArea ?? 0) > 0 ? r.executedArea : r.area), 0)
       const maestroRow = maestro.find(
         (m) => m.haciendaCode === rep.haciendaCode && m.suerte === rep.suerte,
       )

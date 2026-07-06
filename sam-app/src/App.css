@@ -5429,6 +5429,19 @@ td.planilla-revisada {
 .planilla-nov--cn { color: #8a5a2b; }  /* Camioneta noche — mismo color */
 .planilla-nov--mv { color: #c2410c; }  /* Máquina varada */
 
+/* Facturación: barra de asignación en lote + chip de factura */
+.factura-bulk-bar {
+  display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: rgba(109,40,217,0.08); border: 1px solid rgba(109,40,217,0.25);
+  border-radius: 10px; padding: 8px 12px; margin-bottom: 10px;
+}
+.factura-bulk-bar input { max-width: 180px; }
+.factura-chip {
+  font-weight: 700; color: #6d28d9; background: rgba(109,40,217,0.12);
+  padding: 2px 8px; border-radius: 999px; font-size: 0.82rem; white-space: nowrap;
+}
+.factura-row--sel { background: rgba(109,40,217,0.06); }
+
 /* Color del número del área según estado de la(s) labor(es) del día.
    Sin prefijo `td` para que el dot del legend (<i>) también tome el color
    vía currentColor. Definido después de .planilla-cell para ganar el color. */

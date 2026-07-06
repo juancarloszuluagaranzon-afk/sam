@@ -1850,6 +1850,29 @@ export async function registrarLaborRealizada(input: RegistrarLaborInput) {
   return created
 }
 
+/**
+ * Asigna (o quita) un N° de factura a VARIAS labores de una vez. `facturaNumero`
+ * null/'' = desfacturar. Estampa `editado_por` (queda en la auditoría). En chunks
+ * para no exceder el largo de URL de PostgREST.
+ */
+export async function setFacturaBulk(
+  ids: string[],
+  facturaNumero: string | null,
+  editadoPor?: string,
+): Promise<void> {
+  if (ids.length === 0) return
+  const payload: Record<string, unknown> = { factura_numero: facturaNumero || null }
+  if (editadoPor) payload.editado_por = editadoPor
+  const CHUNK = 100
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { error } = await supabase
+      .from('asignaciones')
+      .update(payload)
+      .in('id', ids.slice(i, i + CHUNK))
+    if (error) throw traducirErrorAsignacion(error)
+  }
+}
+
 export interface AsignacionAuditoria {
   id: number
   accion: 'INSERT' | 'UPDATE'
@@ -1959,14 +1982,17 @@ export function summarizeAssignments(
     plannedBySuerte.set(key, Math.max(plannedBySuerte.get(key) ?? 0, a.area))
   }
   const plannedArea = [...plannedBySuerte.values()].reduce((s, v) => s + v, 0)
+  // Misma fórmula en TODAS las vistas (Resumen/Reporte/Hoy): una COMPLETADA/
+  // PARCIAL sin área ejecutada registrada cuenta su área planificada.
+  const execDe = (a: Assignment) => (a.executedArea > 0 ? a.executedArea : a.area)
   const executedArea = relevant
     .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
-    .reduce((sum, a) => sum + a.executedArea, 0)
+    .reduce((sum, a) => sum + execDe(a), 0)
   const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
   // Área facturada: área ejecutada de labores que YA tienen N° de factura.
   const billedArea = relevant
     .filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && !!(a.facturaNumero && a.facturaNumero.trim()))
-    .reduce((sum, a) => sum + a.executedArea, 0)
+    .reduce((sum, a) => sum + execDe(a), 0)
 
   return {
     plannedArea,

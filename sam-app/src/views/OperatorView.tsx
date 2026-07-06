@@ -421,7 +421,7 @@ export function OperatorView({
     // ejecutada — el supervisor quiere ver el avance real, no solo lo cerrado.
     const todayExecuted = relevant
       .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
-      .reduce((sum, a) => sum + a.executedArea, 0)
+      .reduce((sum, a) => sum + (a.executedArea > 0 ? a.executedArea : a.area), 0)
     const completion = todayPlanned ? Math.round((todayExecuted / todayPlanned) * 100) : 0
     const inProgress = relevant.filter((a) => a.status === 'EN_PROCESO').length
     const pending = relevant.filter((a) => a.status === 'PENDIENTE').length
@@ -1405,7 +1405,7 @@ export function OperatorView({
               const completadas = filteredHistory.filter((a) => a.status === 'COMPLETADA')
               const parciales = filteredHistory.filter((a) => a.status === 'PARCIAL')
               const haPlaneadas = conAvance.reduce((sum, a) => sum + a.area, 0)
-              const haEjecutadas = conAvance.reduce((sum, a) => sum + a.executedArea, 0)
+              const haEjecutadas = conAvance.reduce((sum, a) => sum + (a.executedArea > 0 ? a.executedArea : a.area), 0)
               const eficiencia = haPlaneadas ? Math.round((haEjecutadas / haPlaneadas) * 100) : 0
               return (
                 <div className="operator-kpi-grid" style={{ margin: '1rem 0 1.5rem' }}>

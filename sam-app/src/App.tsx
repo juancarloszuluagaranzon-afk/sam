@@ -54,7 +54,7 @@ function AppContent() {
   })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
-    const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'validacion', 'maestros']
+    const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'validacion', 'maestros', 'facturacion']
     return valid.includes(tab as SupervisorTab) ? (tab as SupervisorTab) : 'labores'
   })
   const [operatorTab, setOperatorTab] = useState<OperatorTab>(() => {
@@ -349,6 +349,9 @@ function AppContent() {
       const { utils, writeFile } = await import('xlsx')
       // id → nombre para mostrar nombres (no códigos) en el Excel.
       const nombrePorId = new Map(users.map((u) => [u.id, u.name]))
+      // La facturación es solo de dueño/administración → la columna Factura
+      // solo va en su Excel, no en el del supervisor.
+      const verFactura = session?.role === 'owner' || session?.role === 'administracion'
       const rows = filteredReport.map((a) => ({
         'Fecha (ejecución)': executionDateKey(a),
         'Fecha asignación': a.dateKey,
@@ -371,7 +374,7 @@ function AppContent() {
         'Zona': a.zone ?? '',
         'Tipo': a.kind,
         'Aprobación': a.approval,
-        'Factura': a.facturaNumero ?? '',
+        ...(verFactura ? { 'Factura': a.facturaNumero ?? '' } : {}),
         'Aprobado por': a.approvedBy ? (nombrePorId.get(a.approvedBy) ?? a.approvedBy) : '',
         'Aprobado en': a.approvedAt ?? '',
         'Notas': a.notes,

@@ -27,6 +27,7 @@ import { formatTime } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 import { ValidationTab } from './ValidationTab'
 import { MaestrosTab } from './MaestrosTab'
+import { FacturacionTab } from './FacturacionTab'
 import { PlanillaTab } from './PlanillaTab'
 import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
@@ -36,7 +37,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros' | 'zonas' | 'insumos'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -654,7 +655,7 @@ export function SupervisorView({
     // realmente hecho en el periodo.
     const executed = summaryAssignments
       .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
-      .reduce((s, a) => s + a.executedArea, 0)
+      .reduce((s, a) => s + (a.executedArea > 0 ? a.executedArea : a.area), 0)
     const inProgress = summaryAssignments.filter((a) => a.status === 'EN_PROCESO').length
     return {
       plannedArea: planned,
@@ -670,7 +671,7 @@ export function SupervisorView({
       const current = groups.get(a.labor) ?? { planned: 0, executed: 0, count: 0 }
       current.planned += a.area
       current.count += 1
-      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
+      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += (a.executedArea > 0 ? a.executedArea : a.area)
       groups.set(a.labor, current)
     }
     return Array.from(groups.entries())
@@ -699,7 +700,9 @@ export function SupervisorView({
       const key = id || `name:${name.trim().toUpperCase()}`
       const current = groups.get(key) ?? { id, name, planned: 0, executed: 0, count: 0 }
       current.planned += a.area
-      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += a.executedArea
+      // Misma fórmula que el Reporte: una COMPLETADA/PARCIAL sin área ejecutada
+      // registrada cuenta su área planificada (consistencia Resumen↔Reporte).
+      if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') current.executed += (a.executedArea > 0 ? a.executedArea : a.area)
       current.count += 1
       groups.set(key, current)
     }
@@ -836,6 +839,16 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
                   </div>
                 </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'facturacion' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('facturacion'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">🧾</span>
+                  <div>
+                    <div className="more-sheet__label">Facturación</div>
+                    <div className="more-sheet__desc">Asigna N° de factura a las labores realizadas (en lote)</div>
+                  </div>
+                </button>
               </>
             ) : (
               <>
@@ -868,6 +881,18 @@ export function SupervisorView({
                     <div>
                       <div className="more-sheet__label">Realizadas</div>
                       <div className="more-sheet__desc">Labores ejecutadas, filtra por hacienda y labor</div>
+                    </div>
+                  </button>
+                )}
+                {session.role === 'administracion' && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'facturacion' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('facturacion'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">🧾</span>
+                    <div>
+                      <div className="more-sheet__label">Facturación</div>
+                      <div className="more-sheet__desc">Asigna N° de factura a las labores realizadas (en lote)</div>
                     </div>
                   </button>
                 )}
@@ -1223,7 +1248,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1296,7 +1321,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1325,10 +1350,12 @@ export function SupervisorView({
                 <strong>{scopedMetrics.executedArea.toFixed(2)}</strong>
                 <span>Ha ejecut.</span>
               </div>
-              <div className="day-status-item day-status-item--emph day-status-item--billed">
-                <strong>{scopedMetrics.billedArea.toFixed(2)}</strong>
-                <span>Área facturada</span>
-              </div>
+              {(session.role === 'owner' || session.role === 'administracion') && (
+                <div className="day-status-item day-status-item--emph day-status-item--billed">
+                  <strong>{scopedMetrics.billedArea.toFixed(2)}</strong>
+                  <span>Área facturada</span>
+                </div>
+              )}
               <div className={`day-status-item ${scopedMetrics.completion >= 70 ? 'day-status-item--green' : scopedMetrics.completion >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
                 <strong>{scopedMetrics.completion}%</strong>
                 <span>Cumplimiento</span>
@@ -1849,6 +1876,10 @@ export function SupervisorView({
           <MaestrosTab />
         ) : null}
 
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'facturacion' ? (
+          <FacturacionTab />
+        ) : null}
+
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'planilla' ? (
           <PlanillaTab onEditLabor={setSelectedLabor} />
         ) : null}
@@ -2017,10 +2048,12 @@ export function SupervisorView({
                       <strong>{ejec.toFixed(2)}</strong>
                       <span>Ha ejecut.</span>
                     </div>
-                    <div className="day-status-item day-status-item--emph day-status-item--billed">
-                      <strong>{facturada.toFixed(2)}</strong>
-                      <span>Área facturada</span>
-                    </div>
+                    {(session.role === 'owner' || session.role === 'administracion') && (
+                      <div className="day-status-item day-status-item--emph day-status-item--billed">
+                        <strong>{facturada.toFixed(2)}</strong>
+                        <span>Área facturada</span>
+                      </div>
+                    )}
                     <div className={`day-status-item ${cumpl >= 70 ? 'day-status-item--green' : cumpl >= 30 ? 'day-status-item--amber' : 'day-status-item--red'}`}>
                       <strong>{cumpl}%</strong>
                       <span>Cumplimiento</span>
@@ -3342,16 +3375,18 @@ export function SupervisorView({
                       />
                     </label>
 
-                    <label className="assignment-detail-field">
-                      <span>N° de factura <span className="field-optional">(facturación)</span></span>
-                      <input
-                        type="text"
-                        value={editLaborDraft.facturaNumero}
-                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, facturaNumero: e.target.value }))}
-                        placeholder="Sin facturar"
-                      />
-                      <small>Al asignar un N°, esta labor cuenta en el KPI "Área facturada". Déjalo vacío para desfacturar.</small>
-                    </label>
+                    {(session.role === 'owner' || session.role === 'administracion') && (
+                      <label className="assignment-detail-field">
+                        <span>N° de factura <span className="field-optional">(facturación)</span></span>
+                        <input
+                          type="text"
+                          value={editLaborDraft.facturaNumero}
+                          onChange={(e) => setEditLaborDraft((d) => ({ ...d, facturaNumero: e.target.value }))}
+                          placeholder="Sin facturar"
+                        />
+                        <small>Al asignar un N°, esta labor cuenta en el KPI "Área facturada". Déjalo vacío para desfacturar.</small>
+                      </label>
+                    )}
                   </div>
                 )}
 
@@ -3419,7 +3454,9 @@ export function SupervisorView({
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
-                          facturaNumero: editLaborDraft.facturaNumero.trim() || null,
+                          ...((session.role === 'owner' || session.role === 'administracion')
+                            ? { facturaNumero: editLaborDraft.facturaNumero.trim() || null }
+                            : {}),
                           ...approvalPatch,
                           ...(operatorChanged ? {
                             operatorId: newOperatorId,

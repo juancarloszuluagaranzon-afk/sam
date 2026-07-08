@@ -17,13 +17,7 @@ import type { MaestroRow } from '../domain/sam'
  * renderizar todo de una. Si hay más, se pide refinar.
  */
 
-const INGENIOS = [
-  { id: 'risaralda', nombre: 'Ingenio Risaralda' },
-  { id: 'pichichi', nombre: 'Ingenio Pichichi' },
-  { id: 'mayaguez', nombre: 'Ingenio Mayagüez' },
-  { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
-  { id: 'riopaila', nombre: 'Ingenio Riopaila' },
-]
+import { INGENIOS } from '../data/ingenios'
 const ingenioNombre = (id: string) => INGENIOS.find((i) => i.id === id)?.nombre ?? id
 
 const LIMIT = 300

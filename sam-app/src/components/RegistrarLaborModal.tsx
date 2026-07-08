@@ -4,14 +4,7 @@ import SearchableSelect from './SearchableSelect'
 import { registrarLaborRealizada } from '../services/samApi'
 import { db } from '../lib/db'
 import type { Zone } from '../domain/sam'
-
-const INGENIOS = [
-  { id: 'risaralda', nombre: 'Ingenio Risaralda' },
-  { id: 'pichichi', nombre: 'Ingenio Pichichi' },
-  { id: 'mayaguez', nombre: 'Ingenio Mayagüez' },
-  { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
-  { id: 'riopaila', nombre: 'Ingenio Riopaila' },
-]
+import { INGENIOS } from '../data/ingenios'
 
 interface Props {
   open: boolean

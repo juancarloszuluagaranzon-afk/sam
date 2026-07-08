@@ -1,4 +1,5 @@
 import { LOCAL_MAESTRO } from '../data/constants'
+import { INGENIO_NAMES } from '../data/ingenios'
 import type {
   ApprovalStatus,
   Assignment,
@@ -77,13 +78,7 @@ function normalizeZone(value: string | null | undefined): Zone | null {
 // Mapeo legible para los IDs del maestro. Si en el futuro se agregan ingenios
 // nuevos, agregarlos aqui asi el modal muestra el nombre formateado en vez
 // del id crudo (ej "san_carlos").
-const INGENIO_NAMES: Record<string, string> = {
-  risaralda: 'Ingenio Risaralda',
-  pichichi: 'Ingenio Pichichi',
-  mayaguez: 'Ingenio Mayagüez',
-  san_carlos: 'Ingenio San Carlos',
-  riopaila: 'Ingenio Riopaila',
-}
+// Nombres de ingenio: fuente única en src/data/ingenios (evita divergencias).
 
 // Resuelve el ingenio de una asignacion cruzando con el maestro por
 // haciendaCode + suerte. Devuelve el nombre legible si lo encuentra, o null

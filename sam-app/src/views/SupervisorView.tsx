@@ -68,13 +68,7 @@ export interface EquipmentFormState {
   active: boolean
 }
 
-const INGENIOS = [
-  { id: 'risaralda', nombre: 'Ingenio Risaralda' },
-  { id: 'pichichi', nombre: 'Ingenio Pichichi' },
-  { id: 'mayaguez', nombre: 'Ingenio Mayaguez' },
-  { id: 'san_carlos', nombre: 'Ingenio San Carlos' },
-  { id: 'riopaila', nombre: 'Ingenio Riopaila' },
-]
+import { INGENIOS } from '../data/ingenios'
 
 function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'

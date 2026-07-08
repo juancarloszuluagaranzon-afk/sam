@@ -5676,6 +5676,31 @@ td.planilla-vacio:hover { background: #fde047; }
   padding-top: 10px;
 }
 
+/* MÓVIL: la regla global `.inline-button { width: 100% }` (≤640px) rompía las
+   listas de filas con botón al lado (Pendientes sin iniciar, casillas
+   resaltadas, detalle de celda de Planilla): el botón "✕ Limpiar" se tragaba
+   todo el ancho y aplastaba el texto a una letra por línea. Aquí el botón de
+   fila vuelve a su ancho natural y los botones del pie del modal se apilan
+   completos y ordenados dentro de la tarjeta. */
+@media (max-width: 640px) {
+  .revisadas-item { align-items: flex-start; }
+  .revisadas-item .inline-button {
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 7px 10px;
+  }
+  .revisadas-item__main { flex: 1; }
+  .modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .modal-footer button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 /* Tarjeta de labor revisada (azul celeste) en la pestaña Labores */
 .labores-review-tools { display: flex; gap: 8px; flex-wrap: wrap; }
 .labor-item--revisada {

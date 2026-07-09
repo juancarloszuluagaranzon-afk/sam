@@ -15,6 +15,7 @@ import {
   loadMaestro,
   loadTerceros,
   loadZonas,
+  runRetention,
   summarizeAssignments,
 } from '../services/samApi'
 
@@ -256,6 +257,30 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIngenioNamesRuntime(ingenios)
   }, [ingenios])
+
+  // Limpieza automática (política de ciclo de vida): la dispara owner/admin
+  // 1 vez al día. Cancela pendientes viejas y purga canceladas sin trabajo. Es
+  // silenciosa; si algo falla no molesta al usuario (reintenta al día siguiente,
+  // y pg_cron —si está— la respalda). Ver migración 20260708130000.
+  useEffect(() => {
+    const role = session?.role
+    if (role !== 'owner' && role !== 'administracion') return
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) return
+    const KEY = 'sam-retention-last'
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+    let last: string | null = null
+    try { last = window.localStorage.getItem(KEY) } catch { /* sin localStorage */ }
+    if (last === today) return
+    try { window.localStorage.setItem(KEY, today) } catch { /* sin localStorage */ }
+    void runRetention()
+      .then((r) => {
+        // Si limpió algo, refrescar asignaciones para reflejarlo en la app.
+        if (r.canceladas > 0 || r.borradas > 0) {
+          void loadAssignments().then((res) => startTransition(() => setAssignments(res.data)))
+        }
+      })
+      .catch(() => { /* silencioso */ })
+  }, [session?.role])
 
   // Selectores y asignación solo usan usuarios ACTIVOS (loadAppUsers ahora trae
   // todos, incluidos los inactivos, para que la gestión de Usuarios los liste).

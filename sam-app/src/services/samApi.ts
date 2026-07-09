@@ -2124,6 +2124,16 @@ export async function cancelAssignmentsBulk(ids: string[]) {
   }
 }
 
+// Política de ciclo de vida (migración 20260708130000): cancela pendientes sin
+// avanzar (+3d) y purga canceladas sin trabajo (+30d). NUNCA toca COMPLETADA/
+// PARCIAL. Lo dispara el cliente 1 vez al día (throttle en el contexto).
+export async function runRetention(): Promise<{ canceladas: number; borradas: number }> {
+  const { data, error } = await supabase.rpc('sam_run_retention')
+  if (error) throw new Error(error.message || 'No se pudo correr la limpieza automática')
+  const d = (data ?? {}) as { canceladas?: number; borradas?: number }
+  return { canceladas: Number(d.canceladas ?? 0), borradas: Number(d.borradas ?? 0) }
+}
+
 // Borrado REAL (DELETE) de una asignación. Irreversible. Solo para ajustes de
 // liquidación por dueño/administración desde el Reporte. La cache local se
 // limpia en el llamador (setAssignments + db.assignments.delete).

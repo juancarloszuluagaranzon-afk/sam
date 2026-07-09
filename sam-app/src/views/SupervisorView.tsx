@@ -1990,9 +1990,11 @@ export function SupervisorView({
                   onChange={(v) => setReportFilters((f) => ({ ...f, estado: v }))}
                   placeholder="Todos los estados"
                   options={[
+                    { value: 'CERRADAS', label: 'Cerradas (Parcial + Completada)' },
+                    { value: 'COMPLETADA', label: 'Completada' },
+                    { value: 'PARCIAL', label: 'Parcial' },
                     { value: 'PENDIENTE', label: 'Pendiente' },
                     { value: 'EN_PROCESO', label: 'En proceso' },
-                    { value: 'COMPLETADA', label: 'Completada' },
                     { value: 'CANCELADA', label: 'Cancelada' },
                   ]}
                 />

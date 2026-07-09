@@ -96,7 +96,9 @@ function AppContent() {
     hasta: '',
     // sentinels vacíos = "todos"; con SearchableSelect el placeholder item
     // borra a ''. Las comparaciones en filteredReport usan truthy check.
-    estado: '',
+    // Default = 'CERRADAS' (PARCIAL + COMPLETADA): el Reporte abre mostrando solo
+    // lo cerrado, que es la prioridad; 'Todos los estados' queda a un clic.
+    estado: 'CERRADAS',
     haciendaCode: '',
     suerte: '',
     operatorId: '',
@@ -252,7 +254,13 @@ function AppContent() {
             'TODO' // MES = todo el mes seleccionado
           if (!matchesSummaryFilter(execDate, periodMonth, quincena, todayKey)) return false
         }
-        if (reportFilters.estado && a.status !== reportFilters.estado) return false
+        // 'CERRADAS' = combinación PARCIAL + COMPLETADA (lo terminado/cerrado).
+        // Cualquier otro valor = filtro exacto por ese estado. '' = todos.
+        if (reportFilters.estado === 'CERRADAS') {
+          if (a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') return false
+        } else if (reportFilters.estado && a.status !== reportFilters.estado) {
+          return false
+        }
         if (reportFilters.haciendaCode && a.haciendaCode !== reportFilters.haciendaCode) return false
         if (reportFilters.suerte && a.suerte !== reportFilters.suerte) return false
         if (reportFilters.operatorId && a.operatorId !== reportFilters.operatorId) return false

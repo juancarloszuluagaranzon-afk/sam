@@ -6,7 +6,6 @@ import {
   bulkDeactivateMaestro,
 } from '../services/samApi'
 import type { MaestroRow } from '../domain/sam'
-import { INGENIOS } from '../data/ingenios'
 
 function stripAccents(s: string) {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -18,10 +17,10 @@ function normIng(s: unknown) {
     .replace(/[_\s]+/g, ' ')
     .trim()
 }
-function resolveIngenio(cell: unknown): string | null {
+function resolveIngenio(cell: unknown, list: { id: string; nombre: string }[]): string | null {
   const n = normIng(cell)
   if (!n) return null
-  for (const ing of INGENIOS) {
+  for (const ing of list) {
     if (n === normIng(ing.id) || n === normIng(ing.nombre)) return ing.id
   }
   return null
@@ -68,6 +67,8 @@ interface Props {
   onClose: () => void
   maestro: MaestroRow[]
   createdBy: string
+  /** Catálogo de ingenios activos (para validar la columna "Ingenio" del archivo). */
+  ingenios: { id: string; nombre: string }[]
   /** suerteCodes ("hacienda-suerte") con labor activa → aviso al desactivar. */
   activeSuerteCodes: Set<string>
   onApplied: (result: BulkApplyResult) => void
@@ -75,7 +76,7 @@ interface Props {
 
 const k3 = (ing: string, cod: string, sue: string) => `${ing}|${cod}|${sue}`
 
-export function BulkMaestroModal({ open, onClose, maestro, createdBy, activeSuerteCodes, onApplied }: Props) {
+export function BulkMaestroModal({ open, onClose, maestro, createdBy, ingenios, activeSuerteCodes, onApplied }: Props) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState('')
   const [busy, setBusy] = useState(false)
@@ -120,7 +121,7 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, activeSuer
         ['Llena la hoja "Suertes". Borra las filas de ejemplo.'],
         [],
         ['Ingenio válido (columna "Ingenio") — puedes usar el nombre o el id:'],
-        ...INGENIOS.map((i) => [i.nombre, i.id]),
+        ...ingenios.map((i) => [i.nombre, i.id]),
       ])
       utils.book_append_sheet(wb, ref, 'Instrucciones')
       writeFile(wb, 'plantilla-suertes.xlsx')
@@ -174,7 +175,7 @@ export function BulkMaestroModal({ open, onClose, maestro, createdBy, activeSuer
         const sue = String(r[iSue] ?? '').trim()
         const areaRaw = r[iArea]
         if (!String(ingCell ?? '').trim() && !cod && !nom && !sue && !String(areaRaw ?? '').trim()) continue
-        const ing = resolveIngenio(ingCell)
+        const ing = resolveIngenio(ingCell, ingenios)
         const area = typeof areaRaw === 'number' ? areaRaw : parseFloat(String(areaRaw ?? '').replace(/,/g, '.'))
         if (!ing) { errs.push({ fila: i + 1, motivo: `ingenio inválido: "${String(ingCell ?? '')}"` }); continue }
         if (!cod) { errs.push({ fila: i + 1, motivo: 'falta código de hacienda' }); continue }

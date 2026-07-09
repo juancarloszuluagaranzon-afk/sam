@@ -1,5 +1,5 @@
 import { LOCAL_MAESTRO } from '../data/constants'
-import { INGENIO_NAMES } from '../data/ingenios'
+import { ingenioNombre, slugIngenio } from '../data/ingenios'
 import type {
   ApprovalStatus,
   Assignment,
@@ -8,6 +8,7 @@ import type {
   CreateAssignmentInput,
   DashboardMetrics,
   Empresa,
+  Ingenio,
   Equipment,
   Insumo,
   InsumoCategoria,
@@ -92,7 +93,7 @@ export function getIngenioName(
     (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
   )
   if (!row) return null
-  return INGENIO_NAMES[row.ingenio_id] ?? row.ingenio_id
+  return ingenioNombre(row.ingenio_id)
 }
 
 // Devuelve el ingenio_id crudo (ej 'pichichi') para filtrar por ID; útil cuando
@@ -959,6 +960,58 @@ export async function updateEmpresa(
 export async function deleteEmpresa(id: string): Promise<void> {
   const { error } = await supabase.from('empresas').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar la empresa')
+}
+
+// ───────────── Catálogo INGENIOS/compradores (migración 20260708120000) ─────────────
+// El `id` es un slug estable (amarra maestro.ingenio_id) derivado del nombre al
+// crear. Renombrar cambia solo el nombre; el id NO se toca.
+export async function loadIngenios(): Promise<{ data: Ingenio[]; source: Source }> {
+  try {
+    const { data, error } = await supabase.from('ingenios').select('id,nombre,activo').order('nombre')
+    if (error || !data) throw error ?? new Error('empty')
+    return { data: data.map(mapNamed), source: 'supabase' }
+  } catch {
+    return { data: [], source: 'fallback' }
+  }
+}
+
+export async function createIngenio(nombre: string): Promise<Ingenio> {
+  const nom = nombre.trim()
+  const id = slugIngenio(nom)
+  if (!id) throw new Error('El nombre del ingenio no es válido.')
+  const { data, error } = await supabase
+    .from('ingenios')
+    .insert({ id, nombre: nom })
+    .select('id,nombre,activo')
+    .single()
+  if (error) {
+    if (error.code === '23505') throw new Error(`Ya existe un ingenio con id "${id}".`)
+    throw new Error(error.message || 'No se pudo crear el ingenio')
+  }
+  if (!data) throw new Error('No se pudo crear el ingenio')
+  return mapNamed(data)
+}
+
+export async function updateIngenio(
+  id: string,
+  patch: { nombre?: string; activo?: boolean },
+): Promise<Ingenio> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim()
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { data, error } = await supabase
+    .from('ingenios')
+    .update(payload)
+    .eq('id', id)
+    .select('id,nombre,activo')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo actualizar el ingenio')
+  return mapNamed(data)
+}
+
+export async function deleteIngenio(id: string): Promise<void> {
+  const { error } = await supabase.from('ingenios').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar el ingenio')
 }
 
 export async function loadTerceros(): Promise<{ data: Tercero[]; source: Source }> {

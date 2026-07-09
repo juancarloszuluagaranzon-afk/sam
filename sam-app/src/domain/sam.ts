@@ -133,6 +133,15 @@ export interface Labor {
   tipo: LaborTipo
 }
 
+// Catálogo de ingenios/compradores. El `id` es un slug estable (ej.
+// 'trapiche_lucerna') porque amarra `maestro.ingenio_id`. Editable desde
+// Catálogos → Ingenios (tabla `ingenios`, migración 20260708120000).
+export interface Ingenio {
+  id: string
+  nombre: string
+  activo: boolean
+}
+
 // Catálogo de empresas (compañías operadas en el aplicativo). Solo CRUD por ahora.
 export interface Empresa {
   id: string

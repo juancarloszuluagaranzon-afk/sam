@@ -1,13 +1,15 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
-import type { Assignment, Empresa, Equipment, Insumo, Labor, MaestroRow, Tercero, UserProfile, Zona } from '../domain/sam'
+import type { Assignment, Empresa, Ingenio, Equipment, Insumo, Labor, MaestroRow, Tercero, UserProfile, Zona } from '../domain/sam'
 import { WORKFLOW } from '../data/constants'
+import { INGENIOS as INGENIOS_SEED, setIngenioNamesRuntime } from '../data/ingenios'
 import {
   loadAppUsers,
   loadAssignments,
   loadEmpresas,
   loadEquipment,
+  loadIngenios,
   loadInsumos,
   loadLabores,
   loadMaestro,
@@ -15,6 +17,9 @@ import {
   loadZonas,
   summarizeAssignments,
 } from '../services/samApi'
+
+// Semilla como Ingenio[] activo — fallback si la BD no cargó (dropdowns nunca vacíos).
+const INGENIOS_FALLBACK: Ingenio[] = INGENIOS_SEED.map((i) => ({ ...i, activo: true }))
 
 export const SESSION_KEY = 'sam-app-session-v2'
 
@@ -37,6 +42,9 @@ interface AppDataContextValue {
   // Solo labores activas Y mecanizadas — para el picker del operario (tractor)
   // al tomar en campo, que no debe ver labores manuales.
   fieldLabores: string[]
+  // Catálogo de ingenios/compradores (CRUD desde Catálogos → Ingenios).
+  ingenios: Ingenio[]
+  setIngenios: React.Dispatch<React.SetStateAction<Ingenio[]>>
   // Catálogos de administración (CRUD): empresas y terceros (clientes).
   empresas: Empresa[]
   setEmpresas: React.Dispatch<React.SetStateAction<Empresa[]>>
@@ -83,6 +91,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<UserProfile[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [labores, setLabores] = useState<Labor[]>([])
+  const [ingenios, setIngenios] = useState<Ingenio[]>(INGENIOS_FALLBACK)
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [terceros, setTerceros] = useState<Tercero[]>([])
   const [zonas, setZonas] = useState<Zona[]>([])
@@ -203,13 +212,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     // sin bloquear el render — la UI ya esta visible. Si no habia cache, esta
     // fase actua como el load original (espera a que termine).
     try {
-      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult, empresasResult, tercerosResult, zonasResult, insumosResult] =
+      const [maestroResult, assignmentResult, userResult, equipmentResult, laboresResult, ingeniosResult, empresasResult, tercerosResult, zonasResult, insumosResult] =
         await Promise.all([
           loadMaestro(),
           loadAssignments(),
           loadAppUsers(),
           loadEquipment(),
           loadLabores(),
+          loadIngenios(),
           loadEmpresas(),
           loadTerceros(),
           loadZonas(),
@@ -221,6 +231,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setUsers(userResult.data)
         setEquipment(equipmentResult.data)
         setLabores(laboresResult.data)
+        // Si la BD trajo ingenios, esos mandan; si cayó a fallback, conservamos
+        // la semilla ya puesta en el estado inicial (dropdowns nunca vacíos).
+        if (ingeniosResult.data.length > 0) setIngenios(ingeniosResult.data)
         setEmpresas(empresasResult.data)
         setTerceros(tercerosResult.data)
         setZonas(zonasResult.data)
@@ -237,6 +250,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
     }
   }
+
+  // Inyecta los nombres de ingenio al resolvedor (getIngenioName usa este
+  // registro para mostrar el nombre de un ingenio creado por el usuario).
+  useEffect(() => {
+    setIngenioNamesRuntime(ingenios)
+  }, [ingenios])
 
   // Selectores y asignación solo usan usuarios ACTIVOS (loadAppUsers ahora trae
   // todos, incluidos los inactivos, para que la gestión de Usuarios los liste).
@@ -301,6 +320,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         users, setUsers,
         equipment, setEquipment,
         labores, setLabores, activeLabores, fieldLabores,
+        ingenios, setIngenios,
         empresas, setEmpresas, terceros, setTerceros,
         zonas, setZonas,
         insumos, setInsumos,

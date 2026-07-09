@@ -65,7 +65,6 @@ function fmtNovFecha(f: string): string {
   })
 }
 
-import { INGENIOS } from '../data/ingenios'
 
 function initials(name: string) {
   return name
@@ -246,7 +245,9 @@ export function OperatorView({
   handleChangePin,
   onSaveSession,
 }: Props) {
-  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos } = useAppData()
+  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos, ingenios } = useAppData()
+  // Ingenios activos para los selectores (toma en campo).
+  const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
 
@@ -889,7 +890,7 @@ export function OperatorView({
               .map((row) => [row.haciendaCode, { code: row.haciendaCode, name: row.haciendaName }]),
           ).values(),
         )}
-        ingenios={INGENIOS.map((ing) => ({ id: ing.id, nombre: ing.nombre }))}
+        ingenios={ingeniosOpts.map((ing) => ({ id: ing.id, nombre: ing.nombre }))}
         maestro={maestro}
         prefillHaciendaCode={freeFieldForm.haciendaCode}
         prefillIngenioId={freeFieldForm.ingenioId}
@@ -1676,14 +1677,14 @@ export function OperatorView({
                     value={freeFieldForm.ingenioId}
                     onChange={(value) => updateFreeFieldForm('ingenioId', value)}
                     placeholder="Selecciona un ingenio"
-                    options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                    options={ingeniosOpts.map((ing) => ({ value: ing.id, label: ing.nombre }))}
                   />
                   <DictateInlineButton
                     ariaLabel="Dictar ingenio"
                     onComplete={(text) => {
                       const match = findItemByVoice(
                         text,
-                        INGENIOS.map((ing) => ({ code: ing.id, name: ing.nombre })),
+                        ingeniosOpts.map((ing) => ({ code: ing.id, name: ing.nombre })),
                       )
                       if (match) updateFreeFieldForm('ingenioId', match.code)
                     }}

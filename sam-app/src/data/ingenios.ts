@@ -1,15 +1,14 @@
-// Fuente ÚNICA de ingenios/compradores. Antes esta lista estaba duplicada en 6
-// archivos (BulkMaestroModal, RegistrarLaborModal, MaestrosTab, OperatorView,
-// SupervisorView y el mapa INGENIO_NAMES de samApi) y se desincronizaban (unos
-// decían "Mayaguez", otros "Mayagüez"). Peor: agregar un comprador nuevo obligaba
-// a tocar los 6 → si se olvidaba uno, el cargue masivo lo rechazaba ("ingenio
-// inválido") aunque el resto de la app sí lo conociera. Ahora se agrega AQUÍ y ya.
-export interface Ingenio {
+// Ingenios/compradores. La gestión REAL vive en la tabla `ingenios` (BD) y se
+// edita desde Catálogos → Ingenios; el contexto los carga y los inyecta aquí en
+// runtime. Esta semilla es el FALLBACK cuando la BD no cargó (offline / primer
+// arranque) para que los dropdowns nunca queden vacíos.
+
+export interface IngenioSeed {
   id: string
   nombre: string
 }
 
-export const INGENIOS: Ingenio[] = [
+export const INGENIOS: IngenioSeed[] = [
   { id: 'risaralda', nombre: 'Ingenio Risaralda' },
   { id: 'pichichi', nombre: 'Ingenio Pichichi' },
   { id: 'mayaguez', nombre: 'Ingenio Mayagüez' },
@@ -18,7 +17,28 @@ export const INGENIOS: Ingenio[] = [
   { id: 'trapiche_lucerna', nombre: 'Trapiche Lucerna' },
 ]
 
-// Mapa id → nombre legible (para mostrar el nombre en vez del id crudo).
-export const INGENIO_NAMES: Record<string, string> = Object.fromEntries(
+const SEED_NAMES: Record<string, string> = Object.fromEntries(
   INGENIOS.map((i) => [i.id, i.nombre]),
 )
+
+// Registro de nombres inyectado por el contexto tras cargar la tabla `ingenios`.
+// Permite que getIngenioName (función pura de samApi) muestre el nombre de un
+// ingenio creado por el usuario sin tener que pasar el catálogo por parámetro.
+let runtimeNames: Record<string, string> = {}
+export function setIngenioNamesRuntime(list: { id: string; nombre: string }[]) {
+  runtimeNames = Object.fromEntries(list.map((i) => [i.id, i.nombre]))
+}
+export function ingenioNombre(id: string): string {
+  return runtimeNames[id] ?? SEED_NAMES[id] ?? id
+}
+
+// Slug estable a partir del nombre (para el id del ingenio, que amarra el
+// maestro). 'Trapiche Lucerna' → 'trapiche_lucerna'.
+export function slugIngenio(nombre: string): string {
+  return nombre
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+}

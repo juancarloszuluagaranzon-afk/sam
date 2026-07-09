@@ -17,13 +17,14 @@ import type { MaestroRow } from '../domain/sam'
  * renderizar todo de una. Si hay más, se pide refinar.
  */
 
-import { INGENIOS } from '../data/ingenios'
-const ingenioNombre = (id: string) => INGENIOS.find((i) => i.id === id)?.nombre ?? id
+import { ingenioNombre } from '../data/ingenios'
 
 const LIMIT = 300
 
 export function MaestrosTab() {
-  const { session, maestro, setMaestro, assignments, busy, setBusy, setError, setInfo } = useAppData()
+  const { session, maestro, setMaestro, assignments, busy, setBusy, setError, setInfo, ingenios } = useAppData()
+  // Ingenios activos para el filtro y el alta de suertes.
+  const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
 
   // suerteCodes ("hacienda-suerte") con labor activa → el cargue masivo avisa
   // antes de desactivar una suerte que está en uso.
@@ -245,7 +246,7 @@ export function MaestrosTab() {
               }}
             >
               <option value="TODOS">Todos los ingenios</option>
-              {INGENIOS.map((i) => (
+              {ingeniosOpts.map((i) => (
                 <option key={i.id} value={i.id}>{i.nombre}</option>
               ))}
             </select>
@@ -418,7 +419,7 @@ export function MaestrosTab() {
         onClose={() => setIsNewSuerteOpen(false)}
         createdBy={session?.id ?? ''}
         haciendas={haciendasParaModal}
-        ingenios={INGENIOS}
+        ingenios={ingeniosOpts}
         maestro={maestro}
         prefillIngenioId={ingenioFilter !== 'TODOS' ? ingenioFilter : undefined}
         onCreated={(row) => {
@@ -432,6 +433,7 @@ export function MaestrosTab() {
         onClose={() => setIsBulkOpen(false)}
         maestro={maestro}
         createdBy={session?.id ?? ''}
+        ingenios={ingeniosOpts}
         activeSuerteCodes={activeSuerteCodes}
         onApplied={({ inserted, updated, deactivated }) => {
           const key = (r: { ingenio_id: string; haciendaCode: string; suerte: string }) =>

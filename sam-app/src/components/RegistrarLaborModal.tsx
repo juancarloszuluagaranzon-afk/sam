@@ -4,7 +4,6 @@ import SearchableSelect from './SearchableSelect'
 import { registrarLaborRealizada } from '../services/samApi'
 import { db } from '../lib/db'
 import type { Zone } from '../domain/sam'
-import { INGENIOS } from '../data/ingenios'
 
 interface Props {
   open: boolean
@@ -35,8 +34,9 @@ const EMPTY = {
 export function RegistrarLaborModal({ open, onClose }: Props) {
   const {
     session, users, operators, equipment, sortedEquipment, maestro, activeLabores,
-    assignments, setAssignments, isOnline, busy, setBusy, setError, setInfo, error,
+    assignments, setAssignments, isOnline, busy, setBusy, setError, setInfo, error, ingenios,
   } = useAppData()
+  const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
 
   const [form, setForm] = useState(EMPTY)
 
@@ -247,7 +247,7 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
             <span>Ingenio</span>
             <select value={form.ingenioId} onChange={(e) => set('ingenioId', e.target.value)} disabled={busy}>
               <option value="">Selecciona…</option>
-              {INGENIOS.map((i) => (
+              {ingeniosOpts.map((i) => (
                 <option key={i.id} value={i.id}>{i.nombre}</option>
               ))}
             </select>

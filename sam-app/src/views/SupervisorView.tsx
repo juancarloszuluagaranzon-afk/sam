@@ -31,13 +31,14 @@ import { FacturacionTab } from './FacturacionTab'
 import { PlanillaTab } from './PlanillaTab'
 import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
+import { IngeniosTab } from './IngeniosTab'
 import { EmpresasTab } from './EmpresasTab'
 import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -68,7 +69,6 @@ export interface EquipmentFormState {
   active: boolean
 }
 
-import { INGENIOS } from '../data/ingenios'
 
 function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
@@ -235,8 +235,10 @@ export function SupervisorView({
     isOnline, outboxCount, busy, error, info,
     operators, users, setUsers, assignments, setAssignments, maestro, setMaestro, todayKey, sortedEquipment, operatorStatusMap,
     setError, setBusy, setInfo,
-    activeLabores, labores, zonas, insumos,
+    activeLabores, labores, zonas, insumos, ingenios,
   } = useAppData()
+  // Ingenios activos para los selectores (el catálogo completo se edita en su pestaña).
+  const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
 
   // Consumo de insumos cargado a un equipo (modal al tocar una tarjeta de equipo).
   const [equipoConsumo, setEquipoConsumo] = useState<Equipment | null>(null)
@@ -912,7 +914,7 @@ export function SupervisorView({
                 </button>
                 {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
-                  className={`more-sheet__item ${['maestros', 'catalogo', 'empresas', 'terceros', 'zonas'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
+                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
                   onClick={() => setCatalogosOpen((v) => !v)}
                   aria-expanded={catalogosOpen}
                 >
@@ -942,6 +944,16 @@ export function SupervisorView({
                       <div>
                         <div className="more-sheet__label">Labores</div>
                         <div className="more-sheet__desc">Catálogo de labores — activar / desactivar</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'ingenios' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('ingenios'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🏭</span>
+                      <div>
+                        <div className="more-sheet__label">Ingenios</div>
+                        <div className="more-sheet__desc">Compradores — crear / activar / desactivar</div>
                       </div>
                     </button>
                     <button
@@ -1130,7 +1142,7 @@ export function SupervisorView({
               .map((row) => [row.haciendaCode, { code: row.haciendaCode, name: row.haciendaName }]),
           ).values(),
         )}
-        ingenios={INGENIOS}
+        ingenios={ingeniosOpts}
         maestro={maestro}
         prefillHaciendaCode={assignmentForm.haciendaCode}
         prefillIngenioId={assignmentForm.ingenioId}
@@ -1242,7 +1254,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1315,7 +1327,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1453,7 +1465,7 @@ export function SupervisorView({
               setOperatorFilter={setOperatorFilter}
               ingenioFilter={ingenioFilter}
               setIngenioFilter={setIngenioFilter}
-              ingenios={INGENIOS}
+              ingenios={ingeniosOpts}
               haciendaFilter={haciendaFilter}
               setHaciendaFilter={setHaciendaFilter}
               haciendaFilterOptions={haciendaFilterOptions}
@@ -1756,7 +1768,7 @@ export function SupervisorView({
                   aria-label="Ingenio"
                 >
                   <option value="TODOS">Todos los ingenios</option>
-                  {INGENIOS.map((ing) => (
+                  {ingeniosOpts.map((ing) => (
                     <option key={ing.id} value={ing.id}>{ing.nombre}</option>
                   ))}
                 </select>
@@ -1886,6 +1898,10 @@ export function SupervisorView({
           <LaboresTab />
         ) : null}
 
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'ingenios' ? (
+          <IngeniosTab />
+        ) : null}
+
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (
           <EmpresasTab />
         ) : null}
@@ -1984,7 +2000,7 @@ export function SupervisorView({
                   value={reportFilters.ingenioId}
                   onChange={(v) => setReportFilters((f) => ({ ...f, ingenioId: v }))}
                   placeholder="Todos los ingenios"
-                  options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                  options={ingeniosOpts.map((ing) => ({ value: ing.id, label: ing.nombre }))}
                 />
                 <SearchableSelect
                   value={reportFilters.haciendaCode}
@@ -2621,7 +2637,7 @@ export function SupervisorView({
               setOperatorFilter={setOperatorFilter}
               ingenioFilter={ingenioFilter}
               setIngenioFilter={setIngenioFilter}
-              ingenios={INGENIOS}
+              ingenios={ingeniosOpts}
               haciendaFilter={haciendaFilter}
               setHaciendaFilter={setHaciendaFilter}
               haciendaFilterOptions={haciendaFilterOptions}
@@ -3703,7 +3719,7 @@ export function SupervisorView({
                   value={assignmentForm.ingenioId}
                   onChange={(value) => { updateAssignmentForm('ingenioId', value); setSuerteSearch('') }}
                   placeholder="Selecciona un ingenio"
-                  options={INGENIOS.map((ing) => ({ value: ing.id, label: ing.nombre }))}
+                  options={ingeniosOpts.map((ing) => ({ value: ing.id, label: ing.nombre }))}
                 />
               </label>
               <label>

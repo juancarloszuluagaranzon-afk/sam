@@ -2125,7 +2125,7 @@ export async function cancelAssignmentsBulk(ids: string[]) {
 }
 
 // Política de ciclo de vida (migración 20260708130000): cancela pendientes sin
-// avanzar (+3d) y purga canceladas sin trabajo (+30d). NUNCA toca COMPLETADA/
+// avanzar (+3d) y purga canceladas sin trabajo (+3d). NUNCA toca COMPLETADA/
 // PARCIAL. Lo dispara el cliente 1 vez al día (throttle en el contexto).
 export async function runRetention(): Promise<{ canceladas: number; borradas: number }> {
   const { data, error } = await supabase.rpc('sam_run_retention')

@@ -6,7 +6,7 @@
 --
 --   Nivel 1 (auto-cancelar): PENDIENTE sin área ejecutada y con +3 días → CANCELADA
 --                            (reversible; incluye las liberadas/programadas huérfanas).
---   Nivel 2 (auto-purgar):   CANCELADA sin área y con +30 días → DELETE definitivo.
+--   Nivel 2 (auto-purgar):   CANCELADA sin área y con +3 días → DELETE definitivo.
 --
 -- NUNCA toca COMPLETADA ni PARCIAL. El borrado se limita a filas con
 -- area_realizada = 0 (jamás elimina una que tuvo trabajo real).
@@ -19,7 +19,7 @@ SET search_path TO 'public', 'pg_catalog'
 AS $function$
 declare
   v_dias_cancelar int := 3;
-  v_dias_purgar   int := 30;
+  v_dias_purgar   int := 3;
   v_canceladas int := 0;
   v_borradas   int := 0;
 begin

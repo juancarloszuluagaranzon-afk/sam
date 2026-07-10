@@ -2124,9 +2124,10 @@ export async function cancelAssignmentsBulk(ids: string[]) {
   }
 }
 
-// Política de ciclo de vida (migración 20260708130000): cancela pendientes sin
-// avanzar (+3d) y purga canceladas sin trabajo (+3d). NUNCA toca COMPLETADA/
-// PARCIAL. Lo dispara el cliente 1 vez al día (throttle en el contexto).
+// Política de ciclo de vida (migración 20260708130000): cancela PENDIENTE y
+// EN_PROCESO sin área ejecutada con +3d (abandonadas) y purga canceladas sin
+// trabajo con +3d. NUNCA toca COMPLETADA/PARCIAL ni EN_PROCESO con avance real.
+// Lo dispara el cliente 1 vez al día (throttle en el contexto).
 export async function runRetention(): Promise<{ canceladas: number; borradas: number }> {
   const { data, error } = await supabase.rpc('sam_run_retention')
   if (error) throw new Error(error.message || 'No se pudo correr la limpieza automática')

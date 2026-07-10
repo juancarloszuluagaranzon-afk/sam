@@ -4,8 +4,12 @@
 -- lo va depurando solo con el tiempo, para que no se acumule basura que confunde
 -- a la operación.
 --
---   Nivel 1 (auto-cancelar): PENDIENTE sin área ejecutada y con +3 días → CANCELADA
---                            (reversible; incluye las liberadas/programadas huérfanas).
+--   Nivel 1 (auto-cancelar): PENDIENTE o EN_PROCESO ("Laborando") sin área
+--                            ejecutada y con +3 días → CANCELADA (reversible).
+--                            Incluye liberadas/programadas huérfanas y las
+--                            abiertas que nunca se cerraron. La guarda
+--                            area_realizada=0 protege las PARCIAL reabiertas con
+--                            avance real (esas NO se cancelan).
 --   Nivel 2 (auto-purgar):   CANCELADA sin área y con +3 días → DELETE definitivo.
 --
 -- NUNCA toca COMPLETADA ni PARCIAL. El borrado se limita a filas con
@@ -23,12 +27,14 @@ declare
   v_canceladas int := 0;
   v_borradas   int := 0;
 begin
-  -- NIVEL 1: cancelar pendientes sin avanzar (incluye liberadas/programadas).
+  -- NIVEL 1: cancelar pendientes Y "laborando" sin avanzar (incluye liberadas/
+  -- programadas huérfanas y las abiertas que nunca se cerraron). La guarda
+  -- area_realizada=0 excluye las PARCIAL reabiertas con avance real.
   with upd as (
     update public.asignaciones
        set estado = 'CANCELADA',
            updated_at = now()
-     where estado = 'PENDIENTE'
+     where estado in ('PENDIENTE', 'EN_PROCESO')
        and coalesce(area_realizada, 0) = 0
        and coalesce(fecha_inicio, created_at) is not null
        and coalesce(fecha_inicio, created_at) < now() - (v_dias_cancelar || ' days')::interval

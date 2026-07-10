@@ -778,6 +778,20 @@
   padding: 24px;
 }
 
+/* KPIs de área clicables (abren el detalle de las suertes que los componen). */
+.metric-panel--clickable {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.metric-panel--clickable:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px var(--color-shadow-card, rgba(0, 0, 0, 0.12));
+}
+.metric-panel--clickable:focus-visible {
+  outline: 2px solid rgba(40, 150, 225, 0.6);
+  outline-offset: 2px;
+}
+
 .metric-panel p,
 .labor-card p {
   margin: 0;

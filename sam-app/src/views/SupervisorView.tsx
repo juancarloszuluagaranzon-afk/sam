@@ -13,6 +13,7 @@ import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { RegistrarLaborModal } from '../components/RegistrarLaborModal'
+import { AreaDetailModal, type AreaDetailRow } from '../components/AreaDetailModal'
 import {
   EntityHistoryModal,
   matchesSummaryFilter,
@@ -660,6 +661,33 @@ export function SupervisorView({
       inProgress,
     }
   }, [summaryAssignments])
+
+  // Detalle de los KPIs de área (modal). Deben COMPONER exactamente el número:
+  // - Planificadas: dedup por suerte+labor tomando el MAX área (misma lógica que
+  //   summaryMetrics.plannedArea) → una línea por suerte+labor.
+  // - Ejecutadas: cada COMPLETADA/PARCIAL con su área ejecutada (fallback al plan).
+  const [areaDetail, setAreaDetail] = useState<'PLANIFICADAS' | 'EJECUTADAS' | null>(null)
+  const plannedDetailRows = useMemo<AreaDetailRow[]>(() => {
+    const best = new Map<string, { a: Assignment; area: number }>()
+    for (const a of summaryAssignments) {
+      const key = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
+      const prev = best.get(key)
+      if (!prev || a.area > prev.area) best.set(key, { a, area: a.area })
+    }
+    return [...best.values()].map(({ a, area }) => ({
+      id: a.id, haciendaName: a.haciendaName, suerte: a.suerte, labor: a.labor,
+      operatorName: a.operatorName, status: a.status, area,
+    }))
+  }, [summaryAssignments])
+  const executedDetailRows = useMemo<AreaDetailRow[]>(() =>
+    summaryAssignments
+      .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
+      .map((a) => ({
+        id: a.id, haciendaName: a.haciendaName, suerte: a.suerte, labor: a.labor,
+        operatorName: a.operatorName, status: a.status,
+        area: a.executedArea > 0 ? a.executedArea : a.area,
+      })),
+  [summaryAssignments])
 
   const summaryLabor = useMemo(() => {
     const groups = new Map<string, { planned: number; executed: number; count: number }>()
@@ -1476,15 +1504,29 @@ export function SupervisorView({
 
         {supervisorTab === 'resumen' ? (
           <section className="kpi-grid">
-            <article className="metric-panel">
+            <article
+              className="metric-panel metric-panel--clickable"
+              onClick={() => setAreaDetail('PLANIFICADAS')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setAreaDetail('PLANIFICADAS') }}
+              title="Ver el detalle de las suertes que componen esta área"
+            >
               <p>HA PLANIFICADAS</p>
               <strong>{summaryMetrics.plannedArea.toFixed(2)}</strong>
-              <span>hectareas</span>
+              <span>hectareas · ver detalle</span>
             </article>
-            <article className="metric-panel">
+            <article
+              className="metric-panel metric-panel--clickable"
+              onClick={() => setAreaDetail('EJECUTADAS')}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setAreaDetail('EJECUTADAS') }}
+              title="Ver el detalle de las labores que componen esta área"
+            >
               <p>HA EJECUTADAS</p>
               <strong>{summaryMetrics.executedArea.toFixed(2)}</strong>
-              <span>hectareas</span>
+              <span>hectareas · ver detalle</span>
             </article>
             <article className="metric-panel">
               <p>CUMPLIMIENTO</p>
@@ -1502,6 +1544,22 @@ export function SupervisorView({
             </article>
           </section>
         ) : null}
+
+        <AreaDetailModal
+          open={areaDetail === 'PLANIFICADAS'}
+          onClose={() => setAreaDetail(null)}
+          title="Hectáreas planificadas"
+          areaLabel="planificadas"
+          rows={plannedDetailRows}
+        />
+        <AreaDetailModal
+          open={areaDetail === 'EJECUTADAS'}
+          onClose={() => setAreaDetail(null)}
+          title="Hectáreas ejecutadas"
+          areaLabel="ejecutadas"
+          rows={executedDetailRows}
+          showStatus
+        />
 
         {supervisorTab === 'resumen' ? (
           <section className="panel-card">

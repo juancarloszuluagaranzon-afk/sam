@@ -2152,7 +2152,7 @@ export function SupervisorView({
                       <th>Ingenio</th>
                       <th>Estado</th>
                       <th>Operador</th>
-                      {(session.role === 'owner' || session.role === 'administracion') && <th>Acciones</th>}
+                      {canEditAssignments && <th>Acciones</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -2178,7 +2178,7 @@ export function SupervisorView({
                           <td>{ingenioLabel}</td>
                           <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
                           <td>{a.operatorName}</td>
-                          {(session.role === 'owner' || session.role === 'administracion') && (
+                          {canEditAssignments && (
                             <td>
                               <div className="report-row-actions">
                                 <button
@@ -2189,14 +2189,16 @@ export function SupervisorView({
                                 >
                                   Editar
                                 </button>
-                                <button
-                                  type="button"
-                                  className="inline-button maestro-delete-btn"
-                                  onClick={() => { setDeleteReportTarget(a); setError('') }}
-                                  title="Eliminar esta línea (permanente)"
-                                >
-                                  Eliminar
-                                </button>
+                                {(session.role === 'owner' || session.role === 'administracion') && (
+                                  <button
+                                    type="button"
+                                    className="inline-button maestro-delete-btn"
+                                    onClick={() => { setDeleteReportTarget(a); setError('') }}
+                                    title="Eliminar esta línea (permanente)"
+                                  >
+                                    Eliminar
+                                  </button>
+                                )}
                               </div>
                             </td>
                           )}

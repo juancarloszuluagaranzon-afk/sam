@@ -1236,7 +1236,7 @@ export function SupervisorView({
             >
               <span className="nav-item">
                 <span className="nav-icon">✔</span>
-                <span className="nav-label">Aprobar</span>
+                <span className="nav-label">A facturar</span>
                 {pendingApprovals.length > 0 && (
                   <span className="nav-badge">{pendingApprovals.length > 99 ? '99+' : pendingApprovals.length}</span>
                 )}
@@ -2716,7 +2716,7 @@ export function SupervisorView({
                   >
                     <span className="mini-banner__dot" />
                     <span className="mini-banner__text">
-                      <strong>{pendingApprovals.length}</strong> por aprobar
+                      <strong>{pendingApprovals.length}</strong> por facturar
                     </span>
                     <span className="mini-banner__cta">Revisar →</span>
                   </button>
@@ -2900,18 +2900,18 @@ export function SupervisorView({
           <section className="panel-card">
             <div className="labores-header">
               <div className="labores-title-row">
-                <h2>Aprobaciones pendientes</h2>
+                <h2>Labores a facturar</h2>
                 <span className="labores-count">{pendingApprovals.length}</span>
               </div>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
-              Labores finalizadas (parciales o completas) que esperan tu visto bueno. Revisa el área antes de
-              aprobar — una vez aprobadas quedan listas para facturación.
+              Labores <strong>cerradas</strong> (parciales o completas) que esperan tu visto bueno. Revisa el área
+              antes de aprobar — una vez aprobadas quedan listas para facturación.
             </p>
             {pendingApprovals.length === 0 ? (
               <div className="empty-card" style={{ marginTop: 12 }}>
                 <h2>Todo al día ✓</h2>
-                <p>No hay labores pendientes por aprobar.</p>
+                <p>No hay labores pendientes por facturar.</p>
               </div>
             ) : (
               <ul className="labores-list">

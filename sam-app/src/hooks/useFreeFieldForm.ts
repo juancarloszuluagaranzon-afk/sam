@@ -259,7 +259,10 @@ export function useFreeFieldForm(options?: Options) {
               equipmentCode: equipmentItem.code,
               equipmentName: equipmentItem.name,
               notes: freeFieldForm.notes,
-              approval: 'PENDIENTE',
+              // Toma en campo NACE aprobada: el "pendiente de aprobación" (Labores
+              // a facturar) SOLO lo dispara el cierre a PARCIAL/COMPLETADA, nunca
+              // la toma. Así solo lo cerrado entra a la bandeja del supervisor.
+              approval: 'APROBADA',
               approvedBy: null,
               approvedAt: null,
               liberada: false,
@@ -274,7 +277,10 @@ export function useFreeFieldForm(options?: Options) {
               equipmentCode: equipmentItem.code,
               equipmentName: equipmentItem.name,
               notes: freeFieldForm.notes,
-              approval: 'PENDIENTE',
+              // Toma en campo NACE aprobada: el "pendiente de aprobación" (Labores
+              // a facturar) SOLO lo dispara el cierre a PARCIAL/COMPLETADA, nunca
+              // la toma. Así solo lo cerrado entra a la bandeja del supervisor.
+              approval: 'APROBADA',
               approvedBy: null,
               approvedAt: null,
               liberada: false,
@@ -301,7 +307,10 @@ export function useFreeFieldForm(options?: Options) {
               cliente: undefined,
               kind: 'LIBRE',
               initialStatus: 'PENDIENTE',
-              approval: 'PENDIENTE',
+              // Toma en campo NACE aprobada: el "pendiente de aprobación" (Labores
+              // a facturar) SOLO lo dispara el cierre a PARCIAL/COMPLETADA, nunca
+              // la toma. Así solo lo cerrado entra a la bandeja del supervisor.
+              approval: 'APROBADA',
               zone: null,
             }
             const local: Assignment = {
@@ -328,7 +337,10 @@ export function useFreeFieldForm(options?: Options) {
               horometroInicial: null,
               horometroFinal: null,
               cliente: undefined,
-              approval: 'PENDIENTE',
+              // Toma en campo NACE aprobada: el "pendiente de aprobación" (Labores
+              // a facturar) SOLO lo dispara el cierre a PARCIAL/COMPLETADA, nunca
+              // la toma. Así solo lo cerrado entra a la bandeja del supervisor.
+              approval: 'APROBADA',
               approvedBy: null,
               approvedAt: null,
               zone: null,
@@ -359,7 +371,10 @@ export function useFreeFieldForm(options?: Options) {
                 equipmentCode: equipmentItem.code,
                 equipmentName: equipmentItem.name,
                 notes: freeFieldForm.notes,
-                approval: 'PENDIENTE',
+                // Toma en campo NACE aprobada: el "pendiente de aprobación" (Labores
+              // a facturar) SOLO lo dispara el cierre a PARCIAL/COMPLETADA, nunca
+              // la toma. Así solo lo cerrado entra a la bandeja del supervisor.
+              approval: 'APROBADA',
                 approvedBy: null,
                 approvedAt: null,
                 liberada: false,
@@ -382,7 +397,10 @@ export function useFreeFieldForm(options?: Options) {
               cliente: undefined,
               kind: 'LIBRE',
               initialStatus: 'PENDIENTE',
-              approval: 'PENDIENTE',
+              // Toma en campo NACE aprobada: el "pendiente de aprobación" (Labores
+              // a facturar) SOLO lo dispara el cierre a PARCIAL/COMPLETADA, nunca
+              // la toma. Así solo lo cerrado entra a la bandeja del supervisor.
+              approval: 'APROBADA',
               zone: null,
             })
           }),

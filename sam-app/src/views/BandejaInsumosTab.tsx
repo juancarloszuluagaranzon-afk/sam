@@ -29,7 +29,7 @@ export function BandejaInsumosTab() {
   }, [sortedEquipment])
   const equipoDeOperario = (operarioId: string) => users.find((u) => u.id === operarioId)?.equipmentCode ?? ''
 
-  const [filtro, setFiltro] = useState<'PENDIENTE' | 'PROGRAMADA' | 'TODAS'>('PENDIENTE')
+  const [filtro, setFiltro] = useState<'PENDIENTE' | 'PROGRAMADA' | 'ENTREGADA' | 'TODAS'>('PENDIENTE')
   const [solicitudes, setSolicitudes] = useState<SolicitudInsumo[]>([])
   const [loading, setLoading] = useState(false)
   const [rechazoTarget, setRechazoTarget] = useState<SolicitudInsumo | null>(null)
@@ -166,9 +166,9 @@ export function BandejaInsumosTab() {
       </p>
 
       <div className="realizadas-seg" style={{ marginTop: 4 }}>
-        {(['PENDIENTE', 'PROGRAMADA', 'TODAS'] as const).map((f) => (
+        {(['PENDIENTE', 'PROGRAMADA', 'ENTREGADA', 'TODAS'] as const).map((f) => (
           <button key={f} type="button" className={filtro === f ? 'is-active' : ''} onClick={() => setFiltro(f)}>
-            {f === 'PENDIENTE' ? 'Pendientes' : f === 'PROGRAMADA' ? 'Programadas' : 'Todas'}
+            {f === 'PENDIENTE' ? 'Pendientes' : f === 'PROGRAMADA' ? 'Programadas' : f === 'ENTREGADA' ? 'Entregadas' : 'Todas'}
           </button>
         ))}
       </div>
@@ -177,7 +177,7 @@ export function BandejaInsumosTab() {
         {loading ? (
           <p className="muted-text">Cargando…</p>
         ) : solicitudes.length === 0 ? (
-          <p className="muted-text">No hay solicitudes {filtro === 'PENDIENTE' ? 'pendientes' : filtro === 'PROGRAMADA' ? 'programadas' : ''}.</p>
+          <p className="muted-text">No hay solicitudes {filtro === 'PENDIENTE' ? 'pendientes' : filtro === 'PROGRAMADA' ? 'programadas' : filtro === 'ENTREGADA' ? 'entregadas' : ''}.</p>
         ) : solicitudes.map((s) => (
           <div key={s.id} className="panel-card" style={{ padding: '12px 14px', marginBottom: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
@@ -211,6 +211,23 @@ export function BandejaInsumosTab() {
             )}
             {s.estado === 'ENTREGADA' && (
               <div className="subtle-copy" style={{ fontSize: '0.82rem' }}>
+                {/* Aval del operario: la entrega no está "cerrada" hasta que él confirme. */}
+                <div style={{ marginBottom: 4 }}>
+                  {s.confirmadoEn ? (
+                    s.conforme ? (
+                      <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>
+                        ✔ Confirmada por el operario {fmtFecha(s.confirmadoEn)}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#b3261e', fontWeight: 700 }}>
+                        ⚠ DIFERENCIA reportada por el operario {fmtFecha(s.confirmadoEn)}
+                        {s.confirmacionNota ? ` — ${s.confirmacionNota}` : ''}
+                      </span>
+                    )
+                  ) : (
+                    <span style={{ color: '#b06a00', fontWeight: 700 }}>⏳ Sin confirmar por el operario</span>
+                  )}
+                </div>
                 Entregado {s.entregadoEn ? fmtFecha(s.entregadoEn) : ''}
                 {s.despachadoPor ? ` · por ${userName.get(s.despachadoPor) ?? s.despachadoPor}` : ''}
                 {s.equipoCodigo ? ` · Máquina: ${equipoNombre.get(s.equipoCodigo) ?? s.equipoCodigo}` : ''}

@@ -1308,6 +1308,10 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     evidenciaUrls: Array.isArray(row.evidencia_urls) ? (row.evidencia_urls as unknown[]).map(String) : undefined,
     horometro: row.horometro == null ? undefined : Number(row.horometro),
     equipoCodigo: row.equipo_codigo ? String(row.equipo_codigo) : undefined,
+    confirmadoEn: row.confirmado_en ? String(row.confirmado_en) : undefined,
+    confirmadoPor: row.confirmado_por ? String(row.confirmado_por) : undefined,
+    conforme: row.conforme == null ? null : Boolean(row.conforme),
+    confirmacionNota: row.confirmacion_nota ? String(row.confirmacion_nota) : undefined,
     items: rawItems.map((it) => ({
       id: String(it.id),
       insumoId: it.insumo_id ? String(it.insumo_id) : undefined,
@@ -1357,9 +1361,11 @@ export async function loadSolicitudes(opts?: {
   estados?: SolicitudEstado[]
   limit?: number
 }): Promise<SolicitudInsumo[]> {
+  // `*` a propósito (no lista explícita): así la carga NO se rompe si una
+  // migración de columna nueva (ej. confirmación fase 4) aún no se ha corrido.
   let query = supabase
     .from('insumos_solicitudes')
-    .select('id,operario_id,operario_nombre,estado,nota,zona,motivo_rechazo,created_at,entregado_en,despachado_por,ruta,evidencia_urls,horometro,equipo_codigo,items:insumos_solicitud_items(id,insumo_id,insumo_nombre,unidad,cantidad,cantidad_despachada)')
+    .select('*,items:insumos_solicitud_items(*)')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 200)
   if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
@@ -1378,6 +1384,31 @@ export async function updateSolicitudEstado(
   if (motivoRechazo !== undefined) payload.motivo_rechazo = motivoRechazo || null
   const { error } = await supabase.from('insumos_solicitudes').update(payload).eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo actualizar la solicitud')
+}
+
+// AVAL DEL OPERARIO (fase 4): confirma la recepción de una solicitud ENTREGADA.
+// conforme=true → recibió todo; false → reporta diferencia (nota con el motivo).
+// Solo el operario dispara esto (el despachador nunca puede auto-confirmarse).
+// Requiere la migración 20260711120000; si no está, falla SOLO esta acción
+// (la carga y el despacho no dependen de las columnas nuevas).
+export async function confirmarRecepcion(input: {
+  solicitudId: string
+  operarioId: string
+  conforme: boolean
+  nota?: string
+}): Promise<void> {
+  const { error } = await supabase
+    .from('insumos_solicitudes')
+    .update({
+      confirmado_en: new Date().toISOString(),
+      confirmado_por: input.operarioId,
+      conforme: input.conforme,
+      confirmacion_nota: input.nota?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.solicitudId)
+    .eq('estado', 'ENTREGADA')
+  if (error) throw new Error(error.message || 'No se pudo confirmar la recepción')
 }
 
 // Sube una foto de evidencia de despacho al bucket `avatars` (público) y

@@ -15,7 +15,7 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo } from '../domain/sam'
 
 type OperatorTab = 'activas' | 'campo' | 'historial'
@@ -326,6 +326,33 @@ export function OperatorView({
     } catch {
       setError('No se pudo enviar la solicitud. Revisa la conexión.')
     } finally { setSavingSol(false) }
+  }
+
+  // ── Aval del operario: confirmar recepción de una ENTREGADA (fase 4) ──
+  // Entregas que esperan MI confirmación (el despachador ya marcó entregado).
+  const entregasPorConfirmar = useMemo(
+    () => misSolicitudes.filter((s) => s.estado === 'ENTREGADA' && !s.confirmadoEn),
+    [misSolicitudes],
+  )
+  const [confirmandoSol, setConfirmandoSol] = useState(false)
+  // Solicitud para la que se está reportando un problema (abre mini-modal).
+  const [problemaSol, setProblemaSol] = useState<SolicitudInsumo | null>(null)
+  const [problemaMotivo, setProblemaMotivo] = useState('')
+  const PROBLEMA_MOTIVOS = ['Llegó menos cantidad', 'Otro producto', 'Máquina equivocada', 'No recibí nada']
+
+  async function confirmarSol(s: SolicitudInsumo, conforme: boolean, nota?: string) {
+    if (!session) return
+    setConfirmandoSol(true)
+    setError('')
+    try {
+      await confirmarRecepcion({ solicitudId: s.id, operarioId: session.id, conforme, nota })
+      setInfo(conforme ? 'Recepción confirmada. ¡Gracias!' : 'Problema reportado. El supervisor de insumos lo revisará.')
+      setProblemaSol(null)
+      setProblemaMotivo('')
+      void refreshMisSolicitudes()
+    } catch {
+      setError('No se pudo enviar la confirmación. Revisa la conexión e inténtalo de nuevo.')
+    } finally { setConfirmandoSol(false) }
   }
 
   async function submitNovedad() {
@@ -879,6 +906,47 @@ export function OperatorView({
         </div>
       )}
 
+      {/* Reportar problema con una entrega de insumos (aval con diferencia).
+          Chips de motivo predefinidos — sin tipeo obligatorio. */}
+      {problemaSol && (
+        <div className="modal-overlay open" onClick={() => { if (!confirmandoSol) setProblemaSol(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Insumos</p><h3>⚠ ¿Qué pasó con la entrega?</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setProblemaSol(null)} disabled={confirmandoSol} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              {problemaSol.items.map((it) => `${it.cantidadDespachada ?? it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}
+            </p>
+            <div className="realizadas-seg" role="group" aria-label="Motivo" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
+              {PROBLEMA_MOTIVOS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  className={`realizadas-seg__btn ${problemaMotivo === m ? 'is-active' : ''}`}
+                  onClick={() => setProblemaMotivo(m)}
+                  disabled={confirmandoSol}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+            <p className="subtle-copy">El supervisor de insumos verá tu reporte y lo revisará contigo.</p>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setProblemaSol(null)} disabled={confirmandoSol}>Cancelar</button>
+              <button
+                type="button"
+                className="release-confirm-btn"
+                onClick={() => void confirmarSol(problemaSol, false, problemaMotivo || 'Problema no especificado')}
+                disabled={confirmandoSol || !problemaMotivo}
+              >
+                {confirmandoSol ? 'Enviando…' : 'Reportar problema'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <NewSuerteModal
         open={isNewSuerteOpen}
         onClose={() => setIsNewSuerteOpen(false)}
@@ -1009,6 +1077,36 @@ export function OperatorView({
                 🛢️ Solicitar insumos
               </button>
             </div>
+
+            {/* Aval del operario: entregas de insumos que esperan SU confirmación.
+                Tarjeta de un toque (cero tipeo): "Recibí todo" / "Hubo un problema". */}
+            {entregasPorConfirmar.map((s) => (
+              <div key={`conf-${s.id}`} className="confirm-entrega-card">
+                <p className="confirm-entrega-card__title">🛢️ ¿Recibiste estos insumos?</p>
+                <p className="confirm-entrega-card__items">
+                  {s.items.map((it) => `${it.cantidadDespachada ?? it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}
+                  {s.equipoCodigo ? ` · Máquina ${s.equipoCodigo}` : ''}
+                </p>
+                <div className="confirm-entrega-card__actions">
+                  <button
+                    type="button"
+                    className="confirm-entrega-btn confirm-entrega-btn--si"
+                    onClick={() => void confirmarSol(s, true)}
+                    disabled={confirmandoSol}
+                  >
+                    ✔ SÍ, RECIBÍ TODO
+                  </button>
+                  <button
+                    type="button"
+                    className="confirm-entrega-btn confirm-entrega-btn--no"
+                    onClick={() => { setProblemaSol(s); setProblemaMotivo(''); setError('') }}
+                    disabled={confirmandoSol}
+                  >
+                    ⚠ HUBO UN PROBLEMA
+                  </button>
+                </div>
+              </div>
+            ))}
 
             {activeAssignments.map((assignment) => {
               const progress = getSuerteProgress(assignment, assignments)
@@ -1451,14 +1549,25 @@ export function OperatorView({
                 ) : (
                   <div className="list-rows" style={{ marginTop: 8 }}>
                     {misSolicitudes.map((s) => {
-                      const estadoTxt = s.estado.charAt(0) + s.estado.slice(1).toLowerCase()
-                      const color = s.estado === 'ENTREGADA' ? 'var(--color-brand)' : s.estado === 'RECHAZADA' ? '#b3261e' : s.estado === 'PROGRAMADA' ? '#b06a00' : 'var(--color-ink-mid)'
+                      // ENTREGADA muestra además el estado del AVAL del operario.
+                      const estadoTxt =
+                        s.estado === 'ENTREGADA'
+                          ? s.confirmadoEn
+                            ? s.conforme ? 'Recibido ✔' : 'Con diferencia ⚠'
+                            : 'Por confirmar'
+                          : s.estado.charAt(0) + s.estado.slice(1).toLowerCase()
+                      const color =
+                        s.estado === 'ENTREGADA'
+                          ? s.confirmadoEn
+                            ? s.conforme ? 'var(--color-brand)' : '#b06a00'
+                            : '#b06a00'
+                          : s.estado === 'RECHAZADA' ? '#b3261e' : s.estado === 'PROGRAMADA' ? '#b06a00' : 'var(--color-ink-mid)'
                       const fecha = s.createdAt ? new Date(s.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' }) : ''
                       return (
                         <div key={s.id} className="movement-row">
                           <div>
                             <strong>{s.items.map((it) => `${it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}</strong>
-                            <span>{fecha}{s.motivoRechazo ? ` · ${s.motivoRechazo}` : ''}</span>
+                            <span>{fecha}{s.motivoRechazo ? ` · ${s.motivoRechazo}` : ''}{s.confirmacionNota ? ` · ${s.confirmacionNota}` : ''}</span>
                           </div>
                           <div className="movement-side">
                             <span style={{ fontSize: '0.76rem', fontWeight: 700, color, whiteSpace: 'nowrap' }}>{estadoTxt}</span>

@@ -229,6 +229,13 @@ export interface SolicitudInsumo {
   horometro?: number
   // Máquina/tractor a la que se cargó la entrega (acumulador de costos).
   equipoCodigo?: string
+  // Aval del operario (fase 4): confirmación de recepción sobre ENTREGADA.
+  // conforme=true → recibió todo; false → reportó diferencia (nota con motivo);
+  // confirmadoEn null → entregada sin confirmar aún.
+  confirmadoEn?: string
+  confirmadoPor?: string
+  conforme?: boolean | null
+  confirmacionNota?: string
 }
 
 export interface CreateAssignmentInput {

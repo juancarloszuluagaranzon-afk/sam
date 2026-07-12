@@ -165,10 +165,23 @@ export function BandejaInsumosTab() {
         Solicitudes de insumos de los operarios. <strong>Programa</strong> las que vas a despachar o <strong>rechaza</strong> con motivo.
       </p>
 
-      <div className="realizadas-seg" style={{ marginTop: 4 }}>
-        {(['PENDIENTE', 'PROGRAMADA', 'ENTREGADA', 'TODAS'] as const).map((f) => (
-          <button key={f} type="button" className={filtro === f ? 'is-active' : ''} onClick={() => setFiltro(f)}>
-            {f === 'PENDIENTE' ? 'Pendientes' : f === 'PROGRAMADA' ? 'Programadas' : f === 'ENTREGADA' ? 'Entregadas' : 'Todas'}
+      <div className="sol-filtros" role="tablist" aria-label="Filtrar solicitudes">
+        {([
+          { key: 'PENDIENTE', icon: '🕐', label: 'Pendientes' },
+          { key: 'PROGRAMADA', icon: '📅', label: 'Programadas' },
+          { key: 'ENTREGADA', icon: '✅', label: 'Entregadas' },
+          { key: 'TODAS', icon: '📋', label: 'Todas' },
+        ] as const).map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            role="tab"
+            aria-selected={filtro === f.key}
+            className={`sol-filtro${filtro === f.key ? ' is-active' : ''}`}
+            onClick={() => setFiltro(f.key)}
+          >
+            <span aria-hidden>{f.icon}</span> {f.label}
+            {f.key === 'PENDIENTE' && pendientesCount > 0 && <span className="sol-filtro__badge">{pendientesCount}</span>}
           </button>
         ))}
       </div>

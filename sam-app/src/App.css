@@ -878,6 +878,48 @@
   .insumos-tab__icon { font-size: 1.4rem; }
 }
 
+/* Filtros de la Bandeja de insumos: píldoras grandes, activo relleno verde. */
+.sol-filtros {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.sol-filtro {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.12));
+  border-radius: 999px;
+  background: var(--color-bg-elevated);
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--color-ink-mid);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.sol-filtro:hover { transform: translateY(-1px); box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08); }
+.sol-filtro.is-active {
+  background: #1f8a47;
+  border-color: #1f8a47;
+  color: #fff;
+}
+.sol-filtro__badge {
+  background: #b3261e;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  border-radius: 999px;
+  padding: 1px 7px;
+  margin-left: 2px;
+}
+.sol-filtro.is-active .sol-filtro__badge { background: rgba(255, 255, 255, 0.25); }
+@media (max-width: 640px) {
+  .sol-filtros { gap: 6px; }
+  .sol-filtro { flex: 1; min-width: 0; justify-content: center; padding: 9px 8px; font-size: 0.8rem; }
+}
+
 /* ── Bandeja de insumos: tarjeta de solicitud estilo "orden de pedido" ──
    Acento lateral por estado, avatar con iniciales, ítems con chip de cantidad,
    banner de aval del operario y metadatos de entrega como chips. */

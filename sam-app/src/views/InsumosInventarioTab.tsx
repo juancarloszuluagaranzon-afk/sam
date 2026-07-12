@@ -29,11 +29,14 @@ export function InsumosInventarioTab() {
     return m
   }, [sortedEquipment])
 
+  const [nuevoOpen, setNuevoOpen] = useState(false)
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [nuevoCat, setNuevoCat] = useState<InsumoCategoria>('MATERIAL')
   const [nuevoUnidad, setNuevoUnidad] = useState('unidad')
   const [catFilter, setCatFilter] = useState<'TODOS' | InsumoCategoria>('TODOS')
   const [search, setSearch] = useState('')
+  // Menú "⋯" abierto (acciones secundarias de una fila).
+  const [menuFor, setMenuFor] = useState<string | null>(null)
 
   const [editTarget, setEditTarget] = useState<Insumo | null>(null)
   const [editNombre, setEditNombre] = useState('')
@@ -75,6 +78,7 @@ export function InsumosInventarioTab() {
       const ins = await createInsumo(nombre, nuevoCat, nuevoUnidad)
       setInsumos((prev) => [...prev, ins])
       setNuevoNombre(''); setNuevoUnidad('unidad'); setNuevoCat('MATERIAL')
+      setNuevoOpen(false)
       setInfo(`Insumo "${ins.nombre}" creado.`)
     } catch (err) {
       const e = err as { message?: string }
@@ -162,94 +166,128 @@ export function InsumosInventarioTab() {
     <section className="panel-card">
       <div className="panel-title split">
         <h2>Inventario de insumos</h2>
-        <span className="subtle-copy">{combustibles} combustible(s) · {materiales} material(es)</span>
+        <button type="button" className="primary-button" onClick={() => { setNuevoNombre(''); setNuevoUnidad('unidad'); setNuevoCat('MATERIAL'); setError(''); setNuevoOpen(true) }} disabled={busy}>
+          + Nuevo insumo
+        </button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Catálogo con stock. Registra <strong>entradas</strong> (compras) que suman al inventario y quedan en el kardex.
-        Las salidas se descontarán con los despachos.
+        {combustibles} combustible(s) · {materiales} material(es). Registra <strong>entradas</strong> (compras) que
+        suman al inventario; las salidas se descuentan con los despachos.
       </p>
 
-      {/* Crear insumo */}
-      <div className="labor-cat-add" style={{ flexWrap: 'wrap' }}>
+      <div className="inv-toolbar">
+        <div className="sol-filtros" style={{ marginTop: 0 }}>
+          {([
+            { key: 'TODOS', icon: '📋', label: 'Todos' },
+            { key: 'COMBUSTIBLE', icon: '⛽', label: 'Combustibles' },
+            { key: 'MATERIAL', icon: '🔩', label: 'Materiales' },
+          ] as const).map((c) => (
+            <button key={c.key} type="button" className={`sol-filtro${catFilter === c.key ? ' is-active' : ''}`} onClick={() => setCatFilter(c.key)}>
+              <span aria-hidden>{c.icon}</span> {c.label}
+            </button>
+          ))}
+        </div>
         <input
-          type="text"
-          placeholder="Nuevo insumo (ej. DIESEL)"
-          value={nuevoNombre}
-          onChange={(e) => setNuevoNombre(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate() }}
-          disabled={busy}
+          className="user-search-input inv-toolbar__search"
+          type="search"
+          placeholder="Buscar insumo…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
-        <select value={nuevoCat} onChange={(e) => setNuevoCat(e.target.value as InsumoCategoria)} disabled={busy} className="labor-cat-tipo-select" aria-label="Categoría">
-          <option value="MATERIAL">Material</option>
-          <option value="COMBUSTIBLE">Combustible</option>
-        </select>
-        <input
-          type="text"
-          placeholder="Unidad (galón, unidad, kg…)"
-          value={nuevoUnidad}
-          onChange={(e) => setNuevoUnidad(e.target.value)}
-          disabled={busy}
-          style={{ maxWidth: 160 }}
-        />
-        <button type="button" className="primary-button" onClick={() => void handleCreate()} disabled={busy}>+ Agregar</button>
       </div>
 
-      <div className="realizadas-seg" style={{ marginTop: 12 }}>
-        {(['TODOS', 'COMBUSTIBLE', 'MATERIAL'] as const).map((c) => (
-          <button key={c} type="button" className={catFilter === c ? 'is-active' : ''} onClick={() => setCatFilter(c)}>
-            {c === 'TODOS' ? 'Todos' : c === 'COMBUSTIBLE' ? 'Combustibles' : 'Materiales'}
-          </button>
+      <div className="inv-list">
+        {ordenados.map((i) => (
+          <div key={i.id} className={`inv-row${i.activo ? '' : ' inv-row--off'}`}>
+            <div className="inv-row__main">
+              <strong>{i.nombre}</strong>
+              <span className={`inv-cat ${i.categoria === 'COMBUSTIBLE' ? 'inv-cat--comb' : 'inv-cat--mat'}`}>
+                {i.categoria === 'COMBUSTIBLE' ? '⛽ Combustible' : '🔩 Material'}
+              </span>
+              {!i.activo && <span className="inv-cat inv-cat--off">Inactivo</span>}
+            </div>
+            <div className={`inv-stock${i.stock <= 0 ? ' inv-stock--zero' : ''}`} title="Stock actual">
+              {i.stock} <small>{i.unidad}</small>
+            </div>
+            <div className="inv-row__actions">
+              <button type="button" className="inline-button inv-entrada-btn" onClick={() => openEntrada(i)} disabled={busy}>+ Entrada</button>
+              <div className="inv-kebab">
+                <button
+                  type="button"
+                  className="inline-button inv-kebab__btn"
+                  onClick={() => setMenuFor(menuFor === i.id ? null : i.id)}
+                  disabled={busy}
+                  aria-label="Más acciones"
+                  aria-expanded={menuFor === i.id}
+                >
+                  ⋯
+                </button>
+                {menuFor === i.id && (
+                  <>
+                    <div className="inv-kebab__backdrop" onClick={() => setMenuFor(null)} />
+                    <div className="inv-kebab__menu" role="menu">
+                      <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void openKardex(i) }}>📒 Kardex</button>
+                      <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openEdit(i) }}>✏️ Editar</button>
+                      <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void toggleActivo(i) }}>
+                        {i.activo ? '🚫 Desactivar' : '✔ Activar'}
+                      </button>
+                      <button type="button" role="menuitem" className="inv-kebab__danger" onClick={() => { setMenuFor(null); setDeleteTarget(i); setError('') }}>
+                        🗑 Eliminar
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
         ))}
+        {ordenados.length === 0 && (
+          <p className="muted-text" style={{ padding: '12px 4px' }}>
+            {search.trim() ? 'Sin coincidencias para la búsqueda.' : 'Sin insumos. Crea el primero con “+ Nuevo insumo”.'}
+          </p>
+        )}
       </div>
 
-      <input
-        className="user-search-input"
-        type="search"
-        placeholder="Buscar insumo…"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={{ marginTop: 12 }}
-      />
-
-      <div className="table-wrap validacion-table-wrap" style={{ marginTop: 12 }}>
-        <table className="validacion-table">
-          <thead>
-            <tr>
-              <th>Insumo</th>
-              <th>Categoría</th>
-              <th className="num">Stock</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {ordenados.map((i) => (
-              <tr key={i.id} className={i.activo ? '' : 'labor-cat-row--off'}>
-                <td><strong>{i.nombre}</strong></td>
-                <td>
-                  <span className={`labor-cat-chip ${i.categoria === 'COMBUSTIBLE' ? 'manual' : 'mec'}`}>
-                    {i.categoria === 'COMBUSTIBLE' ? 'Combustible' : 'Material'}
-                  </span>
-                </td>
-                <td className="num"><strong>{i.stock}</strong> <span className="subtle-copy">{i.unidad}</span></td>
-                <td>
-                  <div className="maestro-row-actions">
-                    <button type="button" className="inline-button" onClick={() => openEntrada(i)} disabled={busy}>+ Entrada</button>
-                    <button type="button" className="inline-button" onClick={() => void openKardex(i)} disabled={busy}>Kardex</button>
-                    <button type="button" className="inline-button" onClick={() => openEdit(i)} disabled={busy}>Editar</button>
-                    <button type="button" className="inline-button" onClick={() => void toggleActivo(i)} disabled={busy}>{i.activo ? 'Desactivar' : 'Activar'}</button>
-                    <button type="button" className="inline-button maestro-delete-btn" onClick={() => { setDeleteTarget(i); setError('') }} disabled={busy}>Eliminar</button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {ordenados.length === 0 && (
-              <tr><td colSpan={4} className="validacion-empty">
-                {search.trim() ? 'Sin coincidencias para la búsqueda.' : 'Sin insumos. Agrega el primero arriba.'}
-              </td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      {/* Modal crear insumo */}
+      {nuevoOpen && (
+        <div className="modal-overlay open" onClick={() => setNuevoOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Inventario</p><h3>Nuevo insumo</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setNuevoOpen(false)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <label>
+              Nombre
+              <input
+                type="text"
+                placeholder="ej. DIESEL"
+                value={nuevoNombre}
+                onChange={(e) => setNuevoNombre(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleCreate() }}
+                disabled={busy}
+                autoFocus
+              />
+            </label>
+            <label>
+              Categoría
+              <select value={nuevoCat} onChange={(e) => setNuevoCat(e.target.value as InsumoCategoria)} disabled={busy}>
+                <option value="MATERIAL">Material</option>
+                <option value="COMBUSTIBLE">Combustible</option>
+              </select>
+            </label>
+            <label>
+              Unidad
+              <input type="text" placeholder="galón, unidad, kg…" value={nuevoUnidad} onChange={(e) => setNuevoUnidad(e.target.value)} disabled={busy} />
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setNuevoOpen(false)} disabled={busy}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void handleCreate()} disabled={busy}>
+                {busy ? 'Creando…' : 'Crear insumo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal entrada */}
       {entradaTarget && (

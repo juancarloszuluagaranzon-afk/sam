@@ -920,6 +920,121 @@
   .sol-filtro { flex: 1; min-width: 0; justify-content: center; padding: 9px 8px; font-size: 0.8rem; }
 }
 
+/* ── Inventario de insumos: lista limpia (menos saturación visual) ──
+   Fila = nombre + chip de categoría | chip de stock | "+ Entrada" + menú ⋯
+   (las acciones secundarias viven en el menú, no como 5 botones por fila). */
+.inv-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+.inv-toolbar__search { flex: 1; min-width: 200px; margin: 0; }
+
+.inv-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inv-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.07));
+  border-radius: 12px;
+}
+.inv-row--off { opacity: 0.55; }
+.inv-row__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.inv-row__main strong { font-size: 0.94rem; }
+.inv-cat {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.inv-cat--comb { background: rgba(217, 119, 6, 0.12); color: #92610a; }
+.inv-cat--mat { background: rgba(40, 120, 200, 0.1); color: #1d5c9e; }
+.inv-cat--off { background: rgba(0, 0, 0, 0.08); color: var(--color-ink-mid); }
+:root[data-theme="dark"] .inv-cat--comb { color: #f0c34e; }
+:root[data-theme="dark"] .inv-cat--mat { color: #7db8e8; }
+
+.inv-stock {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: #166534;
+  background: rgba(31, 138, 71, 0.09);
+  padding: 4px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.inv-stock small { font-weight: 600; color: inherit; opacity: 0.75; }
+.inv-stock--zero { color: var(--color-ink-mid); background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="dark"] .inv-stock { color: #7fd6a0; }
+:root[data-theme="dark"] .inv-stock--zero { color: var(--color-ink-mid); background: rgba(255, 255, 255, 0.07); }
+
+.inv-row__actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.inv-entrada-btn { white-space: nowrap; }
+.inv-kebab { position: relative; }
+.inv-kebab__btn {
+  font-weight: 800;
+  padding: 9px 12px;
+  line-height: 1;
+}
+.inv-kebab__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+}
+.inv-kebab__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 31;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  min-width: 170px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+}
+.inv-kebab__menu button {
+  border: 0;
+  background: none;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.inv-kebab__menu button:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="dark"] .inv-kebab__menu button:hover { background: rgba(255, 255, 255, 0.07); }
+.inv-kebab__danger { color: #b3261e !important; }
+
+@media (max-width: 640px) {
+  .inv-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .inv-row__actions { grid-column: 1 / -1; justify-content: flex-end; }
+  .inv-row__actions .inline-button { width: auto; }
+}
+
 /* ── Bandeja de insumos: tarjeta de solicitud estilo "orden de pedido" ──
    Acento lateral por estado, avatar con iniciales, ítems con chip de cantidad,
    banner de aval del operario y metadatos de entrega como chips. */

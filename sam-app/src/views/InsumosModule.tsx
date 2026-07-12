@@ -10,14 +10,33 @@ import { ConsumoEquiposTab } from './ConsumoEquiposTab'
  */
 type InsumosTab = 'bandeja' | 'inventario' | 'equipos'
 
+const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
+  { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Solicitudes y entregas' },
+  { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
+  { key: 'equipos', icon: '🚜', label: 'Por máquina', desc: 'Consumo por equipo' },
+]
+
 export function InsumosModule() {
   const [tab, setTab] = useState<InsumosTab>('bandeja')
   return (
     <div>
-      <div className="realizadas-seg" style={{ marginBottom: 12 }}>
-        <button type="button" className={tab === 'bandeja' ? 'is-active' : ''} onClick={() => setTab('bandeja')}>📥 Bandeja</button>
-        <button type="button" className={tab === 'inventario' ? 'is-active' : ''} onClick={() => setTab('inventario')}>📦 Inventario</button>
-        <button type="button" className={tab === 'equipos' ? 'is-active' : ''} onClick={() => setTab('equipos')}>🚜 Por máquina</button>
+      <div className="insumos-tabs" role="tablist" aria-label="Secciones de insumos">
+        {TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            className={`insumos-tab${tab === t.key ? ' is-active' : ''}`}
+            onClick={() => setTab(t.key)}
+          >
+            <span className="insumos-tab__icon" aria-hidden>{t.icon}</span>
+            <span className="insumos-tab__text">
+              <span className="insumos-tab__label">{t.label}</span>
+              <span className="insumos-tab__desc">{t.desc}</span>
+            </span>
+          </button>
+        ))}
       </div>
       {tab === 'bandeja' ? <BandejaInsumosTab /> : tab === 'inventario' ? <InsumosInventarioTab /> : <ConsumoEquiposTab />}
     </div>

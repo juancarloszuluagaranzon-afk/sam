@@ -820,6 +820,64 @@
 .confirm-entrega-btn--no { background: #f4e3c1; color: #7a4d00; }
 .confirm-entrega-btn:disabled { opacity: 0.6; cursor: default; }
 
+/* ── Módulo Insumos: pestañas grandes con ícono + etiqueta + descripción ── */
+.insumos-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.insumos-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  border-radius: 14px;
+  background: var(--color-bg-elevated);
+  cursor: pointer;
+  text-align: left;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.insumos-tab:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
+.insumos-tab.is-active {
+  border-color: #1f8a47;
+  background: rgba(31, 138, 71, 0.08);
+  box-shadow: inset 0 0 0 1px #1f8a47;
+}
+:root[data-theme="dark"] .insumos-tab.is-active { background: rgba(31, 138, 71, 0.18); }
+.insumos-tab__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.insumos-tab__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.insumos-tab__label {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--color-ink);
+}
+.insumos-tab.is-active .insumos-tab__label { color: #1f8a47; }
+:root[data-theme="dark"] .insumos-tab.is-active .insumos-tab__label { color: #7fd6a0; }
+.insumos-tab__desc {
+  font-size: 0.74rem;
+  color: var(--color-ink-mid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 640px) {
+  .insumos-tabs { gap: 6px; }
+  .insumos-tab { flex-direction: column; gap: 4px; padding: 10px 6px; text-align: center; align-items: center; }
+  .insumos-tab__desc { display: none; }
+  .insumos-tab__icon { font-size: 1.4rem; }
+}
+
 /* ── Bandeja de insumos: tarjeta de solicitud estilo "orden de pedido" ──
    Acento lateral por estado, avatar con iniciales, ítems con chip de cantidad,
    banner de aval del operario y metadatos de entrega como chips. */

@@ -178,77 +178,79 @@ export function BandejaInsumosTab() {
           <p className="muted-text">Cargando…</p>
         ) : solicitudes.length === 0 ? (
           <p className="muted-text">No hay solicitudes {filtro === 'PENDIENTE' ? 'pendientes' : filtro === 'PROGRAMADA' ? 'programadas' : filtro === 'ENTREGADA' ? 'entregadas' : ''}.</p>
-        ) : solicitudes.map((s) => (
-          <div key={s.id} className="panel-card" style={{ padding: '12px 14px', marginBottom: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 6 }}>
-              <div>
-                <strong>{s.operarioNombre ?? userName.get(s.operarioId) ?? s.operarioId}</strong>
-                <div className="subtle-copy" style={{ fontSize: '0.8rem' }}>{fmtFecha(s.createdAt)}</div>
-              </div>
-              <span className={`status-pill ${s.estado === 'PENDIENTE' ? '' : s.estado === 'PROGRAMADA' ? 'amber' : s.estado === 'RECHAZADA' ? 'red' : 'green'}`}>
-                {ESTADO_LABEL[s.estado]}
-              </span>
-            </div>
-            <ul style={{ listStyle: 'none', margin: '0 0 6px', padding: 0 }}>
-              {s.items.map((it) => (
-                <li key={it.id} style={{ fontSize: '0.92rem' }}>• <strong>{it.cantidad} {it.unidad}</strong> {it.insumoNombre}</li>
-              ))}
-            </ul>
-            {s.nota && <p className="subtle-copy" style={{ margin: '0 0 6px' }}>Nota: {s.nota}</p>}
-            {s.motivoRechazo && <p className="subtle-copy" style={{ margin: '0 0 6px', color: '#b3261e' }}>Rechazo: {s.motivoRechazo}</p>}
-            {s.estado === 'PENDIENTE' && (
-              <div className="maestro-row-actions">
-                <button type="button" className="primary-button" style={{ padding: '6px 14px' }} onClick={() => void programar(s)} disabled={busy}>Programar</button>
-                <button type="button" className="primary-button outline" style={{ padding: '6px 14px' }} onClick={() => openEntrega(s)} disabled={busy}>📦 Entregar</button>
-                <button type="button" className="inline-button maestro-delete-btn" onClick={() => { setRechazoTarget(s); setMotivo(''); setError('') }} disabled={busy}>Rechazar</button>
-              </div>
-            )}
-            {s.estado === 'PROGRAMADA' && (
-              <div className="maestro-row-actions">
-                <button type="button" className="primary-button" style={{ padding: '6px 14px' }} onClick={() => openEntrega(s)} disabled={busy}>📦 Entregar</button>
-                <button type="button" className="inline-button maestro-delete-btn" onClick={() => { setRechazoTarget(s); setMotivo(''); setError('') }} disabled={busy}>Rechazar</button>
-              </div>
-            )}
-            {s.estado === 'ENTREGADA' && (
-              <div className="subtle-copy" style={{ fontSize: '0.82rem' }}>
-                {/* Aval del operario: la entrega no está "cerrada" hasta que él confirme. */}
-                <div style={{ marginBottom: 4 }}>
-                  {s.confirmadoEn ? (
-                    s.conforme ? (
-                      <span style={{ color: 'var(--color-brand)', fontWeight: 700 }}>
-                        ✔ Confirmada por el operario {fmtFecha(s.confirmadoEn)}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#b3261e', fontWeight: 700 }}>
-                        ⚠ DIFERENCIA reportada por el operario {fmtFecha(s.confirmadoEn)}
-                        {s.confirmacionNota ? ` — ${s.confirmacionNota}` : ''}
-                      </span>
-                    )
-                  ) : (
-                    <span style={{ color: '#b06a00', fontWeight: 700 }}>⏳ Sin confirmar por el operario</span>
-                  )}
+        ) : solicitudes.map((s) => {
+          const nombre = s.operarioNombre ?? userName.get(s.operarioId) ?? s.operarioId
+          const iniciales = nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
+          const tone = s.estado === 'PENDIENTE' ? 'pend' : s.estado === 'PROGRAMADA' ? 'prog' : s.estado === 'RECHAZADA' ? 'rech' : 'entr'
+          return (
+            <article key={s.id} className={`sol-card sol-card--${tone}`}>
+              <header className="sol-card__head">
+                <span className="sol-card__avatar" aria-hidden>{iniciales || '?'}</span>
+                <div className="sol-card__who">
+                  <strong>{nombre}</strong>
+                  <span>{fmtFecha(s.createdAt)}{s.zona ? ` · Zona ${s.zona}` : ''}</span>
                 </div>
-                Entregado {s.entregadoEn ? fmtFecha(s.entregadoEn) : ''}
-                {s.despachadoPor ? ` · por ${userName.get(s.despachadoPor) ?? s.despachadoPor}` : ''}
-                {s.equipoCodigo ? ` · Máquina: ${equipoNombre.get(s.equipoCodigo) ?? s.equipoCodigo}` : ''}
-                {s.horometro != null ? ` · Horómetro: ${s.horometro}` : ''}
-                {s.ruta ? ` · Ruta: ${s.ruta}` : ''}
-                {s.items.some((it) => it.cantidadDespachada != null) && (
-                  <div>Despachado: {s.items.filter((it) => it.cantidadDespachada != null).map((it) => `${it.cantidadDespachada} ${it.unidad} ${it.insumoNombre}`).join(', ')}</div>
-                )}
-                {s.evidenciaUrls && s.evidenciaUrls.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
-                    {s.evidenciaUrls.map((u, i) => (
-                      <a key={i} href={u} target="_blank" rel="noreferrer">
-                        <img src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
-                      </a>
-                    ))}
+                <span className={`status-pill ${s.estado === 'PENDIENTE' ? '' : s.estado === 'PROGRAMADA' ? 'amber' : s.estado === 'RECHAZADA' ? 'red' : 'green'}`}>
+                  {ESTADO_LABEL[s.estado]}
+                </span>
+              </header>
+
+              <ul className="sol-card__items">
+                {s.items.map((it) => (
+                  <li key={it.id}>
+                    <span className="sol-card__qty">{it.cantidadDespachada ?? it.cantidad} {it.unidad}</span>
+                    <span className="sol-card__item-name">{it.insumoNombre}</span>
+                    {it.cantidadDespachada != null && it.cantidadDespachada !== it.cantidad && (
+                      <span className="sol-card__qty-orig">pidió {it.cantidad}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+
+              {s.nota && <p className="sol-card__nota">💬 {s.nota}</p>}
+              {s.motivoRechazo && <p className="sol-card__nota sol-card__nota--rechazo">✕ Rechazo: {s.motivoRechazo}</p>}
+
+              {s.estado === 'ENTREGADA' && (
+                <>
+                  {/* Aval del operario: banner que cierra (o no) el ciclo de dos partes. */}
+                  <div className={`sol-card__aval ${s.confirmadoEn ? (s.conforme ? 'sol-card__aval--ok' : 'sol-card__aval--dif') : 'sol-card__aval--wait'}`}>
+                    {s.confirmadoEn
+                      ? s.conforme
+                        ? <>✔ Confirmada por el operario · {fmtFecha(s.confirmadoEn)}</>
+                        : <>⚠ DIFERENCIA reportada · {fmtFecha(s.confirmadoEn)}{s.confirmacionNota ? ` — ${s.confirmacionNota}` : ''}</>
+                      : <>⏳ Sin confirmar por el operario</>}
                   </div>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
+                  <div className="sol-card__meta">
+                    {s.entregadoEn && <span title="Fecha de entrega">📦 {fmtFecha(s.entregadoEn)}</span>}
+                    {s.despachadoPor && <span title="Despachado por">👤 {userName.get(s.despachadoPor) ?? s.despachadoPor}</span>}
+                    {s.equipoCodigo && <span title="Máquina">🚜 {equipoNombre.get(s.equipoCodigo) ?? s.equipoCodigo}</span>}
+                    {s.horometro != null && <span title="Horómetro">⏱ {s.horometro}</span>}
+                    {s.ruta && <span title="Ruta">🛣 {s.ruta}</span>}
+                  </div>
+                  {s.evidenciaUrls && s.evidenciaUrls.length > 0 && (
+                    <div className="sol-card__fotos">
+                      {s.evidenciaUrls.map((u, i) => (
+                        <a key={i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt={`evidencia ${i + 1}`} />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {(s.estado === 'PENDIENTE' || s.estado === 'PROGRAMADA') && (
+                <footer className="sol-card__actions">
+                  {s.estado === 'PENDIENTE' && (
+                    <button type="button" className="primary-button" onClick={() => void programar(s)} disabled={busy}>Programar</button>
+                  )}
+                  <button type="button" className="primary-button outline" onClick={() => openEntrega(s)} disabled={busy}>📦 Entregar</button>
+                  <button type="button" className="inline-button maestro-delete-btn" onClick={() => { setRechazoTarget(s); setMotivo(''); setError('') }} disabled={busy}>Rechazar</button>
+                </footer>
+              )}
+            </article>
+          )
+        })}
       </div>
 
       {rechazoTarget && (

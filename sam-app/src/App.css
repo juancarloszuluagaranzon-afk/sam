@@ -820,6 +820,143 @@
 .confirm-entrega-btn--no { background: #f4e3c1; color: #7a4d00; }
 .confirm-entrega-btn:disabled { opacity: 0.6; cursor: default; }
 
+/* ── Bandeja de insumos: tarjeta de solicitud estilo "orden de pedido" ──
+   Acento lateral por estado, avatar con iniciales, ítems con chip de cantidad,
+   banner de aval del operario y metadatos de entrega como chips. */
+.sol-card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  border-left: 4px solid #9aa3ab;
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+.sol-card--pend { border-left-color: #9aa3ab; }
+.sol-card--prog { border-left-color: #d97706; }
+.sol-card--entr { border-left-color: #1f8a47; }
+.sol-card--rech { border-left-color: #b3261e; opacity: 0.85; }
+
+.sol-card__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.sol-card__avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(31, 138, 71, 0.14);
+  color: #1f8a47;
+  font-weight: 800;
+  font-size: 0.88rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sol-card__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.sol-card__who strong { font-size: 0.96rem; }
+.sol-card__who span { font-size: 0.78rem; color: var(--color-ink-mid); }
+
+.sol-card__items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sol-card__items li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.92rem;
+}
+.sol-card__qty {
+  background: rgba(31, 138, 71, 0.1);
+  color: #166534;
+  font-weight: 800;
+  font-size: 0.82rem;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+:root[data-theme="dark"] .sol-card__qty { background: rgba(31, 138, 71, 0.25); color: #7fd6a0; }
+.sol-card__item-name { font-weight: 600; }
+.sol-card__qty-orig {
+  font-size: 0.76rem;
+  color: var(--color-ink-mid);
+  text-decoration: line-through;
+}
+
+.sol-card__nota {
+  margin: 8px 0 0;
+  font-size: 0.84rem;
+  color: var(--color-ink-mid);
+  background: rgba(0, 0, 0, 0.035);
+  border-radius: 8px;
+  padding: 6px 10px;
+}
+:root[data-theme="dark"] .sol-card__nota { background: rgba(255, 255, 255, 0.06); }
+.sol-card__nota--rechazo { color: #b3261e; background: rgba(179, 38, 30, 0.07); }
+
+.sol-card__aval {
+  margin-top: 10px;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+.sol-card__aval--ok { background: rgba(31, 138, 71, 0.1); color: #166534; }
+.sol-card__aval--dif { background: rgba(179, 38, 30, 0.09); color: #b3261e; }
+.sol-card__aval--wait { background: rgba(217, 119, 6, 0.1); color: #92610a; }
+:root[data-theme="dark"] .sol-card__aval--ok { color: #7fd6a0; }
+:root[data-theme="dark"] .sol-card__aval--dif { color: #f2998f; }
+:root[data-theme="dark"] .sol-card__aval--wait { color: #f0c34e; }
+
+.sol-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: var(--color-ink-mid);
+}
+.sol-card__meta span { white-space: nowrap; }
+
+.sol-card__fotos {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.sol-card__fotos img {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+}
+
+.sol-card__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-border, rgba(0, 0, 0, 0.1));
+}
+.sol-card__actions .primary-button,
+.sol-card__actions .inline-button { padding: 7px 14px; }
+
 /* KPIs de área clicables (abren el detalle de las suertes que los componen). */
 .metric-panel--clickable {
   cursor: pointer;

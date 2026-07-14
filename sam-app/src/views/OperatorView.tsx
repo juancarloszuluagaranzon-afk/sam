@@ -1196,29 +1196,20 @@ export function OperatorView({
 
         {operatorTab === 'activas' ? (
           <section className="operator-stack operator-mobile-stack">
-            <div className="operator-kpi-grid">
-              <article className="operator-kpi-card operator-kpi-card--neutral">
-                <strong>{operatorMetrics.todayPlanned.toFixed(2)}</strong>
-                <span>ha planificadas hoy</span>
-              </article>
-              <article className="operator-kpi-card operator-kpi-card--green">
-                <strong>{operatorMetrics.todayExecuted.toFixed(2)}</strong>
-                <span>ha ejecutadas</span>
-                <div className="operator-kpi-bar">
-                  <span style={{ width: `${Math.min(operatorMetrics.completion, 100)}%` }} />
-                </div>
-              </article>
-              <article className={`operator-kpi-card ${operatorMetrics.completion >= 70 ? 'operator-kpi-card--green' : operatorMetrics.completion >= 30 ? 'operator-kpi-card--amber' : 'operator-kpi-card--red'}`}>
+            {/* KPIs del día, compactos (una tira de valor + etiqueta). */}
+            <div className="op-daystrip">
+              <div className="op-daystat">
+                <strong>{operatorMetrics.todayExecuted.toFixed(1)}<em>/{operatorMetrics.todayPlanned.toFixed(1)}</em></strong>
+                <span>ha hoy (ejec/plan)</span>
+              </div>
+              <div className={`op-daystat op-daystat--accent ${operatorMetrics.completion >= 70 ? 'is-green' : operatorMetrics.completion >= 30 ? 'is-amber' : 'is-red'}`}>
                 <strong>{operatorMetrics.completion}%</strong>
                 <span>cumplimiento</span>
-                <div className="operator-kpi-bar">
-                  <span style={{ width: `${Math.min(operatorMetrics.completion, 100)}%` }} />
-                </div>
-              </article>
-              <article className="operator-kpi-card operator-kpi-card--amber">
+              </div>
+              <div className="op-daystat">
                 <strong>{operatorMetrics.inProgress}</strong>
-                <span>{operatorMetrics.inProgress === 1 ? 'labor en progreso' : 'labores en progreso'}</span>
-              </article>
+                <span>en progreso</span>
+              </div>
             </div>
 
             {/* Rendimiento del operario: % quincenal (si hay metas por labor) +

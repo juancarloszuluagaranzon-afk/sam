@@ -1196,37 +1196,32 @@ export function OperatorView({
 
         {operatorTab === 'activas' ? (
           <section className="operator-stack operator-mobile-stack">
-            {/* KPIs del día, compactos (una tira de valor + etiqueta). */}
-            <div className="op-daystrip">
-              <div className="op-daystat">
-                <strong>{operatorMetrics.todayExecuted.toFixed(1)}<em>/{operatorMetrics.todayPlanned.toFixed(1)}</em></strong>
-                <span>ha hoy (ejec/plan)</span>
-              </div>
-              <div className={`op-daystat op-daystat--accent ${operatorMetrics.completion >= 70 ? 'is-green' : operatorMetrics.completion >= 30 ? 'is-amber' : 'is-red'}`}>
-                <strong>{operatorMetrics.completion}%</strong>
-                <span>cumplimiento</span>
-              </div>
-              <div className="op-daystat">
-                <strong>{operatorMetrics.inProgress}</strong>
-                <span>en progreso</span>
-              </div>
-            </div>
-
-            {/* Rendimiento del operario: % quincenal (si hay metas por labor) +
-                indicador diario (promedio ha/día y cómo terminó el último día). */}
-            {(rendimiento.mostrarQuincena || tieneIndicadorDiario) && (
+            {/* Rendimiento del operario: % quincenal + Hoy (ejec/plan) + indicador
+                diario. Reemplaza los KPIs sueltos de arriba (todo en un bloque). */}
+            {(rendimiento.mostrarQuincena || tieneIndicadorDiario || operatorMetrics.todayPlanned > 0 || operatorMetrics.todayExecuted > 0) && (
               <div className={`rendimiento-card${celebrar ? ' rendimiento-card--top' : rendimiento.pct >= 70 ? ' rendimiento-card--ok' : ''}`}>
+                <div className="rendimiento-card__head">
+                  {rendimiento.mostrarQuincena && (
+                    <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
+                  )}
+                  <div className="rendimiento-card__headtext">
+                    <p className="rendimiento-card__eyebrow">
+                      {rendimiento.mostrarQuincena ? `Tu quincena · ${rendimiento.haQuincena} ha` : 'Tu rendimiento'}
+                    </p>
+                    <p className="rendimiento-card__sub">
+                      {rendimiento.mostrarQuincena
+                        ? (rendimiento.pct >= 100 ? '¡Por encima de la meta! 🔥' : rendimiento.pct >= 70 ? 'Vas bien 👍' : 'Sube el ritmo')
+                        : 'Tu jornada de hoy'}
+                    </p>
+                  </div>
+                  <div className="rendimiento-hoy">
+                    <span className="rendimiento-hoy__label">Hoy</span>
+                    <strong>{operatorMetrics.todayExecuted.toFixed(1)}/{operatorMetrics.todayPlanned.toFixed(1)}</strong>
+                    <span className="rendimiento-hoy__pct">ha ejec/plan</span>
+                  </div>
+                </div>
                 {rendimiento.mostrarQuincena && (
                   <>
-                    <div className="rendimiento-card__head">
-                      <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
-                      <div className="rendimiento-card__headtext">
-                        <p className="rendimiento-card__eyebrow">Tu quincena · {rendimiento.haQuincena} ha</p>
-                        <p className="rendimiento-card__sub">
-                          {rendimiento.pct >= 100 ? '¡Por encima de la meta! 🔥' : rendimiento.pct >= 70 ? 'Vas bien 👍' : 'Sube el ritmo'}
-                        </p>
-                      </div>
-                    </div>
                     <div className="rendimiento-card__bar">
                       <span style={{ width: `${Math.min(rendimiento.pct, 100)}%` }} />
                     </div>

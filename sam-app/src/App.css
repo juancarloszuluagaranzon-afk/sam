@@ -802,7 +802,7 @@
   align-items: center;
   gap: 12px;
 }
-.rendimiento-card__headtext { min-width: 0; }
+.rendimiento-card__headtext { flex: 1; min-width: 0; }
 .rendimiento-card__eyebrow {
   margin: 0;
   font-size: 0.74rem;
@@ -824,9 +824,9 @@
   gap: 1px;
 }
 .rendimiento-card--top .rendimiento-hoy { background: rgba(255, 255, 255, 0.16); }
-.rendimiento-hoy__label { font-size: 0.72rem; text-transform: uppercase; opacity: 0.75; }
-.rendimiento-hoy strong { font-size: 1.05rem; }
-.rendimiento-hoy__pct { font-size: 0.78rem; font-weight: 700; }
+.rendimiento-hoy__label { font-size: 0.66rem; text-transform: uppercase; opacity: 0.75; letter-spacing: 0.03em; }
+.rendimiento-hoy strong { font-size: 1.02rem; white-space: nowrap; }
+.rendimiento-hoy__pct { font-size: 0.62rem; font-weight: 700; opacity: 0.8; white-space: nowrap; }
 .rendimiento-hoy--ok { background: rgba(31, 138, 71, 0.15); color: #166534; }
 .rendimiento-card--top .rendimiento-hoy--ok { color: #fff; }
 :root[data-theme="dark"] .rendimiento-hoy--ok { color: #7fd6a0; }
@@ -2001,55 +2001,6 @@ th {
   gap: 10px;
 }
 
-/* KPIs del día compactos: una tira de 3 stats (valor + etiqueta = 2 líneas). */
-.op-daystrip {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-.op-daystat {
-  flex: 1;
-  min-width: 0;
-  background: var(--color-bg-elevated, rgba(255, 255, 255, 0.92));
-  border: 1px solid var(--color-border, #e3e2dc);
-  border-radius: 12px;
-  padding: 8px 10px;
-  text-align: center;
-}
-.op-daystat strong {
-  display: block;
-  font-size: 1.15rem;
-  font-weight: 900;
-  line-height: 1.1;
-  color: var(--color-ink);
-  white-space: nowrap;
-}
-.op-daystat strong em {
-  font-style: normal;
-  font-weight: 700;
-  font-size: 0.82rem;
-  color: var(--color-ink-mid);
-}
-.op-daystat span {
-  display: block;
-  margin-top: 2px;
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  color: var(--color-ink-mid);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.op-daystat--accent.is-green { border-color: rgba(31, 138, 71, 0.5); }
-.op-daystat--accent.is-green strong { color: #1f8a47; }
-.op-daystat--accent.is-amber { border-color: rgba(217, 119, 6, 0.5); }
-.op-daystat--accent.is-amber strong { color: #b06a00; }
-.op-daystat--accent.is-red { border-color: rgba(179, 38, 30, 0.5); }
-.op-daystat--accent.is-red strong { color: #b3261e; }
-:root[data-theme="dark"] .op-daystat--accent.is-green strong { color: #7fd6a0; }
-:root[data-theme="dark"] .op-daystat--accent.is-amber strong { color: #f0c34e; }
-:root[data-theme="dark"] .op-daystat--accent.is-red strong { color: #f2998f; }
 
 .operator-kpi-card {
   background: rgba(255, 255, 255, 0.92);

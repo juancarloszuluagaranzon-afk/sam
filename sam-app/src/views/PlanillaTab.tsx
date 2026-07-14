@@ -561,6 +561,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         <span className="planilla-legend__item"><b className="planilla-nov--d">D</b> Descanso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--p">P</b> Permiso</span>
         <span className="planilla-legend__item"><b className="planilla-nov--e">E</b> Enfermedad</span>
+        <span className="planilla-legend__item"><b className="planilla-nov--in">IN</b> Incapacidad</span>
         <span className="planilla-legend__item"><b className="planilla-nov--f">F</b> Falta sin justa causa</span>
         <span className="planilla-legend__item"><b className="planilla-nov--ov">OV</b> Oficios varios</span>
         <span className="planilla-legend__item"><b className="planilla-nov--mv">MV</b> Máquina varada</span>

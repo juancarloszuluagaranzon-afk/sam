@@ -1256,7 +1256,7 @@ export function OperatorView({
                     {rendimiento.ultimoDiaKey && (
                       <div className={`rendimiento-dia__item${rendimiento.haUltimoDia >= metaDiaRef ? ' rendimiento-dia__item--ok' : ''}`}>
                         <span className="rendimiento-dia__label">
-                          Último día · {new Date(`${rendimiento.ultimoDiaKey}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short' })}
+                          Último día · {new Date(`${rendimiento.ultimoDiaKey}T12:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
                         </span>
                         <strong>{rendimiento.haUltimoDia} ha</strong>
                         <span className="rendimiento-dia__tag">

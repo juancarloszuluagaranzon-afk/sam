@@ -865,34 +865,39 @@
 }
 .rendimiento-hit__msg { margin: 0; font-size: 1.02rem; font-weight: 800; }
 
-/* Indicador diario: promedio por día + último día trabajado. */
+/* Indicador diario: promedio por día + último día trabajado, SIEMPRE lado a
+   lado en una sola fila (incluso en móvil angosto). */
 .rendimiento-dia {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 8px;
   margin-top: 12px;
 }
 .rendimiento-card__head + .rendimiento-dia { margin-top: 14px; }
 .rendimiento-dia__item {
   background: rgba(0, 0, 0, 0.05);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 9px 10px;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
 }
 .rendimiento-card--top .rendimiento-dia__item { background: rgba(255, 255, 255, 0.16); }
 .rendimiento-dia__item--ok { background: rgba(31, 138, 71, 0.14); }
 .rendimiento-card--top .rendimiento-dia__item--ok { background: rgba(255, 255, 255, 0.22); }
-.rendimiento-dia__label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; opacity: 0.75; }
-.rendimiento-dia__item strong { font-size: 1.35rem; font-weight: 900; line-height: 1.1; }
-.rendimiento-dia__tag { font-size: 0.78rem; font-weight: 700; }
+.rendimiento-dia__label {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  opacity: 0.75;
+  line-height: 1.15;
+}
+.rendimiento-dia__item strong { font-size: 1.2rem; font-weight: 900; line-height: 1.1; }
+.rendimiento-dia__tag { font-size: 0.72rem; font-weight: 700; line-height: 1.15; }
 .rendimiento-dia__item--ok .rendimiento-dia__tag { color: #166534; }
 .rendimiento-card--top .rendimiento-dia__item--ok .rendimiento-dia__tag { color: #fff; }
 :root[data-theme="dark"] .rendimiento-dia__item--ok .rendimiento-dia__tag { color: #7fd6a0; }
-@media (max-width: 480px) {
-  .rendimiento-dia { grid-template-columns: 1fr; }
-}
 
 /* Configuración de la motivación (admin): formulario + vista previa. */
 .motiv-grid {

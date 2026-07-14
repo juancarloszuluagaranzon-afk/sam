@@ -63,7 +63,7 @@ import {
 const WEEKDAY = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
 
 function fmt(value: number) {
-  return value > 0 ? value.toFixed(1) : ''
+  return value > 0 ? value.toFixed(2) : ''
 }
 
 export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => void } = {}) {
@@ -466,7 +466,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     setExporting(true)
     try {
       const { utils, writeFile } = await import('xlsx')
-      const cell = (v: number) => (v > 0 ? Number(v.toFixed(1)) : '')
+      const cell = (v: number) => (v > 0 ? Number(v.toFixed(2)) : '')
       // En la celda, la novedad (V/T) tiene prioridad sobre las hectáreas.
       const cellFor = (rowKey: string, dayKey: string, v: number): string | number => {
         const nov = novedades.get(`${rowKey}|${dayKey}`)
@@ -476,12 +476,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       const body = filteredRows.map((r) => [
         r.name,
         ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
-        Number(r.total.toFixed(1)),
+        Number(r.total.toFixed(2)),
       ])
       const footer = [
         'Total',
         ...days.map((d) => cell(dayTotals.t[d.key] ?? 0)),
-        Number(dayTotals.grand.toFixed(1)),
+        Number(dayTotals.grand.toFixed(2)),
       ]
       const aoa = [
         [`Planilla quincenal · ${monthLabel} · ${quincenaLabel}`],
@@ -687,7 +687,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                         </td>
                       )
                     })}
-                    <td className="planilla-total-col">{r.total.toFixed(1)}</td>
+                    <td className="planilla-total-col">{r.total.toFixed(2)}</td>
                   </tr>
                 )
               })}
@@ -700,7 +700,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     {fmt(dayTotals.t[d.key] ?? 0)}
                   </td>
                 ))}
-                <td className="planilla-total-col planilla-foot">{dayTotals.grand.toFixed(1)}</td>
+                <td className="planilla-total-col planilla-foot">{dayTotals.grand.toFixed(2)}</td>
               </tr>
             </tfoot>
           </table>
@@ -727,7 +727,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     <div className="revisadas-item__main">
                       <strong>{a.haciendaName} · {a.suerte}</strong>
                       <span>
-                        {a.labor} · {a.area.toFixed(1)} ha ·{' '}
+                        {a.labor} · {a.area.toFixed(2)} ha ·{' '}
                         {a.status === 'EN_PROCESO' ? 'En proceso' : a.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
                         {a.finishedAt ? ` · ${formatTime(a.finishedAt)}` : a.startedAt ? ` · ${formatTime(a.startedAt)}` : ''}
                       </span>
@@ -933,7 +933,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                           <span className={`planilla-swatch planilla-hl--${it.color}`} style={{ display: 'inline-block', verticalAlign: 'middle', marginRight: 6 }} />
                           {it.name}
                         </strong>
-                        <span>{fmtFecha(it.fecha)}{it.area > 0 ? ` · ${it.area.toFixed(1)} ha` : ''}</span>
+                        <span>{fmtFecha(it.fecha)}{it.area > 0 ? ` · ${it.area.toFixed(2)} ha` : ''}</span>
                       </div>
                       <button
                         type="button"

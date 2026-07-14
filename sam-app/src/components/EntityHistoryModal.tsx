@@ -57,7 +57,7 @@ export function buildMonthOptions(reference: string): { value: string; label: st
 }
 
 function formatArea(value: number) {
-  return `${value.toFixed(1)} ha`
+  return `${value.toFixed(2)} ha`
 }
 
 function getStatusMeta(a: Assignment) {
@@ -169,11 +169,11 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
 
         <div className="entity-kpi-card">
           <div>
-            <strong>{executed.toFixed(1)}</strong>
+            <strong>{executed.toFixed(2)}</strong>
             <span>ha ejecutadas</span>
           </div>
           <div>
-            <strong>{planned.toFixed(1)}</strong>
+            <strong>{planned.toFixed(2)}</strong>
             <span>ha planificadas</span>
           </div>
           <div>

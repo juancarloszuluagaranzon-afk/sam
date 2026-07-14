@@ -43,7 +43,7 @@ type DateSeg = 'TODAS' | 'RANGO' | SummaryQuincena
 // Así, al filtrar por una hacienda, la lista queda puramente reciente→antigua.
 
 function fmtArea(v: number) {
-  return `${v.toFixed(1)} ha`
+  return `${v.toFixed(2)} ha`
 }
 
 function fmtDate(key: string) {
@@ -311,7 +311,7 @@ export function RealizadasTab() {
                 </div>
                 <div className="realizada-item__meta">
                   <span className="realizada-item__area">
-                    {g.executed.toFixed(1)} / {g.asignada.toFixed(1)} ha
+                    {g.executed.toFixed(2)} / {g.asignada.toFixed(2)} ha
                   </span>
                   <span className="realizada-item__date">
                     {g.firstDate === g.lastDate
@@ -349,7 +349,7 @@ export function RealizadasTab() {
               {detail.firstDate === detail.lastDate
                 ? fmtDate(detail.lastDate)
                 : `${fmtDate(detail.firstDate)}–${fmtDate(detail.lastDate)}`}{' '}
-              · <strong>{detail.executed.toFixed(1)} / {detail.asignada.toFixed(1)} ha</strong>
+              · <strong>{detail.executed.toFixed(2)} / {detail.asignada.toFixed(2)} ha</strong>
               {detail.rows.length > 1 ? ` · ${detail.rows.length} parciales` : ''}
             </p>
             <ul className="revisadas-list">
@@ -358,7 +358,7 @@ export function RealizadasTab() {
                   <div className="revisadas-item__main">
                     <strong>{r.operatorName || 'Sin operario'}</strong>
                     <span>
-                      {fmtDate(executionDateKey(r))} · {(r.executedArea ?? 0).toFixed(1)} ha · {r.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
+                      {fmtDate(executionDateKey(r))} · {(r.executedArea ?? 0).toFixed(2)} ha · {r.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
                       {r.equipmentName ? ` · ${r.equipmentName}` : ''}
                       {r.finishedAt ? ` · ${formatTime(r.finishedAt)}` : ''}
                     </span>

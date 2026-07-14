@@ -2740,7 +2740,7 @@ export function SupervisorView({
                 {canEditAssignments && stalePendientes.count > 0 && (
                   <div className="mini-banner mini-banner--stale">
                     <span className="mini-banner__text">
-                      <strong>{stalePendientes.count}</strong> sin iniciar +{STALE_DAYS}d · {stalePendientes.area.toFixed(1)} ha
+                      <strong>{stalePendientes.count}</strong> sin iniciar +{STALE_DAYS}d · {stalePendientes.area.toFixed(2)} ha
                     </span>
                     <button
                       type="button"
@@ -2768,7 +2768,7 @@ export function SupervisorView({
                     </button>
                   </div>
                   <p className="subtle-copy" style={{ marginTop: 0 }}>
-                    Llevan <strong>+{STALE_DAYS} días</strong> asignadas y nunca se iniciaron ({stalePendientes.area.toFixed(1)} ha en total).
+                    Llevan <strong>+{STALE_DAYS} días</strong> asignadas y nunca se iniciaron ({stalePendientes.area.toFixed(2)} ha en total).
                     Limpiar las deja como <strong>CANCELADA</strong> — no se borran, es reversible.
                   </p>
 
@@ -2782,7 +2782,7 @@ export function SupervisorView({
                             <div className="revisadas-item__main">
                               <strong>{a.haciendaName} · {a.suerte}</strong>
                               <span>
-                                {a.labor} — {a.operatorName || 'Sin operario'} · {a.area.toFixed(1)} ha · hace {diasDesde(a.dateKey)} días
+                                {a.labor} — {a.operatorName || 'Sin operario'} · {a.area.toFixed(2)} ha · hace {diasDesde(a.dateKey)} días
                               </span>
                             </div>
                             <button

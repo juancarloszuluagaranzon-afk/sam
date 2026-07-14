@@ -652,17 +652,18 @@ export function OperatorView({
     return {
       pct,
       pctHoy: Math.round(jornadasHoy * 100),
-      haQuincena: Number(haQuincena.toFixed(1)),
-      haHoy: Number(haHoy.toFixed(1)),
+      // Áreas crudas; se formatean a 2 decimales al mostrar (estándar de la app).
+      haQuincena,
+      haHoy,
       // El % quincenal se muestra si hubo trabajo en la quincena (usa la meta por
       // labor si está, o la referencia diaria de 15 por defecto).
       mostrarQuincena: haQuincena > 0,
       usaMetaPorLabor,
       cumpleHoy: jornadasHoy >= 1,
       diasTrabajados,
-      promedioDia: Number(promedioDia.toFixed(1)),
+      promedioDia,
       ultimoDiaKey,
-      haUltimoDia: Number(haUltimoDia.toFixed(1)),
+      haUltimoDia,
     }
   }, [quincenaHistory, metaDiaByLabor, todayKey, metaDiaRef])
 
@@ -1206,7 +1207,7 @@ export function OperatorView({
                   )}
                   <div className="rendimiento-card__headtext">
                     <p className="rendimiento-card__eyebrow">
-                      {rendimiento.mostrarQuincena ? `Tu quincena · ${rendimiento.haQuincena} ha` : 'Tu rendimiento'}
+                      {rendimiento.mostrarQuincena ? `Tu quincena · ${rendimiento.haQuincena.toFixed(2)} ha` : 'Tu rendimiento'}
                     </p>
                     <p className="rendimiento-card__sub">
                       {rendimiento.mostrarQuincena
@@ -1216,7 +1217,7 @@ export function OperatorView({
                   </div>
                   <div className="rendimiento-hoy">
                     <span className="rendimiento-hoy__label">Hoy</span>
-                    <strong>{operatorMetrics.todayExecuted.toFixed(1)}/{operatorMetrics.todayPlanned.toFixed(1)}</strong>
+                    <strong>{operatorMetrics.todayExecuted.toFixed(2)}/{operatorMetrics.todayPlanned.toFixed(2)}</strong>
                     <span className="rendimiento-hoy__pct">ha ejec/plan</span>
                   </div>
                 </div>
@@ -1233,7 +1234,7 @@ export function OperatorView({
                   <div className="rendimiento-dia">
                     <div className={`rendimiento-dia__item${rendimiento.promedioDia >= metaDiaRef ? ' rendimiento-dia__item--ok' : ''}`}>
                       <span className="rendimiento-dia__label">Promedio por día</span>
-                      <strong>{rendimiento.promedioDia} ha</strong>
+                      <strong>{rendimiento.promedioDia.toFixed(2)} ha</strong>
                       <span className="rendimiento-dia__tag">
                         {rendimiento.promedioDia >= metaDiaRef ? `✓ Muy bien (meta ${metaDiaRef})` : `meta ${metaDiaRef} ha/día`}
                       </span>
@@ -1243,7 +1244,7 @@ export function OperatorView({
                         <span className="rendimiento-dia__label">
                           Último día · {new Date(`${rendimiento.ultimoDiaKey}T12:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
                         </span>
-                        <strong>{rendimiento.haUltimoDia} ha</strong>
+                        <strong>{rendimiento.haUltimoDia.toFixed(2)} ha</strong>
                         <span className="rendimiento-dia__tag">
                           {rendimiento.haUltimoDia >= metaDiaRef ? '🎉 ¡Terminaste muy bien!' : 'Puedes subir mañana'}
                         </span>

@@ -612,24 +612,23 @@ export function OperatorView({
     let jornadasHoy = 0
     let haQuincena = 0
     let haHoy = 0
-    let sinMeta = false
+    let usaMetaPorLabor = false
     // ha ejecutadas por DÍA (para promedio diario y "último día"), raw ha.
     const haPorDia = new Map<string, number>()
     for (const a of quincenaHistory) {
       const exec = a.executedArea > 0 ? a.executedArea : a.area
       if (exec <= 0) continue
       const dk = executionDateKey(a)
-      const meta = metaDiaByLabor.get(a.labor.trim().toUpperCase())
+      // Meta de la labor si está configurada; si no, la referencia diaria (15).
+      const metaLabor = metaDiaByLabor.get(a.labor.trim().toUpperCase())
+      const meta = metaLabor && metaLabor > 0 ? metaLabor : metaDiaRef
+      if (metaLabor && metaLabor > 0) usaMetaPorLabor = true
       const esHoy = dk === todayKey
       haQuincena += exec
       haPorDia.set(dk, (haPorDia.get(dk) ?? 0) + exec)
       if (esHoy) haHoy += exec
-      if (meta && meta > 0) {
-        jornadas += exec / meta
-        if (esHoy) jornadasHoy += exec / meta
-      } else {
-        sinMeta = true
-      }
+      jornadas += exec / meta
+      if (esHoy) jornadasHoy += exec / meta
     }
     // Días hábiles transcurridos de la quincena (1-15 o 16-fin), sin domingos.
     const start = dToday >= 16 ? 16 : 1
@@ -638,7 +637,7 @@ export function OperatorView({
       if (new Date(y, mo - 1, d).getDay() !== 0) habiles++
     }
     habiles = Math.max(1, habiles)
-    const pct = metaDiaByLabor.size > 0 ? Math.round((jornadas / habiles) * 100) : 0
+    const pct = Math.round((jornadas / habiles) * 100)
 
     // Promedio de ha por DÍA TRABAJADO (días distintos con ejecución).
     const diasTrabajados = haPorDia.size
@@ -655,15 +654,17 @@ export function OperatorView({
       pctHoy: Math.round(jornadasHoy * 100),
       haQuincena: Number(haQuincena.toFixed(1)),
       haHoy: Number(haHoy.toFixed(1)),
-      hasMetas: metaDiaByLabor.size > 0,
-      sinMeta,
+      // El % quincenal se muestra si hubo trabajo en la quincena (usa la meta por
+      // labor si está, o la referencia diaria de 15 por defecto).
+      mostrarQuincena: haQuincena > 0,
+      usaMetaPorLabor,
       cumpleHoy: jornadasHoy >= 1,
       diasTrabajados,
       promedioDia: Number(promedioDia.toFixed(1)),
       ultimoDiaKey,
       haUltimoDia: Number(haUltimoDia.toFixed(1)),
     }
-  }, [quincenaHistory, metaDiaByLabor, todayKey])
+  }, [quincenaHistory, metaDiaByLabor, todayKey, metaDiaRef])
 
   // El indicador diario (promedio + último día) aplica aunque no haya metas por
   // labor: es ha/día plano contra la referencia (15). Solo requiere que haya
@@ -671,9 +672,8 @@ export function OperatorView({
   const tieneIndicadorDiario = rendimiento.diasTrabajados > 0
 
   const celebrar =
-    rendimiento.hasMetas &&
+    rendimiento.mostrarQuincena &&
     motivacion.activo &&
-    rendimiento.haQuincena > 0 &&
     rendimiento.pct >= (motivacion.umbral || 100)
 
   const historyMonths = useMemo(() => {
@@ -1214,9 +1214,9 @@ export function OperatorView({
 
             {/* Rendimiento del operario: % quincenal (si hay metas por labor) +
                 indicador diario (promedio ha/día y cómo terminó el último día). */}
-            {(rendimiento.hasMetas || tieneIndicadorDiario) && (
+            {(rendimiento.mostrarQuincena || tieneIndicadorDiario) && (
               <div className={`rendimiento-card${celebrar ? ' rendimiento-card--top' : rendimiento.pct >= 70 ? ' rendimiento-card--ok' : ''}`}>
-                {rendimiento.hasMetas && (
+                {rendimiento.mostrarQuincena && (
                   <>
                     <div className="rendimiento-card__head">
                       <div>

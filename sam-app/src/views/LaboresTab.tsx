@@ -19,6 +19,25 @@ export function LaboresTab() {
   const [editTarget, setEditTarget] = useState<Labor | null>(null)
   const [editNombre, setEditNombre] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Labor | null>(null)
+  // Borrador de la meta ha/día por labor (edición en línea).
+  const [metaDrafts, setMetaDrafts] = useState<Record<string, string>>({})
+
+  async function saveMeta(labor: Labor, raw: string) {
+    const trimmed = raw.trim()
+    const meta = trimmed === '' ? null : Number(trimmed)
+    if (meta != null && (isNaN(meta) || meta < 0)) { setError('La meta debe ser un número ≥ 0.'); return }
+    if ((labor.metaHaDia ?? null) === (meta ?? null)) return  // sin cambios
+    setBusy(true); setError('')
+    try {
+      const updated = await updateLabor(labor.id, { metaHaDia: meta })
+      setLabores((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+      setMetaDrafts((prev) => { const n = { ...prev }; delete n[labor.id]; return n })
+      setInfo(meta == null ? `Meta quitada a "${labor.nombre}".` : `Meta de "${labor.nombre}": ${meta} ha/día.`)
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo guardar la meta. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
+  }
 
   const ordenadas = useMemo(
     () =>
@@ -158,7 +177,8 @@ export function LaboresTab() {
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         Crea, renombra, activa o desactiva labores. Las <strong>desactivadas</strong> dejan de
-        aparecer al asignar y al tomar en campo; el histórico que ya las usa se conserva.
+        aparecer al asignar y al tomar en campo; el histórico que ya las usa se conserva. La
+        <strong> meta ha/día</strong> alimenta el rendimiento quincenal del operario (ej. DESPEJE 12).
       </p>
 
       {/* Crear nueva labor */}
@@ -195,6 +215,7 @@ export function LaboresTab() {
             <tr>
               <th>Labor</th>
               <th>Tipo</th>
+              <th>Meta ha/día</th>
               <th>Estado</th>
               <th></th>
             </tr>
@@ -207,6 +228,22 @@ export function LaboresTab() {
                   <span className={`labor-cat-chip ${l.tipo === 'MANUAL' ? 'manual' : 'mec'}`}>
                     {l.tipo === 'MANUAL' ? 'Manual' : 'Mecanizada'}
                   </span>
+                </td>
+                <td>
+                  <input
+                    type="number"
+                    min={0}
+                    step="any"
+                    inputMode="decimal"
+                    className="labor-meta-input"
+                    placeholder="—"
+                    value={metaDrafts[l.id] ?? (l.metaHaDia ?? '')}
+                    onChange={(e) => setMetaDrafts((prev) => ({ ...prev, [l.id]: e.target.value }))}
+                    onBlur={(e) => void saveMeta(l, e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                    disabled={busy}
+                    aria-label={`Meta ha/día de ${l.nombre}`}
+                  />
                 </td>
                 <td>
                   <span className={`labor-cat-chip ${l.activa ? 'on' : 'off'}`}>
@@ -248,7 +285,7 @@ export function LaboresTab() {
             ))}
             {ordenadas.length === 0 && (
               <tr>
-                <td colSpan={4} className="validacion-empty">
+                <td colSpan={5} className="validacion-empty">
                   Sin labores en el catálogo. Agrega la primera arriba.
                 </td>
               </tr>

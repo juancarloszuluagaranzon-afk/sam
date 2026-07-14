@@ -33,13 +33,14 @@ import { PlanillaTab } from './PlanillaTab'
 import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
 import { IngeniosTab } from './IngeniosTab'
+import { MotivacionTab } from './MotivacionTab'
 import { EmpresasTab } from './EmpresasTab'
 import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -942,7 +943,7 @@ export function SupervisorView({
                 </button>
                 {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
-                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
+                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas', 'motivacion'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
                   onClick={() => setCatalogosOpen((v) => !v)}
                   aria-expanded={catalogosOpen}
                 >
@@ -1012,6 +1013,16 @@ export function SupervisorView({
                       <div>
                         <div className="more-sheet__label">Zonas</div>
                         <div className="more-sheet__desc">Zonas de trabajo (se asignan a supervisores)</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'motivacion' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('motivacion'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🏆</span>
+                      <div>
+                        <div className="more-sheet__label">Motivación</div>
+                        <div className="more-sheet__desc">Mensaje/GIF de felicitación por rendimiento</div>
                       </div>
                     </button>
                   </div>
@@ -1282,7 +1293,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1355,7 +1366,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1958,6 +1969,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'ingenios' ? (
           <IngeniosTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'motivacion' ? (
+          <MotivacionTab />
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (

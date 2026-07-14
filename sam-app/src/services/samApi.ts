@@ -19,6 +19,7 @@ import type {
   SolicitudItem,
   Labor,
   LaborTipo,
+  Motivacion,
   MaestroRow,
   Tercero,
   Zona,
@@ -842,14 +843,16 @@ function mapLabor(row: Record<string, unknown>): Labor {
     nombre: String(row.nombre ?? ''),
     activa: row.activa == null ? true : Boolean(row.activa),
     tipo: tipo === 'MANUAL' ? 'MANUAL' : 'MECANIZADA',
+    metaHaDia: row.meta_ha_dia == null ? null : Number(row.meta_ha_dia),
   }
 }
 
 export async function loadLabores(): Promise<{ data: Labor[]; source: Source }> {
   try {
+    // `*` para no romper si la columna meta_ha_dia aún no está migrada.
     const { data, error } = await supabase
       .from('labores_catalogo')
-      .select('id,nombre,activa,tipo')
+      .select('*')
       .order('nombre')
 
     if (error || !data) throw error ?? new Error('empty')
@@ -870,7 +873,7 @@ export async function createLabor(
   const { data, error } = await supabase
     .from('labores_catalogo')
     .insert({ nombre: nombre.trim().toUpperCase(), tipo })
-    .select('id,nombre,activa,tipo')
+    .select('*')
     .single()
 
   if (error || !data) throw error ?? new Error('No se pudo crear la labor')
@@ -881,18 +884,19 @@ export async function createLabor(
 
 export async function updateLabor(
   id: string,
-  patch: { nombre?: string; activa?: boolean; tipo?: LaborTipo },
+  patch: { nombre?: string; activa?: boolean; tipo?: LaborTipo; metaHaDia?: number | null },
 ): Promise<Labor> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
   if (patch.activa !== undefined) payload.activa = patch.activa
   if (patch.tipo !== undefined) payload.tipo = patch.tipo
+  if (patch.metaHaDia !== undefined) payload.meta_ha_dia = patch.metaHaDia
 
   const { data, error } = await supabase
     .from('labores_catalogo')
     .update(payload)
     .eq('id', id)
-    .select('id,nombre,activa,tipo')
+    .select('*')
     .single()
 
   if (error || !data) throw error ?? new Error('No se pudo actualizar la labor')
@@ -905,6 +909,52 @@ export async function deleteLabor(id: string): Promise<void> {
   const { error } = await supabase.from('labores_catalogo').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar la labor')
   void db.labores.delete(id)
+}
+
+// ─────────── Motivación / rendimiento (migración 20260712120000) ───────────
+const MOTIVACION_DEFAULT: Motivacion = { mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true }
+
+function mapMotivacion(row: Record<string, unknown> | null | undefined): Motivacion {
+  if (!row) return MOTIVACION_DEFAULT
+  return {
+    mensaje: row.mensaje ? String(row.mensaje) : MOTIVACION_DEFAULT.mensaje,
+    imagenUrl: row.imagen_url ? String(row.imagen_url) : null,
+    umbral: row.umbral == null ? 100 : Number(row.umbral),
+    activo: row.activo == null ? true : Boolean(row.activo),
+  }
+}
+
+export async function loadMotivacion(): Promise<Motivacion> {
+  try {
+    const { data, error } = await supabase.from('motivacion').select('*').eq('id', 'default').maybeSingle()
+    if (error) throw error
+    return mapMotivacion(data as Record<string, unknown> | null)
+  } catch {
+    return MOTIVACION_DEFAULT
+  }
+}
+
+export async function saveMotivacion(patch: Partial<Motivacion>): Promise<Motivacion> {
+  const payload: Record<string, unknown> = { id: 'default', updated_at: new Date().toISOString() }
+  if (patch.mensaje !== undefined) payload.mensaje = patch.mensaje
+  if (patch.imagenUrl !== undefined) payload.imagen_url = patch.imagenUrl
+  if (patch.umbral !== undefined) payload.umbral = patch.umbral
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { data, error } = await supabase.from('motivacion').upsert(payload).select('*').single()
+  if (error || !data) throw error ?? new Error('No se pudo guardar la motivación')
+  return mapMotivacion(data as Record<string, unknown>)
+}
+
+// Sube la imagen/GIF motivacional al bucket `avatars` y devuelve su URL pública.
+export async function uploadMotivacionImagen(file: File): Promise<string> {
+  const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+  const path = `motivacion/hit-${Date.now()}.${ext}`
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, file, { upsert: true, contentType: file.type || 'image/png' })
+  if (error) throw error
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  return data.publicUrl
 }
 
 // ───────────────────────────────────────────────────────────────────────────

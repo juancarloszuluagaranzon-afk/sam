@@ -131,6 +131,18 @@ export interface Labor {
   nombre: string
   activa: boolean
   tipo: LaborTipo
+  // Meta de hectáreas por día (productividad esperada). Alimenta el KPI de
+  // rendimiento quincenal del operario. null/0 = sin meta (no se mide).
+  metaHaDia?: number | null
+}
+
+// Config del refuerzo motivacional que ve el operario cuando su rendimiento
+// quincenal alcanza el `umbral` (%). La edita el dueño/administración.
+export interface Motivacion {
+  mensaje: string
+  imagenUrl: string | null
+  umbral: number
+  activo: boolean
 }
 
 // Catálogo de ingenios/compradores. El `id` es un slug estable (ej.

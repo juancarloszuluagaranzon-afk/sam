@@ -245,7 +245,7 @@ export function OperatorView({
   handleChangePin,
   onSaveSession,
 }: Props) {
-  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos, ingenios } = useAppData()
+  const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos, ingenios, labores, motivacion } = useAppData()
   // Ingenios activos para los selectores (toma en campo).
   const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
@@ -591,6 +591,64 @@ export function OperatorView({
     ).toLocaleDateString('es-CO', { month: 'long' })
     return `${day >= 16 ? '2da' : '1ra'} quincena de ${monthName}`
   }, [todayKey])
+
+  // ── Rendimiento (productividad) de la quincena — 100% en el cliente ──
+  // Cada labor rinde según su meta ha/día; "jornadas cumplidas" = Σ (ejecutado /
+  // meta). Se compara con los días hábiles transcurridos (excluye domingos) para
+  // saber si va en ritmo de cumplir la quincena. ≥ umbral → felicitación.
+  const metaDiaByLabor = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const l of labores) if (l.metaHaDia != null && l.metaHaDia > 0) m.set(l.nombre.trim().toUpperCase(), l.metaHaDia)
+    return m
+  }, [labores])
+
+  const rendimiento = useMemo(() => {
+    const dToday = Number(todayKey.slice(8, 10))
+    const y = Number(todayKey.slice(0, 4))
+    const mo = Number(todayKey.slice(5, 7))
+    let jornadas = 0
+    let jornadasHoy = 0
+    let haQuincena = 0
+    let haHoy = 0
+    let sinMeta = false
+    for (const a of quincenaHistory) {
+      const exec = a.executedArea > 0 ? a.executedArea : a.area
+      if (exec <= 0) continue
+      const meta = metaDiaByLabor.get(a.labor.trim().toUpperCase())
+      const esHoy = executionDateKey(a) === todayKey
+      haQuincena += exec
+      if (esHoy) haHoy += exec
+      if (meta && meta > 0) {
+        jornadas += exec / meta
+        if (esHoy) jornadasHoy += exec / meta
+      } else {
+        sinMeta = true
+      }
+    }
+    // Días hábiles transcurridos de la quincena (1-15 o 16-fin), sin domingos.
+    const start = dToday >= 16 ? 16 : 1
+    let habiles = 0
+    for (let d = start; d <= dToday; d++) {
+      if (new Date(y, mo - 1, d).getDay() !== 0) habiles++
+    }
+    habiles = Math.max(1, habiles)
+    const pct = Math.round((jornadas / habiles) * 100)
+    return {
+      pct,
+      pctHoy: Math.round(jornadasHoy * 100),
+      haQuincena: Number(haQuincena.toFixed(1)),
+      haHoy: Number(haHoy.toFixed(1)),
+      hasMetas: metaDiaByLabor.size > 0,
+      sinMeta,
+      cumpleHoy: jornadasHoy >= 1,
+    }
+  }, [quincenaHistory, metaDiaByLabor, todayKey])
+
+  const celebrar =
+    rendimiento.hasMetas &&
+    motivacion.activo &&
+    rendimiento.haQuincena > 0 &&
+    rendimiento.pct >= (motivacion.umbral || 100)
 
   const historyMonths = useMemo(() => {
     const set = new Set<string>()
@@ -1136,6 +1194,43 @@ export function OperatorView({
                 <span>{operatorMetrics.inProgress === 1 ? 'labor en progreso' : 'labores en progreso'}</span>
               </article>
             </div>
+
+            {/* Rendimiento de la quincena (productividad). Solo si hay metas. */}
+            {rendimiento.hasMetas && (
+              <div className={`rendimiento-card${celebrar ? ' rendimiento-card--top' : rendimiento.pct >= 70 ? ' rendimiento-card--ok' : ''}`}>
+                <div className="rendimiento-card__head">
+                  <div>
+                    <p className="rendimiento-card__eyebrow">Tu rendimiento · {quincenaLabel}</p>
+                    <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
+                    <p className="rendimiento-card__sub">
+                      {rendimiento.pct >= 100
+                        ? '¡Vas por encima de la meta! 🔥'
+                        : rendimiento.pct >= 70
+                          ? 'Vas bien, sigue así.'
+                          : 'Aún puedes subir el ritmo.'}
+                      {' · '}{rendimiento.haQuincena} ha en la quincena
+                    </p>
+                  </div>
+                  <div className={`rendimiento-hoy${rendimiento.cumpleHoy ? ' rendimiento-hoy--ok' : ''}`}>
+                    <span className="rendimiento-hoy__label">Hoy</span>
+                    <strong>{rendimiento.haHoy} ha</strong>
+                    <span className="rendimiento-hoy__pct">{rendimiento.pctHoy}%{rendimiento.cumpleHoy ? ' ✓' : ''}</span>
+                  </div>
+                </div>
+                <div className="rendimiento-card__bar">
+                  <span style={{ width: `${Math.min(rendimiento.pct, 100)}%` }} />
+                </div>
+
+                {celebrar && (
+                  <div className="rendimiento-hit">
+                    {motivacion.imagenUrl && (
+                      <img src={motivacion.imagenUrl} alt="" className="rendimiento-hit__img" />
+                    )}
+                    <p className="rendimiento-hit__msg">{motivacion.mensaje}</p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="operator-novedades-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="operator-novedad-trigger" onClick={openNovedadModal} style={{ flex: 1 }}>

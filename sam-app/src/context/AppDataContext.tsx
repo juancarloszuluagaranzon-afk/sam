@@ -1,7 +1,7 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
-import type { Assignment, Empresa, Ingenio, Equipment, Insumo, Labor, MaestroRow, Tercero, UserProfile, Zona } from '../domain/sam'
+import type { Assignment, Empresa, Ingenio, Equipment, Insumo, Labor, MaestroRow, Motivacion, Tercero, UserProfile, Zona } from '../domain/sam'
 import { WORKFLOW } from '../data/constants'
 import { INGENIOS as INGENIOS_SEED, setIngenioNamesRuntime } from '../data/ingenios'
 import {
@@ -13,6 +13,7 @@ import {
   loadInsumos,
   loadLabores,
   loadMaestro,
+  loadMotivacion,
   loadTerceros,
   loadZonas,
   runRetention,
@@ -55,6 +56,9 @@ interface AppDataContextValue {
   setZonas: React.Dispatch<React.SetStateAction<Zona[]>>
   insumos: Insumo[]
   setInsumos: React.Dispatch<React.SetStateAction<Insumo[]>>
+  // Config del refuerzo motivacional (rendimiento del operario).
+  motivacion: Motivacion
+  setMotivacion: React.Dispatch<React.SetStateAction<Motivacion>>
   loading: boolean
   setLoading: React.Dispatch<React.SetStateAction<boolean>>
   busy: boolean
@@ -93,6 +97,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [labores, setLabores] = useState<Labor[]>([])
   const [ingenios, setIngenios] = useState<Ingenio[]>(INGENIOS_FALLBACK)
+  const [motivacion, setMotivacion] = useState<Motivacion>({ mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true })
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [terceros, setTerceros] = useState<Tercero[]>([])
   const [zonas, setZonas] = useState<Zona[]>([])
@@ -226,6 +231,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           loadZonas(),
           loadInsumos(),
         ])
+      void loadMotivacion().then((m) => setMotivacion(m))
       startTransition(() => {
         setMaestro(maestroResult.data)
         setAssignments(assignmentResult.data)
@@ -346,6 +352,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         equipment, setEquipment,
         labores, setLabores, activeLabores, fieldLabores,
         ingenios, setIngenios,
+        motivacion, setMotivacion,
         empresas, setEmpresas, terceros, setTerceros,
         zonas, setZonas,
         insumos, setInsumos,

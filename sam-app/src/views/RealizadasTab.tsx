@@ -20,6 +20,7 @@ interface RealizadaGroup {
   dateKey: string // fecha más reciente del corte (para ordenar)
   firstDate: string
   lastDate: string
+  lastTs: string // marca de tiempo más reciente del corte (desempate por hora)
   executed: number
   asignada: number
   operators: string[]
@@ -143,6 +144,10 @@ export function RealizadasTab() {
       const dates = rows.map((r) => executionDateKey(r))
       const firstDate = dates.reduce((a, b) => (a < b ? a : b))
       const lastDate = dates.reduce((a, b) => (a > b ? a : b))
+      const lastTs = rows.reduce((mx, r) => {
+        const ts = ((r.status === 'COMPLETADA' || r.status === 'PARCIAL') && r.finishedAt) ? r.finishedAt : (r.startedAt ?? r.createdAt ?? '')
+        return ts > mx ? ts : mx
+      }, '')
       const completa = rows.every((r) => r.status === 'COMPLETADA') || executed + 0.01 >= asignada
       groups.push({
         key: `${rep.suerteCode}|${rep.labor.trim().toUpperCase()}|${firstDate}`,
@@ -154,6 +159,7 @@ export function RealizadasTab() {
         dateKey: lastDate,
         firstDate,
         lastDate,
+        lastTs,
         executed,
         asignada,
         operators,
@@ -188,11 +194,13 @@ export function RealizadasTab() {
       }
       if (cluster.length) build(cluster)
     }
-    // 3) Orden: hacienda alfabético → fecha más reciente desc → suerte.
+    // 3) Orden: LA ÚLTIMA REALIZADA PRIMERO (marca de tiempo desc); luego
+    //    hacienda y suerte como desempate. El cliente quiere ver siempre lo más
+    //    reciente arriba, no el orden alfabético.
     groups.sort((a, b) => {
+      if (a.lastTs !== b.lastTs) return a.lastTs < b.lastTs ? 1 : -1
       const h = a.haciendaName.localeCompare(b.haciendaName, 'es', { sensitivity: 'base' })
       if (h !== 0) return h
-      if (a.dateKey !== b.dateKey) return b.dateKey.localeCompare(a.dateKey)
       return a.suerte.localeCompare(b.suerte, undefined, { numeric: true })
     })
     return groups

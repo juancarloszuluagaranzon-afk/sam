@@ -738,12 +738,18 @@ export function OperatorView({
     return misNovedades.filter((n) => n.fecha >= start && n.fecha <= end)
   }, [misNovedades, historyMonth, historyPeriod])
 
-  // Labores cerradas + novedades, intercaladas por fecha (más reciente primero).
+  // Labores cerradas + novedades, intercaladas por MARCA DE TIEMPO (más reciente
+  // primero). Antes ordenaba solo por día → dentro del mismo día quedaban en
+  // desorden. Ahora desempata por hora (fin de la labor / inicio / creación).
   const historyItems = useMemo(() => {
-    const items: Array<{ date: string; labor?: Assignment; nov?: OperarioNovedad }> = []
-    for (const a of filteredHistory) items.push({ date: executionDateKey(a) || '', labor: a })
-    for (const n of historyNovedades) items.push({ date: n.fecha, nov: n })
-    return items.sort((a, b) => (a.date < b.date ? 1 : -1))
+    const execTs = (a: Assignment): string =>
+      ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.finishedAt) ? a.finishedAt
+        : a.startedAt ? a.startedAt : (a.createdAt ?? '')
+    const items: Array<{ date: string; ts: string; labor?: Assignment; nov?: OperarioNovedad }> = []
+    for (const a of filteredHistory) items.push({ date: executionDateKey(a) || '', ts: execTs(a), labor: a })
+    // La novedad no tiene hora; la ubicamos al mediodía de su día.
+    for (const n of historyNovedades) items.push({ date: n.fecha, ts: `${n.fecha}T12:00:00`, nov: n })
+    return items.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0))
   }, [filteredHistory, historyNovedades])
 
   // Búsqueda libre del Historial: filtra la LISTA por hacienda/suerte/labor (y

@@ -181,6 +181,12 @@ function AppContent() {
       }
       return true
     })
+      // Más reciente primero (última asignada/ejecutada arriba), por HORA.
+      .sort((a, b) => {
+        const ta = ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.finishedAt) ? a.finishedAt : (a.startedAt ?? a.createdAt ?? '')
+        const tb = ((b.status === 'COMPLETADA' || b.status === 'PARCIAL') && b.finishedAt) ? b.finishedAt : (b.startedAt ?? b.createdAt ?? '')
+        return ta < tb ? 1 : ta > tb ? -1 : 0
+      })
   }, [assignments, operatorFilter, statusFilter, haciendaFilter, ingenioFilter, laborSearch, maestro, todayKey, session])
 
   const haciendaFilterOptions = useMemo(() => {
@@ -270,7 +276,14 @@ function AppContent() {
         }
         return true
       })
-      .sort((a, b) => executionDateKey(b).localeCompare(executionDateKey(a)))
+      // Más reciente primero, desempatando por HORA (fin de labor / inicio /
+      // creación), no solo por día — así arriba siempre está lo último.
+      .sort((a, b) => {
+        const ta = ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.finishedAt) ? a.finishedAt : (a.startedAt ?? a.createdAt ?? '')
+        const tb = ((b.status === 'COMPLETADA' || b.status === 'PARCIAL') && b.finishedAt) ? b.finishedAt : (b.startedAt ?? b.createdAt ?? '')
+        if (ta !== tb) return ta < tb ? 1 : -1
+        return executionDateKey(b).localeCompare(executionDateKey(a))
+      })
   }, [assignments, reportFilters, todayKey, maestro, session])
 
   const handleChangePin = async (e: FormEvent) => {

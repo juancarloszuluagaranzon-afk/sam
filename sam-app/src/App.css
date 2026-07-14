@@ -6006,6 +6006,8 @@ td.planilla-revisada {
 .planilla-nov--cn { color: #8a5a2b; }  /* Camioneta noche — mismo color */
 .planilla-nov--mv { color: #c2410c; }  /* Máquina varada */
 .planilla-nov--f { color: #b91c1c; font-weight: 800; }  /* Falta sin justa causa */
+.planilla-nov--ov { color: #7c3aed; }  /* Oficios varios */
+.planilla-nov--mt { color: #0369a1; }  /* Máquina en traslado */
 
 /* Casilla VACÍA hasta hoy (sin área, sin novedad, sin resaltado): amarillo =
    "falta por registrar". `td.` para ganarle al fondo de .planilla-today. */

@@ -15,6 +15,7 @@ export function MotivacionTab() {
 
   const [mensaje, setMensaje] = useState(motivacion.mensaje)
   const [umbral, setUmbral] = useState(String(motivacion.umbral))
+  const [metaDiaRef, setMetaDiaRef] = useState(String(motivacion.metaDiaRef))
   const [activo, setActivo] = useState(motivacion.activo)
   const [imagenUrl, setImagenUrl] = useState<string | null>(motivacion.imagenUrl)
   const [subiendo, setSubiendo] = useState(false)
@@ -48,10 +49,12 @@ export function MotivacionTab() {
   async function guardar() {
     const u = Number(umbral)
     if (isNaN(u) || u <= 0) { setError('El umbral debe ser un número mayor a 0 (ej. 100).'); return }
+    const ref = Number(metaDiaRef)
+    if (isNaN(ref) || ref <= 0) { setError('La meta diaria de referencia debe ser un número mayor a 0 (ej. 15).'); return }
     setBusy(true)
     setError('')
     try {
-      const saved = await saveMotivacion({ mensaje: mensaje.trim(), umbral: u, activo, imagenUrl })
+      const saved = await saveMotivacion({ mensaje: mensaje.trim(), umbral: u, metaDiaRef: ref, activo, imagenUrl })
       setMotivacion(saved)
       setInfo('Motivación guardada.')
     } catch (err) {
@@ -85,6 +88,10 @@ export function MotivacionTab() {
           <label>
             Umbral de felicitación (% de la meta quincenal)
             <input type="number" min={1} step="1" value={umbral} onChange={(e) => setUmbral(e.target.value)} disabled={busy} />
+          </label>
+          <label>
+            Meta diaria de referencia (ha/día para "buen día")
+            <input type="number" min={1} step="any" value={metaDiaRef} onChange={(e) => setMetaDiaRef(e.target.value)} disabled={busy} />
           </label>
           <label className="motiv-check">
             <input type="checkbox" checked={activo} onChange={(e) => setActivo(e.target.checked)} disabled={busy} />
@@ -124,6 +131,18 @@ export function MotivacionTab() {
               </div>
             </div>
             <div className="rendimiento-card__bar"><span style={{ width: '100%' }} /></div>
+            <div className="rendimiento-dia">
+              <div className="rendimiento-dia__item rendimiento-dia__item--ok">
+                <span className="rendimiento-dia__label">Promedio por día</span>
+                <strong>18 ha</strong>
+                <span className="rendimiento-dia__tag">✓ Muy bien (meta {metaDiaRef || 15})</span>
+              </div>
+              <div className="rendimiento-dia__item rendimiento-dia__item--ok">
+                <span className="rendimiento-dia__label">Último día · lun</span>
+                <strong>20 ha</strong>
+                <span className="rendimiento-dia__tag">🎉 ¡Terminaste muy bien!</span>
+              </div>
+            </div>
             <div className="rendimiento-hit">
               {imagenUrl && <img src={imagenUrl} alt="" className="rendimiento-hit__img" />}
               <p className="rendimiento-hit__msg">{mensaje || '¡Vas muy bien! Sigue así 💪'}</p>

@@ -912,7 +912,7 @@ export async function deleteLabor(id: string): Promise<void> {
 }
 
 // ─────────── Motivación / rendimiento (migración 20260712120000) ───────────
-const MOTIVACION_DEFAULT: Motivacion = { mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true }
+const MOTIVACION_DEFAULT: Motivacion = { mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true, metaDiaRef: 15 }
 
 function mapMotivacion(row: Record<string, unknown> | null | undefined): Motivacion {
   if (!row) return MOTIVACION_DEFAULT
@@ -921,6 +921,7 @@ function mapMotivacion(row: Record<string, unknown> | null | undefined): Motivac
     imagenUrl: row.imagen_url ? String(row.imagen_url) : null,
     umbral: row.umbral == null ? 100 : Number(row.umbral),
     activo: row.activo == null ? true : Boolean(row.activo),
+    metaDiaRef: row.meta_dia_ref == null ? 15 : Number(row.meta_dia_ref),
   }
 }
 
@@ -940,6 +941,7 @@ export async function saveMotivacion(patch: Partial<Motivacion>): Promise<Motiva
   if (patch.imagenUrl !== undefined) payload.imagen_url = patch.imagenUrl
   if (patch.umbral !== undefined) payload.umbral = patch.umbral
   if (patch.activo !== undefined) payload.activo = patch.activo
+  if (patch.metaDiaRef !== undefined) payload.meta_dia_ref = patch.metaDiaRef
   const { data, error } = await supabase.from('motivacion').upsert(payload).select('*').single()
   if (error || !data) throw error ?? new Error('No se pudo guardar la motivación')
   return mapMotivacion(data as Record<string, unknown>)

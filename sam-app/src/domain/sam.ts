@@ -143,6 +143,9 @@ export interface Motivacion {
   imagenUrl: string | null
   umbral: number
   activo: boolean
+  // Referencia de ha/día para el indicador diario (promedio y último día). Un
+  // día con ≥ este valor se considera "buen día" (default 15).
+  metaDiaRef: number
 }
 
 // Catálogo de ingenios/compradores. El `id` es un slug estable (ej.

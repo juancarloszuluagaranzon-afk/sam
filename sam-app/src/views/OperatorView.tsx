@@ -602,6 +602,8 @@ export function OperatorView({
     return m
   }, [labores])
 
+  const metaDiaRef = motivacion.metaDiaRef > 0 ? motivacion.metaDiaRef : 15
+
   const rendimiento = useMemo(() => {
     const dToday = Number(todayKey.slice(8, 10))
     const y = Number(todayKey.slice(0, 4))
@@ -611,12 +613,16 @@ export function OperatorView({
     let haQuincena = 0
     let haHoy = 0
     let sinMeta = false
+    // ha ejecutadas por DÍA (para promedio diario y "último día"), raw ha.
+    const haPorDia = new Map<string, number>()
     for (const a of quincenaHistory) {
       const exec = a.executedArea > 0 ? a.executedArea : a.area
       if (exec <= 0) continue
+      const dk = executionDateKey(a)
       const meta = metaDiaByLabor.get(a.labor.trim().toUpperCase())
-      const esHoy = executionDateKey(a) === todayKey
+      const esHoy = dk === todayKey
       haQuincena += exec
+      haPorDia.set(dk, (haPorDia.get(dk) ?? 0) + exec)
       if (esHoy) haHoy += exec
       if (meta && meta > 0) {
         jornadas += exec / meta
@@ -632,7 +638,18 @@ export function OperatorView({
       if (new Date(y, mo - 1, d).getDay() !== 0) habiles++
     }
     habiles = Math.max(1, habiles)
-    const pct = Math.round((jornadas / habiles) * 100)
+    const pct = metaDiaByLabor.size > 0 ? Math.round((jornadas / habiles) * 100) : 0
+
+    // Promedio de ha por DÍA TRABAJADO (días distintos con ejecución).
+    const diasTrabajados = haPorDia.size
+    const promedioDia = diasTrabajados > 0 ? haQuincena / diasTrabajados : 0
+    // Último día trabajado ANTES de hoy (cómo terminó "el día anterior").
+    let ultimoDiaKey = ''
+    for (const k of haPorDia.keys()) {
+      if (k < todayKey && k > ultimoDiaKey) ultimoDiaKey = k
+    }
+    const haUltimoDia = ultimoDiaKey ? (haPorDia.get(ultimoDiaKey) ?? 0) : 0
+
     return {
       pct,
       pctHoy: Math.round(jornadasHoy * 100),
@@ -641,8 +658,17 @@ export function OperatorView({
       hasMetas: metaDiaByLabor.size > 0,
       sinMeta,
       cumpleHoy: jornadasHoy >= 1,
+      diasTrabajados,
+      promedioDia: Number(promedioDia.toFixed(1)),
+      ultimoDiaKey,
+      haUltimoDia: Number(haUltimoDia.toFixed(1)),
     }
   }, [quincenaHistory, metaDiaByLabor, todayKey])
+
+  // El indicador diario (promedio + último día) aplica aunque no haya metas por
+  // labor: es ha/día plano contra la referencia (15). Solo requiere que haya
+  // trabajado algún día en la quincena.
+  const tieneIndicadorDiario = rendimiento.diasTrabajados > 0
 
   const celebrar =
     rendimiento.hasMetas &&
@@ -1195,31 +1221,60 @@ export function OperatorView({
               </article>
             </div>
 
-            {/* Rendimiento de la quincena (productividad). Solo si hay metas. */}
-            {rendimiento.hasMetas && (
+            {/* Rendimiento del operario: % quincenal (si hay metas por labor) +
+                indicador diario (promedio ha/día y cómo terminó el último día). */}
+            {(rendimiento.hasMetas || tieneIndicadorDiario) && (
               <div className={`rendimiento-card${celebrar ? ' rendimiento-card--top' : rendimiento.pct >= 70 ? ' rendimiento-card--ok' : ''}`}>
-                <div className="rendimiento-card__head">
-                  <div>
-                    <p className="rendimiento-card__eyebrow">Tu rendimiento · {quincenaLabel}</p>
-                    <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
-                    <p className="rendimiento-card__sub">
-                      {rendimiento.pct >= 100
-                        ? '¡Vas por encima de la meta! 🔥'
-                        : rendimiento.pct >= 70
-                          ? 'Vas bien, sigue así.'
-                          : 'Aún puedes subir el ritmo.'}
-                      {' · '}{rendimiento.haQuincena} ha en la quincena
-                    </p>
+                {rendimiento.hasMetas && (
+                  <>
+                    <div className="rendimiento-card__head">
+                      <div>
+                        <p className="rendimiento-card__eyebrow">Tu rendimiento · {quincenaLabel}</p>
+                        <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
+                        <p className="rendimiento-card__sub">
+                          {rendimiento.pct >= 100
+                            ? '¡Vas por encima de la meta! 🔥'
+                            : rendimiento.pct >= 70
+                              ? 'Vas bien, sigue así.'
+                              : 'Aún puedes subir el ritmo.'}
+                          {' · '}{rendimiento.haQuincena} ha en la quincena
+                        </p>
+                      </div>
+                      <div className={`rendimiento-hoy${rendimiento.cumpleHoy ? ' rendimiento-hoy--ok' : ''}`}>
+                        <span className="rendimiento-hoy__label">Hoy</span>
+                        <strong>{rendimiento.haHoy} ha</strong>
+                        <span className="rendimiento-hoy__pct">{rendimiento.pctHoy}%{rendimiento.cumpleHoy ? ' ✓' : ''}</span>
+                      </div>
+                    </div>
+                    <div className="rendimiento-card__bar">
+                      <span style={{ width: `${Math.min(rendimiento.pct, 100)}%` }} />
+                    </div>
+                  </>
+                )}
+
+                {/* Indicador DIARIO: promedio por día + último día trabajado. */}
+                {tieneIndicadorDiario && (
+                  <div className="rendimiento-dia">
+                    <div className={`rendimiento-dia__item${rendimiento.promedioDia >= metaDiaRef ? ' rendimiento-dia__item--ok' : ''}`}>
+                      <span className="rendimiento-dia__label">Promedio por día</span>
+                      <strong>{rendimiento.promedioDia} ha</strong>
+                      <span className="rendimiento-dia__tag">
+                        {rendimiento.promedioDia >= metaDiaRef ? `✓ Muy bien (meta ${metaDiaRef})` : `meta ${metaDiaRef} ha/día`}
+                      </span>
+                    </div>
+                    {rendimiento.ultimoDiaKey && (
+                      <div className={`rendimiento-dia__item${rendimiento.haUltimoDia >= metaDiaRef ? ' rendimiento-dia__item--ok' : ''}`}>
+                        <span className="rendimiento-dia__label">
+                          Último día · {new Date(`${rendimiento.ultimoDiaKey}T12:00:00`).toLocaleDateString('es-CO', { weekday: 'short', day: '2-digit', month: 'short' })}
+                        </span>
+                        <strong>{rendimiento.haUltimoDia} ha</strong>
+                        <span className="rendimiento-dia__tag">
+                          {rendimiento.haUltimoDia >= metaDiaRef ? '🎉 ¡Terminaste muy bien!' : 'Puedes subir mañana'}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                  <div className={`rendimiento-hoy${rendimiento.cumpleHoy ? ' rendimiento-hoy--ok' : ''}`}>
-                    <span className="rendimiento-hoy__label">Hoy</span>
-                    <strong>{rendimiento.haHoy} ha</strong>
-                    <span className="rendimiento-hoy__pct">{rendimiento.pctHoy}%{rendimiento.cumpleHoy ? ' ✓' : ''}</span>
-                  </div>
-                </div>
-                <div className="rendimiento-card__bar">
-                  <span style={{ width: `${Math.min(rendimiento.pct, 100)}%` }} />
-                </div>
+                )}
 
                 {celebrar && (
                   <div className="rendimiento-hit">

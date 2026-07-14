@@ -97,7 +97,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [labores, setLabores] = useState<Labor[]>([])
   const [ingenios, setIngenios] = useState<Ingenio[]>(INGENIOS_FALLBACK)
-  const [motivacion, setMotivacion] = useState<Motivacion>({ mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true })
+  const [motivacion, setMotivacion] = useState<Motivacion>({ mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true, metaDiaRef: 15 })
   const [empresas, setEmpresas] = useState<Empresa[]>([])
   const [terceros, setTerceros] = useState<Tercero[]>([])
   const [zonas, setZonas] = useState<Zona[]>([])

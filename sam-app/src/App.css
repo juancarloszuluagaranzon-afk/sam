@@ -784,9 +784,9 @@
 
 /* ── Rendimiento quincenal del operario (motivación por productividad) ── */
 .rendimiento-card {
-  border-radius: 16px;
-  padding: 16px 18px;
-  margin-bottom: 14px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
   background: var(--color-bg-elevated);
   border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
 }
@@ -799,19 +799,20 @@
 }
 .rendimiento-card__head {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
 }
+.rendimiento-card__headtext { min-width: 0; }
 .rendimiento-card__eyebrow {
   margin: 0;
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  opacity: 0.75;
+  letter-spacing: 0.03em;
+  opacity: 0.8;
+  font-weight: 700;
 }
-.rendimiento-card__pct { font-size: 2.4rem; font-weight: 900; line-height: 1.05; }
-.rendimiento-card__sub { margin: 2px 0 0; font-size: 0.86rem; opacity: 0.9; }
+.rendimiento-card__pct { font-size: 1.9rem; font-weight: 900; line-height: 1; flex-shrink: 0; }
+.rendimiento-card__sub { margin: 2px 0 0; font-size: 0.82rem; font-weight: 700; opacity: 0.95; }
 .rendimiento-hoy {
   text-align: center;
   background: rgba(0, 0, 0, 0.05);
@@ -831,11 +832,11 @@
 :root[data-theme="dark"] .rendimiento-hoy--ok { color: #7fd6a0; }
 
 .rendimiento-card__bar {
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.1);
   overflow: hidden;
-  margin-top: 12px;
+  margin-top: 10px;
 }
 .rendimiento-card--top .rendimiento-card__bar { background: rgba(255, 255, 255, 0.25); }
 .rendimiento-card__bar span {
@@ -850,20 +851,20 @@
 .rendimiento-hit {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-top: 14px;
-  padding-top: 14px;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.25);
 }
 .rendimiento-hit__img {
-  width: 72px;
-  height: 72px;
+  width: 48px;
+  height: 48px;
   object-fit: cover;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 2px solid rgba(255, 255, 255, 0.6);
   flex-shrink: 0;
 }
-.rendimiento-hit__msg { margin: 0; font-size: 1.02rem; font-weight: 800; }
+.rendimiento-hit__msg { margin: 0; font-size: 0.9rem; font-weight: 800; }
 
 /* Indicador diario: promedio por día + último día trabajado, SIEMPRE lado a
    lado en una sola fila (incluso en móvil angosto). */
@@ -871,16 +872,15 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 10px;
 }
-.rendimiento-card__head + .rendimiento-dia { margin-top: 14px; }
 .rendimiento-dia__item {
   background: rgba(0, 0, 0, 0.05);
-  border-radius: 12px;
-  padding: 9px 10px;
+  border-radius: 10px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
 }
 .rendimiento-card--top .rendimiento-dia__item { background: rgba(255, 255, 255, 0.16); }
@@ -893,7 +893,7 @@
   opacity: 0.75;
   line-height: 1.15;
 }
-.rendimiento-dia__item strong { font-size: 1.2rem; font-weight: 900; line-height: 1.1; }
+.rendimiento-dia__item strong { font-size: 1.1rem; font-weight: 900; line-height: 1.1; }
 .rendimiento-dia__tag { font-size: 0.72rem; font-weight: 700; line-height: 1.15; }
 .rendimiento-dia__item--ok .rendimiento-dia__tag { color: #166534; }
 .rendimiento-card--top .rendimiento-dia__item--ok .rendimiento-dia__tag { color: #fff; }

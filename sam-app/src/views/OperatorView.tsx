@@ -1219,22 +1219,12 @@ export function OperatorView({
                 {rendimiento.mostrarQuincena && (
                   <>
                     <div className="rendimiento-card__head">
-                      <div>
-                        <p className="rendimiento-card__eyebrow">Tu rendimiento · {quincenaLabel}</p>
-                        <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
+                      <div className="rendimiento-card__pct">{rendimiento.pct}%</div>
+                      <div className="rendimiento-card__headtext">
+                        <p className="rendimiento-card__eyebrow">Tu quincena · {rendimiento.haQuincena} ha</p>
                         <p className="rendimiento-card__sub">
-                          {rendimiento.pct >= 100
-                            ? '¡Vas por encima de la meta! 🔥'
-                            : rendimiento.pct >= 70
-                              ? 'Vas bien, sigue así.'
-                              : 'Aún puedes subir el ritmo.'}
-                          {' · '}{rendimiento.haQuincena} ha en la quincena
+                          {rendimiento.pct >= 100 ? '¡Por encima de la meta! 🔥' : rendimiento.pct >= 70 ? 'Vas bien 👍' : 'Sube el ritmo'}
                         </p>
-                      </div>
-                      <div className={`rendimiento-hoy${rendimiento.cumpleHoy ? ' rendimiento-hoy--ok' : ''}`}>
-                        <span className="rendimiento-hoy__label">Hoy</span>
-                        <strong>{rendimiento.haHoy} ha</strong>
-                        <span className="rendimiento-hoy__pct">{rendimiento.pctHoy}%{rendimiento.cumpleHoy ? ' ✓' : ''}</span>
                       </div>
                     </div>
                     <div className="rendimiento-card__bar">

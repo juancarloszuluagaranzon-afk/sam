@@ -21,4 +21,11 @@ ALTER TABLE public.insumos_solicitudes
   ADD COLUMN IF NOT EXISTS conforme          boolean,
   ADD COLUMN IF NOT EXISTS confirmacion_nota text;
 
+-- Cantidad REALMENTE recibida por ítem (la rectifica el operario al reportar
+-- "Llegó menos cantidad"). La diferencia vs cantidad_despachada genera una
+-- DEVOLUCIÓN al kardex (evento nuevo, el despacho original no se toca) y el
+-- consumo queda por lo recibido.
+ALTER TABLE public.insumos_solicitud_items
+  ADD COLUMN IF NOT EXISTS cantidad_recibida numeric;
+
 NOTIFY pgrst, 'reload schema';

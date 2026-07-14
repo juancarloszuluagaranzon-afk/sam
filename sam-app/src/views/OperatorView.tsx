@@ -338,17 +338,44 @@ export function OperatorView({
   // Solicitud para la que se está reportando un problema (abre mini-modal).
   const [problemaSol, setProblemaSol] = useState<SolicitudInsumo | null>(null)
   const [problemaMotivo, setProblemaMotivo] = useState('')
+  // Cantidad recibida rectificada por ítem (key = item.id). Solo aplica al
+  // motivo "Llegó menos cantidad"; con "No recibí nada" todo va en 0.
+  const [problemaCant, setProblemaCant] = useState<Record<string, string>>({})
   const PROBLEMA_MOTIVOS = ['Llegó menos cantidad', 'Otro producto', 'Máquina equivocada', 'No recibí nada']
+
+  const despachadaDe = (it: { cantidad: number; cantidadDespachada?: number }) =>
+    it.cantidadDespachada ?? it.cantidad
 
   async function confirmarSol(s: SolicitudInsumo, conforme: boolean, nota?: string) {
     if (!session) return
+    // Rectificación de cantidades: "Llegó menos" usa lo digitado; "No recibí
+    // nada" manda 0 en todo. La diferencia vuelve al inventario (devolución).
+    let items: { itemId?: string; insumoId?: string; insumoNombre: string; unidad: string; cantidadDespachada: number; cantidadRecibida: number }[] | undefined
+    if (!conforme && (nota === 'Llegó menos cantidad' || nota === 'No recibí nada')) {
+      items = s.items.map((it) => ({
+        itemId: it.id,
+        insumoId: it.insumoId,
+        insumoNombre: it.insumoNombre,
+        unidad: it.unidad,
+        cantidadDespachada: despachadaDe(it),
+        cantidadRecibida:
+          nota === 'No recibí nada'
+            ? 0
+            : Math.max(0, Math.min(Number(problemaCant[it.id ?? ''] ?? despachadaDe(it)) || 0, despachadaDe(it))),
+      }))
+      if (nota === 'Llegó menos cantidad' && items.every((it) => it.cantidadRecibida >= it.cantidadDespachada)) {
+        setError('Baja la cantidad del insumo que llegó incompleto (o cancela si recibiste todo).')
+        return
+      }
+    }
     setConfirmandoSol(true)
     setError('')
     try {
-      await confirmarRecepcion({ solicitudId: s.id, operarioId: session.id, conforme, nota })
+      await confirmarRecepcion({ solicitudId: s.id, operarioId: session.id, conforme, nota, equipoCodigo: s.equipoCodigo, items })
       setInfo(conforme ? 'Recepción confirmada. ¡Gracias!' : 'Problema reportado. El supervisor de insumos lo revisará.')
       setProblemaSol(null)
       setProblemaMotivo('')
+      setProblemaCant({})
       void refreshMisSolicitudes()
     } catch {
       setError('No se pudo enviar la confirmación. Revisa la conexión e inténtalo de nuevo.')
@@ -924,13 +951,54 @@ export function OperatorView({
                   key={m}
                   type="button"
                   className={`realizadas-seg__btn ${problemaMotivo === m ? 'is-active' : ''}`}
-                  onClick={() => setProblemaMotivo(m)}
+                  onClick={() => {
+                    setProblemaMotivo(m)
+                    // Al elegir "Llegó menos", precargar lo despachado para rectificar.
+                    if (m === 'Llegó menos cantidad') {
+                      setProblemaCant(Object.fromEntries(problemaSol.items.map((it) => [it.id ?? '', String(despachadaDe(it))])))
+                    } else {
+                      setProblemaCant({})
+                    }
+                  }}
                   disabled={confirmandoSol}
                 >
                   {m}
                 </button>
               ))}
             </div>
+
+            {problemaMotivo === 'Llegó menos cantidad' && (
+              <div className="problema-cantidades">
+                <p className="subtle-copy" style={{ margin: '0 0 6px' }}>
+                  Corrige cuánto <strong>recibiste realmente</strong> de cada uno:
+                </p>
+                {problemaSol.items.map((it) => (
+                  <div key={it.id} className="problema-cantidades__row">
+                    <span className="problema-cantidades__nombre">{it.insumoNombre}</span>
+                    <span className="problema-cantidades__desp">entregaron {despachadaDe(it)} {it.unidad}</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={despachadaDe(it)}
+                      step="any"
+                      inputMode="decimal"
+                      value={problemaCant[it.id ?? ''] ?? ''}
+                      onChange={(e) => setProblemaCant((prev) => ({ ...prev, [it.id ?? '']: e.target.value }))}
+                      disabled={confirmandoSol}
+                      aria-label={`Cantidad recibida de ${it.insumoNombre}`}
+                    />
+                  </div>
+                ))}
+                <p className="subtle-copy" style={{ margin: '6px 0 0', fontSize: '0.78rem' }}>
+                  La diferencia vuelve al inventario y el consumo queda por lo que recibiste.
+                </p>
+              </div>
+            )}
+            {problemaMotivo === 'No recibí nada' && (
+              <p className="subtle-copy" style={{ color: '#b3261e' }}>
+                Todo lo despachado volverá al inventario y quedará reportado para revisión.
+              </p>
+            )}
             <p className="subtle-copy">El supervisor de insumos verá tu reporte y lo revisará contigo.</p>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setProblemaSol(null)} disabled={confirmandoSol}>Cancelar</button>

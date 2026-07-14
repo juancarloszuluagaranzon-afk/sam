@@ -1224,13 +1224,15 @@ export async function loadKardexDeEquipo(equipoCodigo: string, limit = 500): Pro
   return data.map(mapKardex)
 }
 
-// Carga las SALIDAS del kardex que tienen máquina asignada (para el reporte de
-// consumo por equipo / acumulador de costos por tractor).
+// Carga los movimientos del kardex con máquina asignada (para el reporte de
+// consumo por equipo / acumulador de costos por tractor). Incluye SALIDAS
+// (despachos) y ENTRADAS (devoluciones por diferencia confirmada por el
+// operario) — el consumo neto de la máquina = salidas − devoluciones.
 export async function loadKardexSalidasEquipo(limit = 1000): Promise<InsumoKardex[]> {
   const { data, error } = await supabase
     .from('insumos_kardex')
     .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
-    .eq('tipo', 'SALIDA')
+    .in('tipo', ['SALIDA', 'ENTRADA'])
     .not('equipo_codigo', 'is', null)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -1319,6 +1321,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
       unidad: String(it.unidad ?? ''),
       cantidad: Number(it.cantidad ?? 0),
       cantidadDespachada: it.cantidad_despachada == null ? undefined : Number(it.cantidad_despachada),
+      cantidadRecibida: it.cantidad_recibida == null ? undefined : Number(it.cantidad_recibida),
     })),
   }
 }
@@ -1388,7 +1391,10 @@ export async function updateSolicitudEstado(
 
 // AVAL DEL OPERARIO (fase 4): confirma la recepción de una solicitud ENTREGADA.
 // conforme=true → recibió todo; false → reporta diferencia (nota con el motivo).
-// Solo el operario dispara esto (el despachador nunca puede auto-confirmarse).
+// Si viene `items` (rectificación de cantidades), por cada ítem con recibida <
+// despachada se registra una DEVOLUCIÓN al kardex (ENTRADA con referencia a la
+// solicitud y la misma máquina) — el despacho original NO se toca; el consumo
+// neto queda por lo realmente recibido. Solo el operario dispara esto.
 // Requiere la migración 20260711120000; si no está, falla SOLO esta acción
 // (la carga y el despacho no dependen de las columnas nuevas).
 export async function confirmarRecepcion(input: {
@@ -1396,6 +1402,8 @@ export async function confirmarRecepcion(input: {
   operarioId: string
   conforme: boolean
   nota?: string
+  equipoCodigo?: string
+  items?: { itemId?: string; insumoId?: string; insumoNombre: string; unidad: string; cantidadDespachada: number; cantidadRecibida: number }[]
 }): Promise<void> {
   const { error } = await supabase
     .from('insumos_solicitudes')
@@ -1409,6 +1417,31 @@ export async function confirmarRecepcion(input: {
     .eq('id', input.solicitudId)
     .eq('estado', 'ENTREGADA')
   if (error) throw new Error(error.message || 'No se pudo confirmar la recepción')
+
+  for (const it of input.items ?? []) {
+    // Clamp defensivo: recibida entre 0 y lo despachado.
+    const recibida = Math.max(0, Math.min(Number(it.cantidadRecibida) || 0, it.cantidadDespachada))
+    if (it.itemId) {
+      const { error: eIt } = await supabase
+        .from('insumos_solicitud_items')
+        .update({ cantidad_recibida: recibida })
+        .eq('id', it.itemId)
+      if (eIt) throw new Error(eIt.message || 'No se pudo guardar la cantidad recibida')
+    }
+    const diff = Number((it.cantidadDespachada - recibida).toFixed(2))
+    if (it.insumoId && diff > 0) {
+      // Evento NUEVO de devolución (no se edita la salida original del despacho).
+      await registrarMovimientoInsumo({
+        insumoId: it.insumoId,
+        tipo: 'ENTRADA',
+        cantidad: diff,
+        motivo: `Devolución: operario confirmó ${recibida} de ${it.cantidadDespachada} ${it.unidad}`,
+        referencia: input.solicitudId,
+        creadoPor: input.operarioId,
+        equipoCodigo: input.equipoCodigo,
+      })
+    }
+  }
 }
 
 // Sube una foto de evidencia de despacho al bucket `avatars` (público) y

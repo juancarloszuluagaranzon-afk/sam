@@ -209,6 +209,9 @@ export interface SolicitudItem {
   cantidad: number
   // Cantidad realmente despachada al entregar (fase 3); puede diferir de la pedida.
   cantidadDespachada?: number
+  // Cantidad que el operario CONFIRMÓ haber recibido (fase 4). Si es menor a la
+  // despachada, la diferencia vuelve al inventario como devolución (kardex).
+  cantidadRecibida?: number
 }
 
 export interface SolicitudInsumo {

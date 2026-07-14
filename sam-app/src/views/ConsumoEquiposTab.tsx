@@ -35,14 +35,16 @@ export function ConsumoEquiposTab() {
   }
   useEffect(() => { void refresh() }, [])
 
-  // Agrupa por equipo → insumo → total cantidad.
+  // Agrupa por equipo → insumo → total NETO: SALIDA suma (despacho), ENTRADA
+  // resta (devolución por diferencia confirmada por el operario).
   const grupos = useMemo(() => {
     const byEquipo = new Map<string, { equipo: string; entregas: number; insumos: Map<string, number> }>()
     for (const m of movimientos) {
       if (!m.equipoCodigo) continue
       const g = byEquipo.get(m.equipoCodigo) ?? { equipo: m.equipoCodigo, entregas: 0, insumos: new Map<string, number>() }
-      g.entregas += 1
-      g.insumos.set(m.insumoId, (g.insumos.get(m.insumoId) ?? 0) + m.cantidad)
+      if (m.tipo === 'SALIDA') g.entregas += 1
+      const delta = m.tipo === 'SALIDA' ? m.cantidad : -m.cantidad
+      g.insumos.set(m.insumoId, (g.insumos.get(m.insumoId) ?? 0) + delta)
       byEquipo.set(m.equipoCodigo, g)
     }
     const q = busca.trim().toLowerCase()
@@ -90,7 +92,7 @@ export function ConsumoEquiposTab() {
                   .map(({ insumoId, total, info }) => (
                     <li key={insumoId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                       <span>{info?.nombre ?? insumoId}</span>
-                      <strong>{total} {info?.unidad ?? ''}</strong>
+                      <strong>{Number(total.toFixed(2))} {info?.unidad ?? ''}</strong>
                     </li>
                   ))}
               </ul>

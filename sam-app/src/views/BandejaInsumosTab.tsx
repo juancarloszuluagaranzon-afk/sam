@@ -209,15 +209,22 @@ export function BandejaInsumosTab() {
               </header>
 
               <ul className="sol-card__items">
-                {s.items.map((it) => (
-                  <li key={it.id}>
-                    <span className="sol-card__qty">{it.cantidadDespachada ?? it.cantidad} {it.unidad}</span>
-                    <span className="sol-card__item-name">{it.insumoNombre}</span>
-                    {it.cantidadDespachada != null && it.cantidadDespachada !== it.cantidad && (
-                      <span className="sol-card__qty-orig">pidió {it.cantidad}</span>
-                    )}
-                  </li>
-                ))}
+                {s.items.map((it) => {
+                  const desp = it.cantidadDespachada ?? it.cantidad
+                  const rectificado = it.cantidadRecibida != null && it.cantidadRecibida !== desp
+                  return (
+                    <li key={it.id}>
+                      <span className={`sol-card__qty${rectificado ? ' sol-card__qty--dif' : ''}`}>
+                        {rectificado ? it.cantidadRecibida : desp} {it.unidad}
+                      </span>
+                      <span className="sol-card__item-name">{it.insumoNombre}</span>
+                      {rectificado && <span className="sol-card__qty-orig">despachado {desp}</span>}
+                      {!rectificado && it.cantidadDespachada != null && it.cantidadDespachada !== it.cantidad && (
+                        <span className="sol-card__qty-orig">pidió {it.cantidad}</span>
+                      )}
+                    </li>
+                  )
+                })}
               </ul>
 
               {s.nota && <p className="sol-card__nota">💬 {s.nota}</p>}

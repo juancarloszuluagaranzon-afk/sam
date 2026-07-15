@@ -6009,6 +6009,7 @@ td.planilla-revisada {
 .planilla-nov--ov { color: #7c3aed; }  /* Oficios varios */
 .planilla-nov--mt { color: #0369a1; }  /* Máquina en traslado */
 .planilla-nov--in { color: #be185d; }  /* Incapacidad */
+.planilla-nov--sp { color: #15803d; }  /* Supervisor */
 
 /* Casilla VACÍA hasta hoy (sin área, sin novedad, sin resaltado): amarillo =
    "falta por registrar". `td.` para ganarle al fondo de .planilla-today. */

@@ -34,10 +34,13 @@ descuenta inventario (kardex SALIDA) → costeo por máquina**.
 |---|---|---|
 | `insumos` | catálogo: `id`, `nombre` (unique), `categoria` (`COMBUSTIBLE`/`MATERIAL`), `unidad`, `stock`, `activo` | `20260622120000` |
 | `insumos_kardex` | movimientos: `insumo_id`, `tipo` (`ENTRADA`/`SALIDA`/`AJUSTE`), `cantidad`, `saldo`, `motivo`, `referencia`, `creado_por`, `equipo_codigo`, `created_at` | `20260622120000` + `equipo_codigo` en `20260623120000` |
-| `insumos_solicitudes` | cabecera: `operario_id`, `operario_nombre`, `estado`, `nota`, `zona`, `motivo_rechazo` + entrega: `entregado_en`, `despachado_por`, `ruta`, `evidencia_urls text[]`, `horometro`, `equipo_codigo` | `20260622130000` (+ `...140000` despachos, `...150000` horómetro, `20260623120000` equipo) |
-| `insumos_solicitud_items` | ítems: `solicitud_id`, `insumo_id`, `insumo_nombre` (snapshot), `unidad` (snapshot), `cantidad`, `cantidad_despachada` | `20260622130000` (+ `cantidad_despachada` en `...140000`) |
+| `insumos_solicitudes` | cabecera: `operario_id`, `operario_nombre`, `estado`, `nota`, `zona`, `motivo_rechazo` + entrega: `entregado_en`, `despachado_por`, `ruta`, `evidencia_urls text[]`, `horometro`, `equipo_codigo` + **aval:** `confirmado_en`, `confirmado_por`, `conforme bool`, `confirmacion_nota` | `20260622130000` (+ `...140000` despachos, `...150000` horómetro, `20260623120000` equipo, **`20260711120000` aval**) |
+| `insumos_solicitud_items` | ítems: `solicitud_id`, `insumo_id`, `insumo_nombre` (snapshot), `unidad` (snapshot), `cantidad`, `cantidad_despachada`, **`cantidad_recibida`** | `20260622130000` (+ `cantidad_despachada` en `...140000`, **`cantidad_recibida` en `20260711120000`**) |
 
-**Estados de solicitud:** `PENDIENTE → PROGRAMADA/RECHAZADA`; `ENTREGADA` la pone el despacho.
+**Estados de solicitud:** `PENDIENTE → PROGRAMADA/RECHAZADA`; `ENTREGADA` la pone el despacho. La confirmación del operario (aval) usa **campos sobre ENTREGADA, NO estados nuevos** (mapSolicitud de clientes viejos convierte estados desconocidos en PENDIENTE → un estado nuevo rompería pantallas ya desplegadas).
+
+## Fase 4 — Aval del operario (handshake de 2 partes) [2026-07-11]
+El despachador marca ENTREGADA, pero **SOLO el operario confirma la recepción** (antifraude estructural — proof-of-delivery, investigado en la red). Operario (tab **Activas**): tarjeta amarilla "¿Recibiste estos insumos?" con botones 1-toque **✔ SÍ, RECIBÍ TODO** (`conforme=true`) / **⚠ HUBO UN PROBLEMA** (chips de motivo: Llegó menos/Otro producto/Máquina equivocada/No recibí nada → `conforme=false`). Con **"Llegó menos"** rectifica la **cantidad recibida por ítem** (inputs precargados con lo despachado, clamp 0..despachada; "No recibí nada"=0). `confirmarRecepcion({solicitudId,operarioId,conforme,nota,equipoCodigo,items})` guarda `cantidad_recibida` y por cada diferencia registra **DEVOLUCIÓN al kardex** (ENTRADA, referencia=solicitudId, misma máquina) — el despacho original NO se toca (correcciones = eventos nuevos). Bandeja: badge ✔ Confirmada / ⚠ DIFERENCIA / ⏳ Sin confirmar + filtro "Entregadas". **Consumo por máquina = NETO:** `loadKardexSalidasEquipo` trae SALIDA+ENTRADA con equipo; `ConsumoEquiposTab` resta las ENTRADAs. `loadSolicitudes` cambió a `select('*')` (no rompe si la migración de columnas no está). Pendiente opcional: auto-confirmación 72h + métrica % autoconfirmadas por despachador. Ver [[project-insumos-modulo]].
 
 ## Flujo y archivos
 - **Inventario** (`InsumosInventarioTab`): CRUD de insumos + registrar ENTRADAS
@@ -64,10 +67,13 @@ descuenta inventario (kardex SALIDA) → costeo por máquina**.
 - Kardex: `loadKardex(insumoId?)`, `registrarMovimientoInsumo({insumoId,tipo,cantidad,motivo?,referencia?,creadoPor?,equipoCodigo?})`
   (lee stock → calcula saldo → inserta kardex → actualiza `insumos.stock`; **2 pasos,
   sin transacción** — suficiente para el volumen; si se vuelve crítico, pasar a RPC).
-- Solicitudes: `createSolicitud`, `loadSolicitudes({operarioId?,estados?})` (select
-  ANIDADO de items), `updateSolicitudEstado`, `entregarSolicitud(...)`, `uploadEvidencia`.
-- Costeo: `loadKardexSalidasEquipo()` (todas las SALIDA con equipo) y
+- Solicitudes: `createSolicitud`, `loadSolicitudes({operarioId?,estados?})` (`select('*')`
+  + items anidados), `updateSolicitudEstado`, `entregarSolicitud(...)`, `uploadEvidencia`,
+  **`confirmarRecepcion(...)`** (aval del operario + devolución al kardex).
+- Costeo: `loadKardexSalidasEquipo()` (SALIDA **+ ENTRADA** con equipo → neto) y
   `loadKardexDeEquipo(equipoCodigo)` (de una máquina).
+
+**UI rediseñada [2026-07-14]:** pestañas de `InsumosModule` = tarjetas grandes con ícono+etiqueta+descripción (`.insumos-tab`). Filtros de la Bandeja = píldoras (`.sol-filtro`, activo verde, badge de pendientes). Tarjeta de solicitud estilo "orden de pedido" (`.sol-card`: acento lateral por estado, avatar, chips de cantidad, banner de aval, metadatos como chips). Inventario desaturado (`.inv-row`: chip de stock + acciones en menú `⋯`; crear insumo en modal; filtros píldora).
 
 ## Gotchas
 - **[2026-06-23] Una columna faltante en el `select` de `loadSolicitudes` rompe TODO.**

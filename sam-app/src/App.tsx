@@ -384,10 +384,13 @@ function AppContent() {
         // Área ejecutada = MISMA fórmula que la pantalla: una COMPLETADA/PARCIAL
         // sin área ejecutada registrada cuenta su área planificada (así el Excel
         // cuadra con el Reporte y con lo que se paga). Pendiente/en proceso = ''.
+        // Área ejecutada SOLO para COMPLETADA/PARCIAL. Cualquier otro estado
+        // (pendiente, en proceso, cancelada/RECHAZADA) va vacío → una labor
+        // rechazada nunca aporta área realizada en el Excel.
         'Área Ejec. (ha)':
           (a.status === 'COMPLETADA' || a.status === 'PARCIAL')
             ? (a.executedArea > 0 ? a.executedArea : a.area)
-            : (a.executedArea > 0 ? a.executedArea : ''),
+            : '',
         'Estado': a.status,
         'Cliente': a.cliente === 'ingenios' ? 'Ingenio' : a.cliente === 'proveedores' ? 'Proveedor' : '—',
         'Ingenio': getIngenioName(a, maestro) ?? '—',

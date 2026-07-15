@@ -193,7 +193,10 @@ function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   return WORKFLOW.find((labor) => !completed.includes(labor)) ?? WORKFLOW[0]
 }
 
-function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area'>) {
+function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area' | 'approval'>) {
+  if (assignment.status === 'CANCELADA' && assignment.approval === 'RECHAZADA') {
+    return { label: 'Rechazada', tone: 'cancel' as const }
+  }
   if (assignment.status === 'PARCIAL') {
     return { label: 'Parcial', tone: 'progress' as const }
   }
@@ -619,6 +622,9 @@ export function OperatorView({
     // ha ejecutadas por DÍA (para promedio diario y "último día"), raw ha.
     const haPorDia = new Map<string, number>()
     for (const a of quincenaHistory) {
+      // Solo cuenta lo realmente ejecutado (COMPLETADA/PARCIAL). Una CANCELADA
+      // —incluida una RECHAZADA— nunca suma como área realizada.
+      if (a.status !== 'COMPLETADA' && a.status !== 'PARCIAL') continue
       const exec = a.executedArea > 0 ? a.executedArea : a.area
       if (exec <= 0) continue
       const dk = executionDateKey(a)

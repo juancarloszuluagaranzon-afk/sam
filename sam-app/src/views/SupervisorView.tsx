@@ -131,7 +131,12 @@ function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   return WORKFLOW.find((labor) => !completed.includes(labor)) ?? WORKFLOW[0]
 }
 
-function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area'>) {
+function getStatusMeta(assignment: Pick<Assignment, 'status' | 'executedArea' | 'area' | 'approval'>) {
+  // Una CANCELADA que fue RECHAZADA en aprobación se muestra como "Rechazada"
+  // (auditoría): no cuenta como área, pero se ve distinto de una cancelación normal.
+  if (assignment.status === 'CANCELADA' && assignment.approval === 'RECHAZADA') {
+    return { label: 'Rechazada', tone: 'cancel' as const }
+  }
   if (assignment.status === 'PARCIAL') {
     return { label: 'Parcial', tone: 'progress' as const }
   }

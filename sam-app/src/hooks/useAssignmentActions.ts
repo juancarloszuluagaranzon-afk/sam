@@ -430,6 +430,12 @@ export function useAssignmentActions() {
       approvedAt: now,
       editadoPor: session.id,
     }
+    // RECHAZAR = sacar la labor de TODA parte operativa: pasa a CANCELADA para
+    // que NUNCA cuente como área realizada (todos los conteos ya excluyen
+    // CANCELADA). La fila se conserva con approval=RECHAZADA → queda como
+    // AUDITORÍA (se muestra "Rechazada", no "Cancelada") de que existió y se
+    // rechazó. El área ejecutada se conserva solo como dato del reclamo.
+    if (decision === 'RECHAZADA') payload.status = 'CANCELADA'
     // cliente/zona SOLO si el supervisor los diligenció. Antes se hacía spread
     // crudo de `extra`, así que `zone: null` PISABA una zona ya válida y la labor
     // se caía de los filtros de zona del Tablero/Resumen.
@@ -445,19 +451,17 @@ export function useAssignmentActions() {
           queuedAt: now,
           status: 'pending',
         })
-        setAssignments((current) =>
-          current.map((a) =>
-            a.id === assignment.id
-              ? { ...a, approval: decision, approvedBy: session.id, approvedAt: now, ...(extra ?? {}) }
-              : a,
-          ),
-        )
-        void db.assignments.update(assignment.id, {
+        const localPatch: Partial<Assignment> = {
           approval: decision,
           approvedBy: session.id,
           approvedAt: now,
+          ...(decision === 'RECHAZADA' ? { status: 'CANCELADA' as const } : {}),
           ...(extra ?? {}),
-        })
+        }
+        setAssignments((current) =>
+          current.map((a) => (a.id === assignment.id ? { ...a, ...localPatch } : a)),
+        )
+        void db.assignments.update(assignment.id, localPatch)
         setOutboxCount((c) => c + 1)
         setInfo(
           `Labor ${decision === 'APROBADA' ? 'aprobada' : 'rechazada'} (sin conexion, se sincronizara al recuperar senal).`,

@@ -671,6 +671,25 @@ export function useAssignmentActions() {
       finalPatch.liberada = false
     }
 
+    // COHERENCIA estado↔área (blindaje central): una labor con área ejecutada
+    // > 0 NO puede quedar PENDIENTE ("pendiente" pero con trabajo hecho es
+    // contradictorio y confunde al cliente). Pasaba al editar las hectáreas
+    // ejecutadas desde el historial sin cerrar la labor (updateAssignment
+    // escribe columnas por separado). Si el RESULTADO tendría área>0 y estado
+    // PENDIENTE, se promueve a COMPLETADA (si cubre el área) o PARCIAL, y se
+    // estampa fecha de cierre si falta — así el trabajo real cuenta y el estado
+    // deja de mentir. NO afecta EN_PROCESO (avance real en curso, legítimo).
+    {
+      const execResultante = finalPatch.executedArea !== undefined ? finalPatch.executedArea : assignment.executedArea
+      const statusResultante = finalPatch.status ?? assignment.status
+      if ((execResultante ?? 0) > 0 && statusResultante === 'PENDIENTE') {
+        finalPatch.status = (execResultante ?? 0) + 0.001 >= assignment.area ? 'COMPLETADA' : 'PARCIAL'
+        if (finalPatch.finishedAt == null && assignment.finishedAt == null) {
+          finalPatch.finishedAt = new Date().toISOString()
+        }
+      }
+    }
+
     try {
       if (!isOnline) {
         await db.outbox.add({

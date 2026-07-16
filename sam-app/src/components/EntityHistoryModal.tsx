@@ -1,6 +1,7 @@
 import { memo, useMemo, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
 import { formatTime, executionDateKey, formatExecutionDate } from '../services/samApi'
+import { areaEjecutadaVisible } from '../utils/suerteCycle'
 import { AssignmentDetailModal } from './AssignmentDetailModal'
 
 interface EditPatch {
@@ -212,7 +213,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
           )}
           {filtered.map((a) => {
             const meta = getStatusMeta(a)
-            const display = (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.executedArea > 0 ? a.executedArea : a.area
+            const display = areaEjecutadaVisible(a)
             return (
               <button
                 key={a.id}

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, getIngenioName } from '../services/samApi'
+import { areaEjecutadaVisible } from '../utils/suerteCycle'
 import type { Assignment } from '../domain/sam'
 
 /**
@@ -341,7 +342,7 @@ export function ValidationTab() {
       for (const a of ordered) {
         aoa.push([
           executionDateKey(a), 'AGROMORALES', clienteCorto(a, maestro), '', a.zone ?? '',
-          a.labor, a.haciendaName, a.suerte, a.executedArea > 0 ? a.executedArea : a.area,
+          a.labor, a.haciendaName, a.suerte, areaEjecutadaVisible(a),
           appRowX2(a) ? 'SE FACTURA X2' : '',
           '', a.operatorName, supName(a.supervisorId), '', '', '', a.notes, '', '', '', '',
         ])

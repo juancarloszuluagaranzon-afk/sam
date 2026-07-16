@@ -25,7 +25,7 @@ import {
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, Equipment, InsumoKardex, MaestroRow, UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
-import { isSameCycle } from '../utils/suerteCycle'
+import { isSameCycle, areaEjecutadaVisible } from '../utils/suerteCycle'
 import { ValidationTab } from './ValidationTab'
 import { MaestrosTab } from './MaestrosTab'
 import { FacturacionTab } from './FacturacionTab'
@@ -2853,12 +2853,12 @@ export function SupervisorView({
                       <span className="labor-area">
                         {(() => {
                           const maestroRow = maestro.find((r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte)
-                          const displayed = (assignment.status === 'COMPLETADA' || assignment.status === 'PARCIAL') && assignment.executedArea > 0
-                            ? assignment.executedArea
-                            : assignment.area
-                          return maestroRow
-                            ? `${formatArea(displayed)} / ${formatArea(maestroRow.area)}`
-                            : formatArea(displayed)
+                          // ejec / asignada. La "ejec" solo tiene valor si la labor
+                          // está CERRADA; una PENDIENTE/EN_PROCESO muestra 0.00 (no
+                          // el planificado) para que NO parezca ejecutada.
+                          const ejec = areaEjecutadaVisible(assignment)
+                          const asignada = maestroRow?.area ?? assignment.area
+                          return `${formatArea(ejec)} / ${formatArea(asignada)}`
                         })()}
                       </span>
                     </div>
@@ -2959,7 +2959,7 @@ export function SupervisorView({
                             const m = maestro.find(
                               (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
                             )
-                            const exec = assignment.executedArea > 0 ? assignment.executedArea : assignment.area
+                            const exec = areaEjecutadaVisible(assignment)
                             return `${formatArea(exec)} / ${formatArea(m?.area ?? assignment.area)}`
                           })()}
                         </span>

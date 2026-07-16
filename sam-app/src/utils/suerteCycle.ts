@@ -28,6 +28,19 @@ import type { Assignment } from '../domain/sam'
 
 export const CYCLE_WINDOW_DAYS = 21
 
+// Área EJECUTADA que se debe MOSTRAR en las tarjetas de labor (ej. "ejec /
+// asignada"). Regla de oro: una labor SOLO tiene área ejecutada si está CERRADA
+// (COMPLETADA/PARCIAL). Una PENDIENTE o EN_PROCESO devuelve su ejecutado real
+// (0 si no se ha capturado) — NUNCA el área planificada. Antes las tarjetas
+// mostraban el planificado como si fuera ejecutado en una PENDIENTE (ej.
+// "7.49 / 7.49"), confundiendo al dueño porque parecía hecha estando pendiente.
+export function areaEjecutadaVisible(a: Pick<Assignment, 'status' | 'executedArea' | 'area'>): number {
+  if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') {
+    return a.executedArea > 0 ? a.executedArea : a.area
+  }
+  return a.executedArea > 0 ? a.executedArea : 0
+}
+
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }

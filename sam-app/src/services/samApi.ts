@@ -19,7 +19,6 @@ import type {
   SolicitudItem,
   Labor,
   LaborTipo,
-  MapaConfig,
   Motivacion,
   MaestroRow,
   Tercero,
@@ -151,14 +150,6 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
   }
 }
 
-// Columnas que mapAssignment realmente usa. Los sync (delta y full) las piden
-// explícitas en vez de `select('*')`: recorta ~30-50% del payload más gordo de
-// la app (observaciones largas y columnas no mapeadas viajaban gratis).
-// ⚠️ Solo columnas YA MIGRADAS en producción — agregar aquí una columna que no
-// exista en la BD rompe TODO el sync (lección factura_numero/42703).
-const ASSIGNMENT_COLS =
-  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero'
-
 function mapAssignmentPayload(input: CreateAssignmentInput) {
   return {
     suerte_codigo: `${input.haciendaCode}-${input.suerte}`,
@@ -233,15 +224,11 @@ export async function loadMaestro(): Promise<{
 
     let allData: any[] = []
     let hasMore = true
-    // Server-side max-rows en PostgREST capa el response. Si el VPS tiene
-    // PGRST_DB_MAX_ROWS en 20000+, todo el maestro entra en una request.
-    // ⚠️ LANDMINE corregida: antes `data.length < 20000` se tomaba como "fin",
-    // pero si el server capa a 1000 devuelve 1000 (<20000) y el maestro quedaba
-    // TRUNCADO en silencio a 1000 de ~15K filas. Ahora el offset avanza por lo
-    // realmente recibido y solo se asume fin cuando la página no es múltiplo de
-    // 1000 (ningún cap de PostgREST opera por debajo de 1000 aquí); si es
-    // múltiplo exacto, se pide otra página (a lo sumo 1 request extra vacía).
-    const REQUEST = 20000
+    let page = 0
+    // Server-side max-rows en PostgREST capa el response. Si el VPS sube
+    // PGRST_DB_MAX_ROWS a 20000+, todo el maestro entra en una sola request.
+    // Si sigue capeado a 1000, este loop sigue paginando sin regresion.
+    const limit = 20000
 
     while (hasMore) {
       const { data, error } = await supabase
@@ -250,13 +237,17 @@ export async function loadMaestro(): Promise<{
         .eq('activo', true)
         .order('hacienda')
         .order('suerte')
-        .range(allData.length, allData.length + REQUEST - 1)
+        .range(page * limit, (page + 1) * limit - 1)
 
       if (error) throw error
 
       if (data && data.length > 0) {
         allData = allData.concat(data)
-        hasMore = data.length % 1000 === 0
+        if (data.length < limit) {
+          hasMore = false
+        } else {
+          page++
+        }
       } else {
         hasMore = false
       }
@@ -637,7 +628,7 @@ export async function loadAssignments(): Promise<{
       const sinceTime = new Date(new Date(lastSync).getTime() - 10000).toISOString()
       const { data, error } = await supabase
         .from('asignaciones')
-        .select(ASSIGNMENT_COLS)
+        .select('*')
         .or(`updated_at.gte.${sinceTime},created_at.gte.${sinceTime}`)
         .order('created_at', { ascending: false })
 
@@ -677,8 +668,8 @@ export async function loadAssignments(): Promise<{
     //   2) Las recientes — historial (acotado por el cap).
     // Así una abierta nunca se pierde hasta que se cierre (COMPLETADA) o cancele.
     const [openRes, recentRes] = await Promise.all([
-      supabase.from('asignaciones').select(ASSIGNMENT_COLS).not('estado', 'in', '(COMPLETADA,CANCELADA,FINALIZADO)'),
-      supabase.from('asignaciones').select(ASSIGNMENT_COLS).order('created_at', { ascending: false }),
+      supabase.from('asignaciones').select('*').not('estado', 'in', '(COMPLETADA,CANCELADA,FINALIZADO)'),
+      supabase.from('asignaciones').select('*').order('created_at', { ascending: false }),
     ])
     const error = openRes.error ?? recentRes.error
     const rawRows = [...(openRes.data ?? []), ...(recentRes.data ?? [])]
@@ -918,90 +909,6 @@ export async function deleteLabor(id: string): Promise<void> {
   const { error } = await supabase.from('labores_catalogo').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar la labor')
   void db.labores.delete(id)
-}
-
-// ───────────── Mapas offline (migración 20260717120000) ─────────────
-// Config de mapas para el visor tipo Avenza. Se carga ON-DEMAND al abrir el
-// visor (nunca en el arranque). Los tiles viven en el bucket público de
-// FieldMaps; ASM no genera ni sirve tiles.
-export async function loadMapas(): Promise<MapaConfig[]> {
-  const { data, error } = await supabase
-    .from('mapas')
-    .select('*')
-    .eq('activo', true)
-    .order('nombre')
-  if (error || !data) return []
-  return (data as Record<string, unknown>[]).map((row) => {
-    const b = Array.isArray(row.bounds) ? (row.bounds as number[]) : [0, 0, 0, 0]
-    return {
-      id: String(row.id),
-      nombre: String(row.nombre ?? ''),
-      tilesBase: String(row.tiles_base ?? '').replace(/\/$/, ''),
-      bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])] as [number, number, number, number],
-      minzoom: Number(row.minzoom ?? 10),
-      maxzoom: Number(row.maxzoom ?? 16),
-      activo: row.activo == null ? true : Boolean(row.activo),
-    }
-  })
-}
-
-export async function createMapa(input: {
-  nombre: string
-  tilesBase: string
-  bounds: [number, number, number, number]
-  minzoom: number
-  maxzoom: number
-}): Promise<MapaConfig> {
-  const { data, error } = await supabase
-    .from('mapas')
-    .insert({
-      nombre: input.nombre.trim(),
-      tiles_base: input.tilesBase.trim().replace(/\/$/, ''),
-      bounds: input.bounds,
-      minzoom: input.minzoom,
-      maxzoom: input.maxzoom,
-    })
-    .select('*')
-    .single()
-  if (error) {
-    if (error.code === '23505') throw new Error('Ya existe un mapa con esa URL de tiles.')
-    throw new Error(error.message || 'No se pudo crear el mapa')
-  }
-  const b = Array.isArray(data.bounds) ? (data.bounds as number[]) : input.bounds
-  return {
-    id: String(data.id), nombre: String(data.nombre), tilesBase: String(data.tiles_base),
-    bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])],
-    minzoom: Number(data.minzoom), maxzoom: Number(data.maxzoom), activo: Boolean(data.activo ?? true),
-  }
-}
-
-export async function updateMapa(id: string, patch: { nombre?: string; activo?: boolean }): Promise<void> {
-  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim()
-  if (patch.activo !== undefined) payload.activo = patch.activo
-  const { error } = await supabase.from('mapas').update(payload).eq('id', id)
-  if (error) throw new Error(error.message || 'No se pudo actualizar el mapa')
-}
-
-export async function deleteMapa(id: string): Promise<void> {
-  const { error } = await supabase.from('mapas').delete().eq('id', id)
-  if (error) throw new Error(error.message || 'No se pudo eliminar el mapa')
-}
-
-// Carga TODOS los mapas (incluidos inactivos) para la pestaña de gestión.
-export async function loadMapasAdmin(): Promise<MapaConfig[]> {
-  const { data, error } = await supabase.from('mapas').select('*').order('nombre')
-  if (error || !data) return []
-  return (data as Record<string, unknown>[]).map((row) => {
-    const b = Array.isArray(row.bounds) ? (row.bounds as number[]) : [0, 0, 0, 0]
-    return {
-      id: String(row.id), nombre: String(row.nombre ?? ''),
-      tilesBase: String(row.tiles_base ?? '').replace(/\/$/, ''),
-      bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])] as [number, number, number, number],
-      minzoom: Number(row.minzoom ?? 10), maxzoom: Number(row.maxzoom ?? 16),
-      activo: row.activo == null ? true : Boolean(row.activo),
-    }
-  })
 }
 
 // ─────────── Motivación / rendimiento (migración 20260712120000) ───────────

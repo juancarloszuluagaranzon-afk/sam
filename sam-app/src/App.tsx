@@ -16,7 +16,7 @@ import { db } from './lib/db'
 
 export type ReportPeriod = 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'
 
-type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
+type OperatorTab = 'activas' | 'campo' | 'historial'
 
 // Guarda la sesión real del usuario de SOPORTE mientras impersona a otro rol,
 // para poder volver. Separado de SESSION_KEY (que es la sesión EFECTIVA).
@@ -59,7 +59,7 @@ function AppContent() {
   })
   const [operatorTab, setOperatorTab] = useState<OperatorTab>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
-    const valid: OperatorTab[] = ['activas', 'campo', 'historial', 'mapa']
+    const valid: OperatorTab[] = ['activas', 'campo', 'historial']
     return valid.includes(tab as OperatorTab) ? (tab as OperatorTab) : 'activas'
   })
   // Historial del operario: SIEMPRE abre en el MES ACTUAL + la QUINCENA EN CURSO

@@ -6011,6 +6011,20 @@ td.planilla-revisada {
 .planilla-nov--in { color: #be185d; }  /* Incapacidad */
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
 
+/* Aprobación vencida (>36 h desde el cierre): el supervisor ya no puede aprobar. */
+.aprob-vencida-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #92610a;
+  background: rgba(217, 119, 6, 0.12);
+  border-radius: 999px;
+  padding: 2px 9px;
+  white-space: nowrap;
+}
+:root[data-theme="dark"] .aprob-vencida-badge { color: #f0c34e; background: rgba(217, 119, 6, 0.22); }
+.approve-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
 /* Casilla VACÍA hasta hoy (sin área, sin novedad, sin resaltado): amarillo =
    "falta por registrar". `td.` para ganarle al fondo de .planilla-today. */
 td.planilla-vacio { background: #fef9c3; }

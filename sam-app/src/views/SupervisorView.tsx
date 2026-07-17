@@ -89,6 +89,19 @@ function formatArea(value: number) {
   return `${value.toFixed(2)} ha`
 }
 
+// VENTANA DE APROBACIÓN del supervisor: tiene 36 h desde que la labor se CERRÓ
+// (momento en que entra a "A facturar") para aprobarla. Pasado ese plazo la
+// decisión escala: solo administración/dueño puede aprobarla. Decisión del dueño
+// para que las aprobaciones no se queden colgadas indefinidamente.
+const APROBACION_HORAS = 36
+function horasDesdeCierre(a: Assignment): number {
+  const ref = a.finishedAt ?? a.updatedAt ?? a.createdAt
+  if (!ref) return 0
+  const t = new Date(ref).getTime()
+  if (Number.isNaN(t)) return 0
+  return (Date.now() - t) / 3_600_000
+}
+
 function initials(name: string) {
   return name
     .split(' ')
@@ -1734,14 +1747,17 @@ export function SupervisorView({
               >
                 + Crear asignación
               </button>
-              <button
-                type="button"
-                className="primary-button outline assign-cta-secondary"
-                onClick={() => setIsNewSuerteOpen(true)}
-                title="Crear una suerte que aun no este en el maestro del ingenio"
-              >
-                + Nueva suerte
-              </button>
+              {/* Crear suertes toca el MAESTRO: solo administración/dueño. */}
+              {(session.role === 'administracion' || session.role === 'owner') && (
+                <button
+                  type="button"
+                  className="primary-button outline assign-cta-secondary"
+                  onClick={() => setIsNewSuerteOpen(true)}
+                  title="Crear una suerte que aun no este en el maestro del ingenio"
+                >
+                  + Nueva suerte
+                </button>
+              )}
               <button
                 type="button"
                 className="primary-button outline assign-cta-secondary"
@@ -2209,16 +2225,14 @@ export function SupervisorView({
                                 >
                                   Editar
                                 </button>
-                                {(session.role === 'owner' || session.role === 'administracion') && (
-                                  <button
-                                    type="button"
-                                    className="inline-button maestro-delete-btn"
-                                    onClick={() => { setDeleteReportTarget(a); setError('') }}
-                                    title="Eliminar esta línea (permanente)"
-                                  >
-                                    Eliminar
-                                  </button>
-                                )}
+                                <button
+                                  type="button"
+                                  className="inline-button maestro-delete-btn"
+                                  onClick={() => { setDeleteReportTarget(a); setError('') }}
+                                  title="Eliminar esta línea (permanente)"
+                                >
+                                  Eliminar
+                                </button>
                               </div>
                             </td>
                           )}
@@ -2927,6 +2941,10 @@ export function SupervisorView({
             <p className="subtle-copy" style={{ marginTop: 0 }}>
               Labores <strong>cerradas</strong> (parciales o completas) que esperan tu visto bueno. Revisa el área
               antes de aprobar — una vez aprobadas quedan listas para facturación.
+              {session.role === 'supervisor' && (
+                <> Tienes <strong>{APROBACION_HORAS} horas</strong> desde el cierre para aprobarlas; pasado ese plazo
+                solo administración puede hacerlo.</>
+              )}
             </p>
             {pendingApprovals.length === 0 ? (
               <div className="empty-card" style={{ marginTop: 12 }}>
@@ -2937,6 +2955,10 @@ export function SupervisorView({
               <ul className="labores-list">
                 {pendingApprovals.map((assignment) => {
                   const meta = getStatusMeta(assignment)
+                  // Ventana de 36 h: vencida → solo administración/dueño aprueba.
+                  const vencidaAprob = horasDesdeCierre(assignment) > APROBACION_HORAS
+                  const puedeAprobar =
+                    !vencidaAprob || session.role === 'owner' || session.role === 'administracion'
                   return (
                     <li key={assignment.id} className="labor-item labor-item--tappable" onClick={() => setSelectedLabor(assignment)}>
                       <span className="labor-title">
@@ -2965,10 +2987,25 @@ export function SupervisorView({
                         </span>
                         <span className="subtle-copy">{executionDateKey(assignment)}</span>
                       </div>
+                      {vencidaAprob && (
+                        <span className="aprob-vencida-badge" title={`Pasaron más de ${APROBACION_HORAS} h desde el cierre`}>
+                          ⏳ Vencida · solo administración
+                        </span>
+                      )}
                       <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="approve-btn"
+                          disabled={!puedeAprobar}
+                          title={
+                            puedeAprobar
+                              ? undefined
+                              : `Venció el plazo de ${APROBACION_HORAS} h desde el cierre. Solo administración puede aprobarla.`
+                          }
                           onClick={() => {
+                            if (!puedeAprobar) {
+                              setError(`Esta labor lleva más de ${APROBACION_HORAS} h cerrada: solo administración puede aprobarla.`)
+                              return
+                            }
                             if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
                               setApproveTarget(assignment)
                               setApproveCliente(assignment.cliente ?? '')

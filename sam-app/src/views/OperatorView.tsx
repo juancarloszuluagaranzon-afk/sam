@@ -2036,7 +2036,10 @@ export function OperatorView({
               <div>
                 <div className="field-label-row">
                   <span className="field-label">Suertes</span>
-                  {freeFieldForm.ingenioId && (
+                  {/* Crear suertes toca el MAESTRO: solo administración/dueño.
+                      Los operarios y supervisores ya no pueden (decisión del
+                      dueño: evitar que se ensucie el maestro desde el campo). */}
+                  {freeFieldForm.ingenioId && (session.role === 'administracion' || session.role === 'owner') && (
                     <button
                       type="button"
                       className="inline-button new-suerte-btn"

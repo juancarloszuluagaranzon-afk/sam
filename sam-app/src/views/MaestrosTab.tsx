@@ -177,13 +177,16 @@ export function MaestrosTab() {
           >
             ⬆ Cargue masivo
           </button>
-          <button
-            type="button"
-            className="primary-button outline validacion-export-btn"
-            onClick={() => setIsNewSuerteOpen(true)}
-          >
-            + Nueva suerte
-          </button>
+          {/* Crear suertes toca el MAESTRO: solo administración/dueño. */}
+          {(session?.role === 'administracion' || session?.role === 'owner') && (
+            <button
+              type="button"
+              className="primary-button outline validacion-export-btn"
+              onClick={() => setIsNewSuerteOpen(true)}
+            >
+              + Nueva suerte
+            </button>
+          )}
         </div>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>

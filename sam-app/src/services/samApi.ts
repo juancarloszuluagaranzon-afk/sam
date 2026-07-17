@@ -945,6 +945,65 @@ export async function loadMapas(): Promise<MapaConfig[]> {
   })
 }
 
+export async function createMapa(input: {
+  nombre: string
+  tilesBase: string
+  bounds: [number, number, number, number]
+  minzoom: number
+  maxzoom: number
+}): Promise<MapaConfig> {
+  const { data, error } = await supabase
+    .from('mapas')
+    .insert({
+      nombre: input.nombre.trim(),
+      tiles_base: input.tilesBase.trim().replace(/\/$/, ''),
+      bounds: input.bounds,
+      minzoom: input.minzoom,
+      maxzoom: input.maxzoom,
+    })
+    .select('*')
+    .single()
+  if (error) {
+    if (error.code === '23505') throw new Error('Ya existe un mapa con esa URL de tiles.')
+    throw new Error(error.message || 'No se pudo crear el mapa')
+  }
+  const b = Array.isArray(data.bounds) ? (data.bounds as number[]) : input.bounds
+  return {
+    id: String(data.id), nombre: String(data.nombre), tilesBase: String(data.tiles_base),
+    bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])],
+    minzoom: Number(data.minzoom), maxzoom: Number(data.maxzoom), activo: Boolean(data.activo ?? true),
+  }
+}
+
+export async function updateMapa(id: string, patch: { nombre?: string; activo?: boolean }): Promise<void> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim()
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { error } = await supabase.from('mapas').update(payload).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo actualizar el mapa')
+}
+
+export async function deleteMapa(id: string): Promise<void> {
+  const { error } = await supabase.from('mapas').delete().eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo eliminar el mapa')
+}
+
+// Carga TODOS los mapas (incluidos inactivos) para la pestaña de gestión.
+export async function loadMapasAdmin(): Promise<MapaConfig[]> {
+  const { data, error } = await supabase.from('mapas').select('*').order('nombre')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((row) => {
+    const b = Array.isArray(row.bounds) ? (row.bounds as number[]) : [0, 0, 0, 0]
+    return {
+      id: String(row.id), nombre: String(row.nombre ?? ''),
+      tilesBase: String(row.tiles_base ?? '').replace(/\/$/, ''),
+      bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])] as [number, number, number, number],
+      minzoom: Number(row.minzoom ?? 10), maxzoom: Number(row.maxzoom ?? 16),
+      activo: row.activo == null ? true : Boolean(row.activo),
+    }
+  })
+}
+
 // ─────────── Motivación / rendimiento (migración 20260712120000) ───────────
 const MOTIVACION_DEFAULT: Motivacion = { mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true, metaDiaRef: 15 }
 

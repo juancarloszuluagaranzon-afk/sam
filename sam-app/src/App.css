@@ -6011,6 +6011,15 @@ td.planilla-revisada {
 .planilla-nov--in { color: #be185d; }  /* Incapacidad */
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
 
+/* Formulario "Agregar mapa" (Catálogos → Mapas). */
+.mapa-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  margin-top: 8px;
+}
+.mapa-form-grid label { font-size: 0.8rem; }
+
 /* ── Visor de mapas offline (tipo Avenza) ── */
 .mapa-shell {
   display: flex;

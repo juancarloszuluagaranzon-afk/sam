@@ -196,7 +196,11 @@ export function MapaView() {
             onChange={(e) => setActivo(mapas.find((m) => m.id === e.target.value) ?? null)}
             aria-label="Mapa"
           >
-            {mapas.map((m) => <option key={m.id} value={m.id}>{m.nombre}</option>)}
+            {mapas.map((m) => (
+              <option key={m.id} value={m.id}>
+                {metaDescarga(m.id) ? `✓ ${m.nombre}` : m.nombre}
+              </option>
+            ))}
           </select>
         )}
         <button

@@ -3,6 +3,8 @@ import { useAppData } from '../context/AppDataContext'
 
 // Visor de mapas offline: chunk LAZY — no pesa en el arranque.
 const MapaLazy = lazy(() => import('./MapaView'))
+// Gestión de mapas (Catálogos → Mapas): también lazy (comparte chunk de mapaOffline).
+const MapasCatLazy = lazy(() => import('./MapasTab'))
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
@@ -43,7 +45,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -964,7 +966,7 @@ export function SupervisorView({
                 </button>
                 {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
-                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas', 'motivacion'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
+                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas', 'motivacion', 'mapascat'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
                   onClick={() => setCatalogosOpen((v) => !v)}
                   aria-expanded={catalogosOpen}
                 >
@@ -1044,6 +1046,16 @@ export function SupervisorView({
                       <div>
                         <div className="more-sheet__label">Motivación</div>
                         <div className="more-sheet__desc">Mensaje/GIF de felicitación por rendimiento</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'mapascat' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('mapascat'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🗺️</span>
+                      <div>
+                        <div className="more-sheet__label">Mapas</div>
+                        <div className="more-sheet__desc">Agregar / ocultar mapas del visor offline</div>
                       </div>
                     </button>
                   </div>
@@ -2012,6 +2024,12 @@ export function SupervisorView({
         {supervisorTab === 'mapa' ? (
           <Suspense fallback={<section className="panel-card"><p className="muted-text">Cargando mapa…</p></section>}>
             <MapaLazy />
+          </Suspense>
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
+          <Suspense fallback={<section className="panel-card"><p className="muted-text">Cargando…</p></section>}>
+            <MapasCatLazy />
           </Suspense>
         ) : null}
 

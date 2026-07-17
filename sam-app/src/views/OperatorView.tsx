@@ -1,4 +1,8 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState, type FormEvent } from 'react'
+
+// Visor de mapas offline: chunk LAZY — no pesa en el arranque; solo se baja
+// (y queda precacheado por el SW) al abrir la pestaña Mapa.
+const MapaLazy = lazy(() => import('./MapaView'))
 import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useFreeFieldForm } from '../hooks/useFreeFieldForm'
@@ -18,7 +22,7 @@ import type { Assignment, UserProfile } from '../domain/sam'
 import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo } from '../domain/sam'
 
-type OperatorTab = 'activas' | 'campo' | 'historial'
+type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
 
 // Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Para reportar
 // novedades (vacaciones/taller) por rango. Guard de 400 días por seguridad.
@@ -1201,6 +1205,15 @@ export function OperatorView({
                 <span className="nav-label">Historial</span>
               </span>
             </button>
+            <button
+              className={operatorTab === 'mapa' ? 'active' : ''}
+              onClick={() => setOperatorTab('mapa')}
+            >
+              <span className="nav-item">
+                <span className="nav-icon">🗺</span>
+                <span className="nav-label">Mapa</span>
+              </span>
+            </button>
           </nav>
         </section>
 
@@ -1662,6 +1675,12 @@ export function OperatorView({
               </div>
             </article>
           </section>
+        ) : null}
+
+        {operatorTab === 'mapa' ? (
+          <Suspense fallback={<section className="panel-card"><p className="muted-text">Cargando mapa…</p></section>}>
+            <MapaLazy />
+          </Suspense>
         ) : null}
 
         {operatorTab === 'historial' ? (

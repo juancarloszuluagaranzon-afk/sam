@@ -96,7 +96,35 @@ export default defineConfig({
         // Supabase API calls NO se cachean en el SW — ya los manejamos en IndexedDB (Dexie).
         // Cachear aquí causa que las respuestas paginadas (Range header) colisionen con la
         // misma URL cacheada y devuelvan datos incompletos.
-        runtimeCaching: [],
+        //
+        // EXCEPCIÓN deliberada: los TILES del mapa (PNG estáticos, inmutables,
+        // cache 1 año, servidos por el stack de FieldMaps — NO por el Supabase
+        // de ASM, y sin Range headers). CacheFirst sobre el MISMO cacheName que
+        // usa la descarga offline (src/lib/mapaOffline.ts) → el mapa descargado
+        // funciona 100% sin señal y navegar online va llenando la caché.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) =>
+              url.hostname === 'api.mapview.surcoapp.tech' &&
+              url.pathname.startsWith('/storage/v1/object/public/tiles/'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'mapas-tiles',
+              expiration: { maxEntries: 12000, maxAgeSeconds: 60 * 60 * 24 * 365, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Fondo satelital (Esri World Imagery): cache pasivo de lo navegado.
+            urlPattern: ({ url }) => url.hostname.endsWith('arcgisonline.com'),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'mapas-basemap',
+              expiration: { maxEntries: 3000, maxAgeSeconds: 60 * 60 * 24 * 30, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
         // Cuando hay una version nueva del SW: actívala YA (skipWaiting) y toma el control
         // de todos los clientes abiertos (clientsClaim). Sin esto, devices con la app abierta
         // por dias siguen con bundle viejo hasta que cierran y abren. Combinado con

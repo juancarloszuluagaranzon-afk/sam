@@ -6011,6 +6011,52 @@ td.planilla-revisada {
 .planilla-nov--in { color: #be185d; }  /* Incapacidad */
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
 
+/* ── Visor de mapas offline (tipo Avenza) ── */
+.mapa-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mapa-toolbar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.mapa-toolbar select { max-width: 260px; }
+.mapa-gps-btn.is-active { background: #1d6fd1; color: #fff; }
+.mapa-opacidad {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--color-ink-mid);
+}
+.mapa-opacidad input[type="range"] { width: 110px; }
+.mapa-descargar-btn { padding: 9px 14px; }
+.mapa-canvas {
+  height: min(72vh, 640px);
+  min-height: 380px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  background: #dfe8ef;
+}
+.mapa-progreso { display: flex; align-items: center; gap: 10px; }
+.mapa-progreso__bar {
+  flex: 1;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.mapa-progreso__bar span { display: block; height: 100%; background: #1f8a47; border-radius: 999px; transition: width 0.3s ease; }
+.mapa-progreso__txt { font-size: 0.8rem; color: var(--color-ink-mid); white-space: nowrap; }
+.mapa-msg { margin: 0; }
+@media (max-width: 640px) {
+  .mapa-canvas { height: calc(100vh - 300px); min-height: 320px; }
+}
+
 /* Aprobación vencida (>36 h desde el cierre): el supervisor ya no puede aprobar. */
 .aprob-vencida-badge {
   display: inline-block;

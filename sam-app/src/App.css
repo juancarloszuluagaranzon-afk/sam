@@ -6023,7 +6023,7 @@ td.planilla-revisada {
   white-space: nowrap;
 }
 :root[data-theme="dark"] .aprob-vencida-badge { color: #f0c34e; background: rgba(217, 119, 6, 0.22); }
-.approve-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.approve-btn:disabled, .cancel-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
 /* Casilla VACÍA hasta hoy (sin área, sin novedad, sin resaltado): amarillo =
    "falta por registrar". `td.` para ganarle al fondo de .planilla-today. */

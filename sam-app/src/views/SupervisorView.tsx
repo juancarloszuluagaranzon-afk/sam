@@ -3017,7 +3017,22 @@ export function SupervisorView({
                         >
                           Aprobar
                         </button>
-                        <button className="cancel-btn" onClick={() => void handleRejectAssignment(assignment)}>
+                        <button
+                          className="cancel-btn"
+                          disabled={!puedeAprobar}
+                          title={
+                            puedeAprobar
+                              ? undefined
+                              : `Venció el plazo de ${APROBACION_HORAS} h desde el cierre. Solo administración puede decidir.`
+                          }
+                          onClick={() => {
+                            if (!puedeAprobar) {
+                              setError(`Esta labor lleva más de ${APROBACION_HORAS} h cerrada: solo administración puede decidirla.`)
+                              return
+                            }
+                            void handleRejectAssignment(assignment)
+                          }}
+                        >
                           Rechazar
                         </button>
                       </div>

@@ -437,7 +437,7 @@ Reclamo grave del cliente (perdía confianza; el dueño llamó molesto). Investi
 
 ## [2026-07-15] Permisos por rol (commit `d73890f`)
 
-- **Ventana de 36 h para aprobar:** `APROBACION_HORAS = 36` + `horasDesdeCierre(a)` (ref: `finishedAt ?? updatedAt ?? createdAt`) en SupervisorView. En "A facturar": si pasaron +36 h desde el CIERRE, el **supervisor** ve chip `⏳ Vencida · solo administración` y el botón Aprobar **disabled**; **administración y owner** sí pueden. Decisión del dueño: que las aprobaciones no se queden colgadas. **Nota: solo se restringió Aprobar; Rechazar sigue disponible para el supervisor** (pendiente de confirmar si también debe escalar).
+- **Ventana de 36 h para aprobar:** `APROBACION_HORAS = 36` + `horasDesdeCierre(a)` (ref: `finishedAt ?? updatedAt ?? createdAt`) en SupervisorView. En "A facturar": si pasaron +36 h desde el CIERRE, el **supervisor** ve chip `⏳ Vencida · solo administración` y el botón Aprobar **disabled**; **administración y owner** sí pueden. Decisión del dueño: que las aprobaciones no se queden colgadas. **[2026-07-17] Rechazar TAMBIÉN escala:** pasadas las 36 h el supervisor no puede Aprobar NI Rechazar — toda la decisión pasa a administración/dueño (ambos botones disabled con el mismo gate `puedeAprobar`).
 - **"+ Nueva suerte" solo administración/dueño** (toca el MAESTRO): quitado de los 3 sitios — modal "Tomar suerte en campo" del operario (`OperatorView` ~2040), form Asignar (`SupervisorView` ~1740), pestaña Maestros (`MaestrosTab` ~183).
 - **Eliminar en el Reporte: ahora también supervisores** (antes solo owner/admin). La columna Acciones ya se mostraba con `canEditAssignments`; se quitó el gate extra del botón Eliminar. Sigue con confirmación (borrado permanente).
 

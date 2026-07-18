@@ -148,6 +148,19 @@ export interface Motivacion {
   metaDiaRef: number
 }
 
+// Mapa offline (tipo Avenza). Config que consume el visor: tiles ya generados
+// por FieldMaps en su bucket público; ASM solo los muestra y los cachea.
+export interface MapaConfig {
+  id: string
+  nombre: string
+  tilesBase: string
+  // [minLon, minLat, maxLon, maxLat] WGS84
+  bounds: [number, number, number, number]
+  minzoom: number
+  maxzoom: number
+  activo: boolean
+}
+
 // Catálogo de ingenios/compradores. El `id` es un slug estable (ej.
 // 'trapiche_lucerna') porque amarra `maestro.ingenio_id`. Editable desde
 // Catálogos → Ingenios (tabla `ingenios`, migración 20260708120000).

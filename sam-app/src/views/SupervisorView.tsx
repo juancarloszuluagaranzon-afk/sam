@@ -1,5 +1,10 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
+
+// Visor y gestión de mapas offline. Imports ESTÁTICOS a propósito (NO lazy):
+// el chunk aparte rompió el build de Vercel en producción (17-jul-2026).
+import { MapaView } from './MapaView'
+import { MapasTab } from './MapasTab'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
@@ -40,7 +45,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -961,7 +966,7 @@ export function SupervisorView({
                 </button>
                 {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
-                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas', 'motivacion'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
+                  className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas', 'motivacion', 'mapascat'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
                   onClick={() => setCatalogosOpen((v) => !v)}
                   aria-expanded={catalogosOpen}
                 >
@@ -1043,6 +1048,16 @@ export function SupervisorView({
                         <div className="more-sheet__desc">Mensaje/GIF de felicitación por rendimiento</div>
                       </div>
                     </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'mapascat' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('mapascat'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">🗺️</span>
+                      <div>
+                        <div className="more-sheet__label">Mapas</div>
+                        <div className="more-sheet__desc">Agregar / ocultar mapas del visor offline</div>
+                      </div>
+                    </button>
                   </div>
                 )}
                 <button
@@ -1053,6 +1068,16 @@ export function SupervisorView({
                   <div>
                     <div className="more-sheet__label">Insumos</div>
                     <div className="more-sheet__desc">Inventario de insumos y combustible (kardex)</div>
+                  </div>
+                </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'mapa' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('mapa'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">🗺️</span>
+                  <div>
+                    <div className="more-sheet__label">Mapa</div>
+                    <div className="more-sheet__desc">Plano de las haciendas · funciona sin señal</div>
                   </div>
                 </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
@@ -1994,6 +2019,12 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'motivacion' ? (
           <MotivacionTab />
+        ) : null}
+
+        {supervisorTab === 'mapa' ? <MapaView /> : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
+          <MapasTab />
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (

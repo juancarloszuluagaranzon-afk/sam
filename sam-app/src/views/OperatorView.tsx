@@ -1,4 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+
+// Visor de mapas offline. Import ESTÁTICO a propósito: el intento con
+// React.lazy (chunk aparte) hizo que el build de Vercel partiera el bundle
+// distinto al local y rompió el arranque en producción (pantalla blanca,
+// 17-jul-2026). +46KB gzip de costo una vez > riesgo de tumbar la app.
+import { MapaView } from './MapaView'
 import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useFreeFieldForm } from '../hooks/useFreeFieldForm'
@@ -18,7 +24,7 @@ import type { Assignment, UserProfile } from '../domain/sam'
 import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo } from '../domain/sam'
 
-type OperatorTab = 'activas' | 'campo' | 'historial'
+type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
 
 // Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Para reportar
 // novedades (vacaciones/taller) por rango. Guard de 400 días por seguridad.
@@ -1201,6 +1207,15 @@ export function OperatorView({
                 <span className="nav-label">Historial</span>
               </span>
             </button>
+            <button
+              className={operatorTab === 'mapa' ? 'active' : ''}
+              onClick={() => setOperatorTab('mapa')}
+            >
+              <span className="nav-item">
+                <span className="nav-icon">🗺</span>
+                <span className="nav-label">Mapa</span>
+              </span>
+            </button>
           </nav>
         </section>
 
@@ -1663,6 +1678,8 @@ export function OperatorView({
             </article>
           </section>
         ) : null}
+
+        {operatorTab === 'mapa' ? <MapaView /> : null}
 
         {operatorTab === 'historial' ? (
           <section className="panel-card operator-history-card">

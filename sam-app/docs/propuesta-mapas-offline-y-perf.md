@@ -1,5 +1,14 @@
 # Propuesta: Mapas offline tipo Avenza en ASM + Auditoría de rendimiento
 
+> **ESTADO (18-jul-2026): IMPLEMENTADO Y EN PRODUCCIÓN** con ajustes sobre esta
+> propuesta: imports ESTÁTICOS en vez de lazy (el chunk aparte rompió el build de
+> Vercel — pantalla blanca 17-jul), visor de CAPAS múltiples superpuestas con
+> opacidad individual, gestión autoservicio (solo admin/jefe) con reemplazo de
+> cartografía, y formulario compartido también desde el visor. La referencia
+> técnica VIVA del módulo es **`.agent/skills/managing-mapas/SKILL.md`** — este
+> documento queda como registro de la propuesta y de la auditoría de rendimiento
+> (cuyos quick wins #1-#4 y #7 siguen pendientes).
+
 > Elaborada la noche del 17-jul-2026 con 5 agentes expertos (bundle, runtime, red/sync,
 > código FieldMaps, estado del arte offline-maps 2026). Decisión pendiente de aprobación.
 

@@ -3,6 +3,8 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import type { MapaConfig } from '../domain/sam'
 import { loadMapas } from '../services/samApi'
+import { useAppData } from '../context/AppDataContext'
+import { MapaFormModal } from '../components/MapaFormModal'
 import {
   descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes,
 } from '../lib/mapaOffline'
@@ -22,8 +24,11 @@ const ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Ima
 interface CapaEstado { on: boolean; op: number }
 
 export function MapaView() {
+  const { session } = useAppData()
+  const puedeGestionar = session?.role === 'owner' || session?.role === 'administracion'
   const [mapas, setMapas] = useState<MapaConfig[] | null>(null)
   const [capas, setCapas] = useState<Record<string, CapaEstado>>({})
+  const [formOpen, setFormOpen] = useState(false)
   const [panelOpen, setPanelOpen] = useState(true)
   const [gpsOn, setGpsOn] = useState(false)
   const [gpsError, setGpsError] = useState('')
@@ -200,6 +205,29 @@ export function MapaView() {
     setDescargasVersion((v) => v + 1)
   }
 
+  // Tras agregar/reemplazar un mapa desde el visor: recargar la lista, prender
+  // la capa nueva y encuadrar la vista para verla de una.
+  async function refreshTrasGuardar(accion: 'creado' | 'reemplazado', nombreMapa: string) {
+    const ms = await loadMapas()
+    setMapas(ms)
+    setCapas((prev) => {
+      const next = { ...prev }
+      for (const m of ms) if (!next[m.id]) next[m.id] = { on: true, op: 1 }
+      return next
+    })
+    const map = mapRef.current
+    if (map && ms.length > 0) {
+      map.setMinZoom(Math.max(Math.min(...ms.map((m) => m.minzoom)) - 2, 3))
+      map.setMaxZoom(Math.max(...ms.map((m) => m.maxzoom)) + 4)
+      const nuevo = ms.find((m) => m.nombre === nombreMapa)
+      if (nuevo) {
+        map.fitBounds(L.latLngBounds([nuevo.bounds[1], nuevo.bounds[0]], [nuevo.bounds[3], nuevo.bounds[2]]), { padding: [16, 16] })
+      }
+    }
+    setMsg(accion === 'creado' ? `Mapa "${nombreMapa}" agregado y visible.` : `Cartografía de "${nombreMapa}" reemplazada.`)
+    setDescargasVersion((v) => v + 1)
+  }
+
   const capasOn = useMemo(
     () => (mapas ?? []).filter((m) => capas[m.id]?.on).length,
     [mapas, capas],
@@ -213,8 +241,21 @@ export function MapaView() {
       <section className="panel-card">
         <h2>Mapas</h2>
         <p className="subtle-copy">
-          Aún no hay mapas configurados. Administración los registra en Catálogos → Mapas.
+          {puedeGestionar
+            ? 'Aún no hay mapas. Agrega el primero:'
+            : 'Aún no hay mapas configurados. Administración los registra.'}
         </p>
+        {puedeGestionar && (
+          <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>
+            + Agregar mapa
+          </button>
+        )}
+        <MapaFormModal
+          open={formOpen}
+          onClose={() => setFormOpen(false)}
+          mapas={mapas}
+          onSaved={(a, n) => void refreshTrasGuardar(a, n)}
+        />
       </section>
     )
   }
@@ -238,6 +279,11 @@ export function MapaView() {
         >
           {gpsOn ? '📍 GPS activo' : '📍 Mi ubicación'}
         </button>
+        {puedeGestionar && (
+          <button type="button" className="inline-button" onClick={() => setFormOpen(true)}>
+            + Agregar mapa
+          </button>
+        )}
       </div>
 
       {panelOpen && (
@@ -302,6 +348,13 @@ export function MapaView() {
       {(msg || gpsError) && <p className="subtle-copy mapa-msg">{gpsError || msg}</p>}
 
       <div ref={contRef} className="mapa-canvas" />
+
+      <MapaFormModal
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        mapas={mapas}
+        onSaved={(a, n) => void refreshTrasGuardar(a, n)}
+      />
     </section>
   )
 }

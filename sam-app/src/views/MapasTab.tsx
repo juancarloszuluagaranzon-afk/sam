@@ -1,18 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { createMapa, updateMapa, deleteMapa, loadMapasAdmin } from '../services/samApi'
-import { metaDescarga, enumerarTiles, urlTile, formatoBytes } from '../lib/mapaOffline'
+import { updateMapa, deleteMapa, loadMapasAdmin } from '../services/samApi'
+import { metaDescarga, formatoBytes } from '../lib/mapaOffline'
+import { MapaFormModal } from '../components/MapaFormModal'
 import type { MapaConfig } from '../domain/sam'
 
 /**
- * Pestaña "Mapas" (propietario / administración) — submenú Catálogos.
+ * Pestaña "Mapas" (SOLO propietario/jefe y administración) — submenú Catálogos.
  *
- * Gestión autoservicio de los mapas del visor offline: agregar los que se
- * quiera (con validación en vivo de que los tiles responden), renombrar,
- * activar/desactivar y eliminar. Los tiles los genera FieldMaps (subir el PDF
- * allá); aquí solo se registra la configuración para que aparezca en ASM.
- * "Copiar configuración" precarga bounds/zooms de un mapa existente — el caso
- * típico de un PDF nuevo de la misma zona.
+ * Gestión autoservicio de los mapas del visor offline: agregar, REEMPLAZAR la
+ * cartografía (cuando cambia el plano), renombrar, ocultar/mostrar y eliminar.
+ * El formulario (con "Copiar configuración" y "Probar que responde") es el
+ * componente compartido MapaFormModal — el mismo del botón "+ Agregar mapa"
+ * del visor. Los tiles se generan subiendo el GeoPDF a FieldMaps.
  */
 export function MapasTab() {
   const { session, busy, setBusy, setError, setInfo } = useAppData()
@@ -20,15 +20,8 @@ export function MapasTab() {
   const [mapas, setMapas] = useState<MapaConfig[]>([])
   const [cargando, setCargando] = useState(true)
   const [formOpen, setFormOpen] = useState(false)
-  // null = agregando; id = REEMPLAZANDO la cartografía de un mapa existente.
-  const [editId, setEditId] = useState<string | null>(null)
-  const [nombre, setNombre] = useState('')
-  const [tilesBase, setTilesBase] = useState('')
-  const [bounds, setBounds] = useState<[string, string, string, string]>(['', '', '', ''])
-  const [minzoom, setMinzoom] = useState('10')
-  const [maxzoom, setMaxzoom] = useState('16')
-  const [probando, setProbando] = useState(false)
-  const [probeOk, setProbeOk] = useState<boolean | null>(null)
+  // null = agregando; con valor = REEMPLAZANDO la cartografía de ese mapa.
+  const [editTarget, setEditTarget] = useState<MapaConfig | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<MapaConfig | null>(null)
 
   const puede = session?.role === 'owner' || session?.role === 'administracion'
@@ -38,95 +31,6 @@ export function MapasTab() {
     try { setMapas(await loadMapasAdmin()) } finally { setCargando(false) }
   }
   useEffect(() => { void refresh() }, [])
-
-  const tilesEstimados = useMemo(() => {
-    const b = bounds.map(Number)
-    const mn = Number(minzoom); const mx = Number(maxzoom)
-    if (b.some(isNaN) || b.every((x) => x === 0) || isNaN(mn) || isNaN(mx) || mn > mx) return null
-    try {
-      return enumerarTiles({
-        id: '', nombre: '', tilesBase: '', activo: true,
-        bounds: b as [number, number, number, number], minzoom: mn, maxzoom: mx,
-      }).length
-    } catch { return null }
-  }, [bounds, minzoom, maxzoom])
-
-  function copiarDe(m: MapaConfig) {
-    setBounds([String(m.bounds[0]), String(m.bounds[1]), String(m.bounds[2]), String(m.bounds[3])])
-    setMinzoom(String(m.minzoom))
-    setMaxzoom(String(m.maxzoom))
-    setInfo(`Configuración copiada de "${m.nombre}". Cambia el nombre y la URL de tiles.`)
-  }
-
-  // Reemplazar cartografía: abre el formulario precargado con TODO el mapa.
-  // Al guardar, el mapa conserva su identidad y los equipos con la versión
-  // vieja descargada verán "🔄 Plano actualizado — volver a descargar".
-  function abrirReemplazo(m: MapaConfig) {
-    setEditId(m.id)
-    setNombre(m.nombre)
-    setTilesBase(m.tilesBase)
-    setBounds([String(m.bounds[0]), String(m.bounds[1]), String(m.bounds[2]), String(m.bounds[3])])
-    setMinzoom(String(m.minzoom))
-    setMaxzoom(String(m.maxzoom))
-    setProbeOk(null)
-    setError('')
-    setFormOpen(true)
-  }
-
-  // Validación en vivo: probar que la URL sirve un tile real (el del centro
-  // del área al zoom mínimo). Feedback inmediato sin adivinar.
-  async function probar() {
-    setProbando(true)
-    setProbeOk(null)
-    try {
-      const b = bounds.map(Number) as [number, number, number, number]
-      const cfg: MapaConfig = {
-        id: '', nombre: '', activo: true,
-        tilesBase: tilesBase.trim().replace(/\/$/, ''),
-        bounds: b, minzoom: Number(minzoom), maxzoom: Number(maxzoom),
-      }
-      const tiles = enumerarTiles({ ...cfg, maxzoom: cfg.minzoom })
-      const centro = tiles[Math.floor(tiles.length / 2)]
-      const res = await fetch(urlTile(cfg, centro))
-      setProbeOk(res.ok)
-    } catch {
-      setProbeOk(false)
-    } finally { setProbando(false) }
-  }
-
-  async function guardar() {
-    const b = bounds.map(Number)
-    if (!nombre.trim()) { setError('Ponle un nombre al mapa.'); return }
-    if (!tilesBase.trim().startsWith('http')) { setError('La URL de tiles debe empezar por https://'); return }
-    if (b.some(isNaN) || b.every((x) => x === 0)) { setError('Los 4 límites del área (bounds) son obligatorios.'); return }
-    const mn = Number(minzoom); const mx = Number(maxzoom)
-    if (isNaN(mn) || isNaN(mx) || mn < 1 || mx > 22 || mn > mx) { setError('Zoom inválido (mín ≤ máx, entre 1 y 22).'); return }
-    setBusy(true); setError('')
-    try {
-      if (editId) {
-        await updateMapa(editId, {
-          nombre, tilesBase,
-          bounds: b as [number, number, number, number],
-          minzoom: mn, maxzoom: mx,
-        })
-        setInfo(`Cartografía de "${nombre.trim()}" reemplazada. Los equipos con la versión anterior verán el aviso de re-descarga.`)
-      } else {
-        await createMapa({
-          nombre, tilesBase,
-          bounds: b as [number, number, number, number],
-          minzoom: mn, maxzoom: mx,
-        })
-        setInfo(`Mapa "${nombre.trim()}" agregado. Ya aparece en el visor para todos.`)
-      }
-      setFormOpen(false)
-      setEditId(null)
-      setNombre(''); setTilesBase(''); setBounds(['', '', '', '']); setMinzoom('10'); setMaxzoom('16'); setProbeOk(null)
-      void refresh()
-    } catch (err) {
-      const e = err as { message?: string }
-      setError(`No se pudo guardar. (${e?.message ?? 'error'})`)
-    } finally { setBusy(false) }
-  }
 
   async function toggleActivo(m: MapaConfig) {
     setBusy(true); setError('')
@@ -169,26 +73,22 @@ export function MapasTab() {
   }
 
   if (!puede) {
-    return <section className="panel-card"><p className="muted-text">Solo el dueño o administración gestiona los mapas.</p></section>
+    return <section className="panel-card"><p className="muted-text">Solo el jefe o administración gestiona los mapas.</p></section>
   }
 
   return (
     <section className="panel-card">
       <div className="panel-title split">
         <h2>Mapas — catálogo</h2>
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => { setEditId(null); setNombre(''); setTilesBase(''); setProbeOk(null); setFormOpen(true) }}
-          disabled={busy}
-        >
+        <button type="button" className="primary-button" onClick={() => { setEditTarget(null); setFormOpen(true) }} disabled={busy}>
           + Agregar mapa
         </button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Los mapas registrados aquí aparecen en el visor (pestaña Mapa) para todos los roles, y
-        cada uno se puede <strong>descargar para uso sin señal</strong>. Los tiles se generan
-        subiendo el GeoPDF a FieldMaps; aquí solo se registra su configuración.
+        Los mapas aparecen en el visor (pestaña Mapa) para todos los roles como capas que se
+        superponen, y cada uno se descarga para uso <strong>sin señal</strong>. Cuando la
+        cartografía cambie, usa <strong>🔄 Reemplazar</strong>: el mapa conserva su identidad y
+        los equipos verán el aviso de re-descarga.
       </p>
 
       {cargando ? (
@@ -206,11 +106,8 @@ export function MapasTab() {
                   {meta && <span className="inv-cat inv-cat--comb">⬇ en este equipo ({formatoBytes(meta.bytes)})</span>}
                 </div>
                 <div className="inv-row__actions">
-                  <button type="button" className="inline-button" onClick={() => abrirReemplazo(m)} disabled={busy} title="La cartografía cambió: apuntar este mapa a la versión nueva">
+                  <button type="button" className="inline-button" onClick={() => { setEditTarget(m); setFormOpen(true) }} disabled={busy} title="La cartografía cambió: apuntar este mapa a la versión nueva">
                     🔄 Reemplazar
-                  </button>
-                  <button type="button" className="inline-button" onClick={() => copiarDe(m)} disabled={busy} title="Usar sus bounds/zooms para un mapa nuevo">
-                    Copiar config
                   </button>
                   <button type="button" className="inline-button" onClick={() => void renombrar(m)} disabled={busy}>Renombrar</button>
                   <button type="button" className="inline-button" onClick={() => void toggleActivo(m)} disabled={busy}>
@@ -227,61 +124,18 @@ export function MapasTab() {
         </div>
       )}
 
-      {formOpen && (
-        <div className="modal-overlay open" onClick={() => { setFormOpen(false); setEditId(null) }}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(520px, calc(100vw - 32px))' }}>
-            <div className="labor-detail-header">
-              <div><p className="eyebrow">Mapas</p><h3>{editId ? 'Reemplazar cartografía' : 'Agregar mapa'}</h3></div>
-              <button type="button" className="modal-close-btn" onClick={() => { setFormOpen(false); setEditId(null) }} disabled={busy} aria-label="Cerrar">&#x2715;</button>
-            </div>
-            {editId && (
-              <p className="subtle-copy" style={{ marginTop: 0, color: '#92610a' }}>
-                Estás reemplazando la cartografía de este mapa. Los equipos que tenían la versión
-                anterior descargada verán "🔄 volver a descargar".
-              </p>
-            )}
-            <p className="subtle-copy" style={{ marginTop: 0 }}>
-              Tip: usa <strong>Copiar config</strong> en un mapa existente de la misma zona y solo
-              cambia nombre y URL. La URL de tiles es la de FieldMaps:
-              <code style={{ fontSize: '0.72rem', display: 'block', marginTop: 4 }}>…/storage/v1/object/public/tiles/&lt;org&gt;/&lt;mapa&gt;</code>
-            </p>
-            <label>
-              Nombre
-              <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="ej. CARTOGRAFIA AGOSTO" disabled={busy} autoFocus />
-            </label>
-            <label>
-              URL base de tiles
-              <input type="text" value={tilesBase} onChange={(e) => { setTilesBase(e.target.value); setProbeOk(null) }} placeholder="https://api.mapview.surcoapp.tech/storage/v1/object/public/tiles/…" disabled={busy} />
-            </label>
-            <div className="mapa-form-grid">
-              <label>Lon mín<input type="number" step="any" value={bounds[0]} onChange={(e) => setBounds([e.target.value, bounds[1], bounds[2], bounds[3]])} disabled={busy} /></label>
-              <label>Lat mín<input type="number" step="any" value={bounds[1]} onChange={(e) => setBounds([bounds[0], e.target.value, bounds[2], bounds[3]])} disabled={busy} /></label>
-              <label>Lon máx<input type="number" step="any" value={bounds[2]} onChange={(e) => setBounds([bounds[0], bounds[1], e.target.value, bounds[3]])} disabled={busy} /></label>
-              <label>Lat máx<input type="number" step="any" value={bounds[3]} onChange={(e) => setBounds([bounds[0], bounds[1], bounds[2], e.target.value])} disabled={busy} /></label>
-              <label>Zoom mín<input type="number" min={1} max={22} value={minzoom} onChange={(e) => setMinzoom(e.target.value)} disabled={busy} /></label>
-              <label>Zoom máx<input type="number" min={1} max={22} value={maxzoom} onChange={(e) => setMaxzoom(e.target.value)} disabled={busy} /></label>
-            </div>
-            {tilesEstimados != null && (
-              <p className="subtle-copy" style={{ margin: '4px 0 0' }}>
-                ≈ {tilesEstimados.toLocaleString('es-CO')} imágenes para la descarga offline.
-              </p>
-            )}
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8 }}>
-              <button type="button" className="inline-button" onClick={() => void probar()} disabled={probando || busy || !tilesBase.trim()}>
-                {probando ? 'Probando…' : '⚡ Probar que responde'}
-              </button>
-              {probeOk === true && <span style={{ color: 'var(--color-brand)', fontWeight: 700, fontSize: '0.85rem' }}>✓ El mapa responde</span>}
-              {probeOk === false && <span style={{ color: '#b3261e', fontWeight: 700, fontSize: '0.85rem' }}>✕ No responde — revisa URL/bounds</span>}
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="inline-button" onClick={() => { setFormOpen(false); setEditId(null) }} disabled={busy}>Cancelar</button>
-              <button type="button" className="primary-button" onClick={() => void guardar()} disabled={busy}>
-                {busy ? 'Guardando…' : editId ? 'Reemplazar cartografía' : 'Agregar mapa'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <MapaFormModal
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditTarget(null) }}
+        editar={editTarget}
+        mapas={mapas}
+        onSaved={(accion, nombre) => {
+          setInfo(accion === 'creado'
+            ? `Mapa "${nombre}" agregado. Ya aparece en el visor para todos.`
+            : `Cartografía de "${nombre}" reemplazada. Los equipos con la versión anterior verán el aviso de re-descarga.`)
+          void refresh()
+        }}
+      />
 
       {deleteTarget && (
         <div className="modal-overlay open" onClick={() => setDeleteTarget(null)}>

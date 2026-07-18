@@ -6043,6 +6043,47 @@ td.planilla-revisada {
 }
 .mapa-opacidad input[type="range"] { width: 110px; }
 .mapa-descargar-btn { padding: 9px 14px; }
+/* Panel de CAPAS: varios mapas al tiempo, traslape con opacidad individual. */
+.mapa-capas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.08));
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+.mapa-capa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 130px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.mapa-capa--on .mapa-capa__nombre { color: var(--color-brand); }
+.mapa-capa__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  cursor: pointer;
+}
+.mapa-capa__check input { width: 18px; height: 18px; flex-shrink: 0; }
+.mapa-capa__nombre {
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mapa-capa__op { width: 100%; }
+.mapa-capa__estado { justify-self: end; }
+.mapa-capa__descargar { padding: 6px 12px; font-size: 0.82rem; }
+@media (max-width: 640px) {
+  .mapa-capa { grid-template-columns: minmax(0, 1fr) auto; }
+  .mapa-capa__op { grid-column: 1 / -1; }
+}
+
 .mapa-canvas {
   height: min(72vh, 640px);
   min-height: 380px;

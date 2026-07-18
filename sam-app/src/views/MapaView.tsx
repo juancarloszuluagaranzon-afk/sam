@@ -5,38 +5,37 @@ import type { MapaConfig } from '../domain/sam'
 import { loadMapas } from '../services/samApi'
 import {
   descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes,
-  type MapaDescargaMeta,
 } from '../lib/mapaOffline'
 
 /**
- * Visor de mapas OFFLINE tipo Avenza (Fase 1).
+ * Visor de mapas OFFLINE tipo Avenza — modo CAPAS.
  *
- * - Va en un chunk LAZY (React.lazy) → cero impacto en el arranque de ASM.
- * - Tiles: los que FieldMaps ya genera (bucket público, cache 1 año). ASM no
- *   genera ni sirve tiles; tras la descarga offline, cero red.
- * - Offline: botón "Descargar" baja todos los tiles a Cache Storage con
- *   progreso (la regla runtimeCaching del SW sirve cache-first el mismo cache).
- * - GPS: watchPosition SOLO mientras el usuario lo activa y el visor está
- *   montado; se apaga al salir (cero GPS con el mapa cerrado).
+ * Varios mapas pueden verse AL TIEMPO: cada uno es una capa que se prende/apaga
+ * y se superpone a las demás, con opacidad individual para compararlas
+ * (cartografías de fechas distintas, zonas, etc.). Cada capa se descarga por
+ * separado para uso sin señal. GPS solo mientras el usuario lo activa.
+ * Imports ESTÁTICOS a propósito (regla 17-jul: nada de lazy chunks).
  */
 
 const ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
+interface CapaEstado { on: boolean; op: number }
+
 export function MapaView() {
   const [mapas, setMapas] = useState<MapaConfig[] | null>(null)
-  const [activo, setActivo] = useState<MapaConfig | null>(null)
-  const [opacidad, setOpacidad] = useState(1)
+  const [capas, setCapas] = useState<Record<string, CapaEstado>>({})
+  const [panelOpen, setPanelOpen] = useState(true)
   const [gpsOn, setGpsOn] = useState(false)
   const [gpsError, setGpsError] = useState('')
-  const [descargando, setDescargando] = useState(false)
+  const [descargandoId, setDescargandoId] = useState<string | null>(null)
   const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(null)
-  const [meta, setMeta] = useState<MapaDescargaMeta | null>(null)
   const [msg, setMsg] = useState('')
+  // Contador para refrescar chips de descarga tras descargar/borrar.
+  const [descargasVersion, setDescargasVersion] = useState(0)
 
   const contRef = useRef<HTMLDivElement | null>(null)
   const mapRef = useRef<L.Map | null>(null)
-  const overlayRef = useRef<L.TileLayer | null>(null)
-  const gpsWatchRef = useRef<number | null>(null)
+  const layersRef = useRef<Record<string, L.TileLayer>>({})
   const gpsMarkerRef = useRef<L.CircleMarker | null>(null)
   const gpsCircleRef = useRef<L.Circle | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -47,68 +46,102 @@ export function MapaView() {
     void loadMapas().then((ms) => {
       if (!alive) return
       setMapas(ms)
-      if (ms.length > 0) setActivo(ms[0])
+      // Por defecto: la primera capa prendida, el resto apagadas.
+      const init: Record<string, CapaEstado> = {}
+      ms.forEach((m, i) => { init[m.id] = { on: i === 0, op: 1 } })
+      setCapas(init)
     })
     return () => { alive = false }
   }, [])
 
-  useEffect(() => {
-    setMeta(activo ? metaDescarga(activo.id) : null)
-  }, [activo])
+  const unionBounds = (ids: string[]): L.LatLngBounds | null => {
+    if (!mapas) return null
+    let acc: L.LatLngBounds | null = null
+    for (const id of ids) {
+      const m = mapas.find((x) => x.id === id)
+      if (!m) continue
+      const b = L.latLngBounds([m.bounds[1], m.bounds[0]], [m.bounds[3], m.bounds[2]])
+      acc = acc ? acc.extend(b) : b
+    }
+    return acc
+  }
 
-  const totalTiles = useMemo(() => (activo ? enumerarTiles(activo).length : 0), [activo])
-
-  // Montaje del mapa Leaflet.
+  // Montaje del mapa Leaflet (UNA vez, cuando hay mapas).
   useEffect(() => {
-    if (!activo || !contRef.current) return
-    const [minLon, minLat, maxLon, maxLat] = activo.bounds
-    const bounds = L.latLngBounds([minLat, minLon], [maxLat, maxLon])
+    if (!mapas || mapas.length === 0 || !contRef.current || mapRef.current) return
+    const minZ = Math.max(Math.min(...mapas.map((m) => m.minzoom)) - 2, 3)
+    const maxZ = Math.max(...mapas.map((m) => m.maxzoom)) + 4
 
     const map = L.map(contRef.current, {
       zoomControl: true,
       attributionControl: false,
-      maxZoom: activo.maxzoom + 4, // overzoom visual (reescala el último nivel)
-      minZoom: Math.max(activo.minzoom - 2, 3),
+      minZoom: minZ,
+      maxZoom: maxZ,
     })
     mapRef.current = map
 
-    // Base satélite (Esri World Imagery — mismo fondo que FieldMaps).
-    L.tileLayer(ESRI_SAT, { maxZoom: activo.maxzoom + 4, maxNativeZoom: 19 }).addTo(map)
+    // Base satélite (Esri World Imagery).
+    L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0 }).addTo(map)
 
-    // Overlay del plano (GeoPDF tileado por FieldMaps).
-    const overlay = L.tileLayer(`${activo.tilesBase}/{z}/{x}/{y}.png`, {
-      minZoom: Math.max(activo.minzoom - 2, 3),
-      maxZoom: activo.maxzoom + 4,
-      maxNativeZoom: activo.maxzoom,
-      minNativeZoom: activo.minzoom,
-      bounds,
-      opacity: opacidad,
-    }).addTo(map)
-    overlayRef.current = overlay
-
-    map.fitBounds(bounds, { padding: [16, 16] })
+    const encendidas = mapas.filter((_, i) => i === 0).map((m) => m.id)
+    const b = unionBounds(encendidas) ?? unionBounds(mapas.map((m) => m.id))
+    if (b) map.fitBounds(b, { padding: [16, 16] })
 
     return () => {
-      // Cleanup total: GPS + mapa (cero consumo con el visor cerrado).
-      if (gpsWatchRef.current != null) {
-        navigator.geolocation.clearWatch(gpsWatchRef.current)
-        gpsWatchRef.current = null
-      }
       abortRef.current?.abort()
       map.remove()
       mapRef.current = null
-      overlayRef.current = null
+      layersRef.current = {}
       gpsMarkerRef.current = null
       gpsCircleRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activo])
+  }, [mapas])
 
+  // Sincroniza capas Leaflet con el estado (prender/apagar/opacidad, traslape
+  // por zIndex según el orden del catálogo).
   useEffect(() => {
-    overlayRef.current?.setOpacity(opacidad)
-  }, [opacidad])
+    const map = mapRef.current
+    if (!map || !mapas) return
+    mapas.forEach((m, i) => {
+      const st = capas[m.id]
+      const existente = layersRef.current[m.id]
+      if (st?.on) {
+        if (!existente) {
+          const layer = L.tileLayer(`${m.tilesBase}/{z}/{x}/{y}.png`, {
+            minZoom: Math.max(m.minzoom - 2, 3),
+            maxZoom: (map.getMaxZoom?.() ?? m.maxzoom + 4),
+            maxNativeZoom: m.maxzoom,
+            minNativeZoom: m.minzoom,
+            bounds: L.latLngBounds([m.bounds[1], m.bounds[0]], [m.bounds[3], m.bounds[2]]),
+            opacity: st.op,
+            zIndex: 10 + i,
+          }).addTo(map)
+          layersRef.current[m.id] = layer
+        } else {
+          existente.setOpacity(st.op)
+        }
+      } else if (existente) {
+        existente.remove()
+        delete layersRef.current[m.id]
+      }
+    })
+  }, [capas, mapas])
 
-  // GPS on-demand: watch SOLO con el toggle activo; cleanup al apagar/salir.
+  function toggleCapa(m: MapaConfig) {
+    setCapas((prev) => {
+      const next = { ...prev, [m.id]: { on: !prev[m.id]?.on, op: prev[m.id]?.op ?? 1 } }
+      // Al PRENDER una capa, ajustar la vista a la unión de las visibles.
+      if (next[m.id].on && mapRef.current && mapas) {
+        const ids = mapas.filter((x) => next[x.id]?.on).map((x) => x.id)
+        const b = unionBounds(ids)
+        if (b) mapRef.current.fitBounds(b, { padding: [16, 16] })
+      }
+      return next
+    })
+  }
+
+  // GPS on-demand (igual que antes): watch SOLO con el toggle activo.
   useEffect(() => {
     const map = mapRef.current
     if (!gpsOn || !map) return
@@ -134,41 +167,43 @@ export function MapaView() {
       },
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
     )
-    gpsWatchRef.current = id
     return () => {
       navigator.geolocation.clearWatch(id)
-      gpsWatchRef.current = null
       gpsMarkerRef.current?.remove(); gpsMarkerRef.current = null
       gpsCircleRef.current?.remove(); gpsCircleRef.current = null
     }
   }, [gpsOn])
 
-  async function handleDescargar() {
-    if (!activo || descargando) return
-    setDescargando(true)
+  async function handleDescargar(m: MapaConfig) {
+    if (descargandoId) return
+    setDescargandoId(m.id)
     setMsg('')
-    setProgreso({ hechos: 0, total: totalTiles })
+    setProgreso({ hechos: 0, total: enumerarTiles(m).length })
     abortRef.current = new AbortController()
     try {
-      const m = await descargarMapa(activo, (hechos, total) => setProgreso({ hechos, total }), abortRef.current.signal)
-      setMeta(m)
-      setMsg(`Mapa guardado para uso sin señal (${m.tiles} imágenes · ${formatoBytes(m.bytes)}).`)
+      const meta = await descargarMapa(m, (hechos, total) => setProgreso({ hechos, total }), abortRef.current.signal)
+      setMsg(`"${m.nombre}" guardado para uso sin señal (${meta.tiles} imágenes · ${formatoBytes(meta.bytes)}).`)
     } catch (e) {
       if ((e as DOMException)?.name === 'AbortError') setMsg('Descarga cancelada.')
-      else setMsg('No se pudo completar la descarga. Revisa la señal e inténtalo de nuevo (lo ya bajado no se pierde).')
+      else setMsg('No se pudo completar la descarga. Revisa la señal (lo bajado no se pierde).')
     } finally {
-      setDescargando(false)
+      setDescargandoId(null)
       setProgreso(null)
       abortRef.current = null
+      setDescargasVersion((v) => v + 1)
     }
   }
 
-  async function handleBorrar() {
-    if (!activo) return
-    await borrarMapa(activo)
-    setMeta(null)
-    setMsg('Mapa eliminado del dispositivo.')
+  async function handleBorrar(m: MapaConfig) {
+    await borrarMapa(m)
+    setMsg(`"${m.nombre}" eliminado del dispositivo.`)
+    setDescargasVersion((v) => v + 1)
   }
+
+  const capasOn = useMemo(
+    () => (mapas ?? []).filter((m) => capas[m.id]?.on).length,
+    [mapas, capas],
+  )
 
   if (mapas === null) {
     return <section className="panel-card"><p className="muted-text">Cargando mapas…</p></section>
@@ -178,8 +213,7 @@ export function MapaView() {
       <section className="panel-card">
         <h2>Mapas</h2>
         <p className="subtle-copy">
-          Aún no hay mapas configurados. Administración debe registrar el mapa
-          (Catálogo de mapas) para que aparezca aquí.
+          Aún no hay mapas configurados. Administración los registra en Catálogos → Mapas.
         </p>
       </section>
     )
@@ -190,19 +224,13 @@ export function MapaView() {
   return (
     <section className="mapa-shell">
       <div className="mapa-toolbar">
-        {mapas.length > 1 && (
-          <select
-            value={activo?.id ?? ''}
-            onChange={(e) => setActivo(mapas.find((m) => m.id === e.target.value) ?? null)}
-            aria-label="Mapa"
-          >
-            {mapas.map((m) => (
-              <option key={m.id} value={m.id}>
-                {estadoDescarga(m) === 'ok' ? `✓ ${m.nombre}` : estadoDescarga(m) === 'desactualizado' ? `🔄 ${m.nombre}` : m.nombre}
-              </option>
-            ))}
-          </select>
-        )}
+        <button
+          type="button"
+          className={`inline-button${panelOpen ? ' is-active' : ''}`}
+          onClick={() => setPanelOpen((v) => !v)}
+        >
+          🗂 Capas ({capasOn}/{mapas.length})
+        </button>
         <button
           type="button"
           className={`inline-button mapa-gps-btn${gpsOn ? ' is-active' : ''}`}
@@ -210,30 +238,62 @@ export function MapaView() {
         >
           {gpsOn ? '📍 GPS activo' : '📍 Mi ubicación'}
         </button>
-        <label className="mapa-opacidad">
-          Plano
-          <input type="range" min={0} max={1} step={0.05} value={opacidad} onChange={(e) => setOpacidad(Number(e.target.value))} />
-        </label>
-        {!descargando ? (
-          activo && estadoDescarga(activo) === 'ok' && meta ? (
-            <button type="button" className="inline-button" onClick={() => void handleBorrar()} title={`Descargado ${new Date(meta.fecha).toLocaleDateString('es-CO')} · ${formatoBytes(meta.bytes)}`}>
-              ✓ Sin señal OK · Borrar
-            </button>
-          ) : (
-            <button type="button" className="primary-button mapa-descargar-btn" onClick={() => void handleDescargar()}>
-              {activo && estadoDescarga(activo) === 'desactualizado'
-                ? '🔄 Plano actualizado — volver a descargar'
-                : '⬇ Descargar para usar sin señal'}
-            </button>
-          )
-        ) : (
-          <button type="button" className="inline-button" onClick={() => abortRef.current?.abort()}>
-            Cancelar ({pct}%)
-          </button>
-        )}
       </div>
 
-      {descargando && progreso && (
+      {panelOpen && (
+        <div className="mapa-capas" data-refresh={descargasVersion}>
+          {mapas.map((m) => {
+            const st = capas[m.id] ?? { on: false, op: 1 }
+            const estado = estadoDescarga(m)
+            const meta = metaDescarga(m.id)
+            const bajandoEsta = descargandoId === m.id
+            return (
+              <div key={m.id} className={`mapa-capa${st.on ? ' mapa-capa--on' : ''}`}>
+                <label className="mapa-capa__check">
+                  <input type="checkbox" checked={st.on} onChange={() => toggleCapa(m)} />
+                  <span className="mapa-capa__nombre">{m.nombre}</span>
+                </label>
+                <input
+                  className="mapa-capa__op"
+                  type="range" min={0.1} max={1} step={0.05}
+                  value={st.op}
+                  disabled={!st.on}
+                  onChange={(e) => setCapas((prev) => ({ ...prev, [m.id]: { on: true, op: Number(e.target.value) } }))}
+                  aria-label={`Opacidad de ${m.nombre}`}
+                  title="Opacidad (para ver el traslape con las otras capas)"
+                />
+                <span className="mapa-capa__estado">
+                  {bajandoEsta ? (
+                    <button type="button" className="inline-button" onClick={() => abortRef.current?.abort()}>
+                      Cancelar ({pct}%)
+                    </button>
+                  ) : estado === 'ok' && meta ? (
+                    <button
+                      type="button"
+                      className="inline-button"
+                      onClick={() => void handleBorrar(m)}
+                      title={`Descargado ${new Date(meta.fecha).toLocaleDateString('es-CO')} · ${formatoBytes(meta.bytes)} · clic para borrar`}
+                    >
+                      ✓ Sin señal
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="primary-button mapa-capa__descargar"
+                      onClick={() => void handleDescargar(m)}
+                      disabled={descargandoId != null}
+                    >
+                      {estado === 'desactualizado' ? '🔄 Actualizar' : '⬇ Descargar'}
+                    </button>
+                  )}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {descargandoId && progreso && (
         <div className="mapa-progreso">
           <div className="mapa-progreso__bar"><span style={{ width: `${pct}%` }} /></div>
           <span className="mapa-progreso__txt">{progreso.hechos} / {progreso.total} imágenes ({pct}%)</span>

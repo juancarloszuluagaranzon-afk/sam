@@ -1209,15 +1209,8 @@ export function OperatorView({
                 <span className="nav-label">Historial</span>
               </span>
             </button>
-            <button
-              className={operatorTab === 'mapa' ? 'active' : ''}
-              onClick={() => setOperatorTab('mapa')}
-            >
-              <span className="nav-item">
-                <span className="nav-icon">🗺</span>
-                <span className="nav-label">Mapa</span>
-              </span>
-            </button>
+            {/* El Mapa NO va como pestaña: se abre con el botón 🗺 del topbar
+                (decisión del dueño). El tab 'mapa' sigue existiendo como estado. */}
           </nav>
         </section>
 

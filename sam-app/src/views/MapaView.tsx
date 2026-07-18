@@ -29,7 +29,9 @@ export function MapaView() {
   const [mapas, setMapas] = useState<MapaConfig[] | null>(null)
   const [capas, setCapas] = useState<Record<string, CapaEstado>>({})
   const [formOpen, setFormOpen] = useState(false)
-  const [panelOpen, setPanelOpen] = useState(true)
+  // Panel de capas CONTRAÍDO por defecto (pedido del dueño): el mapa se ve de
+  // una, sin la lista de capas tapando la vista. Se abre con "🗂 Capas".
+  const [panelOpen, setPanelOpen] = useState(false)
   const [gpsOn, setGpsOn] = useState(false)
   const [gpsError, setGpsError] = useState('')
   const [descargandoId, setDescargandoId] = useState<string | null>(null)

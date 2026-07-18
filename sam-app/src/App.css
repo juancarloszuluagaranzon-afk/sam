@@ -6091,6 +6091,12 @@ td.planilla-revisada {
   overflow: hidden;
   border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
   background: #dfe8ef;
+  /* CRÍTICO: stacking context propio. Leaflet usa z-index internos altos
+     (panes 400, controles 1000) que sin esto se ESCAPAN y tapan los menús y
+     modales de la app (more-sheet z195, modales z200+). Con position+z-index
+     aquí, todo lo de Leaflet queda encerrado bajo este contenedor. */
+  position: relative;
+  z-index: 0;
 }
 .mapa-progreso { display: flex; align-items: center; gap: 10px; }
 .mapa-progreso__bar {

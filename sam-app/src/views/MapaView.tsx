@@ -222,7 +222,7 @@ export function MapaView() {
   const pct = progreso && progreso.total > 0 ? Math.round((progreso.hechos / progreso.total) * 100) : 0
 
   return (
-    <section className="mapa-shell">
+    <section className="panel-card mapa-shell">
       <div className="mapa-toolbar">
         <button
           type="button"

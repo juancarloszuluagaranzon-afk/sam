@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../components/ThemeToggle'
-import { InsumosModule } from './InsumosModule'
+import { MapButton } from '../components/MapButton'
+import { InsumosModule, type InsumosTab } from './InsumosModule'
 
 /**
  * Vista del rol "Supervisor de insumos" (módulo Insumos y Combustible).
@@ -11,6 +13,7 @@ import { InsumosModule } from './InsumosModule'
  */
 export function InsumosView({ onLogout }: { onLogout: () => void }) {
   const { session, error, info } = useAppData()
+  const [tab, setTab] = useState<InsumosTab>('bandeja')
   if (!session) return null
 
   return (
@@ -26,6 +29,7 @@ export function InsumosView({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
         <div className="topbar-actions">
+          <MapButton onClick={() => setTab('mapa')} />
           <ThemeToggle />
           <button type="button" className="inline-button" onClick={onLogout}>Salir</button>
         </div>
@@ -42,7 +46,7 @@ export function InsumosView({ onLogout }: { onLogout: () => void }) {
       )}
 
       <div style={{ padding: '12px 0' }}>
-        <InsumosModule />
+        <InsumosModule tab={tab} onTabChange={setTab} />
       </div>
     </main>
   )

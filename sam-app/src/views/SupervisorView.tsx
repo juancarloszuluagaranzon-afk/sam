@@ -16,6 +16,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { MapButton } from '../components/MapButton'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { RegistrarLaborModal } from '../components/RegistrarLaborModal'
 import { AreaDetailModal, type AreaDetailRow } from '../components/AreaDetailModal'
@@ -821,6 +822,7 @@ export function SupervisorView({
           </div>
         </div>
         <div className="topbar-actions">
+          <MapButton onClick={() => setSupervisorTab('mapa')} />
           <ThemeToggle />
         </div>
       </header>

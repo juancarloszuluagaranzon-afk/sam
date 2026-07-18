@@ -16,6 +16,7 @@ import { DictateInlineButton } from '../components/DictateInlineButton'
 import { dictationErrorMessage } from '../hooks/useDictation'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { MapButton } from '../components/MapButton'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
@@ -855,6 +856,7 @@ export function OperatorView({
           </div>
         </div>
         <div className="topbar-actions">
+          <MapButton onClick={() => setOperatorTab('mapa')} />
           <ThemeToggle />
         </div>
       </header>

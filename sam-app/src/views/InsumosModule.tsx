@@ -11,7 +11,7 @@ import { MapaView } from './MapaView'
  * Incluye el Mapa offline para que TODOS los roles lo tengan (el supervisor de
  * insumos no pasa por SupervisorView/OperatorView).
  */
-type InsumosTab = 'bandeja' | 'inventario' | 'equipos' | 'mapa'
+export type InsumosTab = 'bandeja' | 'inventario' | 'equipos' | 'mapa'
 
 const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Solicitudes y entregas' },
@@ -20,8 +20,17 @@ const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
 
-export function InsumosModule() {
-  const [tab, setTab] = useState<InsumosTab>('bandeja')
+export function InsumosModule({
+  tab: tabExterno,
+  onTabChange,
+}: {
+  /** Opcional: control externo de la pestaña (ej. el botón de mapa del topbar). */
+  tab?: InsumosTab
+  onTabChange?: (t: InsumosTab) => void
+} = {}) {
+  const [tabInterno, setTabInterno] = useState<InsumosTab>('bandeja')
+  const tab = tabExterno ?? tabInterno
+  const setTab = onTabChange ?? setTabInterno
   return (
     <div>
       <div className="insumos-tabs" role="tablist" aria-label="Secciones de insumos">

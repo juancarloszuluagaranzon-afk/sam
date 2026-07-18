@@ -975,12 +975,32 @@ export async function createMapa(input: {
   }
 }
 
-export async function updateMapa(id: string, patch: { nombre?: string; activo?: boolean }): Promise<void> {
+// Actualiza un mapa. Permite REEMPLAZAR la cartografía (tiles_base/bounds/zooms)
+// cuando sale una versión nueva del plano: el mapa conserva su identidad (id y
+// nombre) y los visores detectan el cambio de URL para pedir re-descarga offline.
+export async function updateMapa(
+  id: string,
+  patch: {
+    nombre?: string
+    activo?: boolean
+    tilesBase?: string
+    bounds?: [number, number, number, number]
+    minzoom?: number
+    maxzoom?: number
+  },
+): Promise<void> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim()
   if (patch.activo !== undefined) payload.activo = patch.activo
+  if (patch.tilesBase !== undefined) payload.tiles_base = patch.tilesBase.trim().replace(/\/$/, '')
+  if (patch.bounds !== undefined) payload.bounds = patch.bounds
+  if (patch.minzoom !== undefined) payload.minzoom = patch.minzoom
+  if (patch.maxzoom !== undefined) payload.maxzoom = patch.maxzoom
   const { error } = await supabase.from('mapas').update(payload).eq('id', id)
-  if (error) throw new Error(error.message || 'No se pudo actualizar el mapa')
+  if (error) {
+    if (error.code === '23505') throw new Error('Ya existe otro mapa con esa URL de tiles.')
+    throw new Error(error.message || 'No se pudo actualizar el mapa')
+  }
 }
 
 export async function deleteMapa(id: string): Promise<void> {

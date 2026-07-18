@@ -1048,16 +1048,20 @@ export function SupervisorView({
                         <div className="more-sheet__desc">Mensaje/GIF de felicitación por rendimiento</div>
                       </div>
                     </button>
-                    <button
-                      className={`more-sheet__item ${supervisorTab === 'mapascat' ? 'more-sheet__item--active' : ''}`}
-                      onClick={() => { setSupervisorTab('mapascat'); setMoreMenuOpen(false) }}
-                    >
-                      <span className="more-sheet__icon">🗺️</span>
-                      <div>
-                        <div className="more-sheet__label">Mapas</div>
-                        <div className="more-sheet__desc">Agregar / ocultar mapas del visor offline</div>
-                      </div>
-                    </button>
+                    {/* Gestión de mapas: SOLO administración y jefe (propietario).
+                        Los demás roles solo VEN el visor (Más → Mapa). */}
+                    {(session.role === 'owner' || session.role === 'administracion') && (
+                      <button
+                        className={`more-sheet__item ${supervisorTab === 'mapascat' ? 'more-sheet__item--active' : ''}`}
+                        onClick={() => { setSupervisorTab('mapascat'); setMoreMenuOpen(false) }}
+                      >
+                        <span className="more-sheet__icon">🗺️</span>
+                        <div>
+                          <div className="more-sheet__label">Mapas</div>
+                          <div className="more-sheet__desc">Agregar / reemplazar cartografía del visor</div>
+                        </div>
+                      </button>
+                    )}
                   </div>
                 )}
                 <button

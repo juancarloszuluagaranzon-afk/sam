@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 import type { MapaConfig } from '../domain/sam'
 import { loadMapas } from '../services/samApi'
 import {
-  descargarMapa, borrarMapa, metaDescarga, enumerarTiles, formatoBytes,
+  descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes,
   type MapaDescargaMeta,
 } from '../lib/mapaOffline'
 
@@ -198,7 +198,7 @@ export function MapaView() {
           >
             {mapas.map((m) => (
               <option key={m.id} value={m.id}>
-                {metaDescarga(m.id) ? `✓ ${m.nombre}` : m.nombre}
+                {estadoDescarga(m) === 'ok' ? `✓ ${m.nombre}` : estadoDescarga(m) === 'desactualizado' ? `🔄 ${m.nombre}` : m.nombre}
               </option>
             ))}
           </select>
@@ -215,13 +215,15 @@ export function MapaView() {
           <input type="range" min={0} max={1} step={0.05} value={opacidad} onChange={(e) => setOpacidad(Number(e.target.value))} />
         </label>
         {!descargando ? (
-          meta ? (
+          activo && estadoDescarga(activo) === 'ok' && meta ? (
             <button type="button" className="inline-button" onClick={() => void handleBorrar()} title={`Descargado ${new Date(meta.fecha).toLocaleDateString('es-CO')} · ${formatoBytes(meta.bytes)}`}>
               ✓ Sin señal OK · Borrar
             </button>
           ) : (
             <button type="button" className="primary-button mapa-descargar-btn" onClick={() => void handleDescargar()}>
-              ⬇ Descargar para usar sin señal
+              {activo && estadoDescarga(activo) === 'desactualizado'
+                ? '🔄 Plano actualizado — volver a descargar'
+                : '⬇ Descargar para usar sin señal'}
             </button>
           )
         ) : (

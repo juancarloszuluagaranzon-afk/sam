@@ -15,6 +15,10 @@ export interface MapaDescargaMeta {
   tiles: number
   bytes: number
   fecha: string
+  // URL base con la que se hizo la descarga. Si administración REEMPLAZA la
+  // cartografía (tiles_base nuevo), esta ya no coincide → el visor debe pedir
+  // re-descarga en vez de creer que el mapa viejo sigue vigente.
+  tilesBase?: string
 }
 
 function leerMetas(): Record<string, MapaDescargaMeta> {
@@ -30,6 +34,18 @@ function guardarMetas(m: Record<string, MapaDescargaMeta>) {
 
 export function metaDescarga(mapaId: string): MapaDescargaMeta | null {
   return leerMetas()[mapaId] ?? null
+}
+
+/**
+ * ¿El mapa está descargado Y VIGENTE en este equipo? Si la cartografía fue
+ * reemplazada (tiles_base distinto al de la descarga), devuelve 'desactualizado'
+ * para que la UI pida re-descargar.
+ */
+export function estadoDescarga(cfg: { id: string; tilesBase: string }): 'no' | 'ok' | 'desactualizado' {
+  const meta = metaDescarga(cfg.id)
+  if (!meta) return 'no'
+  if (meta.tilesBase && meta.tilesBase !== cfg.tilesBase) return 'desactualizado'
+  return 'ok'
 }
 
 // ── Matemática slippy-map: tiles XYZ que cubren unos bounds en un zoom ──
@@ -123,6 +139,7 @@ export async function descargarMapa(
     tiles: guardados,
     bytes,
     fecha: new Date().toISOString(),
+    tilesBase: cfg.tilesBase,
   }
   const metas = leerMetas()
   metas[cfg.id] = meta
@@ -130,15 +147,23 @@ export async function descargarMapa(
   return meta
 }
 
-/** Borra del Cache Storage todos los tiles de un mapa y su meta. */
+/** Borra del Cache Storage todos los tiles de un mapa y su meta. Si el mapa fue
+ * reemplazado, borra también los tiles de la cartografía ANTERIOR (el prefijo
+ * con el que se descargó, guardado en la meta) para no dejar huérfanos. */
 export async function borrarMapa(cfg: MapaConfig): Promise<number> {
   const cache = await caches.open(MAPAS_CACHE)
   const keys = await cache.keys()
+  const metaPrev = metaDescarga(cfg.id)
+  const prefijos = new Set([cfg.tilesBase])
+  if (metaPrev?.tilesBase) prefijos.add(metaPrev.tilesBase)
   let borrados = 0
   for (const req of keys) {
-    if (req.url.startsWith(cfg.tilesBase)) {
-      await cache.delete(req)
-      borrados++
+    for (const p of prefijos) {
+      if (req.url.startsWith(p)) {
+        await cache.delete(req)
+        borrados++
+        break
+      }
     }
   }
   const metas = leerMetas()

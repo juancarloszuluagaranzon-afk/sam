@@ -10,6 +10,12 @@ import { MapaFormModal } from '../components/MapaFormModal'
 import {
   descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes,
 } from '../lib/mapaOffline'
+import {
+  MARCADOR_COLORS, borrarMarcador, borrarMedicion, crearMarcador, crearMedicion,
+  formatHectareas, formatMetros, leerMarcadores, leerMediciones,
+  lineLengthM, polygonAreaHa, polygonPerimeterM,
+  type LngLat, type Marcador, type Medicion,
+} from '../lib/mapaGeo'
 
 /**
  * Visor de mapas OFFLINE — visual IDÉNTICA a Avenza Maps (pedido del dueño):
@@ -47,6 +53,23 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const [msg, setMsg] = useState('')
   // Rumbo actual del mapa (grados). La aguja de la brújula gira con él.
   const [bearing, setBearing] = useState(0)
+
+  // ── Herramientas portadas del proyecto original (FieldMaps): medir
+  // distancia/área, marcadores y mediciones guardadas — todo offline. ──
+  const [toolsOpen, setToolsOpen] = useState(false)
+  const [measureMode, setMeasureMode] = useState<'off' | 'distancia' | 'area'>('off')
+  const [vertices, setVertices] = useState<LngLat[]>([])
+  const [guardandoMed, setGuardandoMed] = useState(false)
+  const [nombreMed, setNombreMed] = useState('')
+  const [marcadoresOpen, setMarcadoresOpen] = useState(false)
+  const [marcadores, setMarcadores] = useState<Marcador[]>(() => leerMarcadores())
+  const [creandoMarcador, setCreandoMarcador] = useState(false)
+  const [mNombre, setMNombre] = useState('')
+  const [mNota, setMNota] = useState('')
+  const [mColor, setMColor] = useState<string>(MARCADOR_COLORS[0])
+  const [medicionesOpen, setMedicionesOpen] = useState(false)
+  const [mediciones, setMediciones] = useState<Medicion[]>(() => leerMediciones())
+  const [medicionVistaId, setMedicionVistaId] = useState<string | null>(null)
   // Contador para refrescar chips de descarga tras descargar/borrar.
   const [descargasVersion, setDescargasVersion] = useState(0)
 
@@ -56,6 +79,10 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const gpsMarkerRef = useRef<L.CircleMarker | null>(null)
   const gpsCircleRef = useRef<L.Circle | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  // Capas de dibujo de las herramientas (viven sobre el mapa).
+  const measureLayerRef = useRef<L.LayerGroup | null>(null)
+  const marcadoresLayerRef = useRef<L.LayerGroup | null>(null)
+  const medicionLayerRef = useRef<L.LayerGroup | null>(null)
 
   // Config de mapas: on-demand (nunca en el arranque de la app).
   useEffect(() => {
@@ -104,6 +131,10 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     mapRef.current = map
     // La aguja de la brújula sigue el rumbo del mapa en vivo.
     map.on('rotate', () => setBearing(map.getBearing()))
+    // Capas de las herramientas (medición en curso, marcadores, medición guardada).
+    measureLayerRef.current = L.layerGroup().addTo(map)
+    marcadoresLayerRef.current = L.layerGroup().addTo(map)
+    medicionLayerRef.current = L.layerGroup().addTo(map)
 
     L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0 }).addTo(map)
 
@@ -118,6 +149,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       layersRef.current = {}
       gpsMarkerRef.current = null
       gpsCircleRef.current = null
+      measureLayerRef.current = null
+      marcadoresLayerRef.current = null
+      medicionLayerRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapas])
@@ -150,6 +184,65 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       }
     })
   }, [capas, mapas])
+
+  // Dibujo en vivo de la medición (amarillo, como el original).
+  useEffect(() => {
+    const lg = measureLayerRef.current
+    if (!lg) return
+    lg.clearLayers()
+    if (measureMode === 'off' || vertices.length === 0) return
+    const latlngs = vertices.map((v) => [v[1], v[0]] as [number, number])
+    if (measureMode === 'area' && vertices.length >= 3) {
+      L.polygon(latlngs, { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.18 }).addTo(lg)
+    } else if (vertices.length >= 2) {
+      L.polyline(latlngs, { color: '#facc15', weight: 3, dashArray: measureMode === 'area' ? '6 6' : undefined }).addTo(lg)
+    }
+    vertices.forEach((v, i) => {
+      L.circleMarker([v[1], v[0]], { radius: 5, weight: 2, color: '#111', fillColor: i === 0 ? '#fff' : '#facc15', fillOpacity: 1 }).addTo(lg)
+    })
+  }, [vertices, measureMode, mapas])
+
+  // En modo medición, un toque en el mapa también marca un punto (además de
+  // "✛ Marcar" con la cruz central y "+ GPS").
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || measureMode === 'off') return
+    const onClick = (e: L.LeafletMouseEvent) => {
+      setVertices((prev) => [...prev, [e.latlng.lng, e.latlng.lat]])
+    }
+    map.on('click', onClick)
+    return () => { map.off('click', onClick) }
+  }, [measureMode, mapas])
+
+  // Marcadores del equipo pintados en el mapa (color + nombre).
+  useEffect(() => {
+    const lg = marcadoresLayerRef.current
+    if (!lg) return
+    lg.clearLayers()
+    for (const m of marcadores) {
+      L.circleMarker([m.lat, m.lon], { radius: 7, weight: 2, color: '#fff', fillColor: m.color, fillOpacity: 1 })
+        .bindTooltip(m.nombre, { direction: 'top', offset: L.point(0, -8) })
+        .addTo(lg)
+    }
+  }, [marcadores, mapas])
+
+  // Medición guardada seleccionada: se dibuja (azul) y se encuadra.
+  useEffect(() => {
+    const lg = medicionLayerRef.current
+    const map = mapRef.current
+    if (!lg || !map) return
+    lg.clearLayers()
+    if (!medicionVistaId) return
+    const med = mediciones.find((x) => x.id === medicionVistaId)
+    if (!med || med.vertices.length === 0) return
+    const latlngs = med.vertices.map((v) => [v[1], v[0]] as [number, number])
+    const layer = med.tipo === 'area'
+      ? L.polygon(latlngs, { color: '#4da3ff', weight: 3, fillColor: '#4da3ff', fillOpacity: 0.15 })
+      : L.polyline(latlngs, { color: '#4da3ff', weight: 3 })
+    layer.bindTooltip(`${med.nombre}: ${med.tipo === 'area' ? formatHectareas(med.valor) : formatMetros(med.valor)}`)
+    layer.addTo(lg)
+    map.fitBounds(layer.getBounds(), { padding: [40, 40] })
+  }, [medicionVistaId, mediciones, mapas])
 
   function toggleCapa(m: MapaConfig) {
     setCapas((prev) => {
@@ -250,6 +343,74 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     }
     setMsg(accion === 'creado' ? `Mapa "${nombreMapa}" agregado y visible.` : `Cartografía de "${nombreMapa}" reemplazada.`)
     setDescargasVersion((v) => v + 1)
+  }
+
+  // ── Acciones de las herramientas ──
+
+  function abrirHerramienta(t: 'distancia' | 'area' | 'marcadores' | 'mediciones') {
+    setToolsOpen(false); setSheetOpen(false); setSearchOpen(false)
+    setMarcadoresOpen(false); setMedicionesOpen(false); setCreandoMarcador(false)
+    setGuardandoMed(false)
+    if (t === 'distancia' || t === 'area') {
+      setMeasureMode(t)
+      setVertices([])
+    } else {
+      setMeasureMode('off')
+      setVertices([])
+      if (t === 'marcadores') setMarcadoresOpen(true)
+      else setMedicionesOpen(true)
+    }
+  }
+
+  function marcarCentro() {
+    const map = mapRef.current
+    if (!map) return
+    const c = map.getCenter()
+    setVertices((prev) => [...prev, [c.lng, c.lat]])
+  }
+
+  function marcarGps() {
+    if (gpsPos) setVertices((prev) => [...prev, [gpsPos.lng, gpsPos.lat]])
+  }
+
+  function cerrarMedicion() {
+    setMeasureMode('off')
+    setVertices([])
+    setGuardandoMed(false)
+    setNombreMed('')
+  }
+
+  function guardarMedicion() {
+    if (!nombreMed.trim()) return
+    const esArea = measureMode === 'area'
+    crearMedicion({
+      nombre: nombreMed.trim(),
+      tipo: esArea ? 'area' : 'distancia',
+      valor: esArea ? polygonAreaHa(vertices) : lineLengthM(vertices),
+      vertices,
+    })
+    setMediciones(leerMediciones())
+    setMsg(`Medición "${nombreMed.trim()}" guardada en este equipo.`)
+    setNombreMed('')
+    setGuardandoMed(false)
+    setVertices([])
+  }
+
+  function guardarMarcadorAqui() {
+    const map = mapRef.current
+    if (!map || !mNombre.trim()) return
+    const c = map.getCenter()
+    crearMarcador({ nombre: mNombre.trim(), nota: mNota.trim(), color: mColor, lat: c.lat, lon: c.lng })
+    setMarcadores(leerMarcadores())
+    setMsg(`Marcador "${mNombre.trim()}" guardado en este equipo.`)
+    setMNombre(''); setMNota(''); setCreandoMarcador(false)
+  }
+
+  function irAMarcador(m: Marcador) {
+    const map = mapRef.current
+    if (!map) return
+    map.setView([m.lat, m.lon], Math.max(map.getZoom(), 16))
+    setMarcadoresOpen(false)
   }
 
   // Brújula (como Avenza): SOLO orienta el mapa al norte. Nunca toca el zoom
@@ -375,6 +536,144 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
           <div className="avz-progress"><span style={{ width: `${pct}%` }} /></div>
         )}
 
+        {/* Menú de herramientas (✏️ abajo-izquierda, como Avenza/original) */}
+        {toolsOpen && (
+          <div className="avz-tools">
+            <button type="button" onClick={() => abrirHerramienta('distancia')}>📏 Medir distancia</button>
+            <button type="button" onClick={() => abrirHerramienta('area')}>⬠ Medir área</button>
+            <button type="button" onClick={() => abrirHerramienta('marcadores')}>📍 Marcadores</button>
+            <button type="button" onClick={() => abrirHerramienta('mediciones')}>📐 Mediciones guardadas</button>
+          </div>
+        )}
+
+        {/* Panel de MEDICIÓN en vivo (portado del original) */}
+        {measureMode !== 'off' && (
+          <div className="avz-measure">
+            <button type="button" className="avz-measure__close" onClick={cerrarMedicion} aria-label="Terminar medición">✕</button>
+            <p className="avz-measure__tipo">
+              {measureMode === 'area' ? 'Medir área' : 'Medir distancia'} · {vertices.length} {vertices.length === 1 ? 'punto' : 'puntos'}
+            </p>
+            <p className="avz-measure__valor">
+              {measureMode === 'area'
+                ? (vertices.length >= 3 ? formatHectareas(polygonAreaHa(vertices)) : 'Marca al menos 3 puntos')
+                : (vertices.length >= 2 ? formatMetros(lineLengthM(vertices)) : 'Marca al menos 2 puntos')}
+            </p>
+            {measureMode === 'area' && vertices.length >= 2 && (
+              <p className="avz-measure__sub">Perímetro {formatMetros(polygonPerimeterM(vertices))}</p>
+            )}
+            <div className="avz-measure__grid">
+              <button type="button" className="is-primary" onClick={marcarCentro}>✛ Marcar</button>
+              <button type="button" onClick={marcarGps} disabled={!gpsPos} title={gpsPos ? 'Agregar mi posición GPS' : 'Activa el GPS primero'}>+ GPS</button>
+              <button
+                type="button"
+                className="is-save"
+                onClick={() => setGuardandoMed(true)}
+                disabled={measureMode === 'area' ? vertices.length < 3 : vertices.length < 2}
+              >
+                💾 Guardar
+              </button>
+              <button type="button" onClick={() => setVertices((p) => p.slice(0, -1))} disabled={vertices.length === 0}>Deshacer</button>
+              <button type="button" onClick={() => setVertices([])} disabled={vertices.length === 0}>Limpiar</button>
+            </div>
+            <p className="avz-measure__hint">Toca el mapa, usa ✛ (cruz central) o + GPS para marcar puntos.</p>
+            {guardandoMed && (
+              <form
+                className="avz-measure__save"
+                onSubmit={(e) => { e.preventDefault(); guardarMedicion() }}
+              >
+                <input
+                  value={nombreMed}
+                  onChange={(e) => setNombreMed(e.target.value)}
+                  placeholder="Nombre de la medición"
+                  autoFocus
+                />
+                <button type="submit" className="is-save" disabled={!nombreMed.trim()}>Guardar</button>
+                <button type="button" onClick={() => setGuardandoMed(false)}>Cancelar</button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* Panel de MARCADORES (portado del original) */}
+        {marcadoresOpen && !creandoMarcador && (
+          <div className="avz-sheet">
+            <div className="avz-sheet__head">
+              <strong>📍 Mis marcadores</strong>
+              <button type="button" className="avz-iconbtn" onClick={() => setMarcadoresOpen(false)} aria-label="Cerrar">✕</button>
+            </div>
+            <button type="button" className="avz-sheet__add" style={{ width: '100%', marginBottom: 8 }} onClick={() => { setMNombre(''); setMNota(''); setMColor(MARCADOR_COLORS[0]); setCreandoMarcador(true) }}>
+              ➕ Nuevo marcador
+            </button>
+            {marcadores.length === 0 && <p className="avz-sheet__vacio">Aún no tienes marcadores. Solo tú los ves (quedan en este equipo).</p>}
+            {marcadores.map((m) => (
+              <div key={m.id} className="avz-item">
+                <span className="avz-item__dot" style={{ background: m.color }} />
+                <button type="button" className="avz-item__nombre" onClick={() => irAMarcador(m)} title={m.nota || m.nombre}>
+                  {m.nombre}
+                </button>
+                <button type="button" className="avz-item__del" onClick={() => { borrarMarcador(m.id); setMarcadores(leerMarcadores()) }} aria-label={`Borrar ${m.nombre}`}>🗑</button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Hoja de NUEVO MARCADOR: centra la cruz y guarda (como el original) */}
+        {creandoMarcador && (
+          <div className="avz-sheet">
+            <div className="avz-sheet__head">
+              <strong>📍 Nuevo marcador</strong>
+              <button type="button" className="avz-iconbtn" onClick={() => setCreandoMarcador(false)} aria-label="Cancelar">✕</button>
+            </div>
+            <p className="avz-marcador__hint">Centra la cruz ✛ donde quieras el punto y guarda.</p>
+            <input className="avz-input" value={mNombre} onChange={(e) => setMNombre(e.target.value)} placeholder="Nombre del punto" />
+            <textarea className="avz-input" value={mNota} onChange={(e) => setMNota(e.target.value)} placeholder="Nota (opcional)" rows={2} />
+            <div className="avz-colores">
+              {MARCADOR_COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`avz-color${mColor === c ? ' is-sel' : ''}`}
+                  style={{ background: c }}
+                  onClick={() => setMColor(c)}
+                  aria-label={`Color ${c}`}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+              <button type="button" className="avz-sheet__add" style={{ flex: 1 }} onClick={guardarMarcadorAqui} disabled={!mNombre.trim()}>
+                Guardar aquí
+              </button>
+              <button type="button" className="avz-capa__btn" onClick={() => setCreandoMarcador(false)}>Cancelar</button>
+            </div>
+          </div>
+        )}
+
+        {/* Panel de MEDICIONES GUARDADAS (portado del original) */}
+        {medicionesOpen && (
+          <div className="avz-sheet">
+            <div className="avz-sheet__head">
+              <strong>📐 Mediciones guardadas</strong>
+              <button type="button" className="avz-iconbtn" onClick={() => { setMedicionesOpen(false); setMedicionVistaId(null) }} aria-label="Cerrar">✕</button>
+            </div>
+            {mediciones.length === 0 && <p className="avz-sheet__vacio">Sin mediciones guardadas. Mide un área o distancia y usa 💾 Guardar.</p>}
+            {mediciones.map((m) => (
+              <div key={m.id} className="avz-item">
+                <span aria-hidden style={{ flexShrink: 0 }}>{m.tipo === 'area' ? '⬠' : '📏'}</span>
+                <button
+                  type="button"
+                  className={`avz-item__nombre${medicionVistaId === m.id ? ' is-sel' : ''}`}
+                  onClick={() => { setMedicionVistaId(medicionVistaId === m.id ? null : m.id); setMedicionesOpen(false) }}
+                  title="Ver en el mapa"
+                >
+                  {m.nombre}
+                  <span className="avz-item__valor">{m.tipo === 'area' ? formatHectareas(m.valor) : formatMetros(m.valor)}</span>
+                </button>
+                <button type="button" className="avz-item__del" onClick={() => { borrarMedicion(m.id); setMediciones(leerMediciones()); if (medicionVistaId === m.id) setMedicionVistaId(null) }} aria-label={`Borrar ${m.nombre}`}>🗑</button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Hoja de CAPAS (desde abajo, oscura, como el panel de Avenza) */}
         {sheetOpen && (
           <div className="avz-sheet" data-refresh={descargasVersion}>
@@ -440,11 +739,22 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
         )}
       </div>
 
-      {/* Barra inferior negra: descarga · píldora de estado · capas (como Avenza) */}
+      {/* Barra inferior negra: herramientas ✏️ · píldora de estado · capas (como Avenza) */}
       <footer className="avz-bottom">
-        <button type="button" className="avz-iconbtn" onClick={() => setSheetOpen(true)} aria-label="Descargas sin señal"><DownloadIcon /></button>
+        <button
+          type="button"
+          className={`avz-iconbtn${toolsOpen || measureMode !== 'off' || marcadoresOpen || medicionesOpen ? ' is-tool' : ''}`}
+          onClick={() => {
+            if (measureMode !== 'off') { cerrarMedicion(); return }
+            setToolsOpen((v) => !v)
+            setSheetOpen(false); setMarcadoresOpen(false); setMedicionesOpen(false); setCreandoMarcador(false)
+          }}
+          aria-label="Dibujar y medir"
+        >
+          <PencilIcon />
+        </button>
         <div className={`avz-pill${gpsOn ? ' is-gps' : ''}`}>{pillTexto}</div>
-        <button type="button" className="avz-iconbtn" onClick={() => setSheetOpen((v) => !v)} aria-label="Capas"><LayersIcon /></button>
+        <button type="button" className="avz-iconbtn" onClick={() => { setSheetOpen((v) => !v); setToolsOpen(false); setMarcadoresOpen(false); setMedicionesOpen(false) }} aria-label="Capas"><LayersIcon /></button>
       </footer>
 
       {/* Modal ℹ️: detalle de los mapas (info útil real, estilo app) */}
@@ -523,10 +833,11 @@ function CompassIcon() {
   )
 }
 
-function DownloadIcon() {
+function PencilIcon() {
   return (
     <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M4 21h16" />
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+      <path d="m15 5 4 4" />
     </svg>
   )
 }

@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.101.1",
     "dexie": "^4.4.2",
     "leaflet": "^1.9.4",
+    "leaflet-rotate": "^0.2.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "vite-plugin-pwa": "^1.2.0",

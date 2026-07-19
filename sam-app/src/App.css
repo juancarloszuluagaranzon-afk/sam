@@ -6153,6 +6153,12 @@ td.planilla-revisada {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
 }
 .avz-fab.is-active { color: #4da3ff; }
+.avz-fab__needle {
+  display: grid;
+  place-items: center;
+  transition: transform 0.2s ease-out;
+  will-change: transform;
+}
 .avz-toast {
   position: absolute;
   bottom: 14px;

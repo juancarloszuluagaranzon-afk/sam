@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+// Rotación del mapa estilo Avenza (dos dedos en móvil, Shift+arrastrar en PC).
+import 'leaflet-rotate'
 import type { MapaConfig } from '../domain/sam'
 import { loadMapas } from '../services/samApi'
 import { useAppData } from '../context/AppDataContext'
@@ -43,6 +45,8 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const [descargandoId, setDescargandoId] = useState<string | null>(null)
   const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(null)
   const [msg, setMsg] = useState('')
+  // Rumbo actual del mapa (grados). La aguja de la brújula gira con él.
+  const [bearing, setBearing] = useState(0)
   // Contador para refrescar chips de descarga tras descargar/borrar.
   const [descargasVersion, setDescargasVersion] = useState(0)
 
@@ -90,8 +94,16 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       attributionControl: false,
       minZoom: minZ,
       maxZoom: maxZ,
+      // Rotación estilo Avenza (plugin leaflet-rotate).
+      rotate: true,
+      touchRotate: true,
+      shiftKeyRotate: true,
+      rotateControl: false,
+      bearing: 0,
     })
     mapRef.current = map
+    // La aguja de la brújula sigue el rumbo del mapa en vivo.
+    map.on('rotate', () => setBearing(map.getBearing()))
 
     L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0 }).addTo(map)
 
@@ -240,12 +252,19 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setDescargasVersion((v) => v + 1)
   }
 
-  // Brújula (como Avenza apunta al norte): un toque re-encuadra a las capas activas.
+  // Brújula (como Avenza): un toque orienta el mapa automáticamente al norte.
+  // Si ya está al norte, re-encuadra a las capas activas (doble utilidad).
   function handleBrujula() {
-    if (!mapRef.current || !mapas) return
+    const map = mapRef.current
+    if (!map || !mapas) return
+    if (Math.abs(map.getBearing()) > 0.5) {
+      map.setBearing(0)
+      setBearing(0)
+      return
+    }
     const ids = mapas.filter((m) => capas[m.id]?.on).map((m) => m.id)
     const b = unionBounds(ids.length ? ids : mapas.map((m) => m.id))
-    if (b) mapRef.current.fitBounds(b, { padding: [16, 16] })
+    if (b) map.fitBounds(b, { padding: [16, 16] })
   }
 
   const capasOn = useMemo(
@@ -348,8 +367,11 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
           >
             <GpsIcon />
           </button>
-          <button type="button" className="avz-fab" onClick={handleBrujula} aria-label="Encuadrar al norte">
-            <CompassIcon />
+          <button type="button" className="avz-fab" onClick={handleBrujula} aria-label="Orientar al norte">
+            {/* La aguja gira en vivo con el rumbo del mapa (igual que Avenza). */}
+            <span className="avz-fab__needle" style={{ transform: `rotate(${bearing}deg)` }}>
+              <CompassIcon />
+            </span>
           </button>
         </div>
 

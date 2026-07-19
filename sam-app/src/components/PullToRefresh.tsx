@@ -27,9 +27,11 @@ export function PullToRefresh() {
       if (!el) return false
       // Cualquier overlay/modal/sheet existente en la app: si el toque empieza
       // ahi, NO interceptar — el usuario probablemente esta scrolleando dentro
-      // del modal o moviendo un sheet.
+      // del modal o moviendo un sheet. `.avz-shell` = visor de mapas a pantalla
+      // completa: arrastrar el mapa hacia abajo NO debe disparar el sync (el
+      // banner salia a cada rato mientras se navegaba el plano).
       return !!el.closest(
-        '.modal-overlay, .diagnostic-card, .labor-detail-modal, .more-sheet, .side-menu, .pin-modal',
+        '.modal-overlay, .diagnostic-card, .labor-detail-modal, .more-sheet, .side-menu, .pin-modal, .avz-shell',
       )
     }
 

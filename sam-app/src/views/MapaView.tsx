@@ -136,7 +136,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     marcadoresLayerRef.current = L.layerGroup().addTo(map)
     medicionLayerRef.current = L.layerGroup().addTo(map)
 
-    L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0 }).addTo(map)
+    // detectRetina: en pantallas de alta densidad (todos los teléfonos) pide
+    // tiles un nivel más profundos y los pinta a densidad nativa → más nítido.
+    L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0, detectRetina: true }).addTo(map)
 
     const encendidas = mapas.filter((_, i) => i === 0).map((m) => m.id)
     const b = unionBounds(encendidas) ?? unionBounds(mapas.map((m) => m.id))
@@ -173,6 +175,8 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
             bounds: L.latLngBounds([m.bounds[1], m.bounds[0]], [m.bounds[3], m.bounds[2]]),
             opacity: st.op,
             zIndex: 10 + i,
+            // Nitidez en pantallas de alta densidad (ver base satélite).
+            detectRetina: true,
           }).addTo(map)
           layersRef.current[m.id] = layer
         } else {
@@ -257,23 +261,38 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   }
 
   // GPS on-demand: watch SOLO con el botón activo (batería).
+  //
+  // Precisión: `enableHighAccuracy` obliga al teléfono a usar el chip GNSS con
+  // TODAS las constelaciones que soporte (GPS + GLONASS + Galileo + BeiDou) en
+  // vez de wifi/celdas, y `maximumAge: 0` prohíbe lecturas cacheadas. Además,
+  // en vez de saltar con cada lectura (el GPS "rebota"), se mantiene una
+  // ventana de las lecturas de los últimos 8 s y se usa LA MÁS PRECISA — el
+  // punto se estabiliza y "+ GPS" marca siempre con la mejor lectura. Cuantos
+  // más segundos lleve encendido, más satélites engancha y mejor la precisión.
   useEffect(() => {
     const map = mapRef.current
     if (!gpsOn || !map) return
     if (!('geolocation' in navigator)) { setGpsError('Este dispositivo no tiene GPS disponible.'); setGpsOn(false); return }
     setGpsError('')
     let centrado = false
+    const VENTANA_MS = 8000
+    const lecturas: { lat: number; lng: number; acc: number; t: number }[] = []
     const id = navigator.geolocation.watchPosition(
       (pos) => {
-        const ll = L.latLng(pos.coords.latitude, pos.coords.longitude)
-        setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy })
+        const ahora = Date.now()
+        lecturas.push({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy, t: ahora })
+        while (lecturas.length > 0 && ahora - lecturas[0].t > VENTANA_MS) lecturas.shift()
+        // La mejor lectura reciente (menor error en metros) manda.
+        const mejor = lecturas.reduce((a, b) => (b.acc < a.acc ? b : a))
+        const ll = L.latLng(mejor.lat, mejor.lng)
+        setGpsPos({ lat: mejor.lat, lng: mejor.lng, acc: mejor.acc })
         if (!gpsMarkerRef.current) {
-          gpsCircleRef.current = L.circle(ll, { radius: pos.coords.accuracy, weight: 1, color: '#1d6fd1', fillColor: '#1d6fd1', fillOpacity: 0.12 }).addTo(map)
+          gpsCircleRef.current = L.circle(ll, { radius: mejor.acc, weight: 1, color: '#1d6fd1', fillColor: '#1d6fd1', fillOpacity: 0.12 }).addTo(map)
           gpsMarkerRef.current = L.circleMarker(ll, { radius: 7, weight: 2, color: '#fff', fillColor: '#1d6fd1', fillOpacity: 1 }).addTo(map)
         } else {
           gpsMarkerRef.current.setLatLng(ll)
           gpsCircleRef.current?.setLatLng(ll)
-          gpsCircleRef.current?.setRadius(pos.coords.accuracy)
+          gpsCircleRef.current?.setRadius(mejor.acc)
         }
         if (!centrado) { map.setView(ll, Math.max(map.getZoom(), 15)); centrado = true }
       },
@@ -281,7 +300,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
         setGpsError(err.code === 1 ? 'Permiso de ubicación denegado.' : 'No se pudo obtener la ubicación.')
         setGpsOn(false)
       },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 },
     )
     return () => {
       navigator.geolocation.clearWatch(id)

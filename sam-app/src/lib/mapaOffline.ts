@@ -19,6 +19,10 @@ export interface MapaDescargaMeta {
   // cartografía (tiles_base nuevo), esta ya no coincide → el visor debe pedir
   // re-descarga en vez de creer que el mapa viejo sigue vigente.
   tilesBase?: string
+  // Zoom máx con el que se descargó. Si administración sube la resolución del
+  // mapa (maxzoom mayor, misma URL — caso DPI 1200 → z17), la descarga vieja
+  // no tiene los niveles nuevos → también debe pedir re-descarga.
+  maxzoom?: number
 }
 
 function leerMetas(): Record<string, MapaDescargaMeta> {
@@ -41,10 +45,11 @@ export function metaDescarga(mapaId: string): MapaDescargaMeta | null {
  * reemplazada (tiles_base distinto al de la descarga), devuelve 'desactualizado'
  * para que la UI pida re-descargar.
  */
-export function estadoDescarga(cfg: { id: string; tilesBase: string }): 'no' | 'ok' | 'desactualizado' {
+export function estadoDescarga(cfg: { id: string; tilesBase: string; maxzoom?: number }): 'no' | 'ok' | 'desactualizado' {
   const meta = metaDescarga(cfg.id)
   if (!meta) return 'no'
   if (meta.tilesBase && meta.tilesBase !== cfg.tilesBase) return 'desactualizado'
+  if (meta.maxzoom != null && cfg.maxzoom != null && meta.maxzoom !== cfg.maxzoom) return 'desactualizado'
   return 'ok'
 }
 
@@ -140,6 +145,7 @@ export async function descargarMapa(
     bytes,
     fecha: new Date().toISOString(),
     tilesBase: cfg.tilesBase,
+    maxzoom: cfg.maxzoom,
   }
   const metas = leerMetas()
   metas[cfg.id] = meta

@@ -1674,7 +1674,7 @@ export function OperatorView({
           </section>
         ) : null}
 
-        {operatorTab === 'mapa' ? <MapaView /> : null}
+        {operatorTab === 'mapa' ? <MapaView onBack={() => setOperatorTab('activas')} /> : null}
 
         {operatorTab === 'historial' ? (
           <section className="panel-card operator-history-card">

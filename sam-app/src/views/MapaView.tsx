@@ -10,12 +10,15 @@ import {
 } from '../lib/mapaOffline'
 
 /**
- * Visor de mapas OFFLINE tipo Avenza — modo CAPAS.
+ * Visor de mapas OFFLINE — visual IDÉNTICA a Avenza Maps (pedido del dueño):
+ * pantalla completa oscura, barra superior negra (← título ℹ️ 🔍), mapa a
+ * sangre con retícula central, botones flotantes circulares (GPS y brújula),
+ * barra inferior negra con píldora de estado GPS y botón de capas que abre
+ * una hoja oscura desde abajo.
  *
- * Varios mapas pueden verse AL TIEMPO: cada uno es una capa que se prende/apaga
- * y se superpone a las demás, con opacidad individual para compararlas
- * (cartografías de fechas distintas, zonas, etc.). Cada capa se descarga por
- * separado para uso sin señal. GPS solo mientras el usuario lo activa.
+ * Conserva TODAS las funciones propias: capas múltiples superpuestas con
+ * opacidad individual, descarga offline por capa (+ aviso 🔄 si administración
+ * reemplazó la cartografía), y "+ Agregar mapa" para admin/jefe.
  * Imports ESTÁTICOS a propósito (regla 17-jul: nada de lazy chunks).
  */
 
@@ -23,16 +26,19 @@ const ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Ima
 
 interface CapaEstado { on: boolean; op: number }
 
-export function MapaView() {
+export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const { session } = useAppData()
   const puedeGestionar = session?.role === 'owner' || session?.role === 'administracion'
+
   const [mapas, setMapas] = useState<MapaConfig[] | null>(null)
   const [capas, setCapas] = useState<Record<string, CapaEstado>>({})
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const [infoOpen, setInfoOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [q, setQ] = useState('')
   const [formOpen, setFormOpen] = useState(false)
-  // Panel de capas CONTRAÍDO por defecto (pedido del dueño): el mapa se ve de
-  // una, sin la lista de capas tapando la vista. Se abre con "🗂 Capas".
-  const [panelOpen, setPanelOpen] = useState(false)
   const [gpsOn, setGpsOn] = useState(false)
+  const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number; acc: number } | null>(null)
   const [gpsError, setGpsError] = useState('')
   const [descargandoId, setDescargandoId] = useState<string | null>(null)
   const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(null)
@@ -53,7 +59,6 @@ export function MapaView() {
     void loadMapas().then((ms) => {
       if (!alive) return
       setMapas(ms)
-      // Por defecto: la primera capa prendida, el resto apagadas.
       const init: Record<string, CapaEstado> = {}
       ms.forEach((m, i) => { init[m.id] = { on: i === 0, op: 1 } })
       setCapas(init)
@@ -73,21 +78,21 @@ export function MapaView() {
     return acc
   }
 
-  // Montaje del mapa Leaflet (UNA vez, cuando hay mapas).
+  // Montaje del mapa Leaflet (UNA vez, cuando hay mapas). Sin botones +/- :
+  // como Avenza, se navega con pellizco/rueda.
   useEffect(() => {
     if (!mapas || mapas.length === 0 || !contRef.current || mapRef.current) return
     const minZ = Math.max(Math.min(...mapas.map((m) => m.minzoom)) - 2, 3)
     const maxZ = Math.max(...mapas.map((m) => m.maxzoom)) + 4
 
     const map = L.map(contRef.current, {
-      zoomControl: true,
+      zoomControl: false,
       attributionControl: false,
       minZoom: minZ,
       maxZoom: maxZ,
     })
     mapRef.current = map
 
-    // Base satélite (Esri World Imagery).
     L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0 }).addTo(map)
 
     const encendidas = mapas.filter((_, i) => i === 0).map((m) => m.id)
@@ -105,8 +110,7 @@ export function MapaView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapas])
 
-  // Sincroniza capas Leaflet con el estado (prender/apagar/opacidad, traslape
-  // por zIndex según el orden del catálogo).
+  // Sincroniza capas Leaflet con el estado (traslape por zIndex del catálogo).
   useEffect(() => {
     const map = mapRef.current
     if (!map || !mapas) return
@@ -138,7 +142,6 @@ export function MapaView() {
   function toggleCapa(m: MapaConfig) {
     setCapas((prev) => {
       const next = { ...prev, [m.id]: { on: !prev[m.id]?.on, op: prev[m.id]?.op ?? 1 } }
-      // Al PRENDER una capa, ajustar la vista a la unión de las visibles.
       if (next[m.id].on && mapRef.current && mapas) {
         const ids = mapas.filter((x) => next[x.id]?.on).map((x) => x.id)
         const b = unionBounds(ids)
@@ -148,7 +151,7 @@ export function MapaView() {
     })
   }
 
-  // GPS on-demand (igual que antes): watch SOLO con el toggle activo.
+  // GPS on-demand: watch SOLO con el botón activo (batería).
   useEffect(() => {
     const map = mapRef.current
     if (!gpsOn || !map) return
@@ -158,6 +161,7 @@ export function MapaView() {
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const ll = L.latLng(pos.coords.latitude, pos.coords.longitude)
+        setGpsPos({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy })
         if (!gpsMarkerRef.current) {
           gpsCircleRef.current = L.circle(ll, { radius: pos.coords.accuracy, weight: 1, color: '#1d6fd1', fillColor: '#1d6fd1', fillOpacity: 0.12 }).addTo(map)
           gpsMarkerRef.current = L.circleMarker(ll, { radius: 7, weight: 2, color: '#fff', fillColor: '#1d6fd1', fillOpacity: 1 }).addTo(map)
@@ -178,8 +182,16 @@ export function MapaView() {
       navigator.geolocation.clearWatch(id)
       gpsMarkerRef.current?.remove(); gpsMarkerRef.current = null
       gpsCircleRef.current?.remove(); gpsCircleRef.current = null
+      setGpsPos(null)
     }
   }, [gpsOn])
+
+  // Mensajes transitorios (toast estilo Avenza).
+  useEffect(() => {
+    if (!msg) return
+    const t = setTimeout(() => setMsg(''), 5000)
+    return () => clearTimeout(t)
+  }, [msg])
 
   async function handleDescargar(m: MapaConfig) {
     if (descargandoId) return
@@ -189,7 +201,7 @@ export function MapaView() {
     abortRef.current = new AbortController()
     try {
       const meta = await descargarMapa(m, (hechos, total) => setProgreso({ hechos, total }), abortRef.current.signal)
-      setMsg(`"${m.nombre}" guardado para uso sin señal (${meta.tiles} imágenes · ${formatoBytes(meta.bytes)}).`)
+      setMsg(`"${m.nombre}" guardado sin señal (${meta.tiles} imágenes · ${formatoBytes(meta.bytes)}).`)
     } catch (e) {
       if ((e as DOMException)?.name === 'AbortError') setMsg('Descarga cancelada.')
       else setMsg('No se pudo completar la descarga. Revisa la señal (lo bajado no se pierde).')
@@ -207,8 +219,6 @@ export function MapaView() {
     setDescargasVersion((v) => v + 1)
   }
 
-  // Tras agregar/reemplazar un mapa desde el visor: recargar la lista, prender
-  // la capa nueva y encuadrar la vista para verla de una.
   async function refreshTrasGuardar(accion: 'creado' | 'reemplazado', nombreMapa: string) {
     const ms = await loadMapas()
     setMapas(ms)
@@ -230,134 +240,285 @@ export function MapaView() {
     setDescargasVersion((v) => v + 1)
   }
 
+  // Brújula (como Avenza apunta al norte): un toque re-encuadra a las capas activas.
+  function handleBrujula() {
+    if (!mapRef.current || !mapas) return
+    const ids = mapas.filter((m) => capas[m.id]?.on).map((m) => m.id)
+    const b = unionBounds(ids.length ? ids : mapas.map((m) => m.id))
+    if (b) mapRef.current.fitBounds(b, { padding: [16, 16] })
+  }
+
   const capasOn = useMemo(
-    () => (mapas ?? []).filter((m) => capas[m.id]?.on).length,
+    () => (mapas ?? []).filter((m) => capas[m.id]?.on),
     [mapas, capas],
   )
+  const titulo = capasOn.length === 1 ? capasOn[0].nombre : capasOn.length > 1 ? `Mapas (${capasOn.length})` : 'Mapa'
+  const pct = progreso && progreso.total > 0 ? Math.round((progreso.hechos / progreso.total) * 100) : 0
+  const listaSheet = (mapas ?? []).filter((m) => !q.trim() || m.nombre.toLowerCase().includes(q.trim().toLowerCase()))
+
+  // Píldora inferior estilo Avenza: estado del GPS (o de la descarga en curso).
+  const pillTexto = descargandoId && progreso
+    ? `Descargando… ${pct}%`
+    : gpsError
+      ? gpsError
+      : gpsOn
+        ? gpsPos
+          ? `${gpsPos.lat.toFixed(5)}, ${gpsPos.lng.toFixed(5)} · ±${Math.round(gpsPos.acc)} m`
+          : 'Buscando señal GPS…'
+        : 'Inactivo'
 
   if (mapas === null) {
-    return <section className="panel-card"><p className="muted-text">Cargando mapas…</p></section>
-  }
-  if (mapas.length === 0) {
     return (
-      <section className="panel-card">
-        <h2>Mapas</h2>
-        <p className="subtle-copy">
-          {puedeGestionar
-            ? 'Aún no hay mapas. Agrega el primero:'
-            : 'Aún no hay mapas configurados. Administración los registra.'}
-        </p>
-        {puedeGestionar && (
-          <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>
-            + Agregar mapa
-          </button>
-        )}
-        <MapaFormModal
-          open={formOpen}
-          onClose={() => setFormOpen(false)}
-          mapas={mapas}
-          onSaved={(a, n) => void refreshTrasGuardar(a, n)}
-        />
-      </section>
+      <div className="avz-shell">
+        <header className="avz-top">
+          {onBack && <button type="button" className="avz-iconbtn" onClick={onBack} aria-label="Volver"><BackIcon /></button>}
+          <h1>Mapa</h1>
+        </header>
+        <div className="avz-body"><p className="avz-cargando">Cargando mapas…</p></div>
+      </div>
     )
   }
 
-  const pct = progreso && progreso.total > 0 ? Math.round((progreso.hechos / progreso.total) * 100) : 0
+  if (mapas.length === 0) {
+    return (
+      <div className="avz-shell">
+        <header className="avz-top">
+          {onBack && <button type="button" className="avz-iconbtn" onClick={onBack} aria-label="Volver"><BackIcon /></button>}
+          <h1>Mapa</h1>
+        </header>
+        <div className="avz-body">
+          <div className="avz-vacio">
+            <p>{puedeGestionar ? 'Aún no hay mapas. Agrega el primero:' : 'Aún no hay mapas configurados. Administración los registra.'}</p>
+            {puedeGestionar && (
+              <button type="button" className="primary-button" onClick={() => setFormOpen(true)}>+ Agregar mapa</button>
+            )}
+          </div>
+        </div>
+        <MapaFormModal open={formOpen} onClose={() => setFormOpen(false)} mapas={mapas} onSaved={(a, n) => void refreshTrasGuardar(a, n)} />
+      </div>
+    )
+  }
 
   return (
-    <section className="panel-card mapa-shell">
-      <div className="mapa-toolbar">
-        <button
-          type="button"
-          className={`inline-button${panelOpen ? ' is-active' : ''}`}
-          onClick={() => setPanelOpen((v) => !v)}
-        >
-          🗂 Capas ({capasOn}/{mapas.length})
-        </button>
-        <button
-          type="button"
-          className={`inline-button mapa-gps-btn${gpsOn ? ' is-active' : ''}`}
-          onClick={() => setGpsOn((v) => !v)}
-        >
-          {gpsOn ? '📍 GPS activo' : '📍 Mi ubicación'}
-        </button>
-        {puedeGestionar && (
-          <button type="button" className="inline-button" onClick={() => setFormOpen(true)}>
-            + Agregar mapa
+    <div className="avz-shell">
+      {/* Barra superior negra: ← TÍTULO ℹ️ 🔍 (idéntica a Avenza) */}
+      <header className="avz-top">
+        {onBack && <button type="button" className="avz-iconbtn" onClick={onBack} aria-label="Volver"><BackIcon /></button>}
+        <h1>{titulo}</h1>
+        <button type="button" className="avz-iconbtn" onClick={() => setInfoOpen(true)} aria-label="Información del mapa"><InfoIcon /></button>
+        <button type="button" className="avz-iconbtn" onClick={() => { setSearchOpen((v) => !v); setSheetOpen(true) }} aria-label="Buscar mapa"><SearchIcon /></button>
+      </header>
+      {searchOpen && (
+        <div className="avz-search">
+          <input
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar mapa…"
+            autoFocus
+          />
+        </div>
+      )}
+
+      <div className="avz-body">
+        <div ref={contRef} className="avz-map" />
+
+        {/* Retícula central (como Avenza) */}
+        <div className="avz-crosshair" aria-hidden>
+          <svg viewBox="0 0 44 44" width="44" height="44">
+            <g stroke="#fff" strokeWidth="5" fill="none" opacity="0.9">
+              <circle cx="22" cy="22" r="9" />
+              <path d="M22 2v9M22 33v9M2 22h9M33 22h9" />
+            </g>
+            <g stroke="#111" strokeWidth="2.4" fill="none">
+              <circle cx="22" cy="22" r="9" />
+              <path d="M22 2v9M22 33v9M2 22h9M33 22h9" />
+            </g>
+            <circle cx="22" cy="22" r="1.6" fill="#111" />
+          </svg>
+        </div>
+
+        {/* Botones flotantes circulares (GPS y brújula), como Avenza */}
+        <div className="avz-fabs">
+          <button
+            type="button"
+            className={`avz-fab${gpsOn ? ' is-active' : ''}`}
+            onClick={() => setGpsOn((v) => !v)}
+            aria-label={gpsOn ? 'Apagar GPS' : 'Mi ubicación'}
+          >
+            <GpsIcon />
           </button>
+          <button type="button" className="avz-fab" onClick={handleBrujula} aria-label="Encuadrar al norte">
+            <CompassIcon />
+          </button>
+        </div>
+
+        {msg && <div className="avz-toast">{msg}</div>}
+        {descargandoId && progreso && (
+          <div className="avz-progress"><span style={{ width: `${pct}%` }} /></div>
+        )}
+
+        {/* Hoja de CAPAS (desde abajo, oscura, como el panel de Avenza) */}
+        {sheetOpen && (
+          <div className="avz-sheet" data-refresh={descargasVersion}>
+            <div className="avz-sheet__head">
+              <strong>Capas</strong>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {puedeGestionar && (
+                  <button type="button" className="avz-sheet__add" onClick={() => setFormOpen(true)}>+ Agregar mapa</button>
+                )}
+                <button type="button" className="avz-iconbtn" onClick={() => { setSheetOpen(false); setSearchOpen(false); setQ('') }} aria-label="Cerrar capas">✕</button>
+              </div>
+            </div>
+            {listaSheet.map((m) => {
+              const st = capas[m.id] ?? { on: false, op: 1 }
+              const estado = estadoDescarga(m)
+              const meta = metaDescarga(m.id)
+              const bajandoEsta = descargandoId === m.id
+              return (
+                <div key={m.id} className={`avz-capa${st.on ? ' is-on' : ''}`}>
+                  <label className="avz-capa__check">
+                    <input type="checkbox" checked={st.on} onChange={() => toggleCapa(m)} />
+                    <span className="avz-capa__nombre">{m.nombre}</span>
+                  </label>
+                  <input
+                    className="avz-capa__op"
+                    type="range" min={0.1} max={1} step={0.05}
+                    value={st.op}
+                    disabled={!st.on}
+                    onChange={(e) => setCapas((prev) => ({ ...prev, [m.id]: { on: true, op: Number(e.target.value) } }))}
+                    aria-label={`Opacidad de ${m.nombre}`}
+                    title="Opacidad (para ver el traslape con las otras capas)"
+                  />
+                  <span className="avz-capa__estado">
+                    {bajandoEsta ? (
+                      <button type="button" className="avz-capa__btn" onClick={() => abortRef.current?.abort()}>
+                        Cancelar ({pct}%)
+                      </button>
+                    ) : estado === 'ok' && meta ? (
+                      <button
+                        type="button"
+                        className="avz-capa__btn is-ok"
+                        onClick={() => void handleBorrar(m)}
+                        title={`Descargado ${new Date(meta.fecha).toLocaleDateString('es-CO')} · ${formatoBytes(meta.bytes)} · clic para borrar`}
+                      >
+                        ✓ Sin señal
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="avz-capa__btn is-dl"
+                        onClick={() => void handleDescargar(m)}
+                        disabled={descargandoId != null}
+                      >
+                        {estado === 'desactualizado' ? '🔄 Actualizar' : '⬇ Descargar'}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              )
+            })}
+            {listaSheet.length === 0 && <p className="avz-sheet__vacio">Sin resultados para "{q}".</p>}
+          </div>
         )}
       </div>
 
-      {panelOpen && (
-        <div className="mapa-capas" data-refresh={descargasVersion}>
-          {mapas.map((m) => {
-            const st = capas[m.id] ?? { on: false, op: 1 }
-            const estado = estadoDescarga(m)
-            const meta = metaDescarga(m.id)
-            const bajandoEsta = descargandoId === m.id
-            return (
-              <div key={m.id} className={`mapa-capa${st.on ? ' mapa-capa--on' : ''}`}>
-                <label className="mapa-capa__check">
-                  <input type="checkbox" checked={st.on} onChange={() => toggleCapa(m)} />
-                  <span className="mapa-capa__nombre">{m.nombre}</span>
-                </label>
-                <input
-                  className="mapa-capa__op"
-                  type="range" min={0.1} max={1} step={0.05}
-                  value={st.op}
-                  disabled={!st.on}
-                  onChange={(e) => setCapas((prev) => ({ ...prev, [m.id]: { on: true, op: Number(e.target.value) } }))}
-                  aria-label={`Opacidad de ${m.nombre}`}
-                  title="Opacidad (para ver el traslape con las otras capas)"
-                />
-                <span className="mapa-capa__estado">
-                  {bajandoEsta ? (
-                    <button type="button" className="inline-button" onClick={() => abortRef.current?.abort()}>
-                      Cancelar ({pct}%)
-                    </button>
-                  ) : estado === 'ok' && meta ? (
-                    <button
-                      type="button"
-                      className="inline-button"
-                      onClick={() => void handleBorrar(m)}
-                      title={`Descargado ${new Date(meta.fecha).toLocaleDateString('es-CO')} · ${formatoBytes(meta.bytes)} · clic para borrar`}
-                    >
-                      ✓ Sin señal
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className="primary-button mapa-capa__descargar"
-                      onClick={() => void handleDescargar(m)}
-                      disabled={descargandoId != null}
-                    >
-                      {estado === 'desactualizado' ? '🔄 Actualizar' : '⬇ Descargar'}
-                    </button>
-                  )}
-                </span>
-              </div>
-            )
-          })}
+      {/* Barra inferior negra: descarga · píldora de estado · capas (como Avenza) */}
+      <footer className="avz-bottom">
+        <button type="button" className="avz-iconbtn" onClick={() => setSheetOpen(true)} aria-label="Descargas sin señal"><DownloadIcon /></button>
+        <div className={`avz-pill${gpsOn ? ' is-gps' : ''}`}>{pillTexto}</div>
+        <button type="button" className="avz-iconbtn" onClick={() => setSheetOpen((v) => !v)} aria-label="Capas"><LayersIcon /></button>
+      </footer>
+
+      {/* Modal ℹ️: detalle de los mapas (info útil real, estilo app) */}
+      {infoOpen && (
+        <div className="modal-overlay open" onClick={() => setInfoOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Mapas</p><h3>Información</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setInfoOpen(false)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            {(mapas ?? []).map((m) => {
+              const meta = metaDescarga(m.id)
+              const estado = estadoDescarga(m)
+              return (
+                <p key={m.id} className="subtle-copy" style={{ margin: '6px 0' }}>
+                  <strong>{m.nombre}</strong> — zoom {m.minzoom}–{m.maxzoom}<br />
+                  {estado === 'ok' && meta
+                    ? `✓ Descargado en este equipo (${formatoBytes(meta.bytes)}, ${new Date(meta.fecha).toLocaleDateString('es-CO')})`
+                    : estado === 'desactualizado'
+                      ? '🔄 Cartografía actualizada — vuelve a descargar'
+                      : 'Sin descarga en este equipo (requiere señal)'}
+                </p>
+              )
+            })}
+          </div>
         </div>
       )}
 
-      {descargandoId && progreso && (
-        <div className="mapa-progreso">
-          <div className="mapa-progreso__bar"><span style={{ width: `${pct}%` }} /></div>
-          <span className="mapa-progreso__txt">{progreso.hechos} / {progreso.total} imágenes ({pct}%)</span>
-        </div>
-      )}
-      {(msg || gpsError) && <p className="subtle-copy mapa-msg">{gpsError || msg}</p>}
+      <MapaFormModal open={formOpen} onClose={() => setFormOpen(false)} mapas={mapas} onSaved={(a, n) => void refreshTrasGuardar(a, n)} />
+    </div>
+  )
+}
 
-      <div ref={contRef} className="mapa-canvas" />
+/* ── Iconos (trazo blanco, estilo Avenza) ── */
 
-      <MapaFormModal
-        open={formOpen}
-        onClose={() => setFormOpen(false)}
-        mapas={mapas}
-        onSaved={(a, n) => void refreshTrasGuardar(a, n)}
-      />
-    </section>
+function BackIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M19 12H5" /><path d="m12 19-7-7 7-7" />
+    </svg>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" /><path d="M12 16v-5" /><path d="M12 8h.01" />
+    </svg>
+  )
+}
+
+function SearchIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+      <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+    </svg>
+  )
+}
+
+function GpsIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden>
+      <path d="M21.4 2.6 12.9 21.5c-.2.5-.9.4-1-.1l-1.8-8.1-8.1-1.8c-.5-.1-.6-.8-.1-1L20.8 2c.4-.2.8.2.6.6Z" />
+    </svg>
+  )
+}
+
+function CompassIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden>
+      <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="1.6" />
+      <text x="12" y="7.6" textAnchor="middle" fontSize="5.2" fill="currentColor" fontWeight="700">N</text>
+      <path d="M12 8.5 14 15h-4Z" fill="#e53935" />
+      <path d="m12 15.5-2-0.5h4Z" fill="#fff" />
+    </svg>
+  )
+}
+
+function DownloadIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M4 21h16" />
+    </svg>
+  )
+}
+
+function LayersIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m12 2 9 5-9 5-9-5 9-5Z" /><path d="m3 12 9 5 9-5" /><path d="m3 17 9 5 9-5" />
+    </svg>
   )
 }
 

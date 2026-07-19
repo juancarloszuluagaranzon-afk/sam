@@ -6043,6 +6043,241 @@ td.planilla-revisada {
 }
 .mapa-opacidad input[type="range"] { width: 110px; }
 .mapa-descargar-btn { padding: 9px 14px; }
+/* ── Visor de mapas ESTILO AVENZA: pantalla completa oscura ──
+   z-index 150: encima del contenido y topbar de la app, DEBAJO del more-sheet
+   (190/195) y de los modales (200+). El .avz-map crea stacking context propio
+   para encerrar los z-index internos de Leaflet (panes 400 / controles 1000). */
+.avz-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: #000;
+  display: flex;
+  flex-direction: column;
+}
+.avz-top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #121212;
+  color: #fff;
+  padding: 8px 10px;
+  padding-top: calc(8px + env(safe-area-inset-top));
+  flex-shrink: 0;
+}
+.avz-top h1 {
+  flex: 1;
+  margin: 0;
+  color: #fff;
+  font-size: 1.02rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avz-iconbtn {
+  background: none;
+  border: none;
+  color: #fff;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+.avz-iconbtn:active { background: rgba(255, 255, 255, 0.16); }
+.avz-search {
+  background: #121212;
+  padding: 0 12px 10px;
+  flex-shrink: 0;
+}
+.avz-search input {
+  width: 100%;
+  background: #262626;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 0.95rem;
+}
+.avz-search input::placeholder { color: #9a9a9a; }
+.avz-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.avz-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: #0a0a0a;
+}
+.avz-cargando, .avz-vacio {
+  color: #ddd;
+  text-align: center;
+  padding: 40px 20px;
+}
+.avz-vacio { display: flex; flex-direction: column; gap: 14px; align-items: center; }
+.avz-crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  pointer-events: none;
+}
+.avz-fabs {
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.avz-fab {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(24, 24, 24, 0.92);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+.avz-fab.is-active { color: #4da3ff; }
+.avz-toast {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.82);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  max-width: min(90%, 420px);
+  text-align: center;
+}
+.avz-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 5;
+  background: #333;
+}
+.avz-progress span { display: block; height: 100%; background: #4da3ff; transition: width 0.3s; }
+.avz-bottom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #121212;
+  color: #fff;
+  padding: 9px 12px;
+  padding-bottom: calc(9px + env(safe-area-inset-bottom));
+  flex-shrink: 0;
+}
+.avz-pill {
+  flex: 1;
+  text-align: center;
+  background: #2b2b2b;
+  color: #eee;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avz-pill.is-gps { color: #7db8ff; }
+.avz-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 6;
+  background: rgba(18, 18, 18, 0.97);
+  color: #fff;
+  border-radius: 16px 16px 0 0;
+  max-height: 62%;
+  overflow-y: auto;
+  padding: 12px 14px 16px;
+  box-shadow: 0 -4px 18px rgba(0, 0, 0, 0.5);
+}
+.avz-sheet__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.avz-sheet__head strong { font-size: 1rem; }
+.avz-sheet__add {
+  background: #2e7d32;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.avz-sheet__vacio { color: #aaa; font-size: 0.88rem; }
+.avz-capa {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.avz-capa:last-child { border-bottom: none; }
+.avz-capa__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+.avz-capa__check input { width: 19px; height: 19px; accent-color: #4da3ff; flex-shrink: 0; }
+.avz-capa__nombre {
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: #ddd;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.avz-capa.is-on .avz-capa__nombre { color: #fff; }
+.avz-capa__op { width: 100%; accent-color: #4da3ff; }
+.avz-capa__estado { justify-self: end; }
+.avz-capa__btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 13px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  background: #333;
+  color: #fff;
+}
+.avz-capa__btn.is-dl { background: #2e7d32; }
+.avz-capa__btn.is-ok { background: #1f3a24; color: #8fd694; }
+.avz-capa__btn:disabled { opacity: 0.5; cursor: default; }
+@media (max-width: 640px) {
+  .avz-capa { grid-template-columns: minmax(0, 1fr) auto; }
+  .avz-capa__op { grid-column: 1 / -1; }
+}
+
 /* Panel de CAPAS: varios mapas al tiempo, traslape con opacidad individual. */
 .mapa-capas {
   display: flex;

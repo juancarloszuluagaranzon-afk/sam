@@ -51,7 +51,7 @@ export function InsumosModule({
           </button>
         ))}
       </div>
-      {tab === 'bandeja' ? <BandejaInsumosTab /> : tab === 'inventario' ? <InsumosInventarioTab /> : tab === 'equipos' ? <ConsumoEquiposTab /> : <MapaView />}
+      {tab === 'bandeja' ? <BandejaInsumosTab /> : tab === 'inventario' ? <InsumosInventarioTab /> : tab === 'equipos' ? <ConsumoEquiposTab /> : <MapaView onBack={() => setTab('bandeja')} />}
     </div>
   )
 }

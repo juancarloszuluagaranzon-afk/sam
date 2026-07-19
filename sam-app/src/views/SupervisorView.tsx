@@ -2027,7 +2027,7 @@ export function SupervisorView({
           <MotivacionTab />
         ) : null}
 
-        {supervisorTab === 'mapa' ? <MapaView /> : null}
+        {supervisorTab === 'mapa' ? <MapaView onBack={() => setSupervisorTab('labores')} /> : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
           <MapasTab />

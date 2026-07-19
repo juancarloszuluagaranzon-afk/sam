@@ -38,6 +38,24 @@ tomar org/map id → registrar en ASM.
 | `src/lib/mapaOffline.ts` | Slippy math (`enumerarTiles`), descarga a Cache Storage `mapas-tiles` con pool de 8 + progreso + AbortSignal + `storage.persist()`, `estadoDescarga()` ('no'/'ok'/'desactualizado'), `borrarMapa` (limpia también el prefijo VIEJO si hubo reemplazo), metas en localStorage `sam-mapas-descargados`. |
 | `vite.config.ts` runtimeCaching | La ÚNICA excepción al `runtimeCaching: []`: CacheFirst para `api.mapview.surcoapp.tech/.../tiles/` (cacheName **`mapas-tiles`** — DEBE coincidir con `MAPAS_CACHE`) y `arcgisonline.com`. PNGs estáticos sin Range → no aplica el bug que motivó el [] general. |
 
+## Visual y herramientas (estilo Avenza, jul-2026)
+
+Visor **pantalla completa oscura** (`.avz-*`): barra negra superior (← título ℹ️
+🔍), retícula central, FABs GPS + brújula (aguja gira con `map.on('rotate')`; un
+toque = `setBearing(0)`, **NUNCA fitBounds** — el fallback quitaba el zoom y se
+eliminó a pedido), barra inferior (✏️ herramientas · píldora GPS · ⧉ capas).
+**Rotación**: plugin `leaflet-rotate` (dos dedos móvil / Shift+arrastrar PC);
+tipos en `src/types/leaflet-rotate.d.ts`.
+
+**Herramientas portadas del original FieldMaps** (`src/lib/mapaGeo.ts`, sin
+turf — haversine + exceso esférico): 📏 medir distancia (m/km), ⬠ medir área
+(**ha 3 decimales** + perímetro) marcando puntos con toque/✛ cruz central/+GPS,
+con Deshacer/Limpiar/💾 Guardar; 📍 marcadores (nombre+nota+paleta de 6 colores
+idéntica al original, "Guardar aquí" = centro de la cruz, ir-a, borrar);
+📐 mediciones guardadas (ver-en-mapa azul + fitBounds, borrar). Persistencia
+**localStorage por equipo** (`sam-mapa-marcadores`, `sam-mapa-mediciones`) —
+offline y personales, igual que el original.
+
 ## Permisos
 
 - **Ver el mapa: TODOS los roles.** Operario = 4ª pestaña "Mapa"; supervisor/owner/admin = Más → Mapa; **supervisor_insumos = 4ª pestaña en InsumosModule** (no pasa por SupervisorView — no olvidarlo al agregar features).

@@ -252,19 +252,14 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setDescargasVersion((v) => v + 1)
   }
 
-  // Brújula (como Avenza): un toque orienta el mapa automáticamente al norte.
-  // Si ya está al norte, re-encuadra a las capas activas (doble utilidad).
+  // Brújula (como Avenza): SOLO orienta el mapa al norte. Nunca toca el zoom
+  // ni el encuadre (el fallback de fitBounds en el segundo toque quitaba todo
+  // el zoom — corregido a pedido del dueño, 17-jul).
   function handleBrujula() {
     const map = mapRef.current
-    if (!map || !mapas) return
-    if (Math.abs(map.getBearing()) > 0.5) {
-      map.setBearing(0)
-      setBearing(0)
-      return
-    }
-    const ids = mapas.filter((m) => capas[m.id]?.on).map((m) => m.id)
-    const b = unionBounds(ids.length ? ids : mapas.map((m) => m.id))
-    if (b) map.fitBounds(b, { padding: [16, 16] })
+    if (!map) return
+    map.setBearing(0)
+    setBearing(0)
   }
 
   const capasOn = useMemo(

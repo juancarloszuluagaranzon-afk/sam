@@ -175,9 +175,11 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     marcadoresLayerRef.current = L.layerGroup().addTo(map)
     medicionLayerRef.current = L.layerGroup().addTo(map)
 
-    // detectRetina: en pantallas de alta densidad (todos los teléfonos) pide
-    // tiles un nivel más profundos y los pinta a densidad nativa → más nítido.
-    baseLayerRef.current = L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0, detectRetina: true }).addTo(map)
+    // SIN detectRetina (lección 19-jul): con retina Leaflet pide tiles un nivel
+    // MÁS PROFUNDO del que existe → al acercar mucho el PDF desaparecía y el
+    // satélite salía en cuadros grises. maxNativeZoom 17 (límite real de Esri
+    // en zona rural): más allá se ESTIRA la imagen — siempre visible.
+    baseLayerRef.current = L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 17, zIndex: 0 }).addTo(map)
 
     const encendidas = mapas.filter((_, i) => i === 0).map((m) => m.id)
     const b = unionBounds(encendidas) ?? unionBounds(mapas.map((m) => m.id))
@@ -216,8 +218,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
             bounds: L.latLngBounds([m.bounds[1], m.bounds[0]], [m.bounds[3], m.bounds[2]]),
             opacity: st.op,
             zIndex: 10 + i,
-            // Nitidez en pantallas de alta densidad (ver base satélite).
-            detectRetina: true,
+            // SIN detectRetina: pedía tiles inexistentes al acercar (ver base).
           }).addTo(map)
           layersRef.current[m.id] = layer
         } else {

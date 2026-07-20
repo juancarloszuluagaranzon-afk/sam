@@ -43,6 +43,13 @@ function rumboDesdeEvento(e: DeviceOrientationEvent & { webkitCompassHeading?: n
   return null
 }
 
+/** Posición del dedo/mouse convertida a lat/lng del mapa (respeta rotación). */
+function punteroLatLng(ev: MouseEvent | TouchEvent, map: L.Map): L.LatLng {
+  const t = 'touches' in ev ? (ev.touches[0] ?? ev.changedTouches[0]) : ev
+  const rect = map.getContainer().getBoundingClientRect()
+  return map.containerPointToLatLng(L.point(t.clientX - rect.left, t.clientY - rect.top))
+}
+
 /**
  * Visor de mapas OFFLINE — visual IDÉNTICA a Avenza Maps (pedido del dueño):
  * pantalla completa oscura, barra superior negra (← título ℹ️ 🔍), mapa a
@@ -88,6 +95,16 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   // Vértices "en vivo" mientras se ARRASTRA un punto (solo para el valor del
   // panel; la figura se actualiza directo en Leaflet sin re-render).
   const [liveVerts, setLiveVerts] = useState<LngLat[] | null>(null)
+  // Sensibilidad del arrastre de puntos (persistente por equipo): 1 = 1:1
+  // (rápido, sigue el dedo); <1 = fino (el punto se mueve MENOS que el dedo,
+  // para clavar la esquina exacta sobre el lindero). Se lee en un ref para que
+  // el handler de arrastre siempre use el valor vigente sin re-crear markers.
+  const [arrastreSens, setArrastreSens] = useState<number>(() => {
+    const raw = Number(localStorage.getItem('sam-mapa-arrastre-sens'))
+    return raw >= 0.15 && raw <= 1 ? raw : 1
+  })
+  const sensRef = useRef(1)
+  sensRef.current = arrastreSens
   const [guardandoMed, setGuardandoMed] = useState(false)
   const [nombreMed, setNombreMed] = useState('')
   const [marcadoresOpen, setMarcadoresOpen] = useState(false)
@@ -280,10 +297,13 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   }, [compassOn, gpsOn])
 
   // Dibujo en vivo de la medición (amarillo, como el original). Los puntos son
-  // ARRASTRABLES: mover uno reajusta la figura y el valor en vivo (durante el
-  // arrastre solo se actualiza la vista; al soltar se confirma en el estado).
+  // ARRASTRABLES con SENSIBILIDAD ajustable: se usa arrastre propio (no el de
+  // Leaflet) para poder escalar el movimiento — con sensibilidad "fina" el
+  // punto se mueve menos que el dedo, permitiendo clavar la esquina exacta.
+  // La figura y el valor se reajustan en vivo; al soltar se confirma el estado.
   useEffect(() => {
     const lg = measureLayerRef.current
+    const map = mapRef.current
     if (!lg) return
     lg.clearLayers()
     if (measureMode === 'off' || vertices.length === 0) return
@@ -294,25 +314,57 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     } else if (vertices.length >= 2) {
       figura = L.polyline(aLatLngs(vertices), { color: '#facc15', weight: 3, dashArray: measureMode === 'area' ? '6 6' : undefined }).addTo(lg)
     }
+    const updateFigura = (nv: LngLat[]) => {
+      if (!figura) return
+      if (figura instanceof L.Polygon) figura.setLatLngs([aLatLngs(nv)])
+      else figura.setLatLngs(aLatLngs(nv))
+    }
     vertices.forEach((v, i) => {
       const mk = L.marker([v[1], v[0]], {
-        draggable: true,
-        icon: L.divIcon({ className: `avz-vertex${i === 0 ? ' avz-vertex--first' : ''}`, iconSize: [18, 18], iconAnchor: [9, 9] }),
+        draggable: false,
+        keyboard: false,
+        icon: L.divIcon({ className: `avz-vertex${i === 0 ? ' avz-vertex--first' : ''}`, iconSize: [24, 24], iconAnchor: [12, 12] }),
       }).addTo(lg)
-      mk.on('drag', () => {
-        const ll = mk.getLatLng()
-        const nv: LngLat[] = vertices.map((p, j) => (j === i ? [ll.lng, ll.lat] : p))
-        if (figura) {
-          if (figura instanceof L.Polygon) figura.setLatLngs([aLatLngs(nv)])
-          else figura.setLatLngs(aLatLngs(nv))
+      const el = mk.getElement()
+      if (!el || !map) return
+      const onDown = (ev: MouseEvent | TouchEvent) => {
+        ev.preventDefault()
+        ev.stopPropagation()
+        map.dragging.disable()
+        el.classList.add('is-drag')
+        const anclaPunto = mk.getLatLng()       // dónde arranca el vértice
+        const anclaDedo = punteroLatLng(ev, map) // dónde arranca el dedo
+        const move = (mv: MouseEvent | TouchEvent) => {
+          if (mv.cancelable) mv.preventDefault()
+          const cur = punteroLatLng(mv, map)
+          const ratio = sensRef.current // <1 = movimiento fino
+          const nll = L.latLng(
+            anclaPunto.lat + (cur.lat - anclaDedo.lat) * ratio,
+            anclaPunto.lng + (cur.lng - anclaDedo.lng) * ratio,
+          )
+          mk.setLatLng(nll)
+          const nv: LngLat[] = vertices.map((p, j) => (j === i ? [nll.lng, nll.lat] : p))
+          updateFigura(nv)
+          setLiveVerts(nv)
         }
-        setLiveVerts(nv)
-      })
-      mk.on('dragend', () => {
-        const ll = mk.getLatLng()
-        setVertices((prev) => prev.map((p, j) => (j === i ? [ll.lng, ll.lat] as LngLat : p)))
-        setLiveVerts(null)
-      })
+        const up = () => {
+          document.removeEventListener('mousemove', move)
+          document.removeEventListener('touchmove', move)
+          document.removeEventListener('mouseup', up)
+          document.removeEventListener('touchend', up)
+          map.dragging.enable()
+          el.classList.remove('is-drag')
+          const fll = mk.getLatLng()
+          setVertices((prev) => prev.map((p, j) => (j === i ? [fll.lng, fll.lat] as LngLat : p)))
+          setLiveVerts(null)
+        }
+        document.addEventListener('mousemove', move, { passive: false })
+        document.addEventListener('touchmove', move, { passive: false })
+        document.addEventListener('mouseup', up)
+        document.addEventListener('touchend', up)
+      }
+      el.addEventListener('mousedown', onDown)
+      el.addEventListener('touchstart', onDown, { passive: false })
     })
   }, [vertices, measureMode, mapas])
 
@@ -756,6 +808,21 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
               <button type="button" onClick={() => setVertices([])} disabled={vertices.length === 0}>Limpiar</button>
             </div>
             <p className="avz-measure__hint">Toca el mapa, usa ✛ (cruz central) o + GPS para marcar puntos. Arrastra cualquier punto para ajustarlo.</p>
+            {/* Sensibilidad del arrastre: fina = el punto se mueve menos que el
+                dedo (precisión); rápida = 1:1. Se recuerda en el equipo. */}
+            <div className="avz-measure__sens">
+              <span className="avz-measure__sens-lbl">Sensibilidad del punto</span>
+              <div className="avz-measure__sens-row">
+                <span>🐢 Fina</span>
+                <input
+                  type="range" min={0.15} max={1} step={0.05}
+                  value={arrastreSens}
+                  onChange={(e) => { const val = Number(e.target.value); setArrastreSens(val); localStorage.setItem('sam-mapa-arrastre-sens', String(val)) }}
+                  aria-label="Sensibilidad del arrastre de puntos"
+                />
+                <span>Rápida 🐇</span>
+              </div>
+            </div>
             {guardandoMed && (
               <form
                 className="avz-measure__save"

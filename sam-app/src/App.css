@@ -6449,12 +6449,31 @@ td.planilla-revisada {
 /* Vértices arrastrables de la medición (divIcon de Leaflet). */
 .avz-vertex {
   background: #facc15;
-  border: 2.5px solid #111;
+  border: 3px solid #111;
   border-radius: 50%;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 1px 4px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 1px 5px rgba(0, 0, 0, 0.45);
   cursor: grab;
+  touch-action: none;
+  transition: transform 0.08s;
 }
 .avz-vertex--first { background: #fff; }
+.avz-vertex.is-drag { transform: scale(1.35); cursor: grabbing; }
+
+/* Control de sensibilidad del arrastre (panel de medición). */
+.avz-measure__sens {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.avz-measure__sens-lbl { font-size: 0.72rem; color: #999; }
+.avz-measure__sens-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.avz-measure__sens-row span { font-size: 0.72rem; color: #bbb; white-space: nowrap; }
+.avz-measure__sens-row input { flex: 1; accent-color: #facc15; }
 .avz-base {
   display: flex;
   align-items: center;

@@ -83,7 +83,12 @@ re-descargar o borrar se limpia el prefijo viejo del cache.
 3. **Tras todo deploy del módulo: verificar producción con navegador**
    (get_page_text del login + consola sin errores). Un usuario atascado tras un
    deploy roto se cura con incógnito → recargas dobles → borrar datos del sitio.
-4. El clasificador de permisos **bloquea escrituras** a las BD por SSH y extraer
+4. **NUNCA `detectRetina: true`** en los tile layers: con pantallas retina
+   Leaflet pide tiles UN NIVEL MÁS PROFUNDO del que existe → al acercar, el PDF
+   desaparecía y Esri salía en cuadros grises (19-jul). La nitidez viene de los
+   tiles reales (DPI 1200 → z17); el overzoom se maneja con `maxNativeZoom`
+   (estira la imagen, nunca desaparece). Esri rural: `maxNativeZoom: 17`.
+5. El clasificador de permisos **bloquea escrituras** a las BD por SSH y extraer
    la anon key de FieldMaps → los writes van vía Studio del usuario; los datos de
    mapas nuevos de FieldMaps se obtienen con SSH-read (permitido) a
    `fieldmaps-db`.

@@ -85,6 +85,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const [toolsOpen, setToolsOpen] = useState(false)
   const [measureMode, setMeasureMode] = useState<'off' | 'distancia' | 'area'>('off')
   const [vertices, setVertices] = useState<LngLat[]>([])
+  // Vértices "en vivo" mientras se ARRASTRA un punto (solo para el valor del
+  // panel; la figura se actualiza directo en Leaflet sin re-render).
+  const [liveVerts, setLiveVerts] = useState<LngLat[] | null>(null)
   const [guardandoMed, setGuardandoMed] = useState(false)
   const [nombreMed, setNombreMed] = useState('')
   const [marcadoresOpen, setMarcadoresOpen] = useState(false)
@@ -275,20 +278,40 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     }
   }, [compassOn, gpsOn])
 
-  // Dibujo en vivo de la medición (amarillo, como el original).
+  // Dibujo en vivo de la medición (amarillo, como el original). Los puntos son
+  // ARRASTRABLES: mover uno reajusta la figura y el valor en vivo (durante el
+  // arrastre solo se actualiza la vista; al soltar se confirma en el estado).
   useEffect(() => {
     const lg = measureLayerRef.current
     if (!lg) return
     lg.clearLayers()
     if (measureMode === 'off' || vertices.length === 0) return
-    const latlngs = vertices.map((v) => [v[1], v[0]] as [number, number])
+    const aLatLngs = (vs: LngLat[]) => vs.map((v) => [v[1], v[0]] as [number, number])
+    let figura: L.Polygon | L.Polyline | null = null
     if (measureMode === 'area' && vertices.length >= 3) {
-      L.polygon(latlngs, { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.18 }).addTo(lg)
+      figura = L.polygon(aLatLngs(vertices), { color: '#facc15', weight: 3, fillColor: '#facc15', fillOpacity: 0.18 }).addTo(lg)
     } else if (vertices.length >= 2) {
-      L.polyline(latlngs, { color: '#facc15', weight: 3, dashArray: measureMode === 'area' ? '6 6' : undefined }).addTo(lg)
+      figura = L.polyline(aLatLngs(vertices), { color: '#facc15', weight: 3, dashArray: measureMode === 'area' ? '6 6' : undefined }).addTo(lg)
     }
     vertices.forEach((v, i) => {
-      L.circleMarker([v[1], v[0]], { radius: 5, weight: 2, color: '#111', fillColor: i === 0 ? '#fff' : '#facc15', fillOpacity: 1 }).addTo(lg)
+      const mk = L.marker([v[1], v[0]], {
+        draggable: true,
+        icon: L.divIcon({ className: `avz-vertex${i === 0 ? ' avz-vertex--first' : ''}`, iconSize: [18, 18], iconAnchor: [9, 9] }),
+      }).addTo(lg)
+      mk.on('drag', () => {
+        const ll = mk.getLatLng()
+        const nv: LngLat[] = vertices.map((p, j) => (j === i ? [ll.lng, ll.lat] : p))
+        if (figura) {
+          if (figura instanceof L.Polygon) figura.setLatLngs([aLatLngs(nv)])
+          else figura.setLatLngs(aLatLngs(nv))
+        }
+        setLiveVerts(nv)
+      })
+      mk.on('dragend', () => {
+        const ll = mk.getLatLng()
+        setVertices((prev) => prev.map((p, j) => (j === i ? [ll.lng, ll.lat] as LngLat : p)))
+        setLiveVerts(null)
+      })
     })
   }, [vertices, measureMode, mapas])
 
@@ -668,7 +691,11 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
         )}
 
         {/* Panel de MEDICIÓN en vivo (portado del original) */}
-        {measureMode !== 'off' && (
+        {measureMode !== 'off' && (() => {
+          // Durante el arrastre de un punto, el valor se calcula con los
+          // vértices "en vivo" — el área/distancia se reajusta al instante.
+          const vp = liveVerts ?? vertices
+          return (
           <div className="avz-measure">
             <button type="button" className="avz-measure__close" onClick={cerrarMedicion} aria-label="Terminar medición">✕</button>
             <p className="avz-measure__tipo">
@@ -676,19 +703,19 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
             </p>
             <p className="avz-measure__valor">
               {measureMode === 'area'
-                ? (vertices.length >= 3 ? formatHectareas(polygonAreaHa(vertices)) : 'Marca al menos 3 puntos')
-                : (vertices.length >= 2 ? formatMetros(lineLengthM(vertices)) : 'Marca al menos 2 puntos')}
+                ? (vp.length >= 3 ? formatHectareas(polygonAreaHa(vp)) : 'Marca al menos 3 puntos')
+                : (vp.length >= 2 ? formatMetros(lineLengthM(vp)) : 'Marca al menos 2 puntos')}
             </p>
-            {measureMode === 'area' && vertices.length >= 2 && (
-              <p className="avz-measure__sub">Perímetro {formatMetros(polygonPerimeterM(vertices))}</p>
+            {measureMode === 'area' && vp.length >= 2 && (
+              <p className="avz-measure__sub">Perímetro {formatMetros(polygonPerimeterM(vp))}</p>
             )}
             {/* Contraste con el área OFICIAL de una suerte del maestro (Δ%) —
                 portado del original; en ASM sale del maestro real. */}
             {measureMode === 'area' && (
               oficialSel ? (
-                <p className={`avz-measure__oficial${vertices.length >= 3 && errorRelativoPct(polygonAreaHa(vertices), oficialSel.area) >= 5 ? ' is-alto' : ''}`}>
+                <p className={`avz-measure__oficial${vp.length >= 3 && errorRelativoPct(polygonAreaHa(vp), oficialSel.area) >= 5 ? ' is-alto' : ''}`}>
                   Oficial {oficialSel.haciendaName} · S{oficialSel.suerte}: {formatHectareas(oficialSel.area)}
-                  {vertices.length >= 3 && ` (Δ ${errorRelativoPct(polygonAreaHa(vertices), oficialSel.area).toFixed(1)}%)`}
+                  {vp.length >= 3 && ` (Δ ${errorRelativoPct(polygonAreaHa(vp), oficialSel.area).toFixed(1)}%)`}
                   <button type="button" onClick={() => { setOficialSel(null); setOficialQ('') }} aria-label="Quitar comparación">✕</button>
                 </p>
               ) : (
@@ -727,7 +754,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
               <button type="button" onClick={() => setVertices((p) => p.slice(0, -1))} disabled={vertices.length === 0}>Deshacer</button>
               <button type="button" onClick={() => setVertices([])} disabled={vertices.length === 0}>Limpiar</button>
             </div>
-            <p className="avz-measure__hint">Toca el mapa, usa ✛ (cruz central) o + GPS para marcar puntos.</p>
+            <p className="avz-measure__hint">Toca el mapa, usa ✛ (cruz central) o + GPS para marcar puntos. Arrastra cualquier punto para ajustarlo.</p>
             {guardandoMed && (
               <form
                 className="avz-measure__save"
@@ -744,7 +771,8 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
               </form>
             )}
           </div>
-        )}
+          )
+        })()}
 
         {/* Panel de MARCADORES (portado del original) */}
         {marcadoresOpen && !creandoMarcador && (

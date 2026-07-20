@@ -6446,6 +6446,15 @@ td.planilla-revisada {
 .avz-color.is-sel { border-color: #fff; }
 .avz-sheet__add:disabled { opacity: 0.45; cursor: default; }
 .avz-pill.is-pobre { color: #fbbf24; }
+/* Vértices arrastrables de la medición (divIcon de Leaflet). */
+.avz-vertex {
+  background: #facc15;
+  border: 2.5px solid #111;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.85), 0 1px 4px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+}
+.avz-vertex--first { background: #fff; }
 .avz-base {
   display: flex;
   align-items: center;

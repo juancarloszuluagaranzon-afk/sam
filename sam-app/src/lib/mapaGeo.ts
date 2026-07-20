@@ -69,6 +69,15 @@ export function formatMetros(metros: number, decimales = 0): string {
   return `${new Intl.NumberFormat('es-CO', { minimumFractionDigits: decimales, maximumFractionDigits: decimales }).format(metros)} m`
 }
 
+/**
+ * Error relativo (%) entre un área medida y el área oficial de la suerte
+ * (criterio del original: aceptable < 5 %).
+ */
+export function errorRelativoPct(medida: number, oficial: number): number {
+  if (oficial === 0) return Number.NaN
+  return (Math.abs(medida - oficial) / oficial) * 100
+}
+
 /* ── Marcadores (paleta idéntica al original) ── */
 
 export const MARCADOR_COLORS = [

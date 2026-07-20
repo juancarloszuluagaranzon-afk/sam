@@ -12,10 +12,36 @@ import {
 } from '../lib/mapaOffline'
 import {
   MARCADOR_COLORS, borrarMarcador, borrarMedicion, crearMarcador, crearMedicion,
-  formatHectareas, formatMetros, leerMarcadores, leerMediciones,
+  errorRelativoPct, formatHectareas, formatMetros, leerMarcadores, leerMediciones,
   lineLengthM, polygonAreaHa, polygonPerimeterM,
   type LngLat, type Marcador, type Medicion,
 } from '../lib/mapaGeo'
+import type { MaestroRow } from '../domain/sam'
+
+/** Precisión (m) por encima de la cual se avisa que el GPS es pobre (§ original). */
+const PRECISION_POBRE_M = 30
+
+/** Permiso de orientación (obligatorio en iOS 13+, dentro del gesto del click). */
+async function pedirPermisoBrujula(): Promise<boolean> {
+  if (typeof window === 'undefined' || !('DeviceOrientationEvent' in window)) return false
+  const ctor = window.DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<'granted' | 'denied'> }
+  if (typeof ctor.requestPermission === 'function') {
+    try { return (await ctor.requestPermission()) === 'granted' } catch { return false }
+  }
+  return true // Android/escritorio: sin permiso explícito.
+}
+
+/** Rumbo de la brújula del teléfono a partir del evento (iOS y Android). */
+function rumboDesdeEvento(e: DeviceOrientationEvent & { webkitCompassHeading?: number }): number | null {
+  if (typeof e.webkitCompassHeading === 'number' && !Number.isNaN(e.webkitCompassHeading)) {
+    return e.webkitCompassHeading
+  }
+  if (e.absolute === true && typeof e.alpha === 'number') {
+    const angulo = window.screen?.orientation?.angle ?? 0
+    return (360 - e.alpha + angulo + 360) % 360
+  }
+  return null
+}
 
 /**
  * Visor de mapas OFFLINE — visual IDÉNTICA a Avenza Maps (pedido del dueño):
@@ -35,7 +61,7 @@ const ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Ima
 interface CapaEstado { on: boolean; op: number }
 
 export function MapaView({ onBack }: { onBack?: () => void } = {}) {
-  const { session } = useAppData()
+  const { session, maestro } = useAppData()
   const puedeGestionar = session?.role === 'owner' || session?.role === 'administracion'
 
   const [mapas, setMapas] = useState<MapaConfig[] | null>(null)
@@ -70,6 +96,13 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const [medicionesOpen, setMedicionesOpen] = useState(false)
   const [mediciones, setMediciones] = useState<Medicion[]>(() => leerMediciones())
   const [medicionVistaId, setMedicionVistaId] = useState<string | null>(null)
+  // Fondo del visor: satélite (Esri) o plano (sin fondo) — como el original.
+  const [baseSat, setBaseSat] = useState(true)
+  // Brújula del teléfono: rumbo hacia donde MIRA el usuario (cono azul).
+  const [compassOn, setCompassOn] = useState(false)
+  // Contraste del área medida vs área oficial de una suerte del maestro.
+  const [oficialSel, setOficialSel] = useState<MaestroRow | null>(null)
+  const [oficialQ, setOficialQ] = useState('')
   // Contador para refrescar chips de descarga tras descargar/borrar.
   const [descargasVersion, setDescargasVersion] = useState(0)
 
@@ -83,6 +116,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const measureLayerRef = useRef<L.LayerGroup | null>(null)
   const marcadoresLayerRef = useRef<L.LayerGroup | null>(null)
   const medicionLayerRef = useRef<L.LayerGroup | null>(null)
+  const baseLayerRef = useRef<L.TileLayer | null>(null)
+  const conoRef = useRef<L.Polygon | null>(null)
+  const headingRef = useRef<number | null>(null)
 
   // Config de mapas: on-demand (nunca en el arranque de la app).
   useEffect(() => {
@@ -138,7 +174,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
 
     // detectRetina: en pantallas de alta densidad (todos los teléfonos) pide
     // tiles un nivel más profundos y los pinta a densidad nativa → más nítido.
-    L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0, detectRetina: true }).addTo(map)
+    baseLayerRef.current = L.tileLayer(ESRI_SAT, { maxZoom: maxZ, maxNativeZoom: 19, zIndex: 0, detectRetina: true }).addTo(map)
 
     const encendidas = mapas.filter((_, i) => i === 0).map((m) => m.id)
     const b = unionBounds(encendidas) ?? unionBounds(mapas.map((m) => m.id))
@@ -154,6 +190,8 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       measureLayerRef.current = null
       marcadoresLayerRef.current = null
       medicionLayerRef.current = null
+      baseLayerRef.current = null
+      conoRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapas])
@@ -188,6 +226,54 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       }
     })
   }, [capas, mapas])
+
+  // Fondo Satélite/Plano (como el original): "Plano" oculta el satélite para
+  // leer la cartografía limpia (y gasta menos datos).
+  useEffect(() => {
+    baseLayerRef.current?.setOpacity(baseSat ? 1 : 0)
+  }, [baseSat, mapas])
+
+  // Cono de rumbo (brújula del teléfono): sector azul desde tu posición hacia
+  // donde MIRAS — portado del original. Solo con GPS activo y permiso dado.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!compassOn || !gpsOn || !map) return
+    if (!('DeviceOrientationEvent' in window)) return
+    let ultimo = 0
+    const onOrient = (ev: Event) => {
+      const ahora = Date.now()
+      if (ahora - ultimo < 100) return // ~10 Hz basta
+      ultimo = ahora
+      const heading = rumboDesdeEvento(ev as DeviceOrientationEvent)
+      if (heading == null) return
+      headingRef.current = heading
+      const pos = gpsMarkerRef.current?.getLatLng()
+      if (!pos) return
+      // Sector de ±25° y radio ~3× la precisión (mín 20 m).
+      const radioM = Math.max((gpsCircleRef.current?.getRadius() ?? 15) * 1.5, 20)
+      const pts: [number, number][] = [[pos.lat, pos.lng]]
+      for (let a = -25; a <= 25; a += 10) {
+        const az = ((heading + a) * Math.PI) / 180
+        const dLat = (radioM * Math.cos(az)) / 111320
+        const dLng = (radioM * Math.sin(az)) / (111320 * Math.cos((pos.lat * Math.PI) / 180))
+        pts.push([pos.lat + dLat, pos.lng + dLng])
+      }
+      if (!conoRef.current) {
+        conoRef.current = L.polygon(pts, { stroke: false, fillColor: '#1d6fd1', fillOpacity: 0.28, interactive: false }).addTo(map)
+      } else {
+        conoRef.current.setLatLngs(pts)
+      }
+    }
+    window.addEventListener('deviceorientationabsolute', onOrient)
+    window.addEventListener('deviceorientation', onOrient)
+    return () => {
+      window.removeEventListener('deviceorientationabsolute', onOrient)
+      window.removeEventListener('deviceorientation', onOrient)
+      conoRef.current?.remove()
+      conoRef.current = null
+      headingRef.current = null
+    }
+  }, [compassOn, gpsOn])
 
   // Dibujo en vivo de la medición (amarillo, como el original).
   useEffect(() => {
@@ -397,6 +483,21 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setVertices([])
     setGuardandoMed(false)
     setNombreMed('')
+    setOficialSel(null)
+    setOficialQ('')
+  }
+
+  // GPS como el original: primer toque enciende (y pide permiso de brújula
+  // DENTRO del gesto — requisito iOS); con GPS activo, tocar RE-CENTRA en mí
+  // (no apaga). Apagar = tocar la píldora inferior.
+  function handleGpsClick() {
+    if (!gpsOn) {
+      setGpsOn(true)
+      void pedirPermisoBrujula().then((ok) => setCompassOn(ok))
+      return
+    }
+    const map = mapRef.current
+    if (map && gpsPos) map.setView([gpsPos.lat, gpsPos.lng], Math.max(map.getZoom(), 16))
   }
 
   function guardarMedicion() {
@@ -457,8 +558,8 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       ? gpsError
       : gpsOn
         ? gpsPos
-          ? `${gpsPos.lat.toFixed(5)}, ${gpsPos.lng.toFixed(5)} · ±${Math.round(gpsPos.acc)} m`
-          : 'Buscando señal GPS…'
+          ? `${gpsPos.lat.toFixed(5)}, ${gpsPos.lng.toFixed(5)} · ±${Math.round(gpsPos.acc)} m${gpsPos.acc > PRECISION_POBRE_M ? ' · precisión baja' : ''} ✕`
+          : 'Buscando señal GPS… ✕'
         : 'Inactivo'
 
   if (mapas === null) {
@@ -537,8 +638,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
           <button
             type="button"
             className={`avz-fab${gpsOn ? ' is-active' : ''}`}
-            onClick={() => setGpsOn((v) => !v)}
-            aria-label={gpsOn ? 'Apagar GPS' : 'Mi ubicación'}
+            onClick={handleGpsClick}
+            aria-label={gpsOn ? 'Centrar en mi ubicación' : 'Mi ubicación'}
+            title={gpsOn ? 'Centrar en mí (apagar: toca la barra de abajo)' : 'Mi ubicación'}
           >
             <GpsIcon />
           </button>
@@ -579,6 +681,37 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
             </p>
             {measureMode === 'area' && vertices.length >= 2 && (
               <p className="avz-measure__sub">Perímetro {formatMetros(polygonPerimeterM(vertices))}</p>
+            )}
+            {/* Contraste con el área OFICIAL de una suerte del maestro (Δ%) —
+                portado del original; en ASM sale del maestro real. */}
+            {measureMode === 'area' && (
+              oficialSel ? (
+                <p className={`avz-measure__oficial${vertices.length >= 3 && errorRelativoPct(polygonAreaHa(vertices), oficialSel.area) >= 5 ? ' is-alto' : ''}`}>
+                  Oficial {oficialSel.haciendaName} · S{oficialSel.suerte}: {formatHectareas(oficialSel.area)}
+                  {vertices.length >= 3 && ` (Δ ${errorRelativoPct(polygonAreaHa(vertices), oficialSel.area).toFixed(1)}%)`}
+                  <button type="button" onClick={() => { setOficialSel(null); setOficialQ('') }} aria-label="Quitar comparación">✕</button>
+                </p>
+              ) : (
+                <div className="avz-measure__buscar">
+                  <input
+                    value={oficialQ}
+                    onChange={(e) => setOficialQ(e.target.value)}
+                    placeholder="Comparar con suerte… (ej. FLORESTA 12)"
+                  />
+                  {oficialQ.trim().length >= 2 && (
+                    <div className="avz-measure__matches">
+                      {maestro
+                        .filter((r) => `${r.haciendaName} ${r.suerte} ${r.haciendaCode}`.toLowerCase().includes(oficialQ.trim().toLowerCase()))
+                        .slice(0, 6)
+                        .map((r) => (
+                          <button key={`${r.haciendaCode}-${r.suerte}`} type="button" onClick={() => { setOficialSel(r); setOficialQ('') }}>
+                            {r.haciendaName} · S{r.suerte} · {formatHectareas(r.area)}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+              )
             )}
             <div className="avz-measure__grid">
               <button type="button" className="is-primary" onClick={marcarCentro}>✛ Marcar</button>
@@ -705,6 +838,12 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                 <button type="button" className="avz-iconbtn" onClick={() => { setSheetOpen(false); setSearchOpen(false); setQ('') }} aria-label="Cerrar capas">✕</button>
               </div>
             </div>
+            {/* Fondo del visor (como el original): satélite o plano limpio. */}
+            <div className="avz-base">
+              <span>Fondo</span>
+              <button type="button" className={baseSat ? 'is-sel' : ''} onClick={() => setBaseSat(true)}>🛰️ Satélite</button>
+              <button type="button" className={!baseSat ? 'is-sel' : ''} onClick={() => setBaseSat(false)}>🗺️ Plano</button>
+            </div>
             {listaSheet.map((m) => {
               const st = capas[m.id] ?? { on: false, op: 1 }
               const estado = estadoDescarga(m)
@@ -772,7 +911,15 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
         >
           <PencilIcon />
         </button>
-        <div className={`avz-pill${gpsOn ? ' is-gps' : ''}`}>{pillTexto}</div>
+        <div
+          className={`avz-pill${gpsOn ? ' is-gps' : ''}${gpsOn && gpsPos && gpsPos.acc > PRECISION_POBRE_M ? ' is-pobre' : ''}`}
+          onClick={() => { if (gpsOn) { setGpsOn(false); setCompassOn(false) } }}
+          role={gpsOn ? 'button' : undefined}
+          title={gpsOn ? 'Tocar para apagar el GPS' : undefined}
+          style={gpsOn ? { cursor: 'pointer' } : undefined}
+        >
+          {pillTexto}
+        </div>
         <button type="button" className="avz-iconbtn" onClick={() => { setSheetOpen((v) => !v); setToolsOpen(false); setMarcadoresOpen(false); setMedicionesOpen(false) }} aria-label="Capas"><LayersIcon /></button>
       </footer>
 

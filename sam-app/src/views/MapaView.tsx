@@ -107,6 +107,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   sensRef.current = arrastreSens
   const [guardandoMed, setGuardandoMed] = useState(false)
   const [nombreMed, setNombreMed] = useState('')
+  // Panel de medición compacto: "Comparar suerte" + "Sensibilidad" van dentro
+  // de un desplegable (cerrado por defecto) para no tapar media pantalla.
+  const [medAjustes, setMedAjustes] = useState(false)
   const [marcadoresOpen, setMarcadoresOpen] = useState(false)
   const [marcadores, setMarcadores] = useState<Marcador[]>(() => leerMarcadores())
   const [creandoMarcador, setCreandoMarcador] = useState(false)
@@ -705,7 +708,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
               <circle cx="22" cy="22" r="9" />
               <path d="M22 2v9M22 33v9M2 22h9M33 22h9" />
             </g>
-            <circle cx="22" cy="22" r="1.6" fill="#111" />
+            {/* Centro amarillo (color de la medición) — se ve claro sobre
+                satélite y sobre el plano rosado. */}
+            <circle cx="22" cy="22" r="3.4" fill="#facc15" stroke="#111" strokeWidth="1.6" />
           </svg>
         </div>
 
@@ -750,49 +755,27 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
           const vp = liveVerts ?? vertices
           return (
           <div className="avz-measure">
-            <button type="button" className="avz-measure__close" onClick={cerrarMedicion} aria-label="Terminar medición">✕</button>
-            <p className="avz-measure__tipo">
-              {measureMode === 'area' ? 'Medir área' : 'Medir distancia'} · {vertices.length} {vertices.length === 1 ? 'punto' : 'puntos'}
-            </p>
-            <p className="avz-measure__valor">
-              {measureMode === 'area'
-                ? (vp.length >= 3 ? formatHectareas(polygonAreaHa(vp)) : 'Marca al menos 3 puntos')
-                : (vp.length >= 2 ? formatMetros(lineLengthM(vp)) : 'Marca al menos 2 puntos')}
-            </p>
-            {measureMode === 'area' && vp.length >= 2 && (
-              <p className="avz-measure__sub">Perímetro {formatMetros(polygonPerimeterM(vp))}</p>
-            )}
-            {/* Contraste con el área OFICIAL de una suerte del maestro (Δ%) —
-                portado del original; en ASM sale del maestro real. */}
-            {measureMode === 'area' && (
-              oficialSel ? (
-                <p className={`avz-measure__oficial${vp.length >= 3 && errorRelativoPct(polygonAreaHa(vp), oficialSel.area) >= 5 ? ' is-alto' : ''}`}>
-                  Oficial {oficialSel.haciendaName} · S{oficialSel.suerte}: {formatHectareas(oficialSel.area)}
-                  {vp.length >= 3 && ` (Δ ${errorRelativoPct(polygonAreaHa(vp), oficialSel.area).toFixed(1)}%)`}
-                  <button type="button" onClick={() => { setOficialSel(null); setOficialQ('') }} aria-label="Quitar comparación">✕</button>
-                </p>
-              ) : (
-                <div className="avz-measure__buscar">
-                  <input
-                    value={oficialQ}
-                    onChange={(e) => setOficialQ(e.target.value)}
-                    placeholder="Comparar con suerte… (ej. FLORESTA 12)"
-                  />
-                  {oficialQ.trim().length >= 2 && (
-                    <div className="avz-measure__matches">
-                      {maestro
-                        .filter((r) => `${r.haciendaName} ${r.suerte} ${r.haciendaCode}`.toLowerCase().includes(oficialQ.trim().toLowerCase()))
-                        .slice(0, 6)
-                        .map((r) => (
-                          <button key={`${r.haciendaCode}-${r.suerte}`} type="button" onClick={() => { setOficialSel(r); setOficialQ('') }}>
-                            {r.haciendaName} · S{r.suerte} · {formatHectareas(r.area)}
-                          </button>
-                        ))}
-                    </div>
+            {/* Fila compacta: valor grande + perímetro/Δ + cerrar. */}
+            <div className="avz-measure__top">
+              <div className="avz-measure__val-wrap">
+                <span className="avz-measure__valor">
+                  {measureMode === 'area'
+                    ? (vp.length >= 3 ? formatHectareas(polygonAreaHa(vp)) : '—')
+                    : (vp.length >= 2 ? formatMetros(lineLengthM(vp)) : '—')}
+                </span>
+                <span className="avz-measure__meta">
+                  {measureMode === 'area' ? 'Área' : 'Distancia'} · {vertices.length} pts
+                  {measureMode === 'area' && vp.length >= 2 && ` · perím. ${formatMetros(polygonPerimeterM(vp))}`}
+                  {oficialSel && vp.length >= 3 && (
+                    <span className={errorRelativoPct(polygonAreaHa(vp), oficialSel.area) >= 5 ? ' avz-dpct is-alto' : ' avz-dpct'}>
+                      {' · Δ '}{errorRelativoPct(polygonAreaHa(vp), oficialSel.area).toFixed(1)}%
+                    </span>
                   )}
-                </div>
-              )
-            )}
+                </span>
+              </div>
+              <button type="button" className="avz-measure__close" onClick={cerrarMedicion} aria-label="Terminar medición">✕</button>
+            </div>
+
             <div className="avz-measure__grid">
               <button type="button" className="is-primary" onClick={marcarCentro}>✛ Marcar</button>
               <button type="button" onClick={marcarGps} disabled={!gpsPos} title={gpsPos ? 'Agregar mi posición GPS' : 'Activa el GPS primero'}>+ GPS</button>
@@ -806,23 +789,53 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
               </button>
               <button type="button" onClick={() => setVertices((p) => p.slice(0, -1))} disabled={vertices.length === 0}>Deshacer</button>
               <button type="button" onClick={() => setVertices([])} disabled={vertices.length === 0}>Limpiar</button>
+              <button type="button" className={medAjustes ? 'is-on' : ''} onClick={() => setMedAjustes((v) => !v)}>⚙ Ajustes</button>
             </div>
-            <p className="avz-measure__hint">Toca el mapa, usa ✛ (cruz central) o + GPS para marcar puntos. Arrastra cualquier punto para ajustarlo.</p>
-            {/* Sensibilidad del arrastre: fina = el punto se mueve menos que el
-                dedo (precisión); rápida = 1:1. Se recuerda en el equipo. */}
-            <div className="avz-measure__sens">
-              <span className="avz-measure__sens-lbl">Sensibilidad del punto</span>
-              <div className="avz-measure__sens-row">
-                <span>🐢 Fina</span>
-                <input
-                  type="range" min={0.15} max={1} step={0.05}
-                  value={arrastreSens}
-                  onChange={(e) => { const val = Number(e.target.value); setArrastreSens(val); localStorage.setItem('sam-mapa-arrastre-sens', String(val)) }}
-                  aria-label="Sensibilidad del arrastre de puntos"
-                />
-                <span>Rápida 🐇</span>
+
+            {/* Desplegable: comparar con suerte + sensibilidad (cerrado por
+                defecto para que el panel no tape media pantalla). */}
+            {medAjustes && (
+              <div className="avz-measure__ajustes">
+                {measureMode === 'area' && (
+                  oficialSel ? (
+                    <p className="avz-measure__oficial">
+                      Oficial {oficialSel.haciendaName} · S{oficialSel.suerte}: {formatHectareas(oficialSel.area)}
+                      <button type="button" onClick={() => { setOficialSel(null); setOficialQ('') }} aria-label="Quitar comparación">✕</button>
+                    </p>
+                  ) : (
+                    <div className="avz-measure__buscar">
+                      <input
+                        value={oficialQ}
+                        onChange={(e) => setOficialQ(e.target.value)}
+                        placeholder="Comparar con suerte… (ej. FLORESTA 12)"
+                      />
+                      {oficialQ.trim().length >= 2 && (
+                        <div className="avz-measure__matches">
+                          {maestro
+                            .filter((r) => `${r.haciendaName} ${r.suerte} ${r.haciendaCode}`.toLowerCase().includes(oficialQ.trim().toLowerCase()))
+                            .slice(0, 6)
+                            .map((r) => (
+                              <button key={`${r.haciendaCode}-${r.suerte}`} type="button" onClick={() => { setOficialSel(r); setOficialQ('') }}>
+                                {r.haciendaName} · S{r.suerte} · {formatHectareas(r.area)}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+                <div className="avz-measure__sens-row">
+                  <span>🐢 Fina</span>
+                  <input
+                    type="range" min={0.15} max={1} step={0.05}
+                    value={arrastreSens}
+                    onChange={(e) => { const val = Number(e.target.value); setArrastreSens(val); localStorage.setItem('sam-mapa-arrastre-sens', String(val)) }}
+                    aria-label="Sensibilidad del arrastre de puntos"
+                  />
+                  <span>Rápida 🐇</span>
+                </div>
               </div>
-            </div>
+            )}
             {guardandoMed && (
               <form
                 className="avz-measure__save"

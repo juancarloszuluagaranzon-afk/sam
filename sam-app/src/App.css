@@ -6321,30 +6321,35 @@ td.planilla-revisada {
   background: rgba(18, 18, 18, 0.97);
   color: #fff;
   border-radius: 14px;
-  padding: 12px 14px;
+  padding: 10px 12px;
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5);
 }
+.avz-measure__top {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.avz-measure__val-wrap { flex: 1; min-width: 0; }
 .avz-measure__close {
-  position: absolute;
-  top: 6px;
-  right: 6px;
   background: none;
   border: none;
   color: #bbb;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
+  flex-shrink: 0;
 }
-.avz-measure__tipo { margin: 0; font-size: 0.78rem; color: #aaa; padding-right: 30px; }
-.avz-measure__valor { margin: 2px 0 0; font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-.avz-measure__sub { margin: 0; font-size: 0.8rem; color: #aaa; }
+.avz-measure__valor { font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; display: block; line-height: 1.1; }
+.avz-measure__meta { font-size: 0.74rem; color: #9a9a9a; }
+.avz-dpct { color: #6ee7a0; font-weight: 700; }
+.avz-dpct.is-alto { color: #fbbf24; }
 .avz-measure__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 10px;
+  margin-top: 8px;
 }
 .avz-measure__grid button {
   border: none;
@@ -6358,8 +6363,13 @@ td.planilla-revisada {
 }
 .avz-measure__grid button.is-primary { background: #facc15; color: #111; }
 .avz-measure__grid button.is-save { background: #7c3aed; }
+.avz-measure__grid button.is-on { background: #444; color: #facc15; }
 .avz-measure__grid button:disabled { opacity: 0.4; cursor: default; }
-.avz-measure__hint { margin: 8px 0 0; font-size: 0.72rem; color: #888; }
+.avz-measure__ajustes {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
 .avz-measure__save {
   display: flex;
   gap: 6px;
@@ -6474,6 +6484,7 @@ td.planilla-revisada {
 }
 .avz-measure__sens-row span { font-size: 0.72rem; color: #bbb; white-space: nowrap; }
 .avz-measure__sens-row input { flex: 1; accent-color: #facc15; }
+.avz-measure__ajustes .avz-measure__sens-row { margin-top: 8px; }
 .avz-base {
   display: flex;
   align-items: center;

@@ -6424,7 +6424,19 @@ td.planilla-revisada {
 }
 .avz-item__nombre.is-sel { color: #7db8ff; }
 .avz-item__valor { display: block; font-size: 0.75rem; font-weight: 400; color: #999; }
-.avz-item__del { background: none; border: none; cursor: pointer; font-size: 0.95rem; opacity: 0.7; flex-shrink: 0; }
+.avz-item__act {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  opacity: 0.75;
+  flex-shrink: 0;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: #ddd;
+}
+.avz-item__act:active { background: rgba(255, 255, 255, 0.1); }
+.avz-item__del { background: none; border: none; cursor: pointer; font-size: 0.95rem; opacity: 0.7; flex-shrink: 0; padding: 4px 6px; }
 .avz-marcador__hint {
   background: rgba(250, 204, 21, 0.12);
   color: #fde68a;

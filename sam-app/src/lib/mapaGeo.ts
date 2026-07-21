@@ -147,6 +147,13 @@ export function crearMedicion(input: { nombre: string; tipo: 'area' | 'distancia
   return m
 }
 
+export function actualizarMedicion(
+  id: string,
+  patch: Partial<Pick<Medicion, 'nombre' | 'valor' | 'vertices' | 'tipo'>>,
+): void {
+  escribir(KEY_MEDICIONES, leerMediciones().map((m) => (m.id === id ? { ...m, ...patch } : m)))
+}
+
 export function borrarMedicion(id: string): void {
   escribir(KEY_MEDICIONES, leerMediciones().filter((m) => m.id !== id))
 }

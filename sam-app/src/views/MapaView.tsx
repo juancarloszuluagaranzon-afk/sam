@@ -11,7 +11,7 @@ import {
   descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes,
 } from '../lib/mapaOffline'
 import {
-  MARCADOR_COLORS, borrarMarcador, borrarMedicion, crearMarcador, crearMedicion,
+  MARCADOR_COLORS, actualizarMedicion, borrarMarcador, borrarMedicion, crearMarcador, crearMedicion,
   errorRelativoPct, formatHectareas, formatMetros, leerMarcadores, leerMediciones,
   lineLengthM, polygonAreaHa, polygonPerimeterM,
   type LngLat, type Marcador, type Medicion,
@@ -119,6 +119,9 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const [medicionesOpen, setMedicionesOpen] = useState(false)
   const [mediciones, setMediciones] = useState<Medicion[]>(() => leerMediciones())
   const [medicionVistaId, setMedicionVistaId] = useState<string | null>(null)
+  // Si viene con id, la medición en curso ACTUALIZA esa guardada (edición de
+  // puntos) en vez de crear una nueva.
+  const [editMedId, setEditMedId] = useState<string | null>(null)
   // Fondo del visor: satélite (Esri) o plano (sin fondo) — como el original.
   const [baseSat, setBaseSat] = useState(true)
   // Brújula del teléfono: rumbo hacia donde MIRA el usuario (cono azul).
@@ -535,6 +538,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setToolsOpen(false); setSheetOpen(false); setSearchOpen(false)
     setMarcadoresOpen(false); setMedicionesOpen(false); setCreandoMarcador(false)
     setGuardandoMed(false)
+    setEditMedId(null); setNombreMed('')
     if (t === 'distancia' || t === 'area') {
       setMeasureMode(t)
       setVertices([])
@@ -564,6 +568,31 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setNombreMed('')
     setOficialSel(null)
     setOficialQ('')
+    setEditMedId(null)
+  }
+
+  // Cargar una medición guardada de vuelta al modo medición para EDITAR sus
+  // puntos (arrastrar/agregar/quitar) y re-guardarla.
+  function editarPuntosMedicion(m: Medicion) {
+    setMedicionesOpen(false)
+    setMedicionVistaId(null)
+    setEditMedId(m.id)
+    setMeasureMode(m.tipo === 'area' ? 'area' : 'distancia')
+    setVertices(m.vertices)
+    setNombreMed(m.nombre)
+    const map = mapRef.current
+    if (map && m.vertices.length) {
+      const b = L.latLngBounds(m.vertices.map((v) => [v[1], v[0]] as [number, number]))
+      map.fitBounds(b, { padding: [60, 60] })
+    }
+    setMsg(`Editando "${m.nombre}". Arrastra los puntos y guarda.`)
+  }
+
+  function renombrarMedicion(m: Medicion) {
+    const nuevo = window.prompt(`Nuevo nombre para "${m.nombre}":`, m.nombre)
+    if (!nuevo?.trim() || nuevo.trim() === m.nombre) return
+    actualizarMedicion(m.id, { nombre: nuevo.trim() })
+    setMediciones(leerMediciones())
   }
 
   // GPS como el original: primer toque enciende (y pide permiso de brújula
@@ -582,20 +611,23 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   function guardarMedicion() {
     if (!nombreMed.trim()) return
     const esArea = measureMode === 'area'
-    crearMedicion({
-      nombre: nombreMed.trim(),
-      tipo: esArea ? 'area' : 'distancia',
-      valor: esArea ? polygonAreaHa(vertices) : lineLengthM(vertices),
-      vertices,
-    })
+    const valor = esArea ? polygonAreaHa(vertices) : lineLengthM(vertices)
+    if (editMedId) {
+      // Editando una guardada: ACTUALIZA (mismo id) en vez de crear otra.
+      actualizarMedicion(editMedId, { nombre: nombreMed.trim(), valor, vertices })
+      setMsg(`Medición "${nombreMed.trim()}" actualizada.`)
+    } else {
+      crearMedicion({ nombre: nombreMed.trim(), tipo: esArea ? 'area' : 'distancia', valor, vertices })
+      setMsg(`Medición "${nombreMed.trim()}" guardada en este equipo.`)
+    }
     setMediciones(leerMediciones())
-    setMsg(`Medición "${nombreMed.trim()}" guardada en este equipo.`)
     setNombreMed('')
     setGuardandoMed(false)
     // Cerrar la medición y ABRIR la lista de guardadas para que la vea de una
     // (antes quedaba atrapado en modo medición sin forma clara de verlas).
     setVertices([])
     setMeasureMode('off')
+    setEditMedId(null)
     setOficialSel(null); setOficialQ(''); setMedAjustes(false)
     setMedicionesOpen(true)
   }
@@ -769,7 +801,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                     : (vp.length >= 2 ? formatMetros(lineLengthM(vp)) : '—')}
                 </span>
                 <span className="avz-measure__meta">
-                  {measureMode === 'area' ? 'Área' : 'Distancia'} · {vertices.length} pts
+                  {editMedId ? '✎ Editando · ' : ''}{measureMode === 'area' ? 'Área' : 'Distancia'} · {vertices.length} pts
                   {measureMode === 'area' && vp.length >= 2 && ` · perím. ${formatMetros(polygonPerimeterM(vp))}`}
                   {oficialSel && vp.length >= 3 && (
                     <span className={errorRelativoPct(polygonAreaHa(vp), oficialSel.area) >= 5 ? ' avz-dpct is-alto' : ' avz-dpct'}>
@@ -790,7 +822,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                 onClick={() => setGuardandoMed(true)}
                 disabled={measureMode === 'area' ? vertices.length < 3 : vertices.length < 2}
               >
-                💾 Guardar
+                {editMedId ? '💾 Actualizar' : '💾 Guardar'}
               </button>
               <button type="button" onClick={() => setVertices((p) => p.slice(0, -1))} disabled={vertices.length === 0}>Deshacer</button>
               <button type="button" onClick={() => setVertices([])} disabled={vertices.length === 0}>Limpiar</button>
@@ -934,6 +966,8 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                   {m.nombre}
                   <span className="avz-item__valor">{m.tipo === 'area' ? formatHectareas(m.valor) : formatMetros(m.valor)}</span>
                 </button>
+                <button type="button" className="avz-item__act" onClick={() => renombrarMedicion(m)} title="Renombrar" aria-label={`Renombrar ${m.nombre}`}>✎</button>
+                <button type="button" className="avz-item__act" onClick={() => editarPuntosMedicion(m)} title="Editar puntos" aria-label={`Editar puntos de ${m.nombre}`}>📐</button>
                 <button type="button" className="avz-item__del" onClick={() => { borrarMedicion(m.id); setMediciones(leerMediciones()); if (medicionVistaId === m.id) setMedicionVistaId(null) }} aria-label={`Borrar ${m.nombre}`}>🗑</button>
               </div>
             ))}

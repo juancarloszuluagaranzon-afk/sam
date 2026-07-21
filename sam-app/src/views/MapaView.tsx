@@ -592,7 +592,12 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setMsg(`Medición "${nombreMed.trim()}" guardada en este equipo.`)
     setNombreMed('')
     setGuardandoMed(false)
+    // Cerrar la medición y ABRIR la lista de guardadas para que la vea de una
+    // (antes quedaba atrapado en modo medición sin forma clara de verlas).
     setVertices([])
+    setMeasureMode('off')
+    setOficialSel(null); setOficialQ(''); setMedAjustes(false)
+    setMedicionesOpen(true)
   }
 
   function guardarMarcadorAqui() {

@@ -198,7 +198,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     // del plugin se reduce respecto al rumbo ANCLA capturado al iniciar el gesto.
     // Fuera del gesto (brújula → norte) pasa sin tocar, así el reset sigue exacto.
     {
-      const FACTOR = 0.2 // 20% de la rotación del dedo = −80% de sensibilidad
+      const FACTOR = 0.5 // 50% de la rotación del dedo = −50% de sensibilidad
       const mapAny = map as unknown as { setBearing: (t: number) => unknown; getBearing: () => number }
       const realSetBearing = mapAny.setBearing.bind(map)
       let gestoActivo = false

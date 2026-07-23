@@ -6052,6 +6052,26 @@ td.planilla-revisada {
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
 .planilla-nov--ll { color: #0e7490; }  /* Lluvia */
 
+/* "Listos para agregar" — planos ya procesados en FieldMaps. */
+.mapa-listos {
+  border: 1px solid color-mix(in srgb, var(--color-brand, #1a6b3a) 40%, var(--color-border, rgba(0,0,0,.12)));
+  background: color-mix(in srgb, var(--color-brand, #1a6b3a) 8%, transparent);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+.mapa-listos__lbl { margin: 0 0 8px; font-weight: 700; font-size: 0.92rem; }
+.mapa-listos__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border, rgba(0,0,0,.08));
+}
+.mapa-listos__row:first-of-type { border-top: none; }
+.mapa-listos__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.mapa-listos__info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Formulario "Agregar mapa" (Catálogos → Mapas). */
 .mapa-form-grid {
   display: grid;

@@ -511,7 +511,11 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     setDescargasVersion((v) => v + 1)
   }
 
-  async function refreshTrasGuardar(accion: 'creado' | 'reemplazado', nombreMapa: string) {
+  async function refreshTrasGuardar(accion: 'creado' | 'reemplazado' | 'procesando', nombreMapa: string) {
+    if (accion === 'procesando') {
+      setMsg(`"${nombreMapa}" subido. Se está procesando — aparecerá en Catálogos → Mapas → "Listos para agregar" en unos minutos.`)
+      return
+    }
     const ms = await loadMapas()
     setMapas(ms)
     setCapas((prev) => {

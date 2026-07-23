@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { updateMapa, deleteMapa, loadMapasAdmin } from '../services/samApi'
+import { updateMapa, deleteMapa, loadMapasAdmin, createMapa } from '../services/samApi'
 import { metaDescarga, formatoBytes } from '../lib/mapaOffline'
+import { listarCartografias, type CartografiaRemota } from '../services/fieldmapsApi'
 import { MapaFormModal } from '../components/MapaFormModal'
 import type { MapaConfig } from '../domain/sam'
 
@@ -23,14 +24,55 @@ export function MapasTab() {
   // null = agregando; con valor = REEMPLAZANDO la cartografía de ese mapa.
   const [editTarget, setEditTarget] = useState<MapaConfig | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<MapaConfig | null>(null)
+  // Planos ya procesados en FieldMaps que aún no están en el visor (subidos en
+  // segundo plano). Se agregan con un clic. Detectados automáticamente.
+  const [procesados, setProcesados] = useState<CartografiaRemota[]>([])
+  const timerRef = useRef<number | null>(null)
 
   const puede = session?.role === 'owner' || session?.role === 'administracion'
 
+  // Reconcilia el catálogo de ASM con lo procesado en FieldMaps: lo que ya está
+  // 'ready' y no está registrado aparece en "Listos para agregar".
+  async function reconciliar() {
+    try {
+      const [ms, remotos] = await Promise.all([loadMapasAdmin(), listarCartografias()])
+      setMapas(ms)
+      const norm = (u: string) => u.replace(/\/$/, '')
+      const existentes = new Set(ms.map((m) => norm(m.tilesBase)))
+      setProcesados(remotos.filter((r) => r.status === 'ready' && r.tilesBase && !existentes.has(norm(r.tilesBase))))
+    } catch { /* FieldMaps no respondió: no bloquea el catálogo */ }
+  }
+
   async function refresh() {
     setCargando(true)
-    try { setMapas(await loadMapasAdmin()) } finally { setCargando(false) }
+    try { await reconciliar() } finally { setCargando(false) }
   }
-  useEffect(() => { void refresh() }, [])
+  useEffect(() => {
+    void refresh()
+    // Auto-detecta planos que terminan de procesarse (cada 30 s).
+    timerRef.current = window.setInterval(() => { void reconciliar() }, 30_000)
+    return () => { if (timerRef.current) clearInterval(timerRef.current) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function agregarProcesado(r: CartografiaRemota) {
+    if (!r.tilesBase || !r.bounds) return
+    setBusy(true); setError('')
+    try {
+      await createMapa({
+        nombre: r.nombre?.trim() || 'MAPA',
+        tilesBase: r.tilesBase,
+        bounds: r.bounds,
+        minzoom: r.minzoom ?? 8,
+        maxzoom: r.maxzoom ?? 16,
+      })
+      setInfo(`"${r.nombre}" agregado al visor.`)
+      void reconciliar()
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo agregar. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
+  }
 
   async function toggleActivo(m: MapaConfig) {
     setBusy(true); setError('')
@@ -91,6 +133,23 @@ export function MapasTab() {
         los equipos verán el aviso de re-descarga.
       </p>
 
+      {procesados.length > 0 && (
+        <div className="mapa-listos">
+          <p className="mapa-listos__lbl">🆕 Listos para agregar <span className="field-optional">(planos ya procesados)</span></p>
+          {procesados.map((r) => (
+            <div key={r.mapId} className="mapa-listos__row">
+              <div className="mapa-listos__info">
+                <strong>{r.nombre}</strong>
+                <span className="inv-cat inv-cat--comb">✓ procesado · z{r.minzoom}–{r.maxzoom}</span>
+              </div>
+              <button type="button" className="primary-button" onClick={() => void agregarProcesado(r)} disabled={busy}>
+                + Agregar al visor
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {cargando ? (
         <p className="muted-text">Cargando…</p>
       ) : (
@@ -130,9 +189,13 @@ export function MapasTab() {
         editar={editTarget}
         mapas={mapas}
         onSaved={(accion, nombre) => {
-          setInfo(accion === 'creado'
-            ? `Mapa "${nombre}" agregado. Ya aparece en el visor para todos.`
-            : `Cartografía de "${nombre}" reemplazada. Los equipos con la versión anterior verán el aviso de re-descarga.`)
+          if (accion === 'procesando') {
+            setInfo(`"${nombre}" subido. Se está procesando — aparecerá aquí en "Listos para agregar" en unos minutos.`)
+          } else {
+            setInfo(accion === 'creado'
+              ? `Mapa "${nombre}" agregado. Ya aparece en el visor para todos.`
+              : `Cartografía de "${nombre}" reemplazada. Los equipos con la versión anterior verán el aviso de re-descarga.`)
+          }
           void refresh()
         }}
       />

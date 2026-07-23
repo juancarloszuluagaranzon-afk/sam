@@ -594,27 +594,33 @@ export function useAssignmentActions() {
         setError('El area ejecutada debe ser un numero >= 0.')
         return false
       }
-      // TOPE: el área ejecutada de una labor NO puede superar el ÁREA REAL de la
-      // suerte (MAX del ciclo). Sin este tope una edición dejaba ejec > plan
-      // (p.ej. 4.00 sobre una suerte de 2.00 = 200% de cumplimiento) → como se
-      // paga por área ejecutada, eso es sobrepago/sobrefacturación. El cierre ya
-      // topa (finishAssignment); la edición y el registro rápido no lo hacían.
+      // TOPE: el área ejecutada de una labor NO puede superar el RESTANTE de la
+      // suerte en el ciclo = área real de la suerte − lo YA ejecutado por los
+      // OTROS parciales de la misma labor+suerte. Sin restar los otros parciales,
+      // dos parciales podían quedar cada uno ≤ suerte pero SUMAR más que la
+      // suerte (p.ej. 15.51 + 13.74 = 29.25 sobre 26.22) → sobrepago. El cliente
+      // reclamó exactamente esto (SAMAN LA VICTORIA 010, REENCALLE). El cierre
+      // (finishAssignment) ya topa contra el restante; la edición topaba contra
+      // el total y ese era el hueco.
       const normLabor = assignment.labor.trim().toUpperCase()
-      const suerteTotalArea = Math.max(
-        assignment.area,
-        ...assignments
-          .filter(
-            (a) =>
-              a.suerteCode === assignment.suerteCode &&
-              a.labor.trim().toUpperCase() === normLabor &&
-              isSameCycle(a.dateKey, assignment.dateKey) &&
-              a.status !== 'CANCELADA',
-          )
-          .map((a) => a.area),
+      const mismoCiclo = assignments.filter(
+        (a) =>
+          a.suerteCode === assignment.suerteCode &&
+          a.labor.trim().toUpperCase() === normLabor &&
+          isSameCycle(a.dateKey, assignment.dateKey) &&
+          a.status !== 'CANCELADA',
       )
-      if (patch.executedArea > suerteTotalArea + 0.001) {
+      const suerteTotalArea = Math.max(assignment.area, ...mismoCiclo.map((a) => a.area))
+      // Ejecutado por los OTROS parciales/completadas del ciclo (no esta fila).
+      const ejecOtros = mismoCiclo
+        .filter((a) => a.id !== assignment.id && (a.status === 'COMPLETADA' || a.status === 'PARCIAL'))
+        .reduce((s, a) => s + (a.executedArea ?? 0), 0)
+      const restante = Math.max(0, suerteTotalArea - ejecOtros)
+      if (patch.executedArea > restante + 0.001) {
         setError(
-          `El área ejecutada (${patch.executedArea.toFixed(2)} ha) no puede superar el área de la suerte ${assignment.suerte} (${suerteTotalArea.toFixed(2)} ha). Si el área de la suerte cambió, corrige primero el área planificada.`,
+          ejecOtros > 0
+            ? `El área ejecutada (${patch.executedArea.toFixed(2)} ha) supera lo que queda de la suerte ${assignment.suerte}: otros parciales ya sumaron ${ejecOtros.toFixed(2)} de ${suerteTotalArea.toFixed(2)} ha, quedan ${restante.toFixed(2)} ha.`
+            : `El área ejecutada (${patch.executedArea.toFixed(2)} ha) no puede superar el área de la suerte ${assignment.suerte} (${suerteTotalArea.toFixed(2)} ha). Si el área de la suerte cambió, corrige primero el área planificada.`,
         )
         return false
       }

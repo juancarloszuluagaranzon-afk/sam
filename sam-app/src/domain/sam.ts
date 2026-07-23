@@ -205,6 +205,8 @@ export interface Insumo {
   categoria: InsumoCategoria
   unidad: string
   stock: number
+  // Umbral de alerta de stock bajo (0 = sin alerta).
+  stockMinimo: number
   activo: boolean
 }
 
@@ -229,6 +231,10 @@ export interface InsumoKardex {
 // ENTREGADA la marca el despacho (fase 3).
 export type SolicitudEstado = 'PENDIENTE' | 'PROGRAMADA' | 'ENTREGADA' | 'RECHAZADA' | 'CANCELADA'
 
+// Origen de la solicitud/entrega: la pidió el operario, o el supervisor la
+// entregó directo (entrega directa — igual requiere aval del operario).
+export type SolicitudOrigen = 'OPERARIO' | 'DIRECTA'
+
 export interface SolicitudItem {
   id?: string
   insumoId?: string
@@ -247,6 +253,7 @@ export interface SolicitudInsumo {
   operarioId: string
   operarioNombre?: string
   estado: SolicitudEstado
+  origen: SolicitudOrigen
   nota?: string
   zona?: string
   motivoRechazo?: string

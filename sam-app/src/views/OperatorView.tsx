@@ -1303,7 +1303,10 @@ export function OperatorView({
                 Tarjeta de un toque (cero tipeo): "Recibí todo" / "Hubo un problema". */}
             {entregasPorConfirmar.map((s) => (
               <div key={`conf-${s.id}`} className="confirm-entrega-card">
-                <p className="confirm-entrega-card__title">🛢️ ¿Recibiste estos insumos?</p>
+                <p className="confirm-entrega-card__title">
+                  🛢️ ¿Recibiste estos insumos?
+                  {s.origen === 'DIRECTA' && <span className="confirm-entrega-card__dir"> · entrega directa</span>}
+                </p>
                 <p className="confirm-entrega-card__items">
                   {s.items.map((it) => `${it.cantidadDespachada ?? it.cantidad} ${it.unidad} ${it.insumoNombre}`).join(', ')}
                   {s.equipoCodigo ? ` · Máquina ${s.equipoCodigo}` : ''}

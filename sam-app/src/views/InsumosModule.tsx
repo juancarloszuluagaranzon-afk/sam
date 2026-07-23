@@ -16,7 +16,7 @@ export type InsumosTab = 'bandeja' | 'inventario' | 'equipos' | 'mapa'
 const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Solicitudes y entregas' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
-  { key: 'equipos', icon: '🚜', label: 'Por máquina', desc: 'Consumo por equipo' },
+  { key: 'equipos', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
 

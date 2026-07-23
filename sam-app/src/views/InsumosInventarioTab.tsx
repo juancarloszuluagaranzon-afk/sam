@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import {
   createInsumo, updateInsumo, deleteInsumo,
-  registrarMovimientoInsumo, loadKardex,
+  registrarMovimientoInsumo, ajustarStockInsumo, loadKardex,
 } from '../services/samApi'
 import type { Insumo, InsumoCategoria, InsumoKardex } from '../domain/sam'
 
@@ -33,7 +33,9 @@ export function InsumosInventarioTab() {
   const [nuevoNombre, setNuevoNombre] = useState('')
   const [nuevoCat, setNuevoCat] = useState<InsumoCategoria>('MATERIAL')
   const [nuevoUnidad, setNuevoUnidad] = useState('unidad')
+  const [nuevoMinimo, setNuevoMinimo] = useState('')
   const [catFilter, setCatFilter] = useState<'TODOS' | InsumoCategoria>('TODOS')
+  const [soloBajo, setSoloBajo] = useState(false)
   const [search, setSearch] = useState('')
   // Menú "⋯" abierto (acciones secundarias de una fila).
   const [menuFor, setMenuFor] = useState<string | null>(null)
@@ -42,6 +44,15 @@ export function InsumosInventarioTab() {
   const [editNombre, setEditNombre] = useState('')
   const [editCat, setEditCat] = useState<InsumoCategoria>('MATERIAL')
   const [editUnidad, setEditUnidad] = useState('unidad')
+  const [editMinimo, setEditMinimo] = useState('')
+
+  // Ajuste por conteo físico.
+  const [ajusteTarget, setAjusteTarget] = useState<Insumo | null>(null)
+  const [ajusteReal, setAjusteReal] = useState('')
+  const [ajusteMotivo, setAjusteMotivo] = useState('')
+
+  const esBajo = (i: Insumo) => i.stockMinimo > 0 && i.stock <= i.stockMinimo
+  const bajos = useMemo(() => insumos.filter((i) => i.activo && esBajo(i)), [insumos])
 
   const [deleteTarget, setDeleteTarget] = useState<Insumo | null>(null)
 
@@ -63,9 +74,11 @@ export function InsumosInventarioTab() {
     const q = search.trim().toLowerCase()
     return [...insumos]
       .filter((i) => catFilter === 'TODOS' || i.categoria === catFilter)
+      .filter((i) => !soloBajo || esBajo(i))
       .filter((i) => !q || i.nombre.toLowerCase().includes(q) || i.unidad.toLowerCase().includes(q))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
-  }, [insumos, catFilter, search])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [insumos, catFilter, search, soloBajo])
 
   async function handleCreate() {
     const nombre = nuevoNombre.trim().toUpperCase()
@@ -75,9 +88,9 @@ export function InsumosInventarioTab() {
     }
     setBusy(true); setError('')
     try {
-      const ins = await createInsumo(nombre, nuevoCat, nuevoUnidad)
+      const ins = await createInsumo(nombre, nuevoCat, nuevoUnidad, Number(nuevoMinimo) || 0)
       setInsumos((prev) => [...prev, ins])
-      setNuevoNombre(''); setNuevoUnidad('unidad'); setNuevoCat('MATERIAL')
+      setNuevoNombre(''); setNuevoUnidad('unidad'); setNuevoCat('MATERIAL'); setNuevoMinimo('')
       setNuevoOpen(false)
       setInfo(`Insumo "${ins.nombre}" creado.`)
     } catch (err) {
@@ -87,7 +100,8 @@ export function InsumosInventarioTab() {
   }
 
   function openEdit(i: Insumo) {
-    setEditTarget(i); setEditNombre(i.nombre); setEditCat(i.categoria); setEditUnidad(i.unidad); setError('')
+    setEditTarget(i); setEditNombre(i.nombre); setEditCat(i.categoria); setEditUnidad(i.unidad)
+    setEditMinimo(i.stockMinimo ? String(i.stockMinimo) : ''); setError('')
   }
   async function saveEdit() {
     if (!editTarget) return
@@ -95,7 +109,7 @@ export function InsumosInventarioTab() {
     if (!nombre) { setError('El nombre no puede quedar vacío.'); return }
     setBusy(true); setError('')
     try {
-      const upd = await updateInsumo(editTarget.id, { nombre, categoria: editCat, unidad: editUnidad })
+      const upd = await updateInsumo(editTarget.id, { nombre, categoria: editCat, unidad: editUnidad, stockMinimo: Number(editMinimo) || 0 })
       setInsumos((prev) => prev.map((i) => (i.id === upd.id ? upd : i)))
       setInfo(`Insumo actualizado.`); setEditTarget(null)
     } catch (err) {
@@ -152,6 +166,26 @@ export function InsumosInventarioTab() {
     } finally { setBusy(false) }
   }
 
+  function openAjuste(i: Insumo) {
+    setAjusteTarget(i); setAjusteReal(String(i.stock)); setAjusteMotivo(''); setError('')
+  }
+  async function registrarAjuste() {
+    if (!ajusteTarget) return
+    const real = Number(ajusteReal)
+    if (ajusteReal.trim() === '' || isNaN(real) || real < 0) { setError('Ingresa el stock real contado (≥ 0).'); return }
+    if (real === ajusteTarget.stock) { setError('El stock contado es igual al del sistema. No hay ajuste.'); return }
+    setBusy(true); setError('')
+    try {
+      const upd = await ajustarStockInsumo({ insumoId: ajusteTarget.id, nuevoStock: real, motivo: ajusteMotivo.trim() || undefined, creadoPor: session?.id })
+      setInsumos((prev) => prev.map((i) => (i.id === upd.id ? upd : i)))
+      setInfo(`Inventario ajustado: ${ajusteTarget.nombre} ahora en ${upd.stock} ${upd.unidad}.`)
+      setAjusteTarget(null)
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo ajustar. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
+  }
+
   async function openKardex(i: Insumo) {
     setKardexTarget(i); setKardexRows([]); setKardexLoading(true)
     try {
@@ -174,6 +208,17 @@ export function InsumosInventarioTab() {
         {combustibles} combustible(s) · {materiales} material(es). Registra <strong>entradas</strong> (compras) que
         suman al inventario; las salidas se descuentan con los despachos.
       </p>
+
+      {bajos.length > 0 && (
+        <button
+          type="button"
+          className={`inv-alerta${soloBajo ? ' is-on' : ''}`}
+          onClick={() => setSoloBajo((v) => !v)}
+        >
+          ⚠️ {bajos.length} insumo{bajos.length === 1 ? '' : 's'} en <strong>stock bajo</strong>
+          <span className="inv-alerta__cta">{soloBajo ? 'Ver todos' : 'Ver solo estos'}</span>
+        </button>
+      )}
 
       <div className="inv-toolbar">
         <div className="sol-filtros" style={{ marginTop: 0 }}>
@@ -205,8 +250,9 @@ export function InsumosInventarioTab() {
                 {i.categoria === 'COMBUSTIBLE' ? '⛽ Combustible' : '🔩 Material'}
               </span>
               {!i.activo && <span className="inv-cat inv-cat--off">Inactivo</span>}
+              {i.activo && esBajo(i) && <span className="inv-cat inv-cat--bajo">⚠ Stock bajo</span>}
             </div>
-            <div className={`inv-stock${i.stock <= 0 ? ' inv-stock--zero' : ''}`} title="Stock actual">
+            <div className={`inv-stock${i.stock <= 0 ? ' inv-stock--zero' : esBajo(i) ? ' inv-stock--bajo' : ''}`} title={i.stockMinimo > 0 ? `Stock actual · mínimo ${i.stockMinimo} ${i.unidad}` : 'Stock actual'}>
               {i.stock} <small>{i.unidad}</small>
             </div>
             <div className="inv-row__actions">
@@ -227,6 +273,7 @@ export function InsumosInventarioTab() {
                     <div className="inv-kebab__backdrop" onClick={() => setMenuFor(null)} />
                     <div className="inv-kebab__menu" role="menu">
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void openKardex(i) }}>📒 Kardex</button>
+                      <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openAjuste(i) }}>⚖️ Ajustar (conteo)</button>
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openEdit(i) }}>✏️ Editar</button>
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void toggleActivo(i) }}>
                         {i.activo ? '🚫 Desactivar' : '✔ Activar'}
@@ -279,6 +326,10 @@ export function InsumosInventarioTab() {
               Unidad
               <input type="text" placeholder="galón, unidad, kg…" value={nuevoUnidad} onChange={(e) => setNuevoUnidad(e.target.value)} disabled={busy} />
             </label>
+            <label>
+              Stock mínimo (alerta) <span className="field-optional">(0 = sin alerta)</span>
+              <input type="number" min={0} step="any" placeholder="ej. 50" value={nuevoMinimo} onChange={(e) => setNuevoMinimo(e.target.value)} disabled={busy} />
+            </label>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setNuevoOpen(false)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void handleCreate()} disabled={busy}>
@@ -316,6 +367,42 @@ export function InsumosInventarioTab() {
         </div>
       )}
 
+      {/* Modal ajuste por conteo físico */}
+      {ajusteTarget && (() => {
+        const real = Number(ajusteReal)
+        const dif = ajusteReal.trim() !== '' && !isNaN(real) ? Number((real - ajusteTarget.stock).toFixed(4)) : null
+        return (
+        <div className="modal-overlay open" onClick={() => setAjusteTarget(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Inventario</p><h3>⚖️ Ajustar por conteo</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setAjusteTarget(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              <strong>{ajusteTarget.nombre}</strong> · el sistema dice <strong>{ajusteTarget.stock} {ajusteTarget.unidad}</strong>
+            </p>
+            <label>
+              Stock real contado ({ajusteTarget.unidad})
+              <input type="number" min={0} step="any" value={ajusteReal} onChange={(e) => setAjusteReal(e.target.value)} disabled={busy} autoFocus />
+            </label>
+            {dif != null && dif !== 0 && (
+              <p className="subtle-copy" style={{ margin: '4px 0 0', color: dif < 0 ? '#b3261e' : 'var(--color-brand)' }}>
+                Diferencia: {dif > 0 ? '+' : ''}{dif} {ajusteTarget.unidad} {dif < 0 ? '(faltaba en bodega)' : '(sobraba en bodega)'} — queda en el kardex.
+              </p>
+            )}
+            <label style={{ marginTop: 10 }}>
+              Motivo <span className="field-optional">(opcional)</span>
+              <input type="text" placeholder="Conteo físico, merma, derrame…" value={ajusteMotivo} onChange={(e) => setAjusteMotivo(e.target.value)} disabled={busy} />
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setAjusteTarget(null)} disabled={busy}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void registrarAjuste()} disabled={busy}>{busy ? 'Guardando…' : 'Ajustar inventario'}</button>
+            </div>
+          </div>
+        </div>
+        )
+      })()}
+
       {/* Modal kardex */}
       {kardexTarget && (
         <div className="modal-overlay open" onClick={() => setKardexTarget(null)}>
@@ -330,11 +417,15 @@ export function InsumosInventarioTab() {
                 <p className="muted-text">Cargando…</p>
               ) : kardexRows.length === 0 ? (
                 <p className="muted-text">Sin movimientos todavía.</p>
-              ) : kardexRows.map((m) => (
+              ) : kardexRows.map((m) => {
+                // AJUSTE lleva cantidad con signo; SALIDA resta, ENTRADA suma.
+                const negativo = m.tipo === 'SALIDA' || (m.tipo === 'AJUSTE' && m.cantidad < 0)
+                const magnitud = m.tipo === 'AJUSTE' ? Math.abs(m.cantidad) : m.cantidad
+                return (
                 <div key={m.id} className="movement-row">
                   <div>
-                    <strong style={{ color: m.tipo === 'SALIDA' ? 'var(--color-danger, #b3261e)' : 'var(--color-brand)' }}>
-                      {m.tipo === 'SALIDA' ? '−' : '+'}{m.cantidad} {kardexTarget.unidad}
+                    <strong style={{ color: negativo ? 'var(--color-danger, #b3261e)' : 'var(--color-brand)' }}>
+                      {negativo ? '−' : '+'}{magnitud} {kardexTarget.unidad}
                     </strong>
                     <span>{m.tipo}{m.equipoCodigo ? ` · 🚜 ${equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo}` : ''}{m.motivo ? ` · ${m.motivo}` : ''}{m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}</span>
                   </div>
@@ -343,7 +434,8 @@ export function InsumosInventarioTab() {
                     <small>{fmtFecha(m.createdAt)}</small>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
             <div className="modal-footer">
               <button type="button" className="primary-button" onClick={() => setKardexTarget(null)}>Cerrar</button>
@@ -368,7 +460,10 @@ export function InsumosInventarioTab() {
               </select>
             </label>
             <label>Unidad<input type="text" value={editUnidad} onChange={(e) => setEditUnidad(e.target.value)} disabled={busy} /></label>
-            <p className="subtle-copy">El stock no se edita aquí; se ajusta con entradas y salidas (kardex).</p>
+            <label>Stock mínimo (alerta) <span className="field-optional">(0 = sin alerta)</span>
+              <input type="number" min={0} step="any" value={editMinimo} onChange={(e) => setEditMinimo(e.target.value)} disabled={busy} />
+            </label>
+            <p className="subtle-copy">El stock no se edita aquí; se ajusta con entradas, salidas (kardex) o <strong>⚖️ Ajustar (conteo)</strong>.</p>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setEditTarget(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void saveEdit()} disabled={busy}>{busy ? 'Guardando...' : 'Guardar'}</button>

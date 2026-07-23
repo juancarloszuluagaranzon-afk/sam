@@ -938,6 +938,7 @@
   font-weight: 800;
   font-size: 1.02rem;
 }
+.confirm-entrega-card__dir { font-weight: 600; font-size: 0.8rem; opacity: 0.75; }
 .confirm-entrega-card__items {
   margin: 0 0 10px;
   font-size: 0.92rem;
@@ -1122,8 +1123,32 @@
 }
 .inv-stock small { font-weight: 600; color: inherit; opacity: 0.75; }
 .inv-stock--zero { color: var(--color-ink-mid); background: rgba(0, 0, 0, 0.05); }
+.inv-stock--bajo { color: #9a5a12; background: rgba(217, 119, 6, 0.14); }
 :root[data-theme="dark"] .inv-stock { color: #7fd6a0; }
 :root[data-theme="dark"] .inv-stock--zero { color: var(--color-ink-mid); background: rgba(255, 255, 255, 0.07); }
+:root[data-theme="dark"] .inv-stock--bajo { color: #f0c34e; background: rgba(217, 119, 6, 0.2); }
+.inv-cat--bajo { background: rgba(217, 119, 6, 0.16); color: #9a5a12; }
+:root[data-theme="dark"] .inv-cat--bajo { color: #f0c34e; }
+
+/* Banner de alerta de stock bajo (clic = filtrar). */
+.inv-alerta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  background: rgba(217, 119, 6, 0.1);
+  color: #8a4d08;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+.inv-alerta.is-on { background: rgba(217, 119, 6, 0.2); border-color: rgba(217, 119, 6, 0.6); }
+.inv-alerta__cta { margin-left: auto; font-weight: 700; font-size: 0.82rem; text-decoration: underline; }
+:root[data-theme="dark"] .inv-alerta { color: #f0c34e; }
 
 .inv-row__actions {
   display: flex;
@@ -1290,6 +1315,21 @@
 }
 :root[data-theme="dark"] .sol-card__nota { background: rgba(255, 255, 255, 0.06); }
 .sol-card__nota--rechazo { color: #b3261e; background: rgba(179, 38, 30, 0.07); }
+.sol-origen {
+  font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em;
+  padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  background: rgba(0, 0, 0, 0.06); color: var(--color-ink-mid);
+}
+.sol-origen--dir { background: rgba(124, 58, 237, 0.12); color: #6d28d9; }
+
+/* Toolbar de Reportes: rango de fechas + exportar. */
+.rep-toolbar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; }
+.rep-fecha { display: flex; flex-direction: column; font-size: 0.78rem; color: var(--color-ink-mid); gap: 2px; }
+.rep-fecha input { padding: 7px 10px; border-radius: 9px; border: 1px solid var(--color-border, rgba(0,0,0,.15)); background: var(--color-bg-elevated); color: inherit; }
+.rep-export { margin-left: auto; }
+@media (max-width: 520px) { .rep-export { margin-left: 0; width: 100%; } }
+:root[data-theme="dark"] .sol-origen { background: rgba(255, 255, 255, 0.08); }
+:root[data-theme="dark"] .sol-origen--dir { color: #c4b5fd; background: rgba(124, 58, 237, 0.22); }
 
 .sol-card__aval {
   margin-top: 10px;

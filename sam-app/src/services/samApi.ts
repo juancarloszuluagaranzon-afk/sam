@@ -1296,13 +1296,16 @@ function mapInsumo(row: Record<string, unknown>): Insumo {
     categoria: cat === 'COMBUSTIBLE' ? 'COMBUSTIBLE' : 'MATERIAL',
     unidad: String(row.unidad ?? 'unidad'),
     stock: Number(row.stock ?? 0),
+    stockMinimo: Number(row.stock_minimo ?? 0),
     activo: row.activo == null ? true : Boolean(row.activo),
   }
 }
 
 export async function loadInsumos(): Promise<{ data: Insumo[]; source: Source }> {
   try {
-    const { data, error } = await supabase.from('insumos').select('id,nombre,categoria,unidad,stock,activo').order('nombre')
+    // `*` a propósito: así la carga NO se rompe si la migración de una columna
+    // nueva (ej. stock_minimo) aún no se ha corrido (lección factura_numero).
+    const { data, error } = await supabase.from('insumos').select('*').order('nombre')
     if (error || !data) throw error ?? new Error('empty')
     return { data: data.map(mapInsumo), source: 'supabase' }
   } catch {
@@ -1314,11 +1317,12 @@ export async function createInsumo(
   nombre: string,
   categoria: InsumoCategoria,
   unidad: string,
+  stockMinimo = 0,
 ): Promise<Insumo> {
   const { data, error } = await supabase
     .from('insumos')
-    .insert({ nombre: nombre.trim().toUpperCase(), categoria, unidad: unidad.trim() || 'unidad' })
-    .select('id,nombre,categoria,unidad,stock,activo')
+    .insert({ nombre: nombre.trim().toUpperCase(), categoria, unidad: unidad.trim() || 'unidad', stock_minimo: stockMinimo })
+    .select('*')
     .single()
   if (error || !data) throw error ?? new Error('No se pudo crear el insumo')
   return mapInsumo(data)
@@ -1326,21 +1330,58 @@ export async function createInsumo(
 
 export async function updateInsumo(
   id: string,
-  patch: { nombre?: string; categoria?: InsumoCategoria; unidad?: string; activo?: boolean },
+  patch: { nombre?: string; categoria?: InsumoCategoria; unidad?: string; activo?: boolean; stockMinimo?: number },
 ): Promise<Insumo> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
   if (patch.categoria !== undefined) payload.categoria = patch.categoria
   if (patch.unidad !== undefined) payload.unidad = patch.unidad.trim() || 'unidad'
   if (patch.activo !== undefined) payload.activo = patch.activo
+  if (patch.stockMinimo !== undefined) payload.stock_minimo = patch.stockMinimo
   const { data, error } = await supabase
     .from('insumos')
     .update(payload)
     .eq('id', id)
-    .select('id,nombre,categoria,unidad,stock,activo')
+    .select('*')
     .single()
   if (error || !data) throw error ?? new Error('No se pudo actualizar el insumo')
   return mapInsumo(data)
+}
+
+/**
+ * Ajuste de inventario por CONTEO FÍSICO: fija el stock al valor real contado y
+ * registra la diferencia como movimiento AJUSTE en el kardex (cantidad con
+ * signo: negativa si sobraba en el sistema, positiva si faltaba). No pasa por
+ * registrarMovimientoInsumo porque este solo suma/resta en un sentido.
+ */
+export async function ajustarStockInsumo(input: {
+  insumoId: string
+  nuevoStock: number
+  motivo?: string
+  creadoPor?: string
+}): Promise<Insumo> {
+  const { data: actual, error: e1 } = await supabase
+    .from('insumos').select('*').eq('id', input.insumoId).single()
+  if (e1 || !actual) throw e1 ?? new Error('Insumo no encontrado')
+
+  const nuevo = Number(input.nuevoStock)
+  const delta = Number((nuevo - Number(actual.stock ?? 0)).toFixed(4))
+
+  const { error: e2 } = await supabase.from('insumos_kardex').insert({
+    insumo_id: input.insumoId,
+    tipo: 'AJUSTE',
+    cantidad: delta, // con signo: refleja la corrección exacta
+    saldo: nuevo,
+    motivo: input.motivo?.trim() || 'Ajuste por conteo físico',
+    creado_por: input.creadoPor ?? null,
+  })
+  if (e2) throw new Error(e2.message || 'No se pudo registrar el ajuste')
+
+  const { data: upd, error: e3 } = await supabase
+    .from('insumos').update({ stock: nuevo, updated_at: new Date().toISOString() })
+    .eq('id', input.insumoId).select('*').single()
+  if (e3 || !upd) throw e3 ?? new Error('No se pudo actualizar el stock')
+  return mapInsumo(upd)
 }
 
 export async function deleteInsumo(id: string): Promise<void> {
@@ -1465,6 +1506,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     operarioId: String(row.operario_id),
     operarioNombre: row.operario_nombre ? String(row.operario_nombre) : undefined,
     estado: (['PENDIENTE', 'PROGRAMADA', 'ENTREGADA', 'RECHAZADA', 'CANCELADA'] as string[]).includes(estado) ? estado : 'PENDIENTE',
+    origen: String(row.origen ?? 'OPERARIO').trim().toUpperCase() === 'DIRECTA' ? 'DIRECTA' : 'OPERARIO',
     nota: row.nota ? String(row.nota) : undefined,
     zona: row.zona ? String(row.zona) : undefined,
     motivoRechazo: row.motivo_rechazo ? String(row.motivo_rechazo) : undefined,
@@ -1522,6 +1564,94 @@ export async function createSolicitud(input: {
     if (e2) throw new Error(e2.message || 'No se pudieron guardar los ítems')
   }
   return mapSolicitud({ ...sol, items: rows.map((r, i) => ({ id: `tmp-${i}`, ...r })) })
+}
+
+/**
+ * ENTREGA DIRECTA: el supervisor entrega insumos a un operario SIN solicitud
+ * previa. Crea la solicitud ya ENTREGADA con origen='DIRECTA', sus ítems (la
+ * cantidad pedida = la despachada, la pone el supervisor), y registra la SALIDA
+ * del kardex por ítem. El operario igual debe dar su aval (queda ENTREGADA sin
+ * confirmar → le aparece la tarjeta "¿Recibiste?"). Devuelve los insumos con el
+ * stock actualizado para refrescar el contexto.
+ */
+export async function entregarDirecto(input: {
+  operarioId: string
+  operarioNombre?: string
+  despachadoPor?: string
+  equipoCodigo: string
+  horometro?: number
+  ruta?: string
+  nota?: string
+  evidenciaUrls: string[]
+  items: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
+}): Promise<{ solicitudId: string; insumos: Insumo[] }> {
+  const ahora = new Date().toISOString()
+  const { data: sol, error: e1 } = await supabase
+    .from('insumos_solicitudes')
+    .insert({
+      operario_id: input.operarioId,
+      operario_nombre: input.operarioNombre ?? null,
+      nota: input.nota ?? null,
+      origen: 'DIRECTA',
+      estado: 'ENTREGADA',
+      entregado_en: ahora,
+      despachado_por: input.despachadoPor ?? null,
+      ruta: input.ruta ?? null,
+      horometro: input.horometro ?? null,
+      equipo_codigo: input.equipoCodigo,
+      evidencia_urls: input.evidenciaUrls,
+    })
+    .select('id')
+    .single()
+  if (e1 || !sol) throw e1 ?? new Error('No se pudo crear la entrega directa')
+
+  const itemRows = input.items.map((it) => ({
+    solicitud_id: sol.id,
+    insumo_id: it.insumoId,
+    insumo_nombre: it.insumoNombre,
+    unidad: it.unidad,
+    cantidad: it.cantidad,
+    cantidad_despachada: it.cantidad,
+  }))
+  if (itemRows.length) {
+    const { error: e2 } = await supabase.from('insumos_solicitud_items').insert(itemRows)
+    if (e2) throw new Error(e2.message || 'No se pudieron guardar los ítems')
+  }
+
+  const insumos: Insumo[] = []
+  for (const it of input.items) {
+    if (it.insumoId && it.cantidad > 0) {
+      const upd = await registrarMovimientoInsumo({
+        insumoId: it.insumoId,
+        tipo: 'SALIDA',
+        cantidad: it.cantidad,
+        motivo: 'Entrega directa',
+        referencia: sol.id,
+        creadoPor: input.despachadoPor,
+        equipoCodigo: input.equipoCodigo,
+      })
+      insumos.push(upd)
+    }
+  }
+  return { solicitudId: sol.id, insumos }
+}
+
+/**
+ * Kardex para el REPORTE de consumo (todos los tipos, con nombre de insumo y
+ * máquina). Filtra por rango de fechas si se pasa. Se une a `insumos` para el
+ * nombre/unidad sin depender del contexto.
+ */
+export async function loadKardexReporte(opts?: { desde?: string; hasta?: string; limit?: number }): Promise<InsumoKardex[]> {
+  let query = supabase
+    .from('insumos_kardex')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
+    .order('created_at', { ascending: false })
+    .limit(opts?.limit ?? 5000)
+  if (opts?.desde) query = query.gte('created_at', opts.desde)
+  if (opts?.hasta) query = query.lte('created_at', opts.hasta)
+  const { data, error } = await query
+  if (error || !data) return []
+  return data.map(mapKardex)
 }
 
 export async function loadSolicitudes(opts?: {

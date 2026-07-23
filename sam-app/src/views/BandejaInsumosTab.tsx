@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, uploadEvidencia } from '../services/samApi'
+import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia } from '../services/samApi'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
 /**
@@ -21,6 +21,18 @@ const ESTADO_LABEL: Record<SolicitudEstado, string> = {
 
 export function BandejaInsumosTab() {
   const { users, session, insumos, setInsumos, sortedEquipment, busy, setBusy, setError, setInfo } = useAppData()
+
+  // Operarios (destinatarios posibles de una entrega directa). Solo operadores:
+  // son quienes tienen la tarjeta de aval para confirmar la recepción.
+  const operarios = useMemo(
+    () => users.filter((u) => u.active !== false && u.role === 'operador')
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })),
+    [users],
+  )
+  const activeInsumos = useMemo(
+    () => insumos.filter((i) => i.activo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+    [insumos],
+  )
 
   const equipoNombre = useMemo(() => {
     const m = new Map<string, string>()
@@ -44,6 +56,18 @@ export function BandejaInsumosTab() {
   const [evidencias, setEvidencias] = useState<string[]>([])
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const fotoInputRef = useRef<HTMLInputElement>(null)
+
+  // Entrega directa (sin solicitud previa) — la crea el supervisor.
+  const [directaOpen, setDirectaOpen] = useState(false)
+  const [dirOperario, setDirOperario] = useState('')
+  const [dirItems, setDirItems] = useState<{ insumoId: string; cantidad: string }[]>([{ insumoId: '', cantidad: '' }])
+  const [dirEquipo, setDirEquipo] = useState('')
+  const [dirHorometro, setDirHorometro] = useState('')
+  const [dirNota, setDirNota] = useState('')
+  const [dirFotos, setDirFotos] = useState<string[]>([])
+  const [dirSubiendo, setDirSubiendo] = useState(false)
+  const dirFotoRef = useRef<HTMLInputElement>(null)
+  const dirTempIdRef = useRef('')
 
   const stockDe = (insumoId?: string) => (insumoId ? insumos.find((i) => i.id === insumoId)?.stock ?? 0 : 0)
 
@@ -153,13 +177,85 @@ export function BandejaInsumosTab() {
     } finally { setBusy(false) }
   }
 
+  function openDirecta() {
+    dirTempIdRef.current = `directa-${session?.id ?? 'x'}-${Date.now()}`
+    setDirOperario('')
+    setDirItems([{ insumoId: '', cantidad: '' }])
+    setDirEquipo('')
+    setDirHorometro('')
+    setDirNota('')
+    setDirFotos([])
+    setError('')
+    setDirectaOpen(true)
+  }
+
+  async function handleDirFoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    const input = e.target
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setError('Selecciona una imagen.'); input.value = ''; return }
+    setDirSubiendo(true); setError('')
+    try {
+      const url = await uploadEvidencia(dirTempIdRef.current, file, dirFotos.length)
+      setDirFotos((prev) => [...prev, url])
+    } catch {
+      setError('No se pudo subir la foto.')
+    } finally { setDirSubiendo(false); input.value = '' }
+  }
+
+  // Cuando eligen operario, precargar su máquina por defecto.
+  function onDirOperario(id: string) {
+    setDirOperario(id)
+    setDirEquipo(equipoDeOperario(id))
+  }
+
+  async function confirmarDirecta() {
+    const operario = operarios.find((u) => u.id === dirOperario)
+    if (!operario) { setError('Elige a quién le entregas.'); return }
+    const items = dirItems
+      .filter((r) => r.insumoId && Number(r.cantidad) > 0)
+      .map((r) => {
+        const ins = insumos.find((i) => i.id === r.insumoId)!
+        return { insumoId: r.insumoId, insumoNombre: ins.nombre, unidad: ins.unidad, cantidad: Number(r.cantidad) }
+      })
+    if (items.length === 0) { setError('Agrega al menos un insumo con cantidad.'); return }
+    if (!dirEquipo) { setError('Selecciona la máquina a la que se carga el material.'); return }
+    const horometro = Number(dirHorometro)
+    if (!dirHorometro.trim() || isNaN(horometro) || horometro < 0) { setError('El horómetro de la máquina es obligatorio.'); return }
+    setBusy(true); setError('')
+    try {
+      const { insumos: actualizados } = await entregarDirecto({
+        operarioId: operario.id,
+        operarioNombre: operario.name,
+        despachadoPor: session?.id,
+        equipoCodigo: dirEquipo,
+        horometro,
+        nota: dirNota.trim() || undefined,
+        evidenciaUrls: dirFotos,
+        items,
+      })
+      if (actualizados.length) {
+        setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
+      }
+      setInfo(`Entrega directa registrada a ${operario.name}. Queda pendiente de su aval.`)
+      setDirectaOpen(false)
+      void refresh()
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo registrar la entrega directa. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
+  }
+
   const pendientesCount = solicitudes.filter((s) => s.estado === 'PENDIENTE').length
 
   return (
     <section className="panel-card">
       <div className="panel-title split">
         <h2>Bandeja de solicitudes {filtro === 'PENDIENTE' && pendientesCount > 0 ? `(${pendientesCount})` : ''}</h2>
-        <button type="button" className="inline-button" onClick={() => void refresh()} disabled={loading}>↻ Actualizar</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button type="button" className="primary-button" onClick={openDirecta} disabled={busy}>⚡ Entrega directa</button>
+          <button type="button" className="inline-button" onClick={() => void refresh()} disabled={loading}>↻ Actualizar</button>
+        </div>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         Solicitudes de insumos de los operarios. <strong>Programa</strong> las que vas a despachar o <strong>rechaza</strong> con motivo.
@@ -203,9 +299,14 @@ export function BandejaInsumosTab() {
                   <strong>{nombre}</strong>
                   <span>{fmtFecha(s.createdAt)}{s.zona ? ` · Zona ${s.zona}` : ''}</span>
                 </div>
-                <span className={`status-pill ${s.estado === 'PENDIENTE' ? '' : s.estado === 'PROGRAMADA' ? 'amber' : s.estado === 'RECHAZADA' ? 'red' : 'green'}`}>
-                  {ESTADO_LABEL[s.estado]}
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                  <span className={`status-pill ${s.estado === 'PENDIENTE' ? '' : s.estado === 'PROGRAMADA' ? 'amber' : s.estado === 'RECHAZADA' ? 'red' : 'green'}`}>
+                    {ESTADO_LABEL[s.estado]}
+                  </span>
+                  {s.origen === 'DIRECTA'
+                    ? <span className="sol-origen sol-origen--dir">⚡ Entrega directa</span>
+                    : <span className="sol-origen">🙋 Solicitada</span>}
+                </div>
               </header>
 
               <ul className="sol-card__items">
@@ -359,6 +460,100 @@ export function BandejaInsumosTab() {
               <button type="button" className="inline-button" onClick={() => setEntregaTarget(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void confirmarEntrega()} disabled={busy || subiendoFoto || !entregaHorometro.trim() || !entregaEquipo}>
                 {busy ? 'Guardando…' : 'Confirmar entrega'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {directaOpen && (
+        <div className="modal-overlay open" onClick={() => { if (!busy && !dirSubiendo) setDirectaOpen(false) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(480px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Despacho</p><h3>⚡ Entrega directa</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setDirectaOpen(false)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Entregas sin que el operario lo haya pedido. Igual le llega la tarjeta <strong>“¿Recibiste?”</strong> para su aval.
+            </p>
+
+            <label>
+              Entregar a
+              <select value={dirOperario} onChange={(e) => onDirOperario(e.target.value)} disabled={busy}>
+                <option value="">Elegir operario…</option>
+                {operarios.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+              </select>
+            </label>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+              {dirItems.map((row, idx) => {
+                const ins = insumos.find((i) => i.id === row.insumoId)
+                const stock = ins?.stock ?? 0
+                const excede = Number(row.cantidad) > stock
+                return (
+                  <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <select
+                      value={row.insumoId}
+                      onChange={(e) => setDirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: e.target.value } : r)))}
+                      disabled={busy} style={{ flex: 1, minWidth: 0 }}
+                    >
+                      <option value="">Insumo…</option>
+                      {activeInsumos.map((i) => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad}) · {i.stock}</option>)}
+                    </select>
+                    <input
+                      type="number" min={0} step="any" placeholder="Cant."
+                      value={row.cantidad}
+                      onChange={(e) => setDirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, cantidad: e.target.value } : r)))}
+                      disabled={busy} style={{ width: 80, borderColor: excede ? '#b3261e' : undefined }}
+                      title={excede ? `Excede el stock (${stock})` : ''}
+                    />
+                    <span className="subtle-copy" style={{ width: 44, fontSize: '0.78rem' }}>{ins?.unidad ?? ''}</span>
+                    {dirItems.length > 1 && (
+                      <button type="button" className="modal-close-btn" onClick={() => setDirItems((prev) => prev.filter((_, i) => i !== idx))} disabled={busy} aria-label="Quitar">&#x2715;</button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+            <button type="button" className="inline-button" style={{ marginTop: 8 }} onClick={() => setDirItems((prev) => [...prev, { insumoId: '', cantidad: '' }])} disabled={busy}>
+              + Agregar otro insumo
+            </button>
+
+            <label style={{ marginTop: 10 }}>
+              Horómetro de la máquina <span style={{ color: '#b3261e' }}>*</span>
+              <input type="number" min={0} step="any" inputMode="decimal" placeholder="Lectura del horómetro" value={dirHorometro} onChange={(e) => setDirHorometro(e.target.value)} disabled={busy} />
+            </label>
+            <label style={{ marginTop: 10 }}>
+              Máquina (tractor) <span style={{ color: '#b3261e' }}>*</span>
+              <select value={dirEquipo} onChange={(e) => setDirEquipo(e.target.value)} disabled={busy}>
+                <option value="">Seleccionar máquina…</option>
+                {dirEquipo && !sortedEquipment.some((eq) => eq.code === dirEquipo) && (
+                  <option value={dirEquipo}>{equipoNombre.get(dirEquipo) ?? dirEquipo}</option>
+                )}
+                {sortedEquipment.map((eq) => <option key={eq.code} value={eq.code}>{eq.name}</option>)}
+              </select>
+            </label>
+            <label style={{ marginTop: 10 }}>
+              Nota <span className="field-optional">(opcional)</span>
+              <input type="text" placeholder="Para qué / dónde…" value={dirNota} onChange={(e) => setDirNota(e.target.value)} disabled={busy} />
+            </label>
+
+            <div style={{ marginTop: 10 }}>
+              <span className="subtle-copy" style={{ display: 'block', marginBottom: 6 }}>Evidencia (fotos)</span>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {dirFotos.map((u, i) => (
+                  <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
+                ))}
+                <button type="button" className="inline-button" onClick={() => dirFotoRef.current?.click()} disabled={busy || dirSubiendo}>
+                  {dirSubiendo ? 'Subiendo…' : '📷 Agregar foto'}
+                </button>
+              </div>
+              <input ref={dirFotoRef} type="file" accept="image/*" capture="environment" hidden onChange={handleDirFoto} />
+            </div>
+
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setDirectaOpen(false)} disabled={busy}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void confirmarDirecta()} disabled={busy || dirSubiendo}>
+                {busy ? 'Registrando…' : 'Registrar entrega'}
               </button>
             </div>
           </div>

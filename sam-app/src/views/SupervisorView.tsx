@@ -5,6 +5,7 @@ import { useAppData } from '../context/AppDataContext'
 // el chunk aparte rompió el build de Vercel en producción (17-jul-2026).
 import { MapaView } from './MapaView'
 import { MapasTab } from './MapasTab'
+import { FlotaTab } from './FlotaTab'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
@@ -46,7 +47,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -84,6 +85,7 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'administracion') return 'Administración'
   if (role === 'soporte') return 'Soporte'
   if (role === 'supervisor_insumos') return 'Supervisor de insumos'
+  if (role === 'conductor') return 'Conductor de escolta'
   return 'Operador'
 }
 
@@ -1088,6 +1090,18 @@ export function SupervisorView({
                 </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
+                    className={`more-sheet__item ${supervisorTab === 'flota' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('flota'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">🚙</span>
+                    <div>
+                      <div className="more-sheet__label">Flota / Escolta</div>
+                      <div className="more-sheet__desc">Servicios de camionetas (CDA-F-68) · firma y evidencia · Excel</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
                     className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
                   >
@@ -2033,6 +2047,8 @@ export function SupervisorView({
           <MapasTab />
         ) : null}
 
+        {supervisorTab === 'flota' ? <FlotaTab /> : null}
+
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (
           <EmpresasTab />
         ) : null}
@@ -2582,6 +2598,7 @@ export function SupervisorView({
                       <option value="operador">Operador</option>
                       <option value="supervisor">Supervisor</option>
                       <option value="supervisor_insumos">Supervisor de insumos</option>
+                      <option value="conductor">Conductor de escolta</option>
                       <option value="administracion">Administración</option>
                       <option value="owner">Propietario</option>
                       <option value="soporte">Soporte</option>

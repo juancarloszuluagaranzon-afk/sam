@@ -5,6 +5,7 @@ import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { SupportSwitcher } from './views/SupportSwitcher'
 import { InsumosView } from './views/InsumosView'
+import { FlotaView } from './views/FlotaView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
@@ -491,6 +492,17 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <InsumosView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  // Rol Conductor → módulo Flota / Escolta (vista propia).
+  if (session.role === 'conductor') {
+    return (
+      <>
+        {impersonationBar}
+        {syncErrorBanner}
+        <FlotaView onLogout={() => saveSession(null)} />
       </>
     )
   }

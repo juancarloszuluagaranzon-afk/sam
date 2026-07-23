@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor'
 
 export type UserId = 'U002' | 'U003' | 'U004'
 
@@ -193,6 +193,61 @@ export interface Zona {
   codigo: string
   nombre: string
   activo: boolean
+}
+
+// ── Módulo Flota / Escolta (CDA-F-68) ──────────────────────────────────────
+// Un servicio/viaje de una camioneta de escolta (flota no propia).
+export interface FlotaServicio {
+  id: string
+  createdAt: string
+  fecha: string
+  vehiculo?: string
+  tipoServicio?: string
+  centroCosto?: string
+  procesoSolicitante?: string
+  nombrePasajero?: string
+  origen?: string
+  destino?: string
+  horaSalidaOrigen?: string
+  horaLlegadaDestino?: string
+  horaSalidaDestino?: string
+  horaLlegadaOrigen?: string
+  horaEspera?: string
+  numPeajes?: number
+  otrosGastos?: number
+  totalKm?: number
+  observacion?: string
+  conductorId?: string
+  conductorNombre?: string
+  firmaUrl?: string
+  firmaNombre?: string
+  evidenciaUrl?: string
+  estado: 'REGISTRADO' | 'ANULADO'
+}
+
+export interface CreateFlotaServicioInput {
+  fecha: string
+  vehiculo?: string
+  tipoServicio?: string
+  centroCosto?: string
+  procesoSolicitante?: string
+  nombrePasajero?: string
+  origen?: string
+  destino?: string
+  horaSalidaOrigen?: string
+  horaLlegadaDestino?: string
+  horaSalidaDestino?: string
+  horaLlegadaOrigen?: string
+  horaEspera?: string
+  numPeajes?: number
+  otrosGastos?: number
+  totalKm?: number
+  observacion?: string
+  conductorId?: string
+  conductorNombre?: string
+  firmaUrl?: string
+  firmaNombre?: string
+  evidenciaUrl?: string
 }
 
 // ── Módulo Insumos y Combustible ───────────────────────────────────────────

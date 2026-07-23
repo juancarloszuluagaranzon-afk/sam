@@ -33,10 +33,15 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
     () => users.filter((u) => u.role === 'supervisor_insumos' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const conductores = useMemo(
+    () => users.filter((u) => u.role === 'conductor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
 
   const [supId, setSupId] = useState('')
   const [opId, setOpId] = useState('')
   const [insId, setInsId] = useState('')
+  const [conId, setConId] = useState('')
 
   // Para roles "globales" usamos un usuario real si existe (su id no afecta:
   // ven todo). Si no hay, sintetizamos uno con la identidad de soporte.
@@ -154,6 +159,31 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
               disabled={!insId}
               onClick={() => {
                 const u = insumosSups.find((s) => s.id === insId)
+                if (u) onView({ ...u })
+              }}
+            >
+              Ver
+            </button>
+          </div>
+        )}
+
+        {conductores.length > 0 && (
+          <div className="support-pick">
+            <label className="support-pick__field">
+              <span className="support-pick__label">Conductor de escolta</span>
+              <SearchableSelect
+                value={conId}
+                onChange={setConId}
+                options={conductores.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Buscar…"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button support-pick__btn"
+              disabled={!conId}
+              onClick={() => {
+                const u = conductores.find((s) => s.id === conId)
                 if (u) onView({ ...u })
               }}
             >

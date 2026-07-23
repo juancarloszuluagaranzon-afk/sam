@@ -10,6 +10,8 @@ import type {
   Empresa,
   Ingenio,
   Equipment,
+  FlotaServicio,
+  CreateFlotaServicioInput,
   Insumo,
   InsumoCategoria,
   InsumoKardex,
@@ -748,7 +750,7 @@ export async function loadAssignments(): Promise<{
 // a operador. Fuente única para evitar que vuelva a divergir.
 export function mapRole(rol: unknown): UserProfile['role'] {
   const r = String(rol ?? '')
-  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos') {
+  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor') {
     return r
   }
   return 'operador'
@@ -2047,6 +2049,102 @@ export async function uploadUserPhoto(userId: string, file: File): Promise<strin
   if (updateError) throw updateError
 
   return url
+}
+
+// ── Módulo Flota / Escolta (CDA-F-68) ───────────────────────────────────────
+
+function mapFlota(row: Record<string, unknown>): FlotaServicio {
+  const n = (v: unknown) => (v == null ? undefined : Number(v))
+  const s = (v: unknown) => (v == null || v === '' ? undefined : String(v))
+  const estado = String(row.estado ?? 'REGISTRADO').toUpperCase()
+  return {
+    id: String(row.id),
+    createdAt: String(row.created_at ?? ''),
+    fecha: String(row.fecha ?? ''),
+    vehiculo: s(row.vehiculo),
+    tipoServicio: s(row.tipo_servicio),
+    centroCosto: s(row.centro_costo),
+    procesoSolicitante: s(row.proceso_solicitante),
+    nombrePasajero: s(row.nombre_pasajero),
+    origen: s(row.origen),
+    destino: s(row.destino),
+    horaSalidaOrigen: s(row.hora_salida_origen),
+    horaLlegadaDestino: s(row.hora_llegada_destino),
+    horaSalidaDestino: s(row.hora_salida_destino),
+    horaLlegadaOrigen: s(row.hora_llegada_origen),
+    horaEspera: s(row.hora_espera),
+    numPeajes: n(row.num_peajes),
+    otrosGastos: n(row.otros_gastos),
+    totalKm: n(row.total_km),
+    observacion: s(row.observacion),
+    conductorId: s(row.conductor_id),
+    conductorNombre: s(row.conductor_nombre),
+    firmaUrl: s(row.firma_url),
+    firmaNombre: s(row.firma_nombre),
+    evidenciaUrl: s(row.evidencia_url),
+    estado: estado === 'ANULADO' ? 'ANULADO' : 'REGISTRADO',
+  }
+}
+
+/** Sube una imagen (firma o evidencia) del módulo flota, comprimida y liviana. */
+export async function uploadImagenFlota(prefijoId: string, file: File, etiqueta: 'firma' | 'evidencia'): Promise<string> {
+  const liviana = await comprimirImagen(file, PERFIL_IMAGEN.evidencia)
+  const path = `flota/${prefijoId}-${etiqueta}-${Date.now()}.jpg`
+  const { error } = await supabase.storage
+    .from('avatars')
+    .upload(path, liviana, { upsert: true, contentType: 'image/jpeg' })
+  if (error) throw error
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path)
+  return data.publicUrl
+}
+
+export async function loadFlotaServicios(opts?: { conductorId?: string; desde?: string; hasta?: string; limit?: number }): Promise<FlotaServicio[]> {
+  // `*` a propósito: resiliente si una columna nueva aún no se migró.
+  let q = supabase.from('flota_servicios').select('*').order('fecha', { ascending: false }).order('created_at', { ascending: false }).limit(opts?.limit ?? 500)
+  if (opts?.conductorId) q = q.eq('conductor_id', opts.conductorId)
+  if (opts?.desde) q = q.gte('fecha', opts.desde)
+  if (opts?.hasta) q = q.lte('fecha', opts.hasta)
+  const { data, error } = await q
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapFlota)
+}
+
+export async function createFlotaServicio(input: CreateFlotaServicioInput): Promise<FlotaServicio> {
+  const { data, error } = await supabase
+    .from('flota_servicios')
+    .insert({
+      fecha: input.fecha,
+      vehiculo: input.vehiculo ?? null,
+      tipo_servicio: input.tipoServicio ?? null,
+      centro_costo: input.centroCosto ?? null,
+      proceso_solicitante: input.procesoSolicitante ?? null,
+      nombre_pasajero: input.nombrePasajero ?? null,
+      origen: input.origen ?? null,
+      destino: input.destino ?? null,
+      hora_salida_origen: input.horaSalidaOrigen ?? null,
+      hora_llegada_destino: input.horaLlegadaDestino ?? null,
+      hora_salida_destino: input.horaSalidaDestino ?? null,
+      hora_llegada_origen: input.horaLlegadaOrigen ?? null,
+      hora_espera: input.horaEspera ?? null,
+      num_peajes: input.numPeajes ?? 0,
+      otros_gastos: input.otrosGastos ?? 0,
+      total_km: input.totalKm ?? 0,
+      observacion: input.observacion ?? null,
+      conductor_id: input.conductorId ?? null,
+      conductor_nombre: input.conductorNombre ?? null,
+      firma_url: input.firmaUrl ?? null,
+      firma_nombre: input.firmaNombre ?? null,
+      evidencia_url: input.evidenciaUrl ?? null,
+    })
+    .select('*')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo registrar el servicio')
+  return mapFlota(data)
+}
+
+export async function anularFlotaServicio(id: string): Promise<void> {
+  const { error } = await supabase.from('flota_servicios').update({ estado: 'ANULADO', updated_at: new Date().toISOString() }).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo anular el servicio')
 }
 
 export async function appChangePin(userId: string, currentPin: string, newPin: string) {

@@ -92,6 +92,7 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
   if (role === 'supervisor_insumos') return 'Supervisor de insumos'
+  if (role === 'conductor') return 'Conductor de escolta'
   return 'Operador'
 }
 

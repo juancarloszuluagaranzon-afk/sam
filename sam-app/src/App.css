@@ -6052,6 +6052,29 @@ td.planilla-revisada {
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
 .planilla-nov--ll { color: #0e7490; }  /* Lluvia */
 
+/* Pad de firma (comprobante del conductor / receptor). */
+.firma-pad {
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.18));
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+.firma-pad__canvas {
+  display: block;
+  width: 100%;
+  background: #fff;
+  cursor: crosshair;
+}
+.firma-pad__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-top: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  background: var(--color-bg-elevated, #f7f7f4);
+}
+.firma-pad__hint { font-size: 0.78rem; color: var(--color-ink-mid); }
+
 /* "Listos para agregar" — planos ya procesados en FieldMaps. */
 .mapa-listos {
   border: 1px solid color-mix(in srgb, var(--color-brand, #1a6b3a) 40%, var(--color-border, rgba(0,0,0,.12)));

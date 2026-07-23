@@ -30,6 +30,7 @@ import type {
 } from '../domain/sam'
 import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
+import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
 
 type Source = 'supabase' | 'fallback' | 'cache'
 
@@ -1061,12 +1062,14 @@ export async function saveMotivacion(patch: Partial<Motivacion>): Promise<Motiva
 }
 
 // Sube la imagen/GIF motivacional al bucket `avatars` y devuelve su URL pública.
+// Comprime si es imagen estática; los GIF (animados) se suben tal cual.
 export async function uploadMotivacionImagen(file: File): Promise<string> {
-  const ext = (file.name.split('.').pop() || 'png').toLowerCase()
+  const liviana = await comprimirImagen(file, PERFIL_IMAGEN.motivacion)
+  const ext = (liviana.name.split('.').pop() || 'png').toLowerCase()
   const path = `motivacion/hit-${Date.now()}.${ext}`
   const { error } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true, contentType: file.type || 'image/png' })
+    .upload(path, liviana, { upsert: true, contentType: liviana.type || 'image/png' })
   if (error) throw error
   const { data } = supabase.storage.from('avatars').getPublicUrl(path)
   return data.publicUrl
@@ -1742,11 +1745,12 @@ export async function confirmarRecepcion(input: {
 // Sube una foto de evidencia de despacho al bucket `avatars` (público) y
 // devuelve su URL. Reutiliza el mismo storage de las fotos de usuario.
 export async function uploadEvidencia(solicitudId: string, file: File, idx: number): Promise<string> {
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const liviana = await comprimirImagen(file, PERFIL_IMAGEN.evidencia)
+  const ext = (liviana.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `despachos/${solicitudId}-${idx}-${Date.now()}.${ext}`
   const { error } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+    .upload(path, liviana, { upsert: true, contentType: liviana.type || 'image/jpeg' })
   if (error) throw error
   const { data } = supabase.storage.from('avatars').getPublicUrl(path)
   return data.publicUrl
@@ -2022,12 +2026,13 @@ export async function appLogin(userId: string, pin: string) {
 }
 
 export async function uploadUserPhoto(userId: string, file: File): Promise<string> {
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
+  const liviana = await comprimirImagen(file, PERFIL_IMAGEN.avatar)
+  const ext = (liviana.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `${userId}.${ext}`
 
   const { error: uploadError } = await supabase.storage
     .from('avatars')
-    .upload(path, file, { upsert: true, contentType: file.type || 'image/jpeg' })
+    .upload(path, liviana, { upsert: true, contentType: liviana.type || 'image/jpeg' })
 
   if (uploadError) throw uploadError
 

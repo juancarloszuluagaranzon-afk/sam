@@ -6050,6 +6050,7 @@ td.planilla-revisada {
 .planilla-nov--mt { color: #0369a1; }  /* Máquina en traslado */
 .planilla-nov--in { color: #be185d; }  /* Incapacidad */
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
+.planilla-nov--ll { color: #0e7490; }  /* Lluvia */
 
 /* Formulario "Agregar mapa" (Catálogos → Mapas). */
 .mapa-form-grid {

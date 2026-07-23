@@ -191,6 +191,29 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
       bearing: 0,
     })
     mapRef.current = map
+
+    // ── Sensibilidad del giro con dos dedos ──
+    // El plugin aplica el ÁNGULO COMPLETO de los dedos → giraba demasiado rápido.
+    // Lo dampeamos al 20% (−80%): mientras hay gesto de 2 dedos, cada setBearing
+    // del plugin se reduce respecto al rumbo ANCLA capturado al iniciar el gesto.
+    // Fuera del gesto (brújula → norte) pasa sin tocar, así el reset sigue exacto.
+    {
+      const FACTOR = 0.2 // 20% de la rotación del dedo = −80% de sensibilidad
+      const mapAny = map as unknown as { setBearing: (t: number) => unknown; getBearing: () => number }
+      const realSetBearing = mapAny.setBearing.bind(map)
+      let gestoActivo = false
+      let ancla = 0
+      mapAny.setBearing = (theta: number) =>
+        gestoActivo ? realSetBearing(ancla + (theta - ancla) * FACTOR) : realSetBearing(theta)
+      const cont = map.getContainer()
+      cont.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 2) { ancla = mapAny.getBearing(); gestoActivo = true }
+      }, { passive: true })
+      cont.addEventListener('touchend', (e) => {
+        if (e.touches.length < 2) gestoActivo = false
+      }, { passive: true })
+    }
+
     // La aguja de la brújula sigue el rumbo del mapa en vivo.
     map.on('rotate', () => setBearing(map.getBearing()))
     // Capas de las herramientas (medición en curso, marcadores, medición guardada).

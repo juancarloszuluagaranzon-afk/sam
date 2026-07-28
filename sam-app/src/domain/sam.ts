@@ -251,6 +251,81 @@ export interface CreateFlotaServicioInput {
 }
 
 // ── Módulo Insumos y Combustible ───────────────────────────────────────────
+
+// Bodegas: una PRINCIPAL (fija, compra y almacena) y varias SATELITE (el
+// vehículo de cada supervisor de insumos, de donde consumen los operarios).
+export type BodegaTipo = 'PRINCIPAL' | 'SATELITE'
+
+export interface Bodega {
+  id: string
+  nombre: string
+  tipo: BodegaTipo
+  responsableId?: string
+  vehiculo?: string
+  activo: boolean
+}
+
+/** Stock de un insumo EN una bodega concreta. */
+export interface StockBodega {
+  insumoId: string
+  bodegaId: string
+  stock: number
+}
+
+// Traslado principal → satélite. Sale de la principal y queda EN_TRANSITO
+// hasta que el supervisor del satélite confirma lo que recibió (aval).
+export type TrasladoEstado = 'EN_TRANSITO' | 'RECIBIDO' | 'ANULADO'
+
+export interface TrasladoItem {
+  id?: string
+  insumoId: string
+  insumoNombre: string
+  unidad: string
+  cantidad: number
+  cantidadRecibida?: number
+}
+
+export interface Traslado {
+  id: string
+  createdAt: string
+  origenId: string
+  destinoId: string
+  estado: TrasladoEstado
+  enviadoPor?: string
+  nota?: string
+  evidenciaUrl?: string
+  recibidoEn?: string
+  recibidoPor?: string
+  conforme?: boolean | null
+  notaRecepcion?: string
+  items: TrasladoItem[]
+}
+
+// Tanqueo en bomba externa.
+//  CARRO   → el supervisor tanquea su vehículo-tanque: ENTRA al satélite.
+//  MAQUINA → el operario tanquea la máquina en la bomba: NO toca inventario,
+//            pero el consumo/costo sí se carga a la máquina (exige horómetro).
+export type CombustibleDestino = 'CARRO' | 'MAQUINA'
+
+export interface CombustibleExterno {
+  id: string
+  createdAt: string
+  fecha: string
+  destino: CombustibleDestino
+  bodegaId?: string
+  equipoCodigo?: string
+  horometro?: number
+  insumoId?: string
+  galones: number
+  valor?: number
+  estacion?: string
+  factura?: string
+  tirillaUrl?: string
+  registradoPor?: string
+  registradoNombre?: string
+  nota?: string
+}
+
 export type InsumoCategoria = 'COMBUSTIBLE' | 'MATERIAL'
 
 // Catálogo de insumos con stock actual (combustibles y materiales).
@@ -322,6 +397,9 @@ export interface SolicitudInsumo {
   horometro?: number
   // Máquina/tractor a la que se cargó la entrega (acumulador de costos).
   equipoCodigo?: string
+  // Bodega de la que salió el material (satélite del supervisor). Sirve para
+  // que una devolución por diferencia regrese a la misma bodega.
+  bodegaId?: string
   // Aval del operario (fase 4): confirmación de recepción sobre ENTREGADA.
   // conforme=true → recibió todo; false → reportó diferencia (nota con motivo);
   // confirmadoEn null → entregada sin confirmar aún.

@@ -6,6 +6,7 @@ import { useAppData } from '../context/AppDataContext'
 import { MapaView } from './MapaView'
 import { MapasTab } from './MapasTab'
 import { FlotaTab } from './FlotaTab'
+import { BodegasTab } from './BodegasTab'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
@@ -47,7 +48,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1078,6 +1079,18 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Inventario de insumos y combustible (kardex)</div>
                   </div>
                 </button>
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'bodegas' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('bodegas'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">🏢</span>
+                    <div>
+                      <div className="more-sheet__label">Bodegas</div>
+                      <div className="more-sheet__desc">Principal y satélites · surtir los carros</div>
+                    </div>
+                  </button>
+                )}
                 <button
                   className={`more-sheet__item ${supervisorTab === 'mapa' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('mapa'); setMoreMenuOpen(false) }}
@@ -2048,6 +2061,10 @@ export function SupervisorView({
         ) : null}
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'bodegas' ? (
+          <BodegasTab />
+        ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (
           <EmpresasTab />

@@ -12,6 +12,13 @@ import type {
   Equipment,
   FlotaServicio,
   CreateFlotaServicioInput,
+  Bodega,
+  BodegaTipo,
+  StockBodega,
+  Traslado,
+  TrasladoItem,
+  CombustibleExterno,
+  CombustibleDestino,
   Insumo,
   InsumoCategoria,
   InsumoKardex,
@@ -1364,16 +1371,22 @@ export async function ajustarStockInsumo(input: {
   nuevoStock: number
   motivo?: string
   creadoPor?: string
+  bodegaId?: string
 }): Promise<Insumo> {
-  const { data: actual, error: e1 } = await supabase
-    .from('insumos').select('*').eq('id', input.insumoId).single()
-  if (e1 || !actual) throw e1 ?? new Error('Insumo no encontrado')
+  let bodegaId = input.bodegaId
+  if (!bodegaId) {
+    const p = await bodegaPrincipal()
+    if (!p) throw new Error('No hay bodega principal configurada')
+    bodegaId = p.id
+  }
 
   const nuevo = Number(input.nuevoStock)
-  const delta = Number((nuevo - Number(actual.stock ?? 0)).toFixed(4))
+  const actual = await stockEnBodega(input.insumoId, bodegaId)
+  const delta = Number((nuevo - actual).toFixed(4))
 
   const { error: e2 } = await supabase.from('insumos_kardex').insert({
     insumo_id: input.insumoId,
+    bodega_id: bodegaId,
     tipo: 'AJUSTE',
     cantidad: delta, // con signo: refleja la corrección exacta
     saldo: nuevo,
@@ -1382,11 +1395,15 @@ export async function ajustarStockInsumo(input: {
   })
   if (e2) throw new Error(e2.message || 'No se pudo registrar el ajuste')
 
-  const { data: upd, error: e3 } = await supabase
-    .from('insumos').update({ stock: nuevo, updated_at: new Date().toISOString() })
-    .eq('id', input.insumoId).select('*').single()
-  if (e3 || !upd) throw e3 ?? new Error('No se pudo actualizar el stock')
-  return mapInsumo(upd)
+  const { error: e3 } = await supabase
+    .from('insumos_stock')
+    .upsert({ insumo_id: input.insumoId, bodega_id: bodegaId, stock: nuevo, updated_at: new Date().toISOString() },
+            { onConflict: 'insumo_id,bodega_id' })
+  if (e3) throw new Error(e3.message || 'No se pudo actualizar el stock')
+
+  const upd = await refrescarTotalInsumo(input.insumoId)
+  if (!upd) throw new Error('No se pudo actualizar el stock')
+  return upd
 }
 
 export async function deleteInsumo(id: string): Promise<void> {
@@ -1451,11 +1468,95 @@ export async function loadKardexSalidasEquipo(limit = 1000): Promise<InsumoKarde
   return data.map(mapKardex)
 }
 
+// ── BODEGAS (principal + satélites) ─────────────────────────────────────────
+
+function mapBodega(row: Record<string, unknown>): Bodega {
+  return {
+    id: String(row.id),
+    nombre: String(row.nombre ?? ''),
+    tipo: String(row.tipo ?? 'SATELITE').toUpperCase() === 'PRINCIPAL' ? 'PRINCIPAL' : 'SATELITE',
+    responsableId: row.responsable_id ? String(row.responsable_id) : undefined,
+    vehiculo: row.vehiculo ? String(row.vehiculo) : undefined,
+    activo: row.activo == null ? true : Boolean(row.activo),
+  }
+}
+
+export async function loadBodegas(): Promise<Bodega[]> {
+  const { data, error } = await supabase.from('bodegas').select('*').order('tipo').order('nombre')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapBodega)
+}
+
+export async function createBodega(input: { nombre: string; tipo: BodegaTipo; responsableId?: string; vehiculo?: string }): Promise<Bodega> {
+  const { data, error } = await supabase
+    .from('bodegas')
+    .insert({
+      nombre: input.nombre.trim().toUpperCase(),
+      tipo: input.tipo,
+      responsable_id: input.responsableId ?? null,
+      vehiculo: input.vehiculo?.trim() || null,
+    })
+    .select('*')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo crear la bodega')
+  return mapBodega(data)
+}
+
+export async function updateBodega(id: string, patch: { nombre?: string; responsableId?: string | null; vehiculo?: string | null; activo?: boolean }): Promise<void> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
+  if (patch.responsableId !== undefined) payload.responsable_id = patch.responsableId
+  if (patch.vehiculo !== undefined) payload.vehiculo = patch.vehiculo
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { error } = await supabase.from('bodegas').update(payload).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo actualizar la bodega')
+}
+
+/** Bodega satélite de un supervisor de insumos (su vehículo). */
+export async function bodegaDeResponsable(userId: string): Promise<Bodega | null> {
+  const { data, error } = await supabase.from('bodegas').select('*').eq('responsable_id', userId).eq('activo', true).limit(1)
+  if (error || !data || data.length === 0) return null
+  return mapBodega(data[0] as Record<string, unknown>)
+}
+
+export async function bodegaPrincipal(): Promise<Bodega | null> {
+  const { data, error } = await supabase.from('bodegas').select('*').eq('tipo', 'PRINCIPAL').limit(1)
+  if (error || !data || data.length === 0) return null
+  return mapBodega(data[0] as Record<string, unknown>)
+}
+
+/** Stock por bodega. Sin `bodegaId` devuelve el de todas. */
+export async function loadStockBodega(bodegaId?: string): Promise<StockBodega[]> {
+  let q = supabase.from('insumos_stock').select('insumo_id,bodega_id,stock')
+  if (bodegaId) q = q.eq('bodega_id', bodegaId)
+  const { data, error } = await q
+  if (error || !data) return []
+  return data.map((r) => ({ insumoId: String(r.insumo_id), bodegaId: String(r.bodega_id), stock: Number(r.stock ?? 0) }))
+}
+
+/** Stock actual de un insumo en una bodega (0 si no tiene fila todavía). */
+async function stockEnBodega(insumoId: string, bodegaId: string): Promise<number> {
+  const { data } = await supabase
+    .from('insumos_stock').select('stock')
+    .eq('insumo_id', insumoId).eq('bodega_id', bodegaId).maybeSingle()
+  return Number(data?.stock ?? 0)
+}
+
+/** Recalcula `insumos.stock` como la suma de todas las bodegas (consolidado). */
+async function refrescarTotalInsumo(insumoId: string): Promise<Insumo | null> {
+  const { data } = await supabase.from('insumos_stock').select('stock').eq('insumo_id', insumoId)
+  const total = (data ?? []).reduce((a, r) => a + Number(r.stock ?? 0), 0)
+  const { data: upd } = await supabase
+    .from('insumos').update({ stock: total, updated_at: new Date().toISOString() })
+    .eq('id', insumoId).select('*').single()
+  return upd ? mapInsumo(upd) : null
+}
+
 /**
- * Registra un movimiento de inventario y actualiza el stock del insumo.
- * ENTRADA/AJUSTE(+) suman; SALIDA resta. Devuelve el insumo con el stock nuevo.
- * Nota: la consistencia stock↔kardex se hace en dos pasos (sin transacción);
- * suficiente para el volumen actual. Si se vuelve crítico, pasar a una RPC.
+ * Registra un movimiento de inventario EN UNA BODEGA y actualiza su stock.
+ * ENTRADA/AJUSTE(+) suman; SALIDA resta. `insumos.stock` queda como el total
+ * consolidado de todas las bodegas. Sin `bodegaId` usa la PRINCIPAL (compat).
+ * Nota: sin transacción (dos pasos); suficiente para el volumen actual.
  */
 export async function registrarMovimientoInsumo(input: {
   insumoId: string
@@ -1465,22 +1566,24 @@ export async function registrarMovimientoInsumo(input: {
   referencia?: string
   creadoPor?: string
   equipoCodigo?: string
+  bodegaId?: string
 }): Promise<Insumo> {
-  const { data: actual, error: e1 } = await supabase
-    .from('insumos')
-    .select('id,nombre,categoria,unidad,stock,activo')
-    .eq('id', input.insumoId)
-    .single()
-  if (e1 || !actual) throw e1 ?? new Error('Insumo no encontrado')
+  let bodegaId = input.bodegaId
+  if (!bodegaId) {
+    const p = await bodegaPrincipal()
+    if (!p) throw new Error('No hay bodega principal configurada')
+    bodegaId = p.id
+  }
 
   const cant = Math.abs(Number(input.cantidad))
   const delta = input.tipo === 'SALIDA' ? -cant : cant
-  const saldo = Number(actual.stock ?? 0) + delta
+  const saldo = (await stockEnBodega(input.insumoId, bodegaId)) + delta
 
   const { error: e2 } = await supabase
     .from('insumos_kardex')
     .insert({
       insumo_id: input.insumoId,
+      bodega_id: bodegaId,
       tipo: input.tipo,
       cantidad: cant,
       saldo,
@@ -1491,14 +1594,255 @@ export async function registrarMovimientoInsumo(input: {
     })
   if (e2) throw new Error(e2.message || 'No se pudo registrar el movimiento')
 
-  const { data: upd, error: e3 } = await supabase
-    .from('insumos')
-    .update({ stock: saldo, updated_at: new Date().toISOString() })
-    .eq('id', input.insumoId)
-    .select('id,nombre,categoria,unidad,stock,activo')
+  const { error: e3 } = await supabase
+    .from('insumos_stock')
+    .upsert({ insumo_id: input.insumoId, bodega_id: bodegaId, stock: saldo, updated_at: new Date().toISOString() },
+            { onConflict: 'insumo_id,bodega_id' })
+  if (e3) throw new Error(e3.message || 'No se pudo actualizar el stock de la bodega')
+
+  const upd = await refrescarTotalInsumo(input.insumoId)
+  if (!upd) throw new Error('No se pudo actualizar el stock')
+  return upd
+}
+
+// ── TRASLADOS principal → satélite (con aval de quien recibe) ───────────────
+
+function mapTraslado(row: Record<string, unknown>): Traslado {
+  const est = String(row.estado ?? 'EN_TRANSITO').toUpperCase()
+  const raw = Array.isArray(row.items) ? (row.items as Record<string, unknown>[]) : []
+  return {
+    id: String(row.id),
+    createdAt: String(row.created_at ?? ''),
+    origenId: String(row.origen_id),
+    destinoId: String(row.destino_id),
+    estado: est === 'RECIBIDO' ? 'RECIBIDO' : est === 'ANULADO' ? 'ANULADO' : 'EN_TRANSITO',
+    enviadoPor: row.enviado_por ? String(row.enviado_por) : undefined,
+    nota: row.nota ? String(row.nota) : undefined,
+    evidenciaUrl: row.evidencia_url ? String(row.evidencia_url) : undefined,
+    recibidoEn: row.recibido_en ? String(row.recibido_en) : undefined,
+    recibidoPor: row.recibido_por ? String(row.recibido_por) : undefined,
+    conforme: row.conforme == null ? null : Boolean(row.conforme),
+    notaRecepcion: row.nota_recepcion ? String(row.nota_recepcion) : undefined,
+    items: raw.map((it) => ({
+      id: String(it.id),
+      insumoId: String(it.insumo_id),
+      insumoNombre: String(it.insumo_nombre ?? ''),
+      unidad: String(it.unidad ?? ''),
+      cantidad: Number(it.cantidad ?? 0),
+      cantidadRecibida: it.cantidad_recibida == null ? undefined : Number(it.cantidad_recibida),
+    })),
+  }
+}
+
+export async function loadTraslados(opts?: { destinoId?: string; estados?: string[]; limit?: number }): Promise<Traslado[]> {
+  let q = supabase
+    .from('insumos_traslados')
+    .select('*,items:insumos_traslado_items(*)')
+    .order('created_at', { ascending: false })
+    .limit(opts?.limit ?? 200)
+  if (opts?.destinoId) q = q.eq('destino_id', opts.destinoId)
+  if (opts?.estados?.length) q = q.in('estado', opts.estados)
+  const { data, error } = await q
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapTraslado)
+}
+
+/**
+ * Surtir un satélite: DESCUENTA de la principal de una vez (la mercancía ya
+ * salió) y deja el traslado EN_TRANSITO. El satélite NO suma hasta que su
+ * responsable confirme lo que recibió (aval) — así un faltante en el camino
+ * queda visible en vez de aparecer como stock que no existe.
+ */
+export async function crearTraslado(input: {
+  origenId: string
+  destinoId: string
+  enviadoPor?: string
+  nota?: string
+  evidenciaUrl?: string
+  items: TrasladoItem[]
+}): Promise<Traslado> {
+  const { data: tr, error: e1 } = await supabase
+    .from('insumos_traslados')
+    .insert({
+      origen_id: input.origenId,
+      destino_id: input.destinoId,
+      enviado_por: input.enviadoPor ?? null,
+      nota: input.nota ?? null,
+      evidencia_url: input.evidenciaUrl ?? null,
+    })
+    .select('*')
     .single()
-  if (e3 || !upd) throw e3 ?? new Error('No se pudo actualizar el stock')
-  return mapInsumo(upd)
+  if (e1 || !tr) throw e1 ?? new Error('No se pudo crear el traslado')
+
+  const rows = input.items.map((it) => ({
+    traslado_id: tr.id,
+    insumo_id: it.insumoId,
+    insumo_nombre: it.insumoNombre,
+    unidad: it.unidad,
+    cantidad: it.cantidad,
+  }))
+  if (rows.length) {
+    const { error: e2 } = await supabase.from('insumos_traslado_items').insert(rows)
+    if (e2) throw new Error(e2.message || 'No se pudieron guardar los ítems')
+  }
+
+  // Salida de la bodega de origen (principal).
+  for (const it of input.items) {
+    if (it.cantidad > 0) {
+      await registrarMovimientoInsumo({
+        insumoId: it.insumoId,
+        tipo: 'SALIDA',
+        cantidad: it.cantidad,
+        motivo: 'Traslado a satélite',
+        referencia: tr.id,
+        creadoPor: input.enviadoPor,
+        bodegaId: input.origenId,
+      })
+    }
+  }
+  return mapTraslado({ ...tr, items: rows.map((r, i) => ({ id: `tmp-${i}`, ...r })) })
+}
+
+/**
+ * Aval del satélite: confirma lo que realmente recibió. Cada ítem SUMA al
+ * satélite por la cantidad recibida; si recibió menos de lo enviado, la
+ * diferencia REGRESA a la principal (no se pierde ni queda fantasma).
+ */
+export async function confirmarTraslado(input: {
+  trasladoId: string
+  origenId: string
+  destinoId: string
+  recibidoPor: string
+  conforme: boolean
+  nota?: string
+  items: { itemId?: string; insumoId: string; cantidadEnviada: number; cantidadRecibida: number }[]
+}): Promise<void> {
+  for (const it of input.items) {
+    const recibida = Math.max(0, Math.min(Number(it.cantidadRecibida) || 0, it.cantidadEnviada))
+    if (it.itemId) {
+      await supabase.from('insumos_traslado_items').update({ cantidad_recibida: recibida }).eq('id', it.itemId)
+    }
+    if (recibida > 0) {
+      await registrarMovimientoInsumo({
+        insumoId: it.insumoId, tipo: 'ENTRADA', cantidad: recibida,
+        motivo: 'Recepción de traslado', referencia: input.trasladoId,
+        creadoPor: input.recibidoPor, bodegaId: input.destinoId,
+      })
+    }
+    const faltante = it.cantidadEnviada - recibida
+    if (faltante > 0) {
+      await registrarMovimientoInsumo({
+        insumoId: it.insumoId, tipo: 'ENTRADA', cantidad: faltante,
+        motivo: 'Devolución por faltante en traslado', referencia: input.trasladoId,
+        creadoPor: input.recibidoPor, bodegaId: input.origenId,
+      })
+    }
+  }
+
+  const { error } = await supabase
+    .from('insumos_traslados')
+    .update({
+      estado: 'RECIBIDO',
+      recibido_en: new Date().toISOString(),
+      recibido_por: input.recibidoPor,
+      conforme: input.conforme,
+      nota_recepcion: input.nota?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.trasladoId)
+  if (error) throw new Error(error.message || 'No se pudo confirmar el traslado')
+}
+
+// ── COMBUSTIBLE de bomba externa ────────────────────────────────────────────
+
+function mapCombustible(row: Record<string, unknown>): CombustibleExterno {
+  const s = (v: unknown) => (v == null || v === '' ? undefined : String(v))
+  return {
+    id: String(row.id),
+    createdAt: String(row.created_at ?? ''),
+    fecha: String(row.fecha ?? ''),
+    destino: String(row.destino ?? 'MAQUINA').toUpperCase() === 'CARRO' ? 'CARRO' : 'MAQUINA',
+    bodegaId: s(row.bodega_id),
+    equipoCodigo: s(row.equipo_codigo),
+    horometro: row.horometro == null ? undefined : Number(row.horometro),
+    insumoId: s(row.insumo_id),
+    galones: Number(row.galones ?? 0),
+    valor: row.valor == null ? undefined : Number(row.valor),
+    estacion: s(row.estacion),
+    factura: s(row.factura),
+    tirillaUrl: s(row.tirilla_url),
+    registradoPor: s(row.registrado_por),
+    registradoNombre: s(row.registrado_nombre),
+    nota: s(row.nota),
+  }
+}
+
+export async function loadCombustibleExterno(opts?: { desde?: string; hasta?: string; destino?: CombustibleDestino; limit?: number }): Promise<CombustibleExterno[]> {
+  let q = supabase.from('combustible_externo').select('*').order('fecha', { ascending: false }).limit(opts?.limit ?? 500)
+  if (opts?.desde) q = q.gte('fecha', opts.desde)
+  if (opts?.hasta) q = q.lte('fecha', opts.hasta)
+  if (opts?.destino) q = q.eq('destino', opts.destino)
+  const { data, error } = await q
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapCombustible)
+}
+
+/**
+ * Tanqueo en bomba externa. Dos casos:
+ *  CARRO   → ENTRA al inventario del satélite (queda disponible para despachar).
+ *  MAQUINA → NO toca inventario (nunca pasó por bodega), pero el consumo queda
+ *            cargado a la máquina para el reporte de costos. Exige horómetro.
+ */
+export async function registrarCombustibleExterno(input: {
+  fecha: string
+  destino: CombustibleDestino
+  bodegaId?: string
+  equipoCodigo?: string
+  horometro?: number
+  insumoId?: string
+  galones: number
+  valor?: number
+  estacion?: string
+  factura?: string
+  tirillaUrl?: string
+  registradoPor?: string
+  registradoNombre?: string
+  nota?: string
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from('combustible_externo')
+    .insert({
+      fecha: input.fecha,
+      destino: input.destino,
+      bodega_id: input.destino === 'CARRO' ? (input.bodegaId ?? null) : null,
+      equipo_codigo: input.destino === 'MAQUINA' ? (input.equipoCodigo ?? null) : null,
+      horometro: input.destino === 'MAQUINA' ? (input.horometro ?? null) : null,
+      insumo_id: input.insumoId ?? null,
+      galones: input.galones,
+      valor: input.valor ?? 0,
+      estacion: input.estacion ?? null,
+      factura: input.factura ?? null,
+      tirilla_url: input.tirillaUrl ?? null,
+      registrado_por: input.registradoPor ?? null,
+      registrado_nombre: input.registradoNombre ?? null,
+      nota: input.nota ?? null,
+    })
+    .select('id')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo registrar el tanqueo')
+
+  // Solo el tanqueo del CARRO entra al inventario del satélite.
+  if (input.destino === 'CARRO' && input.bodegaId && input.insumoId && input.galones > 0) {
+    await registrarMovimientoInsumo({
+      insumoId: input.insumoId,
+      tipo: 'ENTRADA',
+      cantidad: input.galones,
+      motivo: `Tanqueo en bomba${input.estacion ? ` (${input.estacion})` : ''}`,
+      referencia: String(data.id),
+      creadoPor: input.registradoPor,
+      bodegaId: input.bodegaId,
+    })
+  }
 }
 
 // ── Solicitudes de insumos (fase 2) ─────────────────────────────────────────
@@ -1522,6 +1866,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     evidenciaUrls: Array.isArray(row.evidencia_urls) ? (row.evidencia_urls as unknown[]).map(String) : undefined,
     horometro: row.horometro == null ? undefined : Number(row.horometro),
     equipoCodigo: row.equipo_codigo ? String(row.equipo_codigo) : undefined,
+    bodegaId: row.bodega_id ? String(row.bodega_id) : undefined,
     confirmadoEn: row.confirmado_en ? String(row.confirmado_en) : undefined,
     confirmadoPor: row.confirmado_por ? String(row.confirmado_por) : undefined,
     conforme: row.conforme == null ? null : Boolean(row.conforme),
@@ -1588,6 +1933,8 @@ export async function entregarDirecto(input: {
   ruta?: string
   nota?: string
   evidenciaUrls: string[]
+  /** Bodega de la que sale el material (el satélite del supervisor). */
+  bodegaId?: string
   items: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
 }): Promise<{ solicitudId: string; insumos: Insumo[] }> {
   const ahora = new Date().toISOString()
@@ -1604,6 +1951,7 @@ export async function entregarDirecto(input: {
       ruta: input.ruta ?? null,
       horometro: input.horometro ?? null,
       equipo_codigo: input.equipoCodigo,
+      bodega_id: input.bodegaId ?? null,
       evidencia_urls: input.evidenciaUrls,
     })
     .select('id')
@@ -1634,6 +1982,7 @@ export async function entregarDirecto(input: {
         referencia: sol.id,
         creadoPor: input.despachadoPor,
         equipoCodigo: input.equipoCodigo,
+        bodegaId: input.bodegaId,
       })
       insumos.push(upd)
     }
@@ -1703,6 +2052,8 @@ export async function confirmarRecepcion(input: {
   conforme: boolean
   nota?: string
   equipoCodigo?: string
+  /** Bodega de la que salió el despacho: la devolución regresa ahí. */
+  bodegaId?: string
   items?: { itemId?: string; insumoId?: string; insumoNombre: string; unidad: string; cantidadDespachada: number; cantidadRecibida: number }[]
 }): Promise<void> {
   const { error } = await supabase
@@ -1739,6 +2090,7 @@ export async function confirmarRecepcion(input: {
         referencia: input.solicitudId,
         creadoPor: input.operarioId,
         equipoCodigo: input.equipoCodigo,
+        bodegaId: input.bodegaId,
       })
     }
   }
@@ -1770,6 +2122,8 @@ export async function entregarSolicitud(input: {
   horometro?: number
   equipoCodigo?: string
   evidenciaUrls: string[]
+  /** Bodega de la que sale el material (el satélite del supervisor). */
+  bodegaId?: string
   items: { itemId?: string; insumoId?: string; cantidadDespachada: number }[]
 }): Promise<Insumo[]> {
   const actualizados: Insumo[] = []
@@ -1783,6 +2137,7 @@ export async function entregarSolicitud(input: {
         referencia: input.solicitudId,
         creadoPor: input.despachadoPor,
         equipoCodigo: input.equipoCodigo,
+        bodegaId: input.bodegaId,
       })
       actualizados.push(upd)
     }
@@ -1803,6 +2158,7 @@ export async function entregarSolicitud(input: {
       ruta: input.ruta ?? null,
       horometro: input.horometro ?? null,
       equipo_codigo: input.equipoCodigo ?? null,
+      bodega_id: input.bodegaId ?? null,
       evidencia_urls: input.evidenciaUrls,
       updated_at: new Date().toISOString(),
     })

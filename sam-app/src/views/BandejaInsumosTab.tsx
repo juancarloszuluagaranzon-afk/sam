@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia } from '../services/samApi'
+import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia, bodegaDeResponsable, bodegaPrincipal, loadStockBodega } from '../services/samApi'
+import type { Bodega, StockBodega } from '../domain/sam'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
 /**
@@ -33,6 +34,34 @@ export function BandejaInsumosTab() {
     () => insumos.filter((i) => i.activo).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
     [insumos],
   )
+
+  // Bodega desde la que despacha este usuario: su satélite si es supervisor de
+  // insumos; la principal si es admin/dueño. El stock que se valida y descuenta
+  // es el de ESA bodega, no el consolidado.
+  const [miBodega, setMiBodega] = useState<Bodega | null>(null)
+  const [stockBodega, setStockBodega] = useState<StockBodega[]>([])
+
+  useEffect(() => {
+    if (!session) return
+    let vivo = true
+    void (async () => {
+      const b = session.role === 'supervisor_insumos'
+        ? (await bodegaDeResponsable(session.id)) ?? (await bodegaPrincipal())
+        : await bodegaPrincipal()
+      if (!vivo) return
+      setMiBodega(b)
+      if (b) setStockBodega(await loadStockBodega(b.id))
+    })()
+    return () => { vivo = false }
+  }, [session])
+
+  /** Stock del insumo EN mi bodega (lo que realmente puedo entregar). */
+  const stockMio = (insumoId: string) =>
+    stockBodega.find((s) => s.insumoId === insumoId)?.stock ?? 0
+
+  async function refrescarStockBodega() {
+    if (miBodega) setStockBodega(await loadStockBodega(miBodega.id))
+  }
 
   const equipoNombre = useMemo(() => {
     const m = new Map<string, string>()
@@ -155,6 +184,13 @@ export function BandejaInsumosTab() {
     }
     setBusy(true); setError('')
     try {
+      const excedido = items.find((it) => it.insumoId && it.cantidadDespachada > stockMio(it.insumoId))
+      if (excedido) {
+        const ins = insumos.find((i) => i.id === excedido.insumoId)
+        setError(`No tienes suficiente ${ins?.nombre ?? 'insumo'} en tu bodega (${stockMio(excedido.insumoId!)} disponible).`)
+        setBusy(false)
+        return
+      }
       const actualizados = await entregarSolicitud({
         solicitudId: entregaTarget.id,
         despachadoPor: session?.id,
@@ -162,13 +198,15 @@ export function BandejaInsumosTab() {
         equipoCodigo: entregaEquipo,
         horometro,
         evidenciaUrls: evidencias,
+        bodegaId: miBodega?.id,
         items,
       })
       // Refresca el stock en el contexto con los insumos devueltos.
       if (actualizados.length) {
         setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
       }
-      setInfo('Entrega registrada y descontada del inventario.')
+      void refrescarStockBodega()
+      setInfo(`Entrega registrada y descontada de ${miBodega?.nombre ?? 'la bodega'}.`)
       setEntregaTarget(null)
       void refresh()
     } catch (err) {
@@ -224,6 +262,12 @@ export function BandejaInsumosTab() {
     if (!dirHorometro.trim() || isNaN(horometro) || horometro < 0) { setError('El horómetro de la máquina es obligatorio.'); return }
     setBusy(true); setError('')
     try {
+      const excedido = items.find((it) => it.cantidad > stockMio(it.insumoId))
+      if (excedido) {
+        setError(`No tienes suficiente ${excedido.insumoNombre} en tu bodega (${stockMio(excedido.insumoId)} disponible).`)
+        setBusy(false)
+        return
+      }
       const { insumos: actualizados } = await entregarDirecto({
         operarioId: operario.id,
         operarioNombre: operario.name,
@@ -232,8 +276,10 @@ export function BandejaInsumosTab() {
         horometro,
         nota: dirNota.trim() || undefined,
         evidenciaUrls: dirFotos,
+        bodegaId: miBodega?.id,
         items,
       })
+      void refrescarStockBodega()
       if (actualizados.length) {
         setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
       }
@@ -487,7 +533,7 @@ export function BandejaInsumosTab() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
               {dirItems.map((row, idx) => {
                 const ins = insumos.find((i) => i.id === row.insumoId)
-                const stock = ins?.stock ?? 0
+                const stock = row.insumoId ? stockMio(row.insumoId) : 0
                 const excede = Number(row.cantidad) > stock
                 return (
                   <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -497,7 +543,7 @@ export function BandejaInsumosTab() {
                       disabled={busy} style={{ flex: 1, minWidth: 0 }}
                     >
                       <option value="">Insumo…</option>
-                      {activeInsumos.map((i) => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad}) · {i.stock}</option>)}
+                      {activeInsumos.map((i) => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad}) · {stockMio(i.id)}</option>)}
                     </select>
                     <input
                       type="number" min={0} step="any" placeholder="Cant."

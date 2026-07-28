@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadKardexReporte } from '../services/samApi'
-import type { InsumoKardex } from '../domain/sam'
+import { loadKardexReporte, loadCombustibleExterno } from '../services/samApi'
+import type { InsumoKardex, CombustibleExterno } from '../domain/sam'
 
 /**
  * Reportes de consumo de insumos — por máquina y por insumo, en un rango de
@@ -29,6 +29,9 @@ export function ConsumoEquiposTab() {
   const { insumos, sortedEquipment, users, busy, setBusy, setError, setInfo } = useAppData()
 
   const [movimientos, setMovimientos] = useState<InsumoKardex[]>([])
+  // Tanqueos en bomba cargados a una máquina: NO pasan por inventario, pero su
+  // costo/consumo sí es de la máquina — se suman al reporte.
+  const [tanqueos, setTanqueos] = useState<CombustibleExterno[]>([])
   const [loading, setLoading] = useState(false)
   const [busca, setBusca] = useState('')
   const [desde, setDesde] = useState(primerDiaMes())
@@ -56,7 +59,12 @@ export function ConsumoEquiposTab() {
     try {
       // `hasta` inclusivo hasta el final del día.
       const hastaFin = hasta ? `${hasta}T23:59:59` : undefined
-      setMovimientos(await loadKardexReporte({ desde: desde || undefined, hasta: hastaFin }))
+      const [kx, cb] = await Promise.all([
+        loadKardexReporte({ desde: desde || undefined, hasta: hastaFin }),
+        loadCombustibleExterno({ desde: desde || undefined, hasta: hasta || undefined, destino: 'MAQUINA' }),
+      ])
+      setMovimientos(kx)
+      setTanqueos(cb)
     } finally { setLoading(false) }
   }
   useEffect(() => {
@@ -69,20 +77,32 @@ export function ConsumoEquiposTab() {
 
   // Agrupación por MÁQUINA → insumo (neto).
   const porMaquina = useMemo(() => {
-    const byEquipo = new Map<string, { equipo: string; entregas: number; insumos: Map<string, number> }>()
+    const byEquipo = new Map<string, { equipo: string; entregas: number; tanqueos: number; insumos: Map<string, number> }>()
+    const get = (code: string) =>
+      byEquipo.get(code) ?? { equipo: code, entregas: 0, tanqueos: 0, insumos: new Map<string, number>() }
+
     for (const m of conEquipo) {
-      const g = byEquipo.get(m.equipoCodigo!) ?? { equipo: m.equipoCodigo!, entregas: 0, insumos: new Map<string, number>() }
+      const g = get(m.equipoCodigo!)
       if (m.tipo === 'SALIDA') g.entregas += 1
       const delta = m.tipo === 'SALIDA' ? m.cantidad : -m.cantidad
       g.insumos.set(m.insumoId, (g.insumos.get(m.insumoId) ?? 0) + delta)
       byEquipo.set(m.equipoCodigo!, g)
     }
+    // Combustible tanqueado en bomba directo a la máquina (sin pasar por bodega).
+    for (const t of tanqueos) {
+      if (!t.equipoCodigo || !t.insumoId) continue
+      const g = get(t.equipoCodigo)
+      g.tanqueos += 1
+      g.insumos.set(t.insumoId, (g.insumos.get(t.insumoId) ?? 0) + t.galones)
+      byEquipo.set(t.equipoCodigo, g)
+    }
+
     const q = busca.trim().toLowerCase()
     return Array.from(byEquipo.values())
       .map((g) => ({ ...g, nombre: equipoNombre.get(g.equipo) ?? g.equipo }))
       .filter((g) => !q || g.nombre.toLowerCase().includes(q))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
-  }, [conEquipo, equipoNombre, busca])
+  }, [conEquipo, tanqueos, equipoNombre, busca])
 
   // Agrupación por INSUMO → total neto (para el resumen de costos).
   const porInsumo = useMemo(() => {
@@ -91,12 +111,16 @@ export function ConsumoEquiposTab() {
       const delta = m.tipo === 'SALIDA' ? m.cantidad : -m.cantidad
       byInsumo.set(m.insumoId, (byInsumo.get(m.insumoId) ?? 0) + delta)
     }
+    for (const t of tanqueos) {
+      if (!t.insumoId) continue
+      byInsumo.set(t.insumoId, (byInsumo.get(t.insumoId) ?? 0) + t.galones)
+    }
     const q = busca.trim().toLowerCase()
     return Array.from(byInsumo.entries())
       .map(([id, total]) => ({ id, total, info: insumoInfo.get(id) }))
       .filter((r) => !q || (r.info?.nombre ?? '').toLowerCase().includes(q))
       .sort((a, b) => (a.info?.nombre ?? '').localeCompare(b.info?.nombre ?? ''))
-  }, [conEquipo, insumoInfo, busca])
+  }, [conEquipo, tanqueos, insumoInfo, busca])
 
   async function exportarExcel() {
     if (movimientos.length === 0) { setError('No hay movimientos en el rango elegido.'); return }
@@ -106,7 +130,7 @@ export function ConsumoEquiposTab() {
       const wb = utils.book_new()
 
       // Hoja 1 — Detalle de movimientos.
-      const detalle = movimientos.map((m) => {
+      const detalle: Record<string, string | number>[] = movimientos.map((m) => {
         const info = insumoInfo.get(m.insumoId)
         const signo = m.tipo === 'SALIDA' ? -1 : m.tipo === 'AJUSTE' ? Math.sign(m.cantidad) || 1 : 1
         return {
@@ -117,10 +141,27 @@ export function ConsumoEquiposTab() {
           'Cantidad': m.tipo === 'AJUSTE' ? m.cantidad : signo * Math.abs(m.cantidad),
           'Saldo': m.saldo,
           'Máquina': m.equipoCodigo ? (equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo) : '',
+          'Origen': 'Bodega',
           'Motivo': m.motivo ?? '',
           'Registró': m.creadoPor ? (userName.get(m.creadoPor) ?? m.creadoPor) : '',
         }
       })
+      // Tanqueos en bomba directos a máquina (no pasan por inventario).
+      for (const t of tanqueos) {
+        const info = t.insumoId ? insumoInfo.get(t.insumoId) : undefined
+        detalle.push({
+          'Fecha': t.fecha,
+          'Insumo': info?.nombre ?? 'COMBUSTIBLE',
+          'Unidad': info?.unidad ?? 'galón',
+          'Tipo': 'TANQUEO',
+          'Cantidad': t.galones,
+          'Saldo': '',
+          'Máquina': t.equipoCodigo ? (equipoNombre.get(t.equipoCodigo) ?? t.equipoCodigo) : '',
+          'Origen': 'Bomba externa',
+          'Motivo': `${t.estacion ?? 'Bomba'}${t.horometro != null ? ` · horóm. ${t.horometro}` : ''}${t.valor ? ` · $${t.valor}` : ''}`,
+          'Registró': t.registradoNombre ?? '',
+        })
+      }
       utils.book_append_sheet(wb, utils.json_to_sheet(detalle), 'Movimientos')
 
       // Hoja 2 — Consumo por máquina.
@@ -187,7 +228,10 @@ export function ConsumoEquiposTab() {
               <div key={g.equipo} className="panel-card" style={{ padding: '12px 14px', marginBottom: 10 }}>
                 <div className="panel-title split" style={{ marginBottom: 6 }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>🚜 {g.nombre}</h3>
-                  <span className="subtle-copy">{g.entregas} despacho{g.entregas === 1 ? '' : 's'}</span>
+                  <span className="subtle-copy">
+                    {g.entregas} despacho{g.entregas === 1 ? '' : 's'}
+                    {g.tanqueos > 0 && ` · ⛽ ${g.tanqueos} tanqueo${g.tanqueos === 1 ? '' : 's'} en bomba`}
+                  </span>
                 </div>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {Array.from(g.insumos.entries())

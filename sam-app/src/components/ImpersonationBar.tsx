@@ -37,6 +37,14 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
     () => users.filter((u) => u.role === 'supervisor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const insumosSups = useMemo(
+    () => users.filter((u) => u.role === 'supervisor_insumos' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
+  const conductores = useMemo(
+    () => users.filter((u) => u.role === 'conductor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner' && act(u)), [users])
   const admins = useMemo(() => users.filter((u) => u.role === 'administracion' && act(u)), [users])
   const ownerTarget: UserProfile =
@@ -54,7 +62,7 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
       onSwitch({ ...adminTarget })
       return
     }
-    const u = [...supervisors, ...operators].find((x) => x.id === value)
+    const u = [...supervisors, ...insumosSups, ...conductores, ...operators].find((x) => x.id === value)
     if (u) onSwitch({ ...u })
   }
 
@@ -77,6 +85,20 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
             <optgroup label="Supervisores">
               {supervisors.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {insumosSups.length > 0 && (
+            <optgroup label="Supervisores de insumos">
+              {insumosSups.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {conductores.length > 0 && (
+            <optgroup label="Conductores de escolta">
+              {conductores.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
               ))}
             </optgroup>
           )}

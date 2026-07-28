@@ -192,11 +192,11 @@ export function BodegasTab() {
 
           {/* Traslados en tránsito */}
           {enTransito.length > 0 && (
-            <div className="mapa-listos" style={{ marginTop: 14 }}>
-              <p className="mapa-listos__lbl">🚚 En tránsito <span className="field-optional">(esperando confirmación del satélite)</span></p>
+            <div className="bod-aviso" style={{ marginTop: 14 }}>
+              <p className="bod-aviso__lbl">🚚 En tránsito <span className="field-optional">(esperando confirmación del satélite)</span></p>
               {enTransito.map((t) => (
-                <div key={t.id} className="mapa-listos__row">
-                  <div className="mapa-listos__info">
+                <div key={t.id} className="bod-aviso__row">
+                  <div className="bod-aviso__info">
                     <strong>{bodegas.find((b) => b.id === t.destinoId)?.nombre ?? 'Satélite'}</strong>
                     <span className="subtle-copy">
                       {t.items.map((i) => `${i.cantidad} ${i.unidad} ${i.insumoNombre}`).join(', ')} · {fmtFecha(t.createdAt)}

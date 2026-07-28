@@ -179,9 +179,11 @@ export function MiBodegaTab() {
 
   return (
     <section className="panel-card">
-      <div className="panel-title split">
-        <h2>🚚 {bodega.nombre}</h2>
-        <button type="button" className="primary-button" onClick={() => setTanqueoOpen(true)} disabled={busy}>⛽ Cargar en estación</button>
+      <div className="bod-head">
+        <h2 className="bod-head__title">🚚 {bodega.nombre}</h2>
+        <button type="button" className="primary-button bod-head__btn" onClick={() => setTanqueoOpen(true)} disabled={busy}>
+          ⛽ Cargar en estación
+        </button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         Lo que tienes cargado en tu vehículo. De aquí sale lo que entregas a los operarios.
@@ -189,15 +191,17 @@ export function MiBodegaTab() {
 
       {/* Traslados por confirmar */}
       {pendientes.length > 0 && (
-        <div className="mapa-listos">
-          <p className="mapa-listos__lbl">📦 Te enviaron material <span className="field-optional">(confirma lo que recibiste)</span></p>
+        <div className="bod-aviso">
+          <p className="bod-aviso__lbl">📦 Te enviaron material <span className="field-optional">(confirma lo que recibiste)</span></p>
           {pendientes.map((t) => (
-            <div key={t.id} className="mapa-listos__row">
-              <div className="mapa-listos__info">
+            <div key={t.id} className="bod-aviso__row">
+              <div className="bod-aviso__info">
                 <strong>{t.items.map((i) => `${i.cantidad} ${i.unidad} ${i.insumoNombre}`).join(', ')}</strong>
                 <span className="subtle-copy">{fmtFecha(t.createdAt)}{t.nota ? ` · ${t.nota}` : ''}</span>
               </div>
-              <button type="button" className="primary-button" onClick={() => abrirRecibir(t)} disabled={busy}>Revisar y recibir</button>
+              <button type="button" className="primary-button bod-aviso__btn" onClick={() => abrirRecibir(t)} disabled={busy}>
+                Revisar y recibir
+              </button>
             </div>
           ))}
         </div>

@@ -6052,6 +6052,65 @@ td.planilla-revisada {
 .planilla-nov--sp { color: #15803d; }  /* Supervisor */
 .planilla-nov--ll { color: #0e7490; }  /* Lluvia */
 
+/* ── Bodegas satélite (Mi bodega / Bodegas) ── */
+.bod-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.bod-head__title {
+  margin: 0;
+  font-size: 1.15rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+/* `width: auto` explícito: el estilo base de .primary-button es 100% y sin
+   esto el botón se va a una línea completa incluso en pantallas anchas. */
+.bod-head__btn { flex: 0 0 auto; width: auto; white-space: nowrap; }
+
+.bod-aviso {
+  border: 1px solid color-mix(in srgb, var(--color-brand, #1a6b3a) 30%, transparent);
+  background: var(--color-bg-soft, #eef6ec);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-top: 12px;
+}
+.bod-aviso__lbl {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--color-brand, #1a6b3a);
+}
+.bod-aviso__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.bod-aviso__row:first-of-type { border-top: none; }
+.bod-aviso__info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 220px;      /* nunca colapsa a una letra por línea */
+}
+.bod-aviso__info strong { font-size: 0.92rem; overflow-wrap: anywhere; }
+.bod-aviso__btn { flex: 0 0 auto; width: auto; white-space: nowrap; }
+/* En celular: cada botón a lo ancho, debajo de su texto (más fácil de tocar). */
+@media (max-width: 560px) {
+  .bod-head__btn,
+  .bod-aviso__btn { width: 100%; flex: 1 1 100%; }
+}
+:root[data-theme="dark"] .bod-aviso { background: rgba(255, 255, 255, 0.05); }
+:root[data-theme="dark"] .bod-aviso__row { border-color: rgba(255, 255, 255, 0.08); }
+
 /* ── Módulo Flota / Escolta (CDA-F-68) ── */
 .flota-form { max-width: min(640px, calc(100vw - 24px)); max-height: calc(100vh - 32px); overflow-y: auto; }
 .flota-grid {

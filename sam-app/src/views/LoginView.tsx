@@ -9,6 +9,10 @@ interface Props {
   error: string
 }
 
+// Caracteres mínimos antes de sugerir, y tope de sugerencias visibles.
+const MIN_CHARS_SUGERENCIA = 2
+const MAX_SUGERENCIAS = 8
+
 // Resuelve el texto que el usuario tecleo al ID del usuario que mejor coincida.
 // Acepta: el ID directo ("U001"), el nombre completo ("Cristhian Morales"),
 // o un fragmento del nombre que sea unico. Si nada matchea, devolvemos el
@@ -44,25 +48,27 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Solo usuarios ACTIVOS: un inactivo no debe poder entrar ni aparecer.
+  const activos = useMemo(() => users.filter((u) => u.active !== false), [users])
+
+  // Sugerencias SOLO a partir de lo que se escribe (a pedido del cliente: la
+  // lista completa al enfocar saturaba visualmente). Desde 2 caracteres y
+  // acotada a 8 resultados para que quepa sin scroll.
   const suggestions = useMemo(() => {
-    // Ordenamos alfabeticamente por nombre asi los operadores ubican su
-    // entrada rapido en lugar de tener que adivinar el orden.
-    const sorted = [...users].sort((a, b) =>
-      a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }),
-    )
     const q = input.trim().toLowerCase()
-    if (!q) return sorted
-    return sorted.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        u.id.toLowerCase().includes(q),
-    )
-  }, [input, users])
+    if (q.length < MIN_CHARS_SUGERENCIA) return []
+    return activos
+      .filter((u) => u.name.toLowerCase().includes(q) || u.id.toLowerCase().includes(q))
+      .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+      .slice(0, MAX_SUGERENCIAS)
+  }, [input, activos])
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setShowSuggestions(false)
-    const userId = resolveUserId(input, users)
+    // Resolvemos contra ACTIVOS: si alguien inactivo teclea su nombre, no
+    // resuelve a su ID y el servidor responde con el error normal de acceso.
+    const userId = resolveUserId(input, activos)
     await onLogin(userId, pin)
   }
 
@@ -95,7 +101,6 @@ export function LoginView({ users, onLogin, loading, error }: Props) {
                   setInput(e.target.value)
                   setShowSuggestions(true)
                 }}
-                onFocus={() => setShowSuggestions(true)}
                 onBlur={() => {
                   // Pequeno delay para que el click en una sugerencia
                   // alcance a registrarse antes de ocultar la lista.

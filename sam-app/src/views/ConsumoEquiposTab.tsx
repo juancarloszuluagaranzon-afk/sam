@@ -157,7 +157,7 @@ export function ConsumoEquiposTab() {
           'Cantidad': t.galones,
           'Saldo': '',
           'Máquina': t.equipoCodigo ? (equipoNombre.get(t.equipoCodigo) ?? t.equipoCodigo) : '',
-          'Origen': 'Bomba externa',
+          'Origen': 'Estación (directo a máquina)',
           'Motivo': `${t.estacion ?? 'Bomba'}${t.horometro != null ? ` · horóm. ${t.horometro}` : ''}${t.valor ? ` · $${t.valor}` : ''}`,
           'Registró': t.registradoNombre ?? '',
         })
@@ -230,7 +230,7 @@ export function ConsumoEquiposTab() {
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>🚜 {g.nombre}</h3>
                   <span className="subtle-copy">
                     {g.entregas} despacho{g.entregas === 1 ? '' : 's'}
-                    {g.tanqueos > 0 && ` · ⛽ ${g.tanqueos} tanqueo${g.tanqueos === 1 ? '' : 's'} en bomba`}
+                    {g.tanqueos > 0 && ` · ⛽ ${g.tanqueos} tanqueo${g.tanqueos === 1 ? '' : 's'} en estación`}
                   </span>
                 </div>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>

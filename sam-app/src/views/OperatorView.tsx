@@ -1431,7 +1431,7 @@ export function OperatorView({
                 🛢️ Solicitar insumos
               </button>
               <button type="button" className="operator-novedad-trigger" onClick={openTanqueo} style={{ flex: 1 }}>
-                ⛽ Tanqueé en bomba
+                ⛽ Tanqueé en estación
               </button>
             </div>
 

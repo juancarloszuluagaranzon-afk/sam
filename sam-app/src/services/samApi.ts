@@ -1788,10 +1788,14 @@ export async function loadCombustibleExterno(opts?: { desde?: string; hasta?: st
 }
 
 /**
- * Tanqueo en bomba externa. Dos casos:
- *  CARRO   → ENTRA al inventario del satélite (queda disponible para despachar).
- *  MAQUINA → NO toca inventario (nunca pasó por bodega), pero el consumo queda
- *            cargado a la máquina para el reporte de costos. Exige horómetro.
+ * Combustible comprado en una estación de servicio. Dos casos:
+ *  CARRO   → CARGA DE LA BODEGA SATÉLITE: llena el tanque de distribución que
+ *            lleva el vehículo, así que ENTRA al inventario del satélite y
+ *            queda disponible para despachar. (No es el combustible que el
+ *            vehículo consume para andar: eso se maneja fuera del app.)
+ *  MAQUINA → el operario tanquea su máquina directo en la bomba: NO toca
+ *            inventario (nunca pasó por bodega), pero el consumo queda cargado
+ *            a la máquina para el reporte de costos. Exige horómetro.
  */
 export async function registrarCombustibleExterno(input: {
   fecha: string
@@ -1837,7 +1841,7 @@ export async function registrarCombustibleExterno(input: {
       insumoId: input.insumoId,
       tipo: 'ENTRADA',
       cantidad: input.galones,
-      motivo: `Tanqueo en bomba${input.estacion ? ` (${input.estacion})` : ''}`,
+      motivo: `Carga en estación${input.estacion ? ` (${input.estacion})` : ''}`,
       referencia: String(data.id),
       creadoPor: input.registradoPor,
       bodegaId: input.bodegaId,

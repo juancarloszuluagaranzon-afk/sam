@@ -11,7 +11,9 @@ import type { Bodega, StockBodega, Traslado } from '../domain/sam'
  *  · Stock actual de su carro.
  *  · Traslados EN TRÁNSITO de la principal → los confirma (aval) rectificando
  *    cantidades si recibió menos; la diferencia regresa a la principal.
- *  · Tanqueo en bomba externa del carro-tanque → ENTRA a su bodega (con tirilla).
+ *  · Carga en estación de servicio: llena el TANQUE DE DISTRIBUCIÓN que lleva
+ *    el vehículo → ENTRA a su bodega (con tirilla). NO es el combustible que
+ *    consume el vehículo para andar (eso se maneja fuera del app).
  */
 function fmtFecha(iso: string): string {
   if (!iso) return ''
@@ -151,7 +153,7 @@ export function MiBodegaTab() {
         registradoPor: session?.id,
         registradoNombre: session?.name,
       })
-      setInfo(`Tanqueo registrado: +${gal} galones a tu bodega.`)
+      setInfo(`Carga registrada: +${gal} galones entraron a tu bodega.`)
       setTanqueoOpen(false)
       setTGalones(''); setTValor(''); setTEstacion(''); setTFactura(''); setTTirilla('')
       void refresh()
@@ -179,7 +181,7 @@ export function MiBodegaTab() {
     <section className="panel-card">
       <div className="panel-title split">
         <h2>🚚 {bodega.nombre}</h2>
-        <button type="button" className="primary-button" onClick={() => setTanqueoOpen(true)} disabled={busy}>⛽ Tanqueé el carro</button>
+        <button type="button" className="primary-button" onClick={() => setTanqueoOpen(true)} disabled={busy}>⛽ Cargar en estación</button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         Lo que tienes cargado en tu vehículo. De aquí sale lo que entregas a los operarios.
@@ -262,11 +264,12 @@ export function MiBodegaTab() {
         <div className="modal-overlay open" onClick={() => { if (!busy && !subiendo) setTanqueoOpen(false) }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
             <div className="labor-detail-header">
-              <div><p className="eyebrow">Bomba externa</p><h3>⛽ Tanqueo del carro</h3></div>
+              <div><p className="eyebrow">Estación de servicio</p><h3>⛽ Cargar mi bodega</h3></div>
               <button type="button" className="modal-close-btn" onClick={() => setTanqueoOpen(false)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
-              El combustible <strong>entra a tu bodega</strong> y queda disponible para entregar.
+              Combustible que cargas en la estación <strong>al tanque de distribución</strong>: entra a tu
+              bodega y queda disponible para entregar a las máquinas. <em>No es el combustible del vehículo.</em>
             </p>
             <div className="flota-grid">
               <label>Fecha<input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} disabled={busy} /></label>
@@ -276,7 +279,7 @@ export function MiBodegaTab() {
                   {combustibles.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
                 </select>
               </label>
-              <label>Galones <span style={{ color: '#b3261e' }}>*</span>
+              <label>Galones cargados <span style={{ color: '#b3261e' }}>*</span>
                 <input type="number" min={0} step="any" value={tGalones} onChange={(e) => setTGalones(e.target.value)} disabled={busy} />
               </label>
               <label>Valor <span className="field-optional">(opcional)</span>
@@ -300,7 +303,7 @@ export function MiBodegaTab() {
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setTanqueoOpen(false)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void guardarTanqueo()} disabled={busy || subiendo}>
-                {busy ? 'Guardando…' : 'Registrar tanqueo'}
+                {busy ? 'Guardando…' : 'Cargar a mi bodega'}
               </button>
             </div>
           </div>

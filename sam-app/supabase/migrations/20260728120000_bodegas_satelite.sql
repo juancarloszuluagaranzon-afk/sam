@@ -100,7 +100,9 @@ create index if not exists insumos_traslados_destino_idx on public.insumos_trasl
 
 -- ── 5. Combustible tanqueado en bombas externas ───────────────────────────
 -- Dos casos, ambos con tirilla:
---   CARRO   → el supervisor tanquea su vehículo-tanque: ENTRA al satélite.
+--   CARRO   → CARGA DE LA BODEGA SATÉLITE: el supervisor llena el tanque de
+--             DISTRIBUCIÓN que lleva el vehículo → ENTRA al satélite. (No es
+--             el combustible que el vehículo gasta andando: eso va por fuera.)
 --   MAQUINA → el operario tanquea la máquina directo en la bomba: NO toca
 --             inventario, pero el costo/consumo SÍ se carga a la máquina
 --             (por eso exige horómetro).

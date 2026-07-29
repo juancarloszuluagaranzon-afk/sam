@@ -18,6 +18,7 @@ function roleLabel(role: UserProfile['role']): string {
   if (role === 'soporte') return 'Soporte'
   if (role === 'supervisor_insumos') return 'Supervisor de insumos'
   if (role === 'conductor') return 'Conductor de escolta'
+  if (role === 'analista_insumos') return 'Analista de insumos y materiales'
   return 'Operario'
 }
 
@@ -45,6 +46,10 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
     () => users.filter((u) => u.role === 'conductor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const analistas = useMemo(
+    () => users.filter((u) => u.role === 'analista_insumos' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner' && act(u)), [users])
   const admins = useMemo(() => users.filter((u) => u.role === 'administracion' && act(u)), [users])
   const ownerTarget: UserProfile =
@@ -62,7 +67,7 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
       onSwitch({ ...adminTarget })
       return
     }
-    const u = [...supervisors, ...insumosSups, ...conductores, ...operators].find((x) => x.id === value)
+    const u = [...supervisors, ...insumosSups, ...analistas, ...conductores, ...operators].find((x) => x.id === value)
     if (u) onSwitch({ ...u })
   }
 
@@ -92,6 +97,13 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
             <optgroup label="Supervisores de insumos">
               {insumosSups.map((s) => (
                 <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {analistas.length > 0 && (
+            <optgroup label="Analistas de insumos">
+              {analistas.map((a) => (
+                <option key={a.id} value={a.id}>{a.name}</option>
               ))}
             </optgroup>
           )}

@@ -1,11 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import {
-  bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado,
-  registrarCombustibleExterno, uploadEvidencia,
-} from '../services/samApi'
+import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
-import { SearchableSelect } from '../components/SearchableSelect'
+import { TanqueoModal } from '../components/TanqueoModal'
 import { fmtCantidad, stepDe } from '../lib/cantidad'
 
 /**
@@ -13,17 +10,17 @@ import { fmtCantidad, stepDe } from '../lib/cantidad'
  *  · Stock actual de su carro.
  *  · Traslados EN TRÁNSITO de la principal → los confirma (aval) rectificando
  *    cantidades si recibió menos; la diferencia regresa a la principal.
- *  · Carga en estación de servicio: llena el TANQUE DE DISTRIBUCIÓN que lleva
- *    el vehículo → ENTRA a su bodega (con tirilla). NO es el combustible que
- *    consume el vehículo para andar (eso se maneja fuera del app).
+ *  · Tanqueo: en estación o en la sede, al tanque de distribución, a pimpinas,
+ *    al vehículo (con placa) o a una máquina (con horómetro). Todo queda
+ *    pendiente del aval del analista de insumos.
+ *
+ * Ojo: aquí NO se manipula inventario a mano. El supervisor no tiene "+ Entrada";
+ * lo que entra a su carro entra por un traslado avalado o por un tanqueo avalado,
+ * y así siempre se sabe de dónde salió cada galón.
  */
 function fmtFecha(iso: string): string {
   if (!iso) return ''
   return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
-function hoyISO(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 export function MiBodegaTab() {
@@ -39,22 +36,7 @@ export function MiBodegaTab() {
   const [cantRecibida, setCantRecibida] = useState<Record<string, string>>({})
   const [notaRecepcion, setNotaRecepcion] = useState('')
 
-  // Tanqueo del carro en bomba
   const [tanqueoOpen, setTanqueoOpen] = useState(false)
-  const [tFecha, setTFecha] = useState(hoyISO())
-  const [tInsumo, setTInsumo] = useState('')
-  const [tGalones, setTGalones] = useState('')
-  const [tValor, setTValor] = useState('')
-  const [tEstacion, setTEstacion] = useState('')
-  const [tFactura, setTFactura] = useState('')
-  const [tTirilla, setTTirilla] = useState('')
-  const [subiendo, setSubiendo] = useState(false)
-  const tirillaRef = useRef<HTMLInputElement>(null)
-
-  const combustibles = useMemo(
-    () => insumos.filter((i) => i.activo && i.categoria === 'COMBUSTIBLE'),
-    [insumos],
-  )
 
   async function refresh() {
     if (!session) return
@@ -123,48 +105,6 @@ export function MiBodegaTab() {
     } finally { setBusy(false) }
   }
 
-  async function onTirilla(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setSubiendo(true); setError('')
-    try {
-      setTTirilla(await uploadEvidencia(`tanqueo-${session?.id ?? 'x'}-${Date.now()}`, file, 0))
-    } catch {
-      setError('No se pudo subir la tirilla.')
-    } finally { setSubiendo(false) }
-  }
-
-  async function guardarTanqueo() {
-    if (!bodega) return
-    const gal = Number(tGalones)
-    if (!tInsumo) { setError('Elige el combustible.'); return }
-    if (!gal || gal <= 0) { setError('Escribe cuántos galones te tanquearon.'); return }
-    setBusy(true); setError('')
-    try {
-      await registrarCombustibleExterno({
-        fecha: tFecha,
-        destino: 'CARRO',
-        bodegaId: bodega.id,
-        insumoId: tInsumo,
-        galones: gal,
-        valor: Number(tValor) || 0,
-        estacion: tEstacion.trim() || undefined,
-        factura: tFactura.trim() || undefined,
-        tirillaUrl: tTirilla || undefined,
-        registradoPor: session?.id,
-        registradoNombre: session?.name,
-      })
-      setInfo(`Carga registrada: +${gal} galones entraron a tu bodega.`)
-      setTanqueoOpen(false)
-      setTGalones(''); setTValor(''); setTEstacion(''); setTFactura(''); setTTirilla('')
-      void refresh()
-    } catch (err) {
-      const e = err as { message?: string }
-      setError(`No se pudo registrar. (${e?.message ?? 'error'})`)
-    } finally { setBusy(false) }
-  }
-
   if (cargando) return <section className="panel-card"><p className="muted-text">Cargando…</p></section>
 
   if (!bodega) {
@@ -184,7 +124,7 @@ export function MiBodegaTab() {
       <div className="bod-head">
         <h2 className="bod-head__title">🚚 {bodega.nombre}</h2>
         <button type="button" className="primary-button bod-head__btn" onClick={() => setTanqueoOpen(true)} disabled={busy}>
-          ⛽ Cargar en estación
+          ⛽ Registrar tanqueo
         </button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
@@ -265,59 +205,13 @@ export function MiBodegaTab() {
         </div>
       )}
 
-      {/* Modal: tanqueo del carro en bomba externa */}
-      {tanqueoOpen && (
-        <div className="modal-overlay open" onClick={() => { if (!busy && !subiendo) setTanqueoOpen(false) }}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
-            <div className="labor-detail-header">
-              <div><p className="eyebrow">Estación de servicio</p><h3>⛽ Cargar mi bodega</h3></div>
-              <button type="button" className="modal-close-btn" onClick={() => setTanqueoOpen(false)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
-            </div>
-            <p className="subtle-copy" style={{ marginTop: 0 }}>
-              Combustible que cargas en la estación <strong>al tanque de distribución</strong>: entra a tu
-              bodega y queda disponible para entregar a las máquinas. <em>No es el combustible del vehículo.</em>
-            </p>
-            <div className="flota-grid">
-              <label>Fecha<input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} disabled={busy} /></label>
-              <label>Combustible
-                <SearchableSelect
-                  value={tInsumo}
-                  onChange={setTInsumo}
-                  options={combustibles.map((i) => ({ value: i.id, label: i.nombre, frecuente: i.frecuente }))}
-                  placeholder="Buscar combustible…"
-                  disabled={busy}
-                />
-              </label>
-              <label>Galones cargados <span style={{ color: '#b3261e' }}>*</span>
-                <input type="number" min={0} step="any" value={tGalones} onChange={(e) => setTGalones(e.target.value)} disabled={busy} />
-              </label>
-              <label>Valor <span className="field-optional">(opcional)</span>
-                <input type="number" min={0} step="any" value={tValor} onChange={(e) => setTValor(e.target.value)} disabled={busy} />
-              </label>
-              <label>Estación<input type="text" value={tEstacion} onChange={(e) => setTEstacion(e.target.value)} disabled={busy} /></label>
-              <label>N° tirilla / factura<input type="text" value={tFactura} onChange={(e) => setTFactura(e.target.value)} disabled={busy} /></label>
-            </div>
-
-            <div className="flota-comprobante" style={{ marginTop: 10 }}>
-              <span className="flota-comprobante__lbl">📷 Foto de la tirilla</span>
-              <div className="flota-foto-row">
-                {tTirilla && <img src={tTirilla} alt="tirilla" className="flota-foto-thumb" />}
-                <button type="button" className="inline-button" onClick={() => tirillaRef.current?.click()} disabled={busy || subiendo}>
-                  {subiendo ? 'Subiendo…' : tTirilla ? 'Cambiar foto' : '📷 Tomar foto'}
-                </button>
-                <input ref={tirillaRef} type="file" accept="image/*" capture="environment" hidden onChange={onTirilla} />
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button type="button" className="inline-button" onClick={() => setTanqueoOpen(false)} disabled={busy}>Cancelar</button>
-              <button type="button" className="primary-button" onClick={() => void guardarTanqueo()} disabled={busy || subiendo}>
-                {busy ? 'Guardando…' : 'Cargar a mi bodega'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TanqueoModal
+        open={tanqueoOpen}
+        onClose={() => setTanqueoOpen(false)}
+        onSaved={() => void refresh()}
+        bodegaId={bodega.id}
+        destinos={['CARRO', 'PIMPINAS', 'VEHICULO', 'MAQUINA']}
+      />
     </section>
   )
 }

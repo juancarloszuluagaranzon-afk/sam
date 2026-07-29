@@ -8,6 +8,8 @@ import { MapasTab } from './MapasTab'
 import { FlotaTab } from './FlotaTab'
 import { BodegasTab } from './BodegasTab'
 import { InsumosResumenTab } from './InsumosResumenTab'
+import { AvalesCombustibleTab } from './AvalesCombustibleTab'
+import { VehiculosTab } from './VehiculosTab'
 import { DashboardTab } from './DashboardTab'
 import { NAV_OPCIONES, MAX_NAV, NAV_DEFECTO, leerNav, guardarNav, restaurarNav } from '../lib/navPrefs'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
@@ -50,7 +52,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'vehiculos'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -89,6 +91,7 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'soporte') return 'Soporte'
   if (role === 'supervisor_insumos') return 'Supervisor de insumos'
   if (role === 'conductor') return 'Conductor de escolta'
+  if (role === 'analista_insumos') return 'Analista de insumos y materiales'
   return 'Operador'
 }
 
@@ -1117,6 +1120,30 @@ export function SupervisorView({
                 </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
+                    className={`more-sheet__item ${supervisorTab === 'avales' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('avales'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">✅</span>
+                    <div>
+                      <div className="more-sheet__label">Avales de combustible</div>
+                      <div className="more-sheet__desc">Tanqueos por aprobar · estación y sede</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'vehiculos' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('vehiculos'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">🚗</span>
+                    <div>
+                      <div className="more-sheet__label">Placas de vehículos</div>
+                      <div className="more-sheet__desc">Catálogo para el registro de tanqueo</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
                     className={`more-sheet__item ${supervisorTab === 'bodegas' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('bodegas'); setMoreMenuOpen(false) }}
                   >
@@ -1452,7 +1479,7 @@ export function SupervisorView({
                   )
                 })}
                 <button
-                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'vehiculos' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -2158,6 +2185,14 @@ export function SupervisorView({
           <BodegasTab />
         ) : null}
 
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'avales' ? (
+          <AvalesCombustibleTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'vehiculos' ? (
+          <VehiculosTab />
+        ) : null}
+
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (
           <EmpresasTab />
         ) : null}
@@ -2708,6 +2743,7 @@ export function SupervisorView({
                       <option value="supervisor">Supervisor</option>
                       <option value="supervisor_insumos">Supervisor de insumos</option>
                       <option value="conductor">Conductor de escolta</option>
+                      <option value="analista_insumos">Analista de insumos y materiales</option>
                       <option value="administracion">Administración</option>
                       <option value="owner">Propietario</option>
                       <option value="soporte">Soporte</option>

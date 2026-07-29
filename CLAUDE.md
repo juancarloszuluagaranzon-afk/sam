@@ -59,7 +59,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Labores / asignaciones | `views/SupervisorView`, `OperatorView` | Núcleo: asignar, tomar en campo, cerrar, aprobar, facturar |
 | Planilla | `views/PlanillaTab` | Cuadrícula quincenal + novedades (V, T, F, OV, MT, IN, SP, LL…) |
 | Maestro de suertes | `views/MaestrosTab` | Áreas oficiales; ⚠️ hay códigos de hacienda compartidos |
-| Insumos y combustible | `views/Insumos*`, `Bodegas*`, `MiBodegaTab` | **Stock por BODEGA** (principal + satélites = el carro de cada supervisor), traslados con aval, carga en estación, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
+| Insumos y combustible | `views/Insumos*`, `Bodegas*`, `MiBodegaTab` | **Stock por BODEGA** (principal + satélites = el carro de cada supervisor), traslados con aval, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
+| Tanqueo + avales | `components/TanqueoModal`, `views/AvalesCombustibleTab`, `VehiculosTab` | Todo el combustible que no pasa por un despacho entra por aquí y lo avala el **analista de insumos** |
 | Mapas offline | `views/MapaView`, `MapasTab` | Visor tipo Avenza (capas, medir, marcadores) + tiles de FieldMaps |
 | Flota / Escolta | `views/Flota*` | Formato CDA-F-68, rol `conductor`, firma táctil + foto |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
@@ -78,8 +79,19 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 - **Mapas**: los tiles los genera **FieldMaps** (otro proyecto del usuario, VPS aparte).
   ASM solo guarda la config en la tabla `mapas`. Ver `.agent/skills/managing-mapas/`.
 - **Roles**: `owner`, `administracion`, `supervisor`, `operador`, `supervisor_insumos`,
-  `conductor`, `soporte`. Al agregar uno hay que tocar ~6 archivos (ver cómo se hizo
-  `conductor`: dominio, `mapRole`, routing en `App.tsx`, labels, dropdown, SupportSwitcher).
+  `conductor`, `analista_insumos`, `soporte`. Al agregar uno hay que tocar ~6 archivos
+  (ver cómo se hizo `conductor`: dominio, `mapRole`, routing en `App.tsx`, labels,
+  dropdown de usuarios, ImpersonationBar).
+- **🔴 Combustible: nadie se mete una entrada a mano.** El supervisor de insumos NO ve
+  Inventario (`InsumosModule` le filtra la pestaña): si pudiera hacer "+ Entrada" el
+  combustible aparecería de la nada. Todo lo que entra o sale sin un despacho pasa por
+  `TanqueoModal`, que registra dos ejes independientes:
+  - `origen`: **ESTACION** (se compró en la bomba, no sale de ninguna bodega) o
+    **SEDE** (sale de la PRINCIPAL; se descuenta de una vez porque ya se lo llevaron).
+  - `destino`: **CARRO**/**PIMPINAS** suman al satélite · **VEHICULO** (exige placa del
+    catálogo `vehiculos`) y **MAQUINA** (exige horómetro) son consumo, no tocan stock.
+  Todo nace `PENDIENTE` y lo avala el analista en `AvalesCombustibleTab`. **Rechazar
+  REVERSA** los movimientos — si tocas ese flujo, mantén la reversa simétrica.
 - **Skills del repo**: `sam-app/.agent/skills/` — leerlas antes de tocar su área
   (`managing-assignments`, `managing-insumos`, `managing-mapas`, `managing-supabase`,
   `managing-maestro`, `capturing-gotchas`).

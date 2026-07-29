@@ -157,3 +157,54 @@ El despachador marca ENTREGADA, pero **SOLO el operario confirma la recepción**
 - **Sin offline:** insumos/solicitudes/kardex NO se cachean en Dexie (a diferencia
   de maestro/labores). Si el dispositivo abre sin señal, salen vacíos hasta el
   primer sync.
+
+## Tanqueo y aval del analista (29-jul-2026)
+
+**El supervisor de insumos ya NO tiene Inventario.** `InsumosModule` le filtra la
+pestaña. La razón es dura: con "+ Entrada" a mano el combustible aparecía de la
+nada y no había forma de saber de dónde salió. Si alguien pide devolvérsela, la
+respuesta es no — lo que necesita se resuelve con un tanqueo o un traslado.
+
+### El modelo
+
+Todo evento de combustible que no sea un despacho vive en `combustible_externo`
+con dos ejes **independientes**:
+
+| Eje | Valores | Qué implica en inventario |
+|---|---|---|
+| `origen` | `ESTACION` | se compró en la bomba → no sale de ninguna bodega |
+| | `SEDE` | sale de la **PRINCIPAL** → SALIDA inmediata |
+| `destino` | `CARRO` | tanque de distribución → **ENTRADA** al satélite |
+| | `PIMPINAS` | N × capacidad → **ENTRADA** al satélite |
+| | `VEHICULO` | consumo, exige **placa** (catálogo `vehiculos`) |
+| | `MAQUINA` | consumo, exige **horómetro** + equipo |
+
+Los dos ejes se combinan: "en sede, a pimpinas" sale de la principal Y entra al
+satélite; "en estación, a máquina" no toca stock en absoluto.
+
+El descuento de la principal ocurre **al registrar**, no al avalar: el
+combustible físicamente ya se lo llevaron. El aval es una validación posterior.
+
+### El aval
+
+Todo nace `PENDIENTE`. Lo revisa el rol `analista_insumos` (Diego) en
+`AvalesCombustibleTab`; owner y administración también lo ven (Más → Avales).
+
+- **Aprobar** solo sella el registro.
+- **Rechazar** llama a `revisarCombustible` con `aprobar:false`, que **reversa**
+  los movimientos: ENTRADA de vuelta a la principal y SALIDA del satélite.
+  ⚠️ Si tocas `registrarCombustibleExterno`, la reversa tiene que quedar
+  simétrica o el stock se descuadra.
+
+### Placas
+
+`vehiculos` (tabla) + `VehiculosTab`. Las marcadas `frecuente` salen de entrada
+en el selector; el resto tras "Otros". Además se recuerda la última placa que usó
+cada persona en `localStorage` (`sam:ultima-placa:<userId>`) y sale preseleccionada.
+
+### Quién ve qué
+
+| Rol | Destinos que puede registrar |
+|---|---|
+| `operador` | solo `MAQUINA` (su máquina, horómetro obligatorio) |
+| `supervisor_insumos` | `CARRO`, `PIMPINAS`, `VEHICULO`, `MAQUINA` |

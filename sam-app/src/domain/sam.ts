@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos'
 
 export type UserId = 'U002' | 'U003' | 'U004'
 
@@ -305,16 +305,52 @@ export interface Traslado {
 //  CARRO   → el supervisor tanquea su vehículo-tanque: ENTRA al satélite.
 //  MAQUINA → el operario tanquea la máquina en la bomba: NO toca inventario,
 //            pero el consumo/costo sí se carga a la máquina (exige horómetro).
-export type CombustibleDestino = 'CARRO' | 'MAQUINA'
+/** A QUÉ se le echó el combustible. */
+export type CombustibleDestino =
+  | 'CARRO'      // tanque de distribución del satélite → ENTRA a su inventario
+  | 'VEHICULO'   // la camioneta en la que se moviliza → consumo, exige placa
+  | 'MAQUINA'    // tanqueo directo de un equipo → consumo, exige horómetro
+  | 'PIMPINAS'   // se lleva N pimpinas de X galones → ENTRAN a su inventario
+
+/** DE DÓNDE salió: comprado en bomba, o sacado de la bodega principal. */
+export type CombustibleOrigen = 'ESTACION' | 'SEDE'
+
+/** Aval del analista de insumos y materiales. */
+export type CombustibleEstado = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
+
+export const DESTINO_LABEL: Record<CombustibleDestino, string> = {
+  CARRO: 'Tanque de distribución',
+  VEHICULO: 'Vehículo',
+  MAQUINA: 'Máquina',
+  PIMPINAS: 'Pimpinas',
+}
+
+/** Placa del catálogo (para no escribirla a mano y que salgan tres variantes). */
+export interface Vehiculo {
+  id: string
+  placa: string
+  descripcion?: string
+  tipo: string
+  frecuente: boolean
+  activo: boolean
+}
 
 export interface CombustibleExterno {
   id: string
   createdAt: string
   fecha: string
+  origen: CombustibleOrigen
   destino: CombustibleDestino
+  estado: CombustibleEstado
+  /** Bodega que RECIBE (satélite), cuando el destino suma al inventario. */
   bodegaId?: string
+  /** Bodega de la que SALIÓ (la principal), cuando el origen es SEDE. */
+  bodegaOrigenId?: string
   equipoCodigo?: string
   horometro?: number
+  placa?: string
+  pimpinasCantidad?: number
+  pimpinasCapacidad?: number
   insumoId?: string
   galones: number
   valor?: number
@@ -324,6 +360,10 @@ export interface CombustibleExterno {
   registradoPor?: string
   registradoNombre?: string
   nota?: string
+  revisadoPor?: string
+  revisadoNombre?: string
+  revisadoEn?: string
+  revisionNota?: string
 }
 
 export type InsumoCategoria = 'COMBUSTIBLE' | 'MATERIAL'

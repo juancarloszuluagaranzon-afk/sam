@@ -5,6 +5,7 @@ import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { SupportSwitcher } from './views/SupportSwitcher'
 import { InsumosView } from './views/InsumosView'
+import { AnalistaView } from './views/AnalistaView'
 import { FlotaView } from './views/FlotaView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
@@ -502,6 +503,17 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <InsumosView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  // Rol Analista de insumos y materiales → bandeja de avales de combustible.
+  if (session.role === 'analista_insumos') {
+    return (
+      <>
+        {impersonationBar}
+        {syncErrorBanner}
+        <AnalistaView onLogout={() => saveSession(null)} />
       </>
     )
   }

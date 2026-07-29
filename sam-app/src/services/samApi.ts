@@ -1,5 +1,6 @@
 import { LOCAL_MAESTRO } from '../data/constants'
 import { ingenioNombre, slugIngenio } from '../data/ingenios'
+import { DESTINO_LABEL } from '../domain/sam'
 import type {
   ApprovalStatus,
   Assignment,
@@ -19,6 +20,9 @@ import type {
   TrasladoItem,
   CombustibleExterno,
   CombustibleDestino,
+  CombustibleOrigen,
+  CombustibleEstado,
+  Vehiculo,
   Insumo,
   InsumoCategoria,
   InsumoKardex,
@@ -758,7 +762,7 @@ export async function loadAssignments(): Promise<{
 // a operador. Fuente única para evitar que vuelva a divergir.
 export function mapRole(rol: unknown): UserProfile['role'] {
   const r = String(rol ?? '')
-  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor') {
+  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor' || r === 'analista_insumos') {
     return r
   }
   return 'operador'
@@ -1789,14 +1793,33 @@ export async function confirmarTraslado(input: {
 
 // ── COMBUSTIBLE de bomba externa ────────────────────────────────────────────
 
+function destinoDe(v: unknown): CombustibleDestino {
+  const d = String(v ?? 'MAQUINA').toUpperCase()
+  return d === 'CARRO' || d === 'VEHICULO' || d === 'PIMPINAS' ? (d as CombustibleDestino) : 'MAQUINA'
+}
+function estadoDe(v: unknown): CombustibleEstado {
+  const e = String(v ?? 'APROBADO').toUpperCase()
+  return e === 'PENDIENTE' || e === 'RECHAZADO' ? (e as CombustibleEstado) : 'APROBADO'
+}
+
 function mapCombustible(row: Record<string, unknown>): CombustibleExterno {
   const s = (v: unknown) => (v == null || v === '' ? undefined : String(v))
   return {
     id: String(row.id),
     createdAt: String(row.created_at ?? ''),
     fecha: String(row.fecha ?? ''),
-    destino: String(row.destino ?? 'MAQUINA').toUpperCase() === 'CARRO' ? 'CARRO' : 'MAQUINA',
+    origen: String(row.origen ?? 'ESTACION').toUpperCase() === 'SEDE' ? 'SEDE' : 'ESTACION',
+    destino: destinoDe(row.destino),
+    estado: estadoDe(row.estado),
     bodegaId: s(row.bodega_id),
+    bodegaOrigenId: s(row.bodega_origen_id),
+    placa: s(row.placa),
+    pimpinasCantidad: row.pimpinas_cantidad == null ? undefined : Number(row.pimpinas_cantidad),
+    pimpinasCapacidad: row.pimpinas_capacidad == null ? undefined : Number(row.pimpinas_capacidad),
+    revisadoPor: s(row.revisado_por),
+    revisadoNombre: s(row.revisado_nombre),
+    revisadoEn: s(row.revisado_en),
+    revisionNota: s(row.revision_nota),
     equipoCodigo: s(row.equipo_codigo),
     horometro: row.horometro == null ? undefined : Number(row.horometro),
     insumoId: s(row.insumo_id),
@@ -1811,32 +1834,95 @@ function mapCombustible(row: Record<string, unknown>): CombustibleExterno {
   }
 }
 
-export async function loadCombustibleExterno(opts?: { desde?: string; hasta?: string; destino?: CombustibleDestino; limit?: number }): Promise<CombustibleExterno[]> {
+export async function loadCombustibleExterno(opts?: {
+  desde?: string; hasta?: string
+  destino?: CombustibleDestino
+  origen?: CombustibleOrigen
+  estado?: CombustibleEstado
+  registradoPor?: string
+  limit?: number
+}): Promise<CombustibleExterno[]> {
   let q = supabase.from('combustible_externo').select('*').order('fecha', { ascending: false }).limit(opts?.limit ?? 500)
   if (opts?.desde) q = q.gte('fecha', opts.desde)
   if (opts?.hasta) q = q.lte('fecha', opts.hasta)
   if (opts?.destino) q = q.eq('destino', opts.destino)
+  if (opts?.origen) q = q.eq('origen', opts.origen)
+  if (opts?.estado) q = q.eq('estado', opts.estado)
+  if (opts?.registradoPor) q = q.eq('registrado_por', opts.registradoPor)
   const { data, error } = await q
   if (error || !data) return []
   return (data as Record<string, unknown>[]).map(mapCombustible)
 }
 
+// ── Catálogo de placas ──────────────────────────────────────────────────────
+
+function mapVehiculo(row: Record<string, unknown>): Vehiculo {
+  return {
+    id: String(row.id),
+    placa: String(row.placa ?? '').trim().toUpperCase(),
+    descripcion: row.descripcion ? String(row.descripcion) : undefined,
+    tipo: String(row.tipo ?? 'VEHICULO'),
+    frecuente: Boolean(row.frecuente),
+    activo: row.activo == null ? true : Boolean(row.activo),
+  }
+}
+
+export async function loadVehiculos(): Promise<Vehiculo[]> {
+  const { data, error } = await supabase.from('vehiculos').select('*').order('placa')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapVehiculo).filter((v) => v.activo)
+}
+
+export async function createVehiculo(input: { placa: string; descripcion?: string; frecuente?: boolean }): Promise<Vehiculo> {
+  const { data, error } = await supabase
+    .from('vehiculos')
+    .insert({
+      placa: input.placa.trim().toUpperCase(),
+      descripcion: input.descripcion?.trim() || null,
+      frecuente: input.frecuente ?? false,
+    })
+    .select('*').single()
+  if (error || !data) throw new Error(error?.message || 'No se pudo crear la placa')
+  return mapVehiculo(data)
+}
+
+export async function updateVehiculo(id: string, patch: { placa?: string; descripcion?: string; frecuente?: boolean; activo?: boolean }): Promise<void> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.placa !== undefined) payload.placa = patch.placa.trim().toUpperCase()
+  if (patch.descripcion !== undefined) payload.descripcion = patch.descripcion.trim() || null
+  if (patch.frecuente !== undefined) payload.frecuente = patch.frecuente
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  const { error } = await supabase.from('vehiculos').update(payload).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo actualizar la placa')
+}
+
 /**
- * Combustible comprado en una estación de servicio. Dos casos:
- *  CARRO   → CARGA DE LA BODEGA SATÉLITE: llena el tanque de distribución que
- *            lleva el vehículo, así que ENTRA al inventario del satélite y
- *            queda disponible para despachar. (No es el combustible que el
- *            vehículo consume para andar: eso se maneja fuera del app.)
- *  MAQUINA → el operario tanquea su máquina directo en la bomba: NO toca
- *            inventario (nunca pasó por bodega), pero el consumo queda cargado
- *            a la máquina para el reporte de costos. Exige horómetro.
+ * Registra un evento de combustible y lo deja PENDIENTE del aval del analista.
+ *
+ * Dos ejes independientes:
+ *   origen  ESTACION → se compró en la bomba: no sale de ninguna bodega.
+ *           SEDE     → salió de la bodega PRINCIPAL: se descuenta de una vez,
+ *                      porque físicamente ya se lo llevaron. Diego valida después
+ *                      y, si rechaza, la reversa devuelve todo a su sitio.
+ *   destino CARRO / PIMPINAS → suma al inventario del satélite (es material que
+ *                      queda para distribuir).
+ *           VEHICULO / MAQUINA → NO toca inventario: es consumo. Se identifica
+ *                      con la placa o con el equipo + horómetro para el costeo.
+ *
+ * El supervisor de insumos ya NO tiene "+ Entrada" en Inventario: todo lo que
+ * entra a su carro pasa por aquí y por el aval.
  */
 export async function registrarCombustibleExterno(input: {
   fecha: string
+  origen?: CombustibleOrigen
   destino: CombustibleDestino
+  /** Satélite que recibe (CARRO / PIMPINAS). */
   bodegaId?: string
   equipoCodigo?: string
   horometro?: number
+  placa?: string
+  pimpinasCantidad?: number
+  pimpinasCapacidad?: number
   insumoId?: string
   galones: number
   valor?: number
@@ -1847,16 +1933,34 @@ export async function registrarCombustibleExterno(input: {
   registradoNombre?: string
   nota?: string
 }): Promise<void> {
+  const origen: CombustibleOrigen = input.origen ?? 'ESTACION'
+  const galones = redondear2(Number(input.galones))
+  const alInventario = input.destino === 'CARRO' || input.destino === 'PIMPINAS'
+
+  // De la sede sale de la principal; hay que saber cuál es antes de registrar.
+  let principalId: string | undefined
+  if (origen === 'SEDE') {
+    const p = await bodegaPrincipal()
+    if (!p) throw new Error('No hay bodega principal configurada')
+    principalId = p.id
+  }
+
   const { data, error } = await supabase
     .from('combustible_externo')
     .insert({
       fecha: input.fecha,
+      origen,
       destino: input.destino,
-      bodega_id: input.destino === 'CARRO' ? (input.bodegaId ?? null) : null,
+      estado: 'PENDIENTE',
+      bodega_id: alInventario ? (input.bodegaId ?? null) : null,
+      bodega_origen_id: principalId ?? null,
       equipo_codigo: input.destino === 'MAQUINA' ? (input.equipoCodigo ?? null) : null,
       horometro: input.destino === 'MAQUINA' ? (input.horometro ?? null) : null,
+      placa: input.destino === 'VEHICULO' ? (input.placa?.trim().toUpperCase() ?? null) : null,
+      pimpinas_cantidad: input.destino === 'PIMPINAS' ? (input.pimpinasCantidad ?? null) : null,
+      pimpinas_capacidad: input.destino === 'PIMPINAS' ? (input.pimpinasCapacidad ?? null) : null,
       insumo_id: input.insumoId ?? null,
-      galones: input.galones,
+      galones,
       valor: input.valor ?? 0,
       estacion: input.estacion ?? null,
       factura: input.factura ?? null,
@@ -1869,16 +1973,89 @@ export async function registrarCombustibleExterno(input: {
     .single()
   if (error || !data) throw error ?? new Error('No se pudo registrar el tanqueo')
 
-  // Solo el tanqueo del CARRO entra al inventario del satélite.
-  if (input.destino === 'CARRO' && input.bodegaId && input.insumoId && input.galones > 0) {
+  const ref = String(data.id)
+  if (!input.insumoId || galones <= 0) return
+
+  if (origen === 'SEDE' && principalId) {
+    await registrarMovimientoInsumo({
+      insumoId: input.insumoId,
+      tipo: 'SALIDA',
+      cantidad: galones,
+      motivo: `Abastecimiento en sede · ${DESTINO_LABEL[input.destino]}`,
+      referencia: ref,
+      creadoPor: input.registradoPor,
+      equipoCodigo: input.destino === 'MAQUINA' ? input.equipoCodigo : undefined,
+      bodegaId: principalId,
+    })
+  }
+
+  if (alInventario && input.bodegaId) {
     await registrarMovimientoInsumo({
       insumoId: input.insumoId,
       tipo: 'ENTRADA',
-      cantidad: input.galones,
-      motivo: `Carga en estación${input.estacion ? ` (${input.estacion})` : ''}`,
-      referencia: String(data.id),
+      cantidad: galones,
+      motivo: origen === 'SEDE'
+        ? `Cargue en sede · ${DESTINO_LABEL[input.destino]}`
+        : `Carga en estación${input.estacion ? ` (${input.estacion})` : ''}`,
+      referencia: ref,
       creadoPor: input.registradoPor,
       bodegaId: input.bodegaId,
+    })
+  }
+}
+
+/**
+ * Aval del analista de insumos. Aprobar solo sella el evento (el inventario ya
+ * se movió al registrarlo); rechazar REVERSA los movimientos para que el stock
+ * vuelva a lo que era.
+ */
+export async function revisarCombustible(input: {
+  evento: CombustibleExterno
+  aprobar: boolean
+  revisadoPor: string
+  revisadoNombre: string
+  nota?: string
+}): Promise<void> {
+  const { evento } = input
+  if (evento.estado !== 'PENDIENTE') throw new Error('Este registro ya fue revisado')
+
+  const { error } = await supabase
+    .from('combustible_externo')
+    .update({
+      estado: input.aprobar ? 'APROBADO' : 'RECHAZADO',
+      revisado_por: input.revisadoPor,
+      revisado_nombre: input.revisadoNombre,
+      revisado_en: new Date().toISOString(),
+      revision_nota: input.nota?.trim() || null,
+    })
+    .eq('id', evento.id)
+    .eq('estado', 'PENDIENTE')
+  if (error) throw new Error(error.message || 'No se pudo registrar el aval')
+
+  if (input.aprobar || !evento.insumoId || evento.galones <= 0) return
+
+  // Reversa: exactamente los movimientos contrarios a los del registro.
+  const motivo = `Reversa por rechazo del aval`
+  if (evento.origen === 'SEDE' && evento.bodegaOrigenId) {
+    await registrarMovimientoInsumo({
+      insumoId: evento.insumoId,
+      tipo: 'ENTRADA',
+      cantidad: evento.galones,
+      motivo,
+      referencia: evento.id,
+      creadoPor: input.revisadoPor,
+      bodegaId: evento.bodegaOrigenId,
+    })
+  }
+  if ((evento.destino === 'CARRO' || evento.destino === 'PIMPINAS') && evento.bodegaId) {
+    await registrarMovimientoInsumo({
+      insumoId: evento.insumoId,
+      tipo: 'SALIDA',
+      cantidad: evento.galones,
+      motivo,
+      referencia: evento.id,
+      creadoPor: input.revisadoPor,
+      bodegaId: evento.bodegaId,
     })
   }
 }

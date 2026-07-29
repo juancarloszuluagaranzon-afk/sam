@@ -6158,6 +6158,62 @@ td.planilla-revisada {
 .dash-card__link { background: none; border: none; color: var(--color-brand); font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 0; }
 .dash-vacio { color: var(--color-ink-mid); font-size: 0.88rem; margin: 6px 0; }
 
+/* ── Tanqueo: dónde y a qué (tarjetas grandes, se usan con guante) ───────── */
+.tq-lbl {
+  font-size: 0.78rem; font-weight: 700; color: var(--color-ink-mid);
+  margin: 12px 0 6px; text-transform: uppercase; letter-spacing: .03em;
+}
+.tq-opts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; }
+.tq-opt {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start;
+  padding: 10px 12px; min-height: 56px; text-align: left;
+  background: var(--color-surface); color: inherit; cursor: pointer;
+  border: 1.5px solid var(--color-border); border-radius: 12px;
+}
+.tq-opt strong { font-size: 0.9rem; }
+.tq-opt span { font-size: 0.72rem; color: var(--color-ink-mid); }
+/* El tinte va explícito: --color-bg-soft es casi blanco y la opción elegida
+   quedaba distinguiéndose solo por 1.5px de borde. */
+.tq-opt.is-active {
+  border-color: var(--color-brand);
+  border-width: 2px;
+  background: rgba(46, 125, 50, .12);
+  box-shadow: inset 0 0 0 1px rgba(46, 125, 50, .18);
+}
+.tq-opt.is-active strong { color: var(--color-brand); }
+:root[data-theme='dark'] .tq-opt.is-active {
+  background: rgba(110, 200, 130, .16);
+  box-shadow: inset 0 0 0 1px rgba(110, 200, 130, .22);
+}
+:root[data-theme='dark'] .tq-opt.is-active strong { color: #8fd9a4; }
+.tq-total {
+  margin: 10px 0 0; padding: 8px 12px; border-radius: 10px;
+  background: var(--color-surface-alt); font-size: 0.86rem;
+}
+
+/* ── Bandeja de avales de combustible ────────────────────────────────────── */
+.aval-row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start;
+  padding: 12px; border: 1px solid var(--color-border); border-radius: 12px;
+  background: var(--color-surface);
+}
+.aval-row__main { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.aval-row__top { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.aval-row__side { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+.aval-row__acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.aval-btn { width: auto; flex: 0 0 auto; min-height: 36px; padding: 0 14px; }
+.aval-foto img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; display: block; }
+.aval-tag {
+  font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  background: var(--color-surface-alt); color: var(--color-ink-mid); white-space: nowrap;
+}
+.aval-tag--carro, .aval-tag--pimpinas { background: rgba(27, 175, 122, .16); color: #0f6b4a; }
+.aval-tag--maquina { background: rgba(42, 120, 214, .16); color: #1a5aa8; }
+.aval-tag--vehiculo { background: rgba(235, 104, 52, .16); color: #a8451c; }
+[data-theme='dark'] .aval-tag--carro, [data-theme='dark'] .aval-tag--pimpinas { color: #6fd8ae; }
+[data-theme='dark'] .aval-tag--maquina { color: #8fbdf2; }
+[data-theme='dark'] .aval-tag--vehiculo { color: #f0a184; }
+
 /* Pie del ranking: cuánto se ve del total + botón para abrirlo completo. */
 .dash-vertodo {
   display: flex;

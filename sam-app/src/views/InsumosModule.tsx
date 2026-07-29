@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useAppData } from '../context/AppDataContext'
 import { InsumosInventarioTab } from './InsumosInventarioTab'
 import { BandejaInsumosTab } from './BandejaInsumosTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
@@ -11,12 +12,17 @@ import { MapaView } from './MapaView'
  * "Supervisor de insumos" (InsumosView) como owner/admin (SupervisorView).
  * Incluye el Mapa offline para que TODOS los roles lo tengan (el supervisor de
  * insumos no pasa por SupervisorView/OperatorView).
+ *
+ * INVENTARIO ES SOLO DE ADMINISTRACIÓN. El supervisor de insumos no lo ve: si
+ * pudiera meterse una "+ Entrada" a mano, el combustible aparecería de la nada
+ * y se acabó la trazabilidad. Lo que entra a su carro entra por un traslado
+ * avalado o por un tanqueo avalado — nunca a dedo.
  */
 export type InsumosTab = 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'mapa'
 
 const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Solicitudes y entregas' },
-  { key: 'mibodega', icon: '🚚', label: 'Mi bodega', desc: 'Mi carro · recibir · tanqueo' },
+  { key: 'mibodega', icon: '🚚', label: 'Mi bodega', desc: 'Mi carro · recibir · tanquear' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
   { key: 'equipos', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
@@ -30,13 +36,20 @@ export function InsumosModule({
   tab?: InsumosTab
   onTabChange?: (t: InsumosTab) => void
 } = {}) {
+  const { session } = useAppData()
   const [tabInterno, setTabInterno] = useState<InsumosTab>('bandeja')
-  const tab = tabExterno ?? tabInterno
+  const tabsVisibles = useMemo(
+    () => (session?.role === 'supervisor_insumos' ? TABS.filter((t) => t.key !== 'inventario') : TABS),
+    [session?.role],
+  )
+  const tabPedida = tabExterno ?? tabInterno
+  // Si el rol no puede ver la pestaña pedida, cae a la primera que sí puede.
+  const tab = tabsVisibles.some((t) => t.key === tabPedida) ? tabPedida : tabsVisibles[0].key
   const setTab = onTabChange ?? setTabInterno
   return (
     <div>
       <div className="insumos-tabs" role="tablist" aria-label="Secciones de insumos">
-        {TABS.map((t) => (
+        {tabsVisibles.map((t) => (
           <button
             key={t.key}
             type="button"

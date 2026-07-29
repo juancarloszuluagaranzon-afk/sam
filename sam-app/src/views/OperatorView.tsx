@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 
 // Visor de mapas offline. Import ESTÁTICO a propósito: el intento con
 // React.lazy (chunk aparte) hizo que el build de Vercel partiera el bundle
@@ -23,7 +23,8 @@ import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, registrarCombustibleExterno, uploadEvidencia, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
+import { TanqueoModal } from '../components/TanqueoModal'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo } from '../domain/sam'
 
 type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
@@ -345,81 +346,11 @@ export function OperatorView({
     } finally { setSavingSol(false) }
   }
 
-  // ── Tanqueo del operario DIRECTO en bomba externa ──
-  // No pasa por bodega (no toca inventario), pero el consumo SÍ se carga a la
-  // máquina para el reporte de costos: por eso exige horómetro y tirilla.
+  // ── Tanqueo del operario ──
+  // En estación (compra en bomba) o en la sede (sale de la bodega principal).
+  // En los dos casos es CONSUMO de su máquina: exige horómetro y queda
+  // pendiente del aval del analista de insumos. No toca su inventario.
   const [tanqueoOpen, setTanqueoOpen] = useState(false)
-  const [tqFecha, setTqFecha] = useState(() => {
-    const d = new Date()
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-  })
-  const [tqInsumo, setTqInsumo] = useState('')
-  const [tqGalones, setTqGalones] = useState('')
-  const [tqHorometro, setTqHorometro] = useState('')
-  const [tqValor, setTqValor] = useState('')
-  const [tqEstacion, setTqEstacion] = useState('')
-  const [tqFactura, setTqFactura] = useState('')
-  const [tqTirilla, setTqTirilla] = useState('')
-  const [tqSubiendo, setTqSubiendo] = useState(false)
-  const [tqGuardando, setTqGuardando] = useState(false)
-  const tqFotoRef = useRef<HTMLInputElement>(null)
-
-  const combustiblesActivos = useMemo(
-    () => insumos.filter((i) => i.activo && i.categoria === 'COMBUSTIBLE'),
-    [insumos],
-  )
-
-  function openTanqueo() {
-    setTqInsumo(combustiblesActivos[0]?.id ?? '')
-    setTqGalones(''); setTqHorometro(''); setTqValor('')
-    setTqEstacion(''); setTqFactura(''); setTqTirilla('')
-    setError('')
-    setTanqueoOpen(true)
-  }
-
-  async function onTirillaOperario(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    setTqSubiendo(true); setError('')
-    try {
-      setTqTirilla(await uploadEvidencia(`tanqueo-op-${session?.id ?? 'x'}-${Date.now()}`, file, 0))
-    } catch {
-      setError('No se pudo subir la tirilla.')
-    } finally { setTqSubiendo(false) }
-  }
-
-  async function guardarTanqueoOperario() {
-    if (!session) return
-    const gal = Number(tqGalones)
-    const horom = Number(tqHorometro)
-    if (!tqInsumo) { setError('Elige el combustible.'); return }
-    if (!gal || gal <= 0) { setError('Escribe cuántos galones te tanquearon.'); return }
-    if (!tqHorometro.trim() || isNaN(horom) || horom < 0) { setError('El horómetro de la máquina es obligatorio.'); return }
-    if (!session.equipmentCode) { setError('No tienes máquina asignada. Avisa a tu supervisor.'); return }
-    setTqGuardando(true); setError('')
-    try {
-      await registrarCombustibleExterno({
-        fecha: tqFecha,
-        destino: 'MAQUINA',
-        equipoCodigo: session.equipmentCode,
-        horometro: horom,
-        insumoId: tqInsumo,
-        galones: gal,
-        valor: Number(tqValor) || 0,
-        estacion: tqEstacion.trim() || undefined,
-        factura: tqFactura.trim() || undefined,
-        tirillaUrl: tqTirilla || undefined,
-        registradoPor: session.id,
-        registradoNombre: session.name,
-      })
-      setInfo(`Tanqueo registrado: ${gal} galones cargados a tu máquina.`)
-      setTanqueoOpen(false)
-    } catch (err) {
-      const e = err as { message?: string }
-      setError(`No se pudo registrar. (${e?.message ?? 'error'})`)
-    } finally { setTqGuardando(false) }
-  }
 
   // ── Aval del operario: confirmar recepción de una ENTREGADA (fase 4) ──
   // Entregas que esperan MI confirmación (el despachador ya marcó entregado).
@@ -1059,63 +990,12 @@ export function OperatorView({
         </div>
       )}
 
-      {/* Tanqueo del operario directo en bomba (no toca inventario; carga a la máquina) */}
-      {tanqueoOpen && (
-        <div className="modal-overlay open" onClick={() => { if (!tqGuardando && !tqSubiendo) setTanqueoOpen(false) }}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
-            <div className="labor-detail-header">
-              <div><p className="eyebrow">Bomba externa</p><h3>⛽ Tanqueo de mi máquina</h3></div>
-              <button type="button" className="modal-close-btn" onClick={() => setTanqueoOpen(false)} disabled={tqGuardando} aria-label="Cerrar">&#x2715;</button>
-            </div>
-            <p className="subtle-copy" style={{ marginTop: 0 }}>
-              Cuando tanqueas directo en la bomba. Queda cargado a tu máquina; toma la foto de la tirilla.
-            </p>
-            <div className="flota-grid">
-              <label>Fecha<input type="date" value={tqFecha} onChange={(e) => setTqFecha(e.target.value)} disabled={tqGuardando} /></label>
-              <label>Combustible
-                <SearchableSelect
-                  value={tqInsumo}
-                  onChange={setTqInsumo}
-                  options={combustiblesActivos.map((i) => ({ value: i.id, label: i.nombre, frecuente: i.frecuente }))}
-                  placeholder="Buscar combustible…"
-                  disabled={tqGuardando}
-                />
-              </label>
-              <label>Galones <span style={{ color: '#b3261e' }}>*</span>
-                <input type="number" min={0} step="any" inputMode="decimal" value={tqGalones} onChange={(e) => setTqGalones(e.target.value)} disabled={tqGuardando} />
-              </label>
-              <label>Horómetro de la máquina <span style={{ color: '#b3261e' }}>*</span>
-                <input type="number" min={0} step="any" inputMode="decimal" value={tqHorometro} onChange={(e) => setTqHorometro(e.target.value)} disabled={tqGuardando} />
-              </label>
-              <label>Valor <span className="field-optional">(opcional)</span>
-                <input type="number" min={0} step="any" value={tqValor} onChange={(e) => setTqValor(e.target.value)} disabled={tqGuardando} />
-              </label>
-              <label>Estación<input type="text" value={tqEstacion} onChange={(e) => setTqEstacion(e.target.value)} disabled={tqGuardando} /></label>
-            </div>
-            <label style={{ marginTop: 8 }}>N° tirilla / factura <span className="field-optional">(opcional)</span>
-              <input type="text" value={tqFactura} onChange={(e) => setTqFactura(e.target.value)} disabled={tqGuardando} />
-            </label>
-
-            <div className="flota-comprobante" style={{ marginTop: 10 }}>
-              <span className="flota-comprobante__lbl">📷 Foto de la tirilla</span>
-              <div className="flota-foto-row">
-                {tqTirilla && <img src={tqTirilla} alt="tirilla" className="flota-foto-thumb" />}
-                <button type="button" className="inline-button" onClick={() => tqFotoRef.current?.click()} disabled={tqGuardando || tqSubiendo}>
-                  {tqSubiendo ? 'Subiendo…' : tqTirilla ? 'Cambiar foto' : '📷 Tomar foto'}
-                </button>
-                <input ref={tqFotoRef} type="file" accept="image/*" capture="environment" hidden onChange={onTirillaOperario} />
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button type="button" className="inline-button" onClick={() => setTanqueoOpen(false)} disabled={tqGuardando}>Cancelar</button>
-              <button type="button" className="primary-button" onClick={() => void guardarTanqueoOperario()} disabled={tqGuardando || tqSubiendo}>
-                {tqGuardando ? 'Guardando…' : 'Registrar tanqueo'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <TanqueoModal
+        open={tanqueoOpen}
+        onClose={() => setTanqueoOpen(false)}
+        destinos={['MAQUINA']}
+        equipoFijo={session?.equipmentCode ?? undefined}
+      />
 
       {/* Solicitar insumos */}
       {solOpen && (
@@ -1436,8 +1316,8 @@ export function OperatorView({
               <button type="button" className="operator-novedad-trigger" onClick={openSolicitud} style={{ flex: 1 }}>
                 🛢️ Solicitar insumos
               </button>
-              <button type="button" className="operator-novedad-trigger" onClick={openTanqueo} style={{ flex: 1 }}>
-                ⛽ Tanqueé en estación
+              <button type="button" className="operator-novedad-trigger" onClick={() => setTanqueoOpen(true)} style={{ flex: 1 }}>
+                ⛽ Tanqueo
               </button>
             </div>
 

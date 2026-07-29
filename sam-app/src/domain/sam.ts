@@ -358,6 +358,8 @@ export interface InsumoKardex {
   createdAt: string
   // Máquina/tractor a la que se cargó el movimiento (acumulador de costos).
   equipoCodigo?: string
+  // Bodega en la que ocurrió el movimiento (principal o satélite).
+  bodegaId?: string
 }
 
 // Solicitud de insumos del operario (fase 2). PENDIENTE→PROGRAMADA/RECHAZADA;

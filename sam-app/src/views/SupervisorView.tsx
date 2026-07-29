@@ -7,6 +7,7 @@ import { MapaView } from './MapaView'
 import { MapasTab } from './MapasTab'
 import { FlotaTab } from './FlotaTab'
 import { BodegasTab } from './BodegasTab'
+import { InsumosResumenTab } from './InsumosResumenTab'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
@@ -48,7 +49,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas'
+export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'validacion' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -905,6 +906,43 @@ export function SupervisorView({
               </>
             ) : (
               <>
+                {/* Del dueño: salieron de la barra para dejarla despejada. */}
+                {session.role === 'owner' && (
+                  <>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'aprobaciones' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('aprobaciones'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">✔</span>
+                      <div>
+                        <div className="more-sheet__label">
+                          A facturar{pendingApprovals.length > 0 ? ` (${pendingApprovals.length})` : ''}
+                        </div>
+                        <div className="more-sheet__desc">Labores cerradas pendientes de aprobar</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'asignar' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('asignar'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">＋</span>
+                      <div>
+                        <div className="more-sheet__label">Asignar</div>
+                        <div className="more-sheet__desc">Programar una labor a un operario</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'resumen' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('resumen'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">⌂</span>
+                      <div>
+                        <div className="more-sheet__label">Resumen</div>
+                        <div className="more-sheet__desc">Indicadores generales de la operación</div>
+                      </div>
+                    </button>
+                  </>
+                )}
                 <button
                   className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
@@ -1317,18 +1355,22 @@ export function SupervisorView({
               </span>
             </button>
 
-            <button
-              className={`nav-aprobaciones${supervisorTab === 'aprobaciones' ? ' active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
-              onClick={() => setSupervisorTab('aprobaciones')}
-            >
-              <span className="nav-item">
-                <span className="nav-icon">✔</span>
-                <span className="nav-label">A facturar</span>
-                {pendingApprovals.length > 0 && (
-                  <span className="nav-badge">{pendingApprovals.length > 99 ? '99+' : pendingApprovals.length}</span>
-                )}
-              </span>
-            </button>
+            {/* El dueño la tiene dentro de "Más" (su barra queda con lo del día
+                a día: Labores, Realizadas, Máquinas e Insumos). */}
+            {session.role !== 'owner' && (
+              <button
+                className={`nav-aprobaciones${supervisorTab === 'aprobaciones' ? ' active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+                onClick={() => setSupervisorTab('aprobaciones')}
+              >
+                <span className="nav-item">
+                  <span className="nav-icon">✔</span>
+                  <span className="nav-label">A facturar</span>
+                  {pendingApprovals.length > 0 && (
+                    <span className="nav-badge">{pendingApprovals.length > 99 ? '99+' : pendingApprovals.length}</span>
+                  )}
+                </span>
+              </button>
+            )}
 
             {session.role === 'owner' ? (
               <>
@@ -1347,29 +1389,20 @@ export function SupervisorView({
                 >
                   <span className="nav-item">
                     <span className="nav-icon">▣</span>
-                    <span className="nav-label">Equipos</span>
+                    <span className="nav-label">Máquinas</span>
                   </span>
                 </button>
                 <button
-                  className={supervisorTab === 'resumen' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('resumen')}
+                  className={supervisorTab === 'insumosresumen' ? 'active' : ''}
+                  onClick={() => setSupervisorTab('insumosresumen')}
                 >
                   <span className="nav-item">
-                    <span className="nav-icon">⌂</span>
-                    <span className="nav-label">Resumen</span>
+                    <span className="nav-icon">🛢️</span>
+                    <span className="nav-label">Insumos</span>
                   </span>
                 </button>
                 <button
-                  className={supervisorTab === 'asignar' ? 'active' : ''}
-                  onClick={() => setSupervisorTab('asignar')}
-                >
-                  <span className="nav-item">
-                    <span className="nav-icon">＋</span>
-                    <span className="nav-label">Asignar</span>
-                  </span>
-                </button>
-                <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' ? 'active' : ''}
+                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'validacion' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1377,6 +1410,11 @@ export function SupervisorView({
                   <span className="nav-item">
                     <span className="nav-icon">⋯</span>
                     <span className="nav-label">Más</span>
+                    {/* Alerta de labores por facturar: la opción vive dentro de
+                        "Más", así que el aviso sube al botón para no perderlo. */}
+                    {pendingApprovals.length > 0 && (
+                      <span className="nav-badge">{pendingApprovals.length > 99 ? '99+' : pendingApprovals.length}</span>
+                    )}
                   </span>
                 </button>
               </>
@@ -2061,6 +2099,10 @@ export function SupervisorView({
         ) : null}
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
+          <InsumosResumenTab />
+        ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'bodegas' ? (
           <BodegasTab />

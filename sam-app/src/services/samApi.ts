@@ -1427,6 +1427,7 @@ function mapKardex(row: Record<string, unknown>): InsumoKardex {
     creadoPor: row.creado_por ? String(row.creado_por) : undefined,
     createdAt: String(row.created_at ?? ''),
     equipoCodigo: row.equipo_codigo ? String(row.equipo_codigo) : undefined,
+    bodegaId: row.bodega_id ? String(row.bodega_id) : undefined,
   }
 }
 
@@ -1434,7 +1435,7 @@ function mapKardex(row: Record<string, unknown>): InsumoKardex {
 export async function loadKardex(insumoId?: string, limit = 200): Promise<InsumoKardex[]> {
   let query = supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
     .order('created_at', { ascending: false })
     .limit(limit)
   if (insumoId) query = query.eq('insumo_id', insumoId)
@@ -1447,7 +1448,7 @@ export async function loadKardex(insumoId?: string, limit = 200): Promise<Insumo
 export async function loadKardexDeEquipo(equipoCodigo: string, limit = 500): Promise<InsumoKardex[]> {
   const { data, error } = await supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
     .eq('equipo_codigo', equipoCodigo)
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -1462,7 +1463,7 @@ export async function loadKardexDeEquipo(equipoCodigo: string, limit = 500): Pro
 export async function loadKardexSalidasEquipo(limit = 1000): Promise<InsumoKardex[]> {
   const { data, error } = await supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
     .in('tipo', ['SALIDA', 'ENTRADA'])
     .not('equipo_codigo', 'is', null)
     .order('created_at', { ascending: false })
@@ -2007,7 +2008,7 @@ export async function entregarDirecto(input: {
 export async function loadKardexReporte(opts?: { desde?: string; hasta?: string; limit?: number }): Promise<InsumoKardex[]> {
   let query = supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
     .order('created_at', { ascending: false })
     .limit(opts?.limit ?? 5000)
   if (opts?.desde) query = query.gte('created_at', opts.desde)

@@ -6095,6 +6095,15 @@ td.planilla-revisada {
 .bod-stock__nom { font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; }
 .bod-stock__val { font-size: 0.95rem; white-space: nowrap; color: #166534; }
 .bod-stock__val small { font-weight: 600; opacity: 0.75; }
+/* Sub-título dentro del resumen de insumos del dueño. */
+.ins-res__lbl {
+  margin: 0 0 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-mid);
+}
 :root[data-theme="dark"] .bod-stock { background: rgba(255, 255, 255, 0.04); }
 :root[data-theme="dark"] .bod-stock__row { border-color: rgba(255, 255, 255, 0.08); }
 :root[data-theme="dark"] .bod-stock__val { color: #7fd6a0; }

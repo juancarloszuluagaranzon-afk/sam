@@ -6219,15 +6219,29 @@ td.planilla-revisada {
 .dash-barra__val { font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* Columnas por día */
-.dash-cols { display: flex; align-items: flex-end; gap: 4px; height: 140px; overflow-x: auto; padding-bottom: 2px; }
+.dash-cols { display: flex; align-items: flex-end; gap: 4px; height: 170px; overflow-x: auto; padding-bottom: 2px; }
 .dash-col {
   flex: 1 0 auto; min-width: 34px; height: 100%;
   display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 4px;
   background: none; border: none; cursor: pointer; padding: 0; color: inherit;
 }
-.dash-col__wrap { width: 100%; flex: 1; display: flex; align-items: flex-end; }
-.dash-col__fill { width: 100%; border-radius: 4px 4px 0 0; }
+.dash-col__wrap {
+  width: 100%; flex: 1;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center;
+}
+.dash-col__fill {
+  width: 100%; border-radius: 4px 4px 0 0; overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: center;
+}
 .dash-col:active .dash-col__fill { opacity: .65; }
+/* El valor va escrito de abajo hacia arriba dentro de la columna. */
+.dash-col__num {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.68rem; font-weight: 700; letter-spacing: .02em;
+  white-space: nowrap; padding: 5px 0;
+}
+.dash-col__num.is-fuera { color: var(--color-ink-mid); padding: 0 0 3px; }
 .dash-col__lbl { font-size: 0.66rem; color: var(--color-ink-mid); white-space: nowrap; }
 
 /* Máquinas */

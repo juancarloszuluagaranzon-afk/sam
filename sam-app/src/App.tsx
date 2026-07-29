@@ -120,6 +120,10 @@ function AppContent() {
   function saveSession(user: UserProfile | null) {
     setSession(user ? { ...user } : null)
     setIsSideMenuOpen(false)
+    // El dueño SIEMPRE aterriza en su tablero de inicio (no en Labores): es la
+    // pantalla desde la que mira la empresa. Al recargar lo resuelve el estado
+    // inicial leyendo la sesión guardada; aquí se cubre el login en vivo.
+    if (user) setSupervisorTab(user.role === 'owner' ? 'inicio' : 'labores')
     if (user) {
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
     } else {

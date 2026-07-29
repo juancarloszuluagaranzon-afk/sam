@@ -168,34 +168,50 @@ export function Columnas({
   datos,
   onPick,
   color = SERIES[0],
+  ink = 'rgba(0,0,0,.82)',
 }: {
   datos: Punto[]
   onPick?: (p: Punto) => void
   color?: string
+  /**
+   * Tinta del número escrito DENTRO de la columna. Va aparte del color de la
+   * barra porque ningún tono sirve para toda la paleta: sobre el verde (#1baf7a)
+   * el negro da 7.5:1 y el blanco solo 2.8:1; sobre el violeta es al revés.
+   * Quien elige el color de la serie elige también su tinta.
+   */
+  ink?: string
 }) {
   if (datos.length === 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
   const max = Math.max(...datos.map((d) => d.valor), 0.0001)
   return (
     <div className="dash-cols" style={{ ['--n' as string]: datos.length }}>
-      {datos.map((d) => (
-        <button
-          key={d.id}
-          type="button"
-          className="dash-col"
-          onClick={() => onPick?.(d)}
-          disabled={!onPick}
-          aria-label={`${d.label}: ${d.valor.toFixed(2)}`}
-          title={`${d.label}: ${d.valor.toFixed(2)}`}
-        >
-          <span className="dash-col__wrap">
-            <span
-              className="dash-col__fill"
-              style={{ height: `${Math.max((d.valor / max) * 100, 3)}%`, background: color }}
-            />
-          </span>
-          <span className="dash-col__lbl">{d.label}</span>
-        </button>
-      ))}
+      {datos.map((d) => {
+        const pct = Math.max((d.valor / max) * 100, 3)
+        // El valor va DENTRO de la columna, escrito de abajo hacia arriba: así
+        // se lee el área sin ensanchar las barras ni pisar la etiqueta del día.
+        // Si la columna es muy corta no cabe, y el número sale encima en tinta.
+        const dentro = pct >= 32
+        const num = d.valor.toFixed(d.valor >= 100 ? 0 : 1)
+        return (
+          <button
+            key={d.id}
+            type="button"
+            className="dash-col"
+            onClick={() => onPick?.(d)}
+            disabled={!onPick}
+            aria-label={`${d.label}: ${d.valor.toFixed(2)}`}
+            title={`${d.label}: ${d.valor.toFixed(2)}`}
+          >
+            <span className="dash-col__wrap">
+              {!dentro && <span className="dash-col__num is-fuera">{num}</span>}
+              <span className="dash-col__fill" style={{ height: `${pct}%`, background: color }}>
+                {dentro && <span className="dash-col__num" style={{ color: ink }}>{num}</span>}
+              </span>
+            </span>
+            <span className="dash-col__lbl">{d.label}</span>
+          </button>
+        )
+      })}
     </div>
   )
 }

@@ -241,7 +241,7 @@ export function ConsumoEquiposTab() {
                     .map(({ insumoId, total, info }) => (
                       <li key={insumoId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                         <span>{info?.nombre ?? insumoId}</span>
-                        <strong>{fmtCantidad(total)} {info?.unidad ?? ''}</strong>
+                        <strong>{fmtCantidad(total, info?.unidad)} {info?.unidad ?? ''}</strong>
                       </li>
                     ))}
                 </ul>
@@ -258,7 +258,7 @@ export function ConsumoEquiposTab() {
               {porInsumo.map((r) => (
                 <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                   <span>{r.info?.nombre ?? r.id}</span>
-                  <strong>{fmtCantidad(r.total)} {r.info?.unidad ?? ''}</strong>
+                  <strong>{fmtCantidad(r.total, r.info?.unidad)} {r.info?.unidad ?? ''}</strong>
                 </li>
               ))}
             </ul>

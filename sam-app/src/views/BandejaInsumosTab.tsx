@@ -3,7 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia, bodegaDeResponsable, bodegaPrincipal, loadStockBodega } from '../services/samApi'
 import type { Bodega, StockBodega } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
-import { fmtCantidad } from '../lib/cantidad'
+import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
 /**
@@ -256,7 +256,7 @@ export function BandejaInsumosTab() {
       .filter((r) => r.insumoId && Number(r.cantidad) > 0)
       .map((r) => {
         const ins = insumos.find((i) => i.id === r.insumoId)!
-        return { insumoId: r.insumoId, insumoNombre: ins.nombre, unidad: ins.unidad, cantidad: Number(r.cantidad) }
+        return { insumoId: r.insumoId, insumoNombre: ins.nombre, unidad: ins.unidad, cantidad: normalizarCantidad(Number(r.cantidad), ins.unidad) }
       })
     if (items.length === 0) { setError('Agrega al menos un insumo con cantidad.'); return }
     if (!dirEquipo) { setError('Selecciona la máquina a la que se carga el material.'); return }
@@ -552,7 +552,7 @@ export function BandejaInsumosTab() {
                         options={activeInsumos.map((i) => ({
                           value: i.id,
                           label: `${i.nombre} (${i.unidad})`,
-                          rightLabel: fmtCantidad(stockMio(i.id)),
+                          rightLabel: fmtCantidad(stockMio(i.id), i.unidad),
                           frecuente: i.frecuente,
                         }))}
                         placeholder="Buscar insumo…"
@@ -560,7 +560,7 @@ export function BandejaInsumosTab() {
                       />
                     </div>
                     <input
-                      type="number" min={0} step="any" placeholder="Cant."
+                      type="number" min={0} step={stepDe(ins?.unidad)} placeholder="Cant."
                       value={row.cantidad}
                       onChange={(e) => setDirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, cantidad: e.target.value } : r)))}
                       disabled={busy} style={{ width: 80, borderColor: excede ? '#b3261e' : undefined }}

@@ -6,7 +6,7 @@ import {
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado, TrasladoItem } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
-import { fmtCantidad } from '../lib/cantidad'
+import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
 
 /**
  * Bodegas (administración/dueño): la PRINCIPAL y los SATÉLITES (el vehículo de
@@ -108,7 +108,7 @@ export function BodegasTab() {
       .filter((r) => r.insumoId && Number(r.cantidad) > 0)
       .map((r) => {
         const ins = insumos.find((i) => i.id === r.insumoId)!
-        return { insumoId: r.insumoId, insumoNombre: ins.nombre, unidad: ins.unidad, cantidad: Number(r.cantidad) }
+        return { insumoId: r.insumoId, insumoNombre: ins.nombre, unidad: ins.unidad, cantidad: normalizarCantidad(Number(r.cantidad), ins.unidad) }
       })
     if (items.length === 0) { setError('Agrega al menos un insumo con cantidad.'); return }
     const excedido = items.find((it) => it.cantidad > stockDe(it.insumoId, principal.id))
@@ -227,7 +227,7 @@ export function BodegasTab() {
                       {s.insumo!.categoria === 'COMBUSTIBLE' ? '⛽' : '🔩'}
                     </span>
                   </div>
-                  <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{fmtCantidad(s.stock)} <small>{s.insumo!.unidad}</small></div>
+                  <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{fmtCantidad(s.stock, s.insumo!.unidad)} <small>{s.insumo!.unidad}</small></div>
                 </div>
               ))}
             </div>
@@ -290,7 +290,7 @@ export function BodegasTab() {
                         options={insumosActivos.map((i) => ({
                           value: i.id,
                           label: `${i.nombre} (${i.unidad})`,
-                          rightLabel: fmtCantidad(stockDe(i.id, principal.id)),
+                          rightLabel: fmtCantidad(stockDe(i.id, principal.id), i.unidad),
                           frecuente: i.frecuente,
                         }))}
                         placeholder="Buscar insumo…"
@@ -298,7 +298,7 @@ export function BodegasTab() {
                       />
                     </div>
                     <input
-                      type="number" min={0} step="any" placeholder="Cant."
+                      type="number" min={0} step={stepDe(ins?.unidad)} placeholder="Cant."
                       value={row.cantidad}
                       onChange={(e) => setSurtirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, cantidad: e.target.value } : r)))}
                       disabled={busy} style={{ width: 84, borderColor: excede ? '#b3261e' : undefined }}

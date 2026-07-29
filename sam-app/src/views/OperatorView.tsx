@@ -1191,7 +1191,7 @@ export function OperatorView({
               <button type="button" className="modal-close-btn" onClick={() => setProblemaSol(null)} disabled={confirmandoSol} aria-label="Cerrar">&#x2715;</button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
-              {problemaSol.items.map((it) => `${fmtCantidad(it.cantidadDespachada ?? it.cantidad)} ${it.unidad} ${it.insumoNombre}`).join(', ')}
+              {problemaSol.items.map((it) => `${fmtCantidad(it.cantidadDespachada ?? it.cantidad, it.unidad)} ${it.unidad} ${it.insumoNombre}`).join(', ')}
             </p>
             <div className="realizadas-seg" role="group" aria-label="Motivo" style={{ flexWrap: 'wrap', marginBottom: 10 }}>
               {PROBLEMA_MOTIVOS.map((m) => (
@@ -1450,7 +1450,7 @@ export function OperatorView({
                   {s.origen === 'DIRECTA' && <span className="confirm-entrega-card__dir"> · entrega directa</span>}
                 </p>
                 <p className="confirm-entrega-card__items">
-                  {s.items.map((it) => `${fmtCantidad(it.cantidadDespachada ?? it.cantidad)} ${it.unidad} ${it.insumoNombre}`).join(', ')}
+                  {s.items.map((it) => `${fmtCantidad(it.cantidadDespachada ?? it.cantidad, it.unidad)} ${it.unidad} ${it.insumoNombre}`).join(', ')}
                   {s.equipoCodigo ? ` · Máquina ${s.equipoCodigo}` : ''}
                 </p>
                 <div className="confirm-entrega-card__actions">
@@ -1934,7 +1934,7 @@ export function OperatorView({
                       return (
                         <div key={s.id} className="movement-row">
                           <div>
-                            <strong>{s.items.map((it) => `${fmtCantidad(it.cantidad)} ${it.unidad} ${it.insumoNombre}`).join(', ')}</strong>
+                            <strong>{s.items.map((it) => `${fmtCantidad(it.cantidad, it.unidad)} ${it.unidad} ${it.insumoNombre}`).join(', ')}</strong>
                             <span>{fecha}{s.motivoRechazo ? ` · ${s.motivoRechazo}` : ''}{s.confirmacionNota ? ` · ${s.confirmacionNota}` : ''}</span>
                           </div>
                           <div className="movement-side">

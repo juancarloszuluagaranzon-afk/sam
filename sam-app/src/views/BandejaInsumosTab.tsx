@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia, bodegaDeResponsable, bodegaPrincipal, loadStockBodega } from '../services/samApi'
 import type { Bodega, StockBodega } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { fmtFechaHora as fmtFecha, fmtLapso } from '../lib/fechas'
 import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
@@ -13,10 +14,7 @@ import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
  * PROGRAMARLAS (aceptar, listas para despachar en fase 3) o RECHAZARLAS con
  * motivo. El despacho real + descuento de inventario llega en la fase 3.
  */
-function fmtFecha(iso: string): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+
 
 const ESTADO_LABEL: Record<SolicitudEstado, string> = {
   PENDIENTE: 'Pendiente', PROGRAMADA: 'Programada', ENTREGADA: 'Entregada', RECHAZADA: 'Rechazada', CANCELADA: 'Cancelada',
@@ -345,7 +343,12 @@ export function BandejaInsumosTab() {
                 <span className="sol-card__avatar" aria-hidden>{iniciales || '?'}</span>
                 <div className="sol-card__who">
                   <strong>{nombre}</strong>
-                  <span>{fmtFecha(s.createdAt)}{s.zona ? ` · Zona ${s.zona}` : ''}</span>
+                  <span>
+                    {fmtFecha(s.createdAt)}{s.zona ? ` · Zona ${s.zona}` : ''}
+                    {s.origen !== 'DIRECTA' && !s.entregadoEn && s.estado !== 'RECHAZADA' && (
+                      <> · ⏱ lleva {fmtLapso(s.createdAt, new Date().toISOString())}</>
+                    )}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <span className={`status-pill ${s.estado === 'PENDIENTE' ? '' : s.estado === 'PROGRAMADA' ? 'amber' : s.estado === 'RECHAZADA' ? 'red' : 'green'}`}>
@@ -390,7 +393,13 @@ export function BandejaInsumosTab() {
                       : <>⏳ Sin confirmar por el operario</>}
                   </div>
                   <div className="sol-card__meta">
-                    {s.entregadoEn && <span title="Fecha de entrega">📦 {fmtFecha(s.entregadoEn)}</span>}
+                    {s.entregadoEn && <span title="Fecha y hora de la entrega">📦 {fmtFecha(s.entregadoEn)}</span>}
+                    {/* Tiempo de respuesta: cuánto se demoró desde que la pidieron.
+                        Solo tiene sentido en las SOLICITADAS — en una entrega directa
+                        el supervisor la crea y la despacha en el mismo acto. */}
+                    {s.origen !== 'DIRECTA' && s.entregadoEn && fmtLapso(s.createdAt, s.entregadoEn) && (
+                      <span title="Tiempo de respuesta desde que la solicitó">⚡ {fmtLapso(s.createdAt, s.entregadoEn)}</span>
+                    )}
                     {s.despachadoPor && <span title="Despachado por">👤 {userName.get(s.despachadoPor) ?? s.despachadoPor}</span>}
                     {s.equipoCodigo && <span title="Máquina">🚜 {equipoNombre.get(s.equipoCodigo) ?? s.equipoCodigo}</span>}
                     {s.horometro != null && <span title="Horómetro">⏱ {s.horometro}</span>}

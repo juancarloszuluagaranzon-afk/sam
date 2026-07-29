@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadEquiposEstado, executionDateKey, loadKardexReporte, loadBodegas, type EquipoEstado } from '../services/samApi'
 import { fmtCantidad } from '../lib/cantidad'
+import { fmtFechaHora } from '../lib/fechas'
 import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../components/Charts'
 import type { Assignment, InsumoKardex, Bodega } from '../domain/sam'
 
@@ -454,7 +455,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
                         </div>
                         <div className="dash-detalle__side">
                           <strong>{fmtCantidad(k.cantidad, info?.unidad)} {info?.unidad ?? ''}</strong>
-                          <small>{new Date(k.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</small>
+                          <small>{fmtFechaHora(k.createdAt)}</small>
                         </div>
                       </div>
                     )

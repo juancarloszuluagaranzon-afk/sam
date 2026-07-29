@@ -38,6 +38,13 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
      En insumos sale de la columna `insumos.frecuente` (se marca desde Inventario).
    - Al crear cualquier formulario nuevo: **revisar cada selector antes de dar por
      terminado**. Esta regla aplica a todo lo que se construya de aquí en adelante.
+5c. **🔴 Todo registro de entrega lleva FECHA Y HORA.** Nunca solo el día. Con la
+   hora se mide el tiempo de respuesta al operario y se reconstruye la ruta del
+   supervisor; sin ella solo se sabe "fue el martes". Usar **`lib/fechas.ts`**
+   (`fmtFechaHora`, `fmtLapso`, `minutosEntre`) — zona fija `America/Bogota` y
+   24 h, para que la hora no dependa del reloj del equipo de quien mira. Aplica
+   a pantallas Y a los Excel. Al crear cualquier listado de movimientos, entregas
+   o despachos: **revisar que la hora esté antes de darlo por terminado.**
 6. **Área ejecutada**: el fallback `executedArea>0?executedArea:area` aplica **SOLO** a
    estados `COMPLETADA`/`PARCIAL`. Una labor no cerrada muestra 0.00. Es dinero real.
 7. **Al terminar un deploy, reportar la versión** (`git rev-parse --short HEAD`).

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadBodegas, loadStockBodega, loadKardexReporte } from '../services/samApi'
 import { fmtCantidad } from '../lib/cantidad'
+import { fmtFechaHora, fmtLapso } from '../lib/fechas'
 import type { Bodega, StockBodega, InsumoKardex } from '../domain/sam'
 
 /**
@@ -114,6 +115,13 @@ export function InsumosResumenTab() {
           entregado.set(m.insumoId, (entregado.get(m.insumoId) ?? 0) - m.cantidad)
         }
       }
+      // Jornada: a qué hora arrancó y a qué hora hizo la última entrega. Es lo
+      // que deja leer la ruta del día y el tiempo que estuvo en calle.
+      const horas = suyos
+        .filter((m) => m.tipo === 'SALIDA' && m.equipoCodigo)
+        .map((m) => m.createdAt)
+        .filter(Boolean)
+        .sort()
       const enCarro = stock.filter((s) => s.bodegaId === b.id && s.stock !== 0)
       // Máquinas atendidas (para saber a cuántos tractores le movió).
       const maquinas = new Set(suyos.filter((m) => m.tipo === 'SALIDA' && m.equipoCodigo).map((m) => m.equipoCodigo!))
@@ -122,6 +130,8 @@ export function InsumosResumenTab() {
         responsable: b.responsableId ? (nombreUsuario.get(b.responsableId) ?? b.responsableId) : 'Sin responsable',
         entregas,
         maquinas: maquinas.size,
+        primera: horas[0] ?? '',
+        ultima: horas[horas.length - 1] ?? '',
         entregado: Array.from(entregado.entries())
           .filter(([, v]) => Math.abs(v) > 0.001)
           .map(([id, v]) => ({ id, total: v, info: insumoInfo.get(id) }))
@@ -161,8 +171,27 @@ export function InsumosResumenTab() {
           })
         }
       }
+      // Hoja 2 — cada entrega con su HORA: sirve para medir tiempos de
+      // respuesta y reconstruir la ruta del día, no solo el total del periodo.
+      const detalle: Record<string, string | number>[] = []
+      for (const s of porSatelite) {
+        for (const m of s.detalle) {
+          const info = insumoInfo.get(m.insumoId)
+          detalle.push({
+            'Fecha y hora': fmtFechaHora(m.createdAt),
+            'Supervisor': s.responsable,
+            'Bodega': s.bodega.nombre,
+            'Insumo': info?.nombre ?? m.insumoId,
+            'Cantidad': Number(m.cantidad.toFixed(2)),
+            'Unidad': info?.unidad ?? '',
+            'Máquina': m.equipoCodigo ? (equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo) : '',
+            'Concepto': m.motivo ?? '',
+          })
+        }
+      }
       const wb = utils.book_new()
       utils.book_append_sheet(wb, utils.json_to_sheet(filas), 'Entregado por supervisor')
+      utils.book_append_sheet(wb, utils.json_to_sheet(detalle), 'Entregas con hora')
       writeFile(wb, `insumos-por-supervisor-${desde}-a-${hasta}.xlsx`)
       setInfo('Reporte descargado.')
     } catch {
@@ -223,6 +252,14 @@ export function InsumosResumenTab() {
                       {s.entregas} entrega{s.entregas === 1 ? '' : 's'}
                       {s.maquinas > 0 && ` · ${s.maquinas} máquina${s.maquinas === 1 ? '' : 's'}`}
                     </span>
+                    {/* La jornada: de qué hora a qué hora estuvo entregando. Con esto
+                        el dueño lee la ruta del día sin abrir el detalle. */}
+                    {s.primera && (
+                      <span className="subtle-copy">
+                        🕐 {fmtFechaHora(s.primera)}
+                        {s.ultima !== s.primera && <> → {fmtFechaHora(s.ultima)} · {fmtLapso(s.primera, s.ultima)} en ruta</>}
+                      </span>
+                    )}
                   </div>
                   <div className="inv-row__actions">
                     <button type="button" className="inline-button" onClick={() => setAbierta(open ? '' : s.bodega.id)} aria-expanded={open}>
@@ -269,7 +306,7 @@ export function InsumosResumenTab() {
                           return (
                             <div key={m.id} className="bod-stock__row">
                               <span className="bod-stock__nom">
-                                {new Date(m.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}
+                                {fmtFechaHora(m.createdAt)}
                                 {' · '}{info?.nombre ?? ''}
                                 {m.equipoCodigo ? ` → 🚜 ${equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo}` : ''}
                               </span>

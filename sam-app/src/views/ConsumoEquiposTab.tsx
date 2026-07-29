@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadKardexReporte, loadCombustibleExterno } from '../services/samApi'
 import type { InsumoKardex, CombustibleExterno } from '../domain/sam'
+import { fmtFechaHoraLarga as fmtFecha } from '../lib/fechas'
 import { fmtCantidad, redondear2 } from '../lib/cantidad'
 
 /**
@@ -20,10 +21,6 @@ function primerDiaMes(): string {
 function hoyISO(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-function fmtFecha(iso: string): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
 export function ConsumoEquiposTab() {
@@ -151,7 +148,7 @@ export function ConsumoEquiposTab() {
       for (const t of tanqueos) {
         const info = t.insumoId ? insumoInfo.get(t.insumoId) : undefined
         detalle.push({
-          'Fecha': t.fecha,
+          'Fecha': fmtFecha(t.createdAt) || t.fecha,
           'Insumo': info?.nombre ?? 'COMBUSTIBLE',
           'Unidad': info?.unidad ?? 'galón',
           'Tipo': 'TANQUEO',

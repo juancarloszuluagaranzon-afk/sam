@@ -5,6 +5,7 @@ import {
   registrarMovimientoInsumo, ajustarStockInsumo, loadKardex,
 } from '../services/samApi'
 import type { Insumo, InsumoCategoria, InsumoKardex } from '../domain/sam'
+import { fmtFechaHora as fmtFecha } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 
 /**
@@ -15,11 +16,6 @@ import { fmtCantidad } from '../lib/cantidad'
  * quedan en el kardex, y consultar el kardex (movimientos) de cada insumo.
  * Requiere la migración 20260622120000_insumos.
  */
-function fmtFecha(iso: string): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
 
 export function InsumosInventarioTab() {
   const { insumos, setInsumos, users, session, sortedEquipment, busy, setBusy, setError, setInfo } = useAppData()

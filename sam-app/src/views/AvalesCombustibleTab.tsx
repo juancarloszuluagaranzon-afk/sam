@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadCombustibleExterno, revisarCombustible } from '../services/samApi'
 import { DESTINO_LABEL, type CombustibleEstado, type CombustibleExterno } from '../domain/sam'
 import { fmtCantidad } from '../lib/cantidad'
+import { fmtDia, fmtFechaHora } from '../lib/fechas'
 
 /**
  * Avales de combustible — la bandeja del analista de insumos y materiales.
@@ -13,11 +14,6 @@ import { fmtCantidad } from '../lib/cantidad'
  * es validar que lo registrado corresponde. Si rechaza, el stock se reversa.
  */
 
-function fmtFecha(iso: string): string {
-  if (!iso) return ''
-  const d = iso.length <= 10 ? new Date(`${iso}T12:00:00`) : new Date(iso)
-  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: '2-digit' })
-}
 
 const FILTROS: { key: CombustibleEstado; label: string }[] = [
   { key: 'PENDIENTE', label: 'Por avalar' },
@@ -119,8 +115,9 @@ export function AvalesCombustibleTab() {
                       <span className="aval-tag aval-tag--origen">{e.origen === 'SEDE' ? '🏭 Sede' : '⛽ Estación'}</span>
                     </div>
                     <span className="subtle-copy">
-                      {fmtFecha(e.fecha)} · {e.registradoNombre ?? 'sin nombre'}
+                      {fmtDia(`${e.fecha}T12:00:00`)} · {e.registradoNombre ?? 'sin nombre'}
                       {ins ? ` · ${ins.nombre}` : ''}
+                      {' · '}<span className="subtle-copy">registrado {fmtFechaHora(e.createdAt)}</span>
                     </span>
                     <span className="subtle-copy">
                       {e.destino === 'MAQUINA' && e.equipoCodigo ? `Máquina ${e.equipoCodigo} · horómetro ${e.horometro ?? '—'}` : null}
@@ -132,6 +129,7 @@ export function AvalesCombustibleTab() {
                     {e.estado !== 'PENDIENTE' && (
                       <span className="subtle-copy">
                         {e.estado === 'APROBADO' ? '✔ Avalado' : '✕ Rechazado'} por {e.revisadoNombre ?? '—'}
+                        {e.revisadoEn ? ` · ${fmtFechaHora(e.revisadoEn)}` : ''}
                         {e.revisionNota ? ` · ${e.revisionNota}` : ''}
                       </span>
                     )}

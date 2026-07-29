@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
+import { fmtFechaHora as fmtFecha } from '../lib/fechas'
 import { fmtCantidad, stepDe } from '../lib/cantidad'
 
 /**
@@ -18,10 +19,7 @@ import { fmtCantidad, stepDe } from '../lib/cantidad'
  * lo que entra a su carro entra por un traslado avalado o por un tanqueo avalado,
  * y así siempre se sabe de dónde salió cada galón.
  */
-function fmtFecha(iso: string): string {
-  if (!iso) return ''
-  return new Date(iso).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-}
+
 
 export function MiBodegaTab() {
   const { session, insumos, busy, setBusy, setError, setInfo } = useAppData()

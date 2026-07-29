@@ -6,7 +6,8 @@ description: >
   cuando toques insumos, kardex, solicitudes, despachos, el rol "supervisor de
   insumos", o el consumo por equipo. También si el usuario menciona "insumos",
   "combustible", "diésel", "inventario", "kardex", "solicitud", "despacho",
-  "entrega", "bodega" o "cargar al tractor".
+  "entrega", "bodega", "bodega satelite", "traslado", "estacion de servicio",
+  "tanqueo", "tirilla" o "cargar al tractor".
 ---
 
 # Módulo Insumos y Combustible — SAM
@@ -14,6 +15,56 @@ description: >
 Segundo módulo de la app. Ciclo completo: **catálogo/inventario → el operario
 solicita → bandeja del supervisor → programar → entregar con evidencia →
 descuenta inventario (kardex SALIDA) → costeo por máquina**.
+
+## 🏢 BODEGAS: principal + satélites (28-jul-2026)
+
+El inventario **NO es una sola cifra**: es **stock POR BODEGA** (`insumos_stock`).
+`insumos.stock` quedó como TOTAL consolidado (lo recalcula `refrescarTotalInsumo`).
+
+- **PRINCIPAL** — fija, compra y almacena. La manejan **owner/administración**.
+- **SATÉLITE** — el **vehículo de cada supervisor de insumos** (Genaro, Eduvin).
+  De ahí consumen los operarios. `bodegas.responsable_id` = su usuario.
+
+**Cómo se llena un satélite (2 caminos, ambos terminan sumando a su bodega):**
+1. **Traslado** desde la principal → queda `EN_TRANSITO`; **descuenta ya** de la
+   principal y **NO suma al satélite hasta que su responsable confirme** (aval).
+   Si recibió menos, la diferencia **regresa a la principal**. `crearTraslado` /
+   `confirmarTraslado`.
+2. **Carga en estación de servicio** (`combustible_externo`, `destino='CARRO'`):
+   llena el **TANQUE DE DISTRIBUCIÓN** del vehículo → ENTRA a su bodega. ⚠️ **NO
+   es tanquear el carro para andar** — ese gasto va por fuera del app (decisión
+   del dueño). Exige **foto de la tirilla**, sin horómetro.
+
+**Tanqueo del OPERARIO en la bomba** (`destino='MAQUINA'`): **no toca inventario**
+(nunca pasó por bodega) pero el consumo **sí se carga a la máquina** → exige
+**horómetro** + tirilla. El reporte de consumo suma ambas fuentes con columna
+`Origen` (Bodega / Estación).
+
+Despachos y entregas directas **salen del satélite del supervisor**
+(`bodegaDeResponsable`), validando su stock — no del consolidado.
+`insumos_solicitudes.bodega_id` guarda de dónde salió, para que una devolución
+por diferencia regrese a la **misma** bodega.
+
+Vistas: `BodegasTab` (admin, acordeón: cada bodega despliega su stock debajo),
+`MiBodegaTab` (supervisor: su carro, recibir traslados, cargar en estación),
+`InsumosResumenTab` (dueño: entregas por supervisor, ordenado por actividad).
+
+## Cantidades: 2 decimales, y enteros donde aplica
+
+`src/lib/cantidad.ts` es la fuente única:
+- `redondear2` **al calcular saldos** (raíz del `1020.4100000000001`; sin esto la
+  basura de punto flotante se guarda en la BD).
+- `fmtCantidad(n, unidad)` al mostrar: unidades **enteras** (unidad, gancho,
+  tornillo, arandela, tuerca, caja, bulto, par…) **sin decimales**; medidas
+  (galón, litro, kg, docena) hasta 2. `esUnidadEntera` decide por el nombre.
+- `stepDe(unidad)` para los inputs (step=1 en enteras) y `normalizarCantidad`
+  al guardar.
+
+## Insumos frecuentes
+
+`insumos.frecuente` → los de uso diario salen de entrada en los selectores; el
+resto queda tras **"⋯ Otros (N)"** (`SearchableSelect`). Al escribir busca en
+TODOS. Se marca en Inventario → ⋯ → "⭐ Marcar como frecuente".
 
 ## Rol nuevo: `supervisor_insumos`
 - Etiqueta "Supervisor de insumos". ⚠️ `app_usuarios.rol` **SÍ tiene CHECK

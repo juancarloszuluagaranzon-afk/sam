@@ -5,7 +5,7 @@ metadata:
   node_type: memory
   type: project
   originSessionId: 28aa41c3-1db2-4e9f-bbd1-5f104a70108e
-  modified: 2026-07-28T16:41:41.050Z
+  modified: 2026-07-29T04:44:21.244Z
 ---
 
 Segundo módulo de SAM (arrancado 21-jun-2026): **gestión de combustible e insumos**. Plan por fases acordado con el usuario:
@@ -24,6 +24,15 @@ Segundo módulo de SAM (arrancado 21-jun-2026): **gestión de combustible e insu
    - **Combustible de bomba externa** (`combustible_externo`): `destino='CARRO'` → el supervisor tanquea su vehículo-tanque, **ENTRA a su bodega** (sin horómetro); `destino='MAQUINA'` → el operario tanquea directo, **NO toca inventario** pero el costo cae a la máquina (**exige horómetro**). Ambos con **foto de tirilla**.
    - **UI**: `BodegasTab` (admin: crear satélites, ver stock por bodega, **Surtir**, ver en tránsito) en Más→🏢 Bodegas; `MiBodegaTab` (supervisor: su stock, **recibir traslados**, **⛽ Tanqueé el carro**) como pestaña "🚚 Mi bodega" en InsumosModule; botón **"⛽ Tanqueé en bomba"** en OperatorView. Los despachos (solicitud y directa) validan y descuentan del **satélite del supervisor** (`bodegaDeResponsable`), no del consolidado.
    - ⚠️ PENDIENTE de Iván: correr la migración; crear las 2 bodegas satélite asignando a Genaro y al otro supervisor; el stock existente quedó todo en PRINCIPAL.
+
+7. **Ajustes finos (28-jul, commits `09b1522`→`a7aa4ea`):**
+   - **Cantidades**: `src/lib/cantidad.ts`. `redondear2` al calcular saldos (raíz del `1020.4100000000001`) + `fmtCantidad(n, unidad)`: **unidades enteras** (unidad/gancho/tornillo/arandela/tuerca/caja/bulto/par/kit…) **sin decimales** y `step=1` en inputs; medidas (galón/litro/kg/docena) con 2 decimales. `esUnidadEntera` decide por el nombre de la unidad.
+   - **Insumos frecuentes**: `insumos.frecuente` (migración `20260728130000`), se marca en Inventario → ⋯ → ⭐. En los selectores salen solo esos + **"⋯ Otros (N)"**; al escribir busca en todos.
+   - **Selectores con búsqueda en TODO el módulo** → ver [[feedback_selectores_con_busqueda]] (regla permanente).
+   - **Vista del dueño** `InsumosResumenTab` (pestaña Insumos en su barra): entregas por supervisor (Genaro/Eduvin) con lo entregado, lo que le queda en el carro, detalle por máquina y Excel. **Ordenada por actividad** (quien más entregó primero). Filtros de periodo iguales a Realizadas con **HOY por defecto**.
+   - **Barra del dueño PERSONALIZABLE**: `src/lib/navPrefs.ts` + modal "⚙ Personalizar barra" en Más. Elige hasta **4** accesos de `NAV_OPCIONES`; el resto va a Más. Se guarda por **usuario+equipo** (localStorage `sam:nav-barra:<userId>`), así soporte impersonando no le pisa la suya. Default: labores/realizadas/equipos/insumosresumen.
+   - **Eliminada la sección Validación** (pedido del usuario). ⚠️ Se borró `ValidationTab.tsx` y sus referencias, pero **NO el CSS `.validacion-*`**: lo reutilizan Empresas, Facturación, Ingenios, Labores, Zonas, Maestros y Terceros.
+   - **Limpieza de arranque (28-jul)**: se borraron todos los movimientos/pedidos/traslados de insumos y se sembró **CARRO GENARO = 120 ganchos + 126 galones**. Respaldos en la BD: tablas `respaldo_*_28jul`. Diego (analista) ajusta la principal con el conteo físico.
 
 **Contexto de negocio (22-jul):** el supervisor de insumos se llama **Genaro**. El usuario prepara una PRESENTACIÓN a gerencia (primer adelanto de este mes). Artefacto de flujo operativo publicado (documento visual presentable). El flujo se validó como sólido; estas 4 mejoras eran el "primer adelanto" pedido.
 

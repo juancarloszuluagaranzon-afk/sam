@@ -59,7 +59,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Labores / asignaciones | `views/SupervisorView`, `OperatorView` | Núcleo: asignar, tomar en campo, cerrar, aprobar, facturar |
 | Planilla | `views/PlanillaTab` | Cuadrícula quincenal + novedades (V, T, F, OV, MT, IN, SP, LL…) |
 | Maestro de suertes | `views/MaestrosTab` | Áreas oficiales; ⚠️ hay códigos de hacienda compartidos |
-| Insumos y combustible | `views/Insumos*`, `BandejaInsumosTab` | Inventario/kardex, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
+| Insumos y combustible | `views/Insumos*`, `Bodegas*`, `MiBodegaTab` | **Stock por BODEGA** (principal + satélites = el carro de cada supervisor), traslados con aval, carga en estación, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
 | Mapas offline | `views/MapaView`, `MapasTab` | Visor tipo Avenza (capas, medir, marcadores) + tiles de FieldMaps |
 | Flota / Escolta | `views/Flota*` | Formato CDA-F-68, rol `conductor`, firma táctil + foto |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
@@ -68,6 +68,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 - **Fotos**: toda subida pasa por `lib/imagenLigera.ts` (comprime a ~20–80 KB). No
   subir imágenes crudas nunca — llenan el servidor.
+- **Cantidades de insumos**: `lib/cantidad.ts`. Redondear **al calcular saldos**
+  (sin eso el punto flotante guarda `1020.4100000000001`), y mostrar con
+  `fmtCantidad(n, unidad)` — las unidades enteras (ganchos, tornillos) van **sin
+  decimales**.
+- **Barra inferior del dueño**: la arma él mismo (Más → ⚙ Personalizar barra,
+  hasta 4 accesos, `lib/navPrefs.ts`, guardado por usuario en el equipo). Al
+  agregar una sección nueva que valga la pena fijar, súmala a `NAV_OPCIONES`.
 - **Mapas**: los tiles los genera **FieldMaps** (otro proyecto del usuario, VPS aparte).
   ASM solo guarda la config en la tabla `mapas`. Ver `.agent/skills/managing-mapas/`.
 - **Roles**: `owner`, `administracion`, `supervisor`, `operador`, `supervisor_insumos`,

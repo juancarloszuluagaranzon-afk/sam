@@ -64,19 +64,18 @@ export function BodegasTab() {
       setBodegas(bs)
       setStock(st)
       setTraslados(trs)
-      if (!verBodegaId && bs.length) setVerBodegaId(bs.find((b) => b.tipo === 'PRINCIPAL')?.id ?? bs[0].id)
+      // Arranca todo colapsado: el stock se ve al desplegar cada bodega.
     } finally { setCargando(false) }
   }
   useEffect(() => { void refresh() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
 
-  /** Stock de la bodega que se está viendo, con nombre de insumo. */
-  const stockVista = useMemo(() => {
-    return stock
-      .filter((s) => s.bodegaId === verBodegaId && s.stock !== 0)
+  /** Stock de UNA bodega (con el insumo resuelto), para el acordeón. */
+  const stockDeBodega = (bodegaId: string) =>
+    stock
+      .filter((s) => s.bodegaId === bodegaId && s.stock !== 0)
       .map((s) => ({ ...s, insumo: insumos.find((i) => i.id === s.insumoId) }))
       .filter((s) => s.insumo)
       .sort((a, b) => (a.insumo!.nombre).localeCompare(b.insumo!.nombre, 'es', { sensitivity: 'base' }))
-  }, [stock, verBodegaId, insumos])
 
   const stockDe = (insumoId: string, bodegaId: string) =>
     stock.find((s) => s.insumoId === insumoId && s.bodegaId === bodegaId)?.stock ?? 0
@@ -158,35 +157,66 @@ export function BodegasTab() {
 
       {cargando ? <p className="muted-text">Cargando…</p> : (
         <>
-          {/* Bodegas */}
+          {/* Bodegas — cada una despliega SU stock justo debajo (acordeón) */}
           <div className="inv-list">
             {bodegas.map((b) => {
               const items = stock.filter((s) => s.bodegaId === b.id && s.stock > 0).length
+              const abierta = verBodegaId === b.id
+              const suStock = stockDeBodega(b.id)
               return (
-                <div key={b.id} className={`inv-row${b.activo ? '' : ' inv-row--off'}`}>
-                  <div className="inv-row__main">
-                    <strong>{b.tipo === 'PRINCIPAL' ? '🏢' : '🚚'} {b.nombre}</strong>
-                    <span className={`inv-cat ${b.tipo === 'PRINCIPAL' ? 'inv-cat--mat' : 'inv-cat--comb'}`}>
-                      {b.tipo === 'PRINCIPAL' ? 'Principal' : 'Satélite'}
-                    </span>
-                    {b.responsableId && <span className="subtle-copy">{nombreUsuario.get(b.responsableId) ?? b.responsableId}</span>}
-                    {b.vehiculo && <span className="subtle-copy">🚙 {b.vehiculo}</span>}
-                    {!b.activo && <span className="inv-cat inv-cat--off">Inactiva</span>}
-                  </div>
-                  <div className="inv-stock" title="Insumos con existencia">{items} <small>ítems</small></div>
-                  <div className="inv-row__actions">
-                    <button type="button" className="inline-button" onClick={() => setVerBodegaId(b.id)} disabled={busy}>Ver stock</button>
-                    {b.tipo === 'SATELITE' && (
-                      <button type="button" className="inline-button inv-entrada-btn" onClick={() => abrirSurtir(b)} disabled={busy || !principal}>
-                        📦 Surtir
+                <div key={b.id} className="bod-item">
+                  <div className={`inv-row${b.activo ? '' : ' inv-row--off'}${abierta ? ' bod-row--abierta' : ''}`}>
+                    <div className="inv-row__main">
+                      <strong>{b.tipo === 'PRINCIPAL' ? '🏢' : '🚚'} {b.nombre}</strong>
+                      <span className={`inv-cat ${b.tipo === 'PRINCIPAL' ? 'inv-cat--mat' : 'inv-cat--comb'}`}>
+                        {b.tipo === 'PRINCIPAL' ? 'Principal' : 'Satélite'}
+                      </span>
+                      {b.responsableId && <span className="subtle-copy">{nombreUsuario.get(b.responsableId) ?? b.responsableId}</span>}
+                      {b.vehiculo && <span className="subtle-copy">🚙 {b.vehiculo}</span>}
+                      {!b.activo && <span className="inv-cat inv-cat--off">Inactiva</span>}
+                    </div>
+                    <div className="inv-stock" title="Insumos con existencia">{items} <small>ítems</small></div>
+                    <div className="inv-row__actions">
+                      <button
+                        type="button"
+                        className="inline-button"
+                        onClick={() => setVerBodegaId(abierta ? '' : b.id)}
+                        disabled={busy}
+                        aria-expanded={abierta}
+                      >
+                        {abierta ? 'Ocultar ▴' : 'Ver stock ▾'}
                       </button>
-                    )}
-                    {b.tipo === 'SATELITE' && (
-                      <button type="button" className="inline-button" onClick={() => void toggleActivo(b)} disabled={busy}>
-                        {b.activo ? 'Desactivar' : 'Activar'}
-                      </button>
-                    )}
+                      {b.tipo === 'SATELITE' && (
+                        <button type="button" className="inline-button inv-entrada-btn" onClick={() => abrirSurtir(b)} disabled={busy || !principal}>
+                          📦 Surtir
+                        </button>
+                      )}
+                      {b.tipo === 'SATELITE' && (
+                        <button type="button" className="inline-button" onClick={() => void toggleActivo(b)} disabled={busy}>
+                          {b.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {abierta && (
+                    <div className="bod-stock">
+                      {suStock.length === 0 ? (
+                        <p className="muted-text" style={{ margin: 0 }}>Sin existencias en esta bodega.</p>
+                      ) : (
+                        suStock.map((s) => (
+                          <div key={s.insumoId} className="bod-stock__row">
+                            <span className="bod-stock__nom">
+                              {s.insumo!.categoria === 'COMBUSTIBLE' ? '⛽' : '🔩'} {s.insumo!.nombre}
+                            </span>
+                            <strong className="bod-stock__val">
+                              {fmtCantidad(s.stock, s.insumo!.unidad)} <small>{s.insumo!.unidad}</small>
+                            </strong>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -201,7 +231,7 @@ export function BodegasTab() {
                   <div className="bod-aviso__info">
                     <strong>{bodegas.find((b) => b.id === t.destinoId)?.nombre ?? 'Satélite'}</strong>
                     <span className="subtle-copy">
-                      {t.items.map((i) => `${i.cantidad} ${i.unidad} ${i.insumoNombre}`).join(', ')} · {fmtFecha(t.createdAt)}
+                      {t.items.map((i) => `${fmtCantidad(i.cantidad, i.unidad)} ${i.unidad} ${i.insumoNombre}`).join(', ')} · {fmtFecha(t.createdAt)}
                     </span>
                   </div>
                 </div>
@@ -209,29 +239,6 @@ export function BodegasTab() {
             </div>
           )}
 
-          {/* Stock de la bodega seleccionada */}
-          <div className="panel-title split" style={{ marginTop: 18 }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>
-              Stock · {bodegas.find((b) => b.id === verBodegaId)?.nombre ?? '—'}
-            </h3>
-          </div>
-          {stockVista.length === 0 ? (
-            <p className="muted-text">Sin existencias en esta bodega.</p>
-          ) : (
-            <div className="inv-list">
-              {stockVista.map((s) => (
-                <div key={`${s.insumoId}-${s.bodegaId}`} className="inv-row">
-                  <div className="inv-row__main">
-                    <strong>{s.insumo!.nombre}</strong>
-                    <span className={`inv-cat ${s.insumo!.categoria === 'COMBUSTIBLE' ? 'inv-cat--comb' : 'inv-cat--mat'}`}>
-                      {s.insumo!.categoria === 'COMBUSTIBLE' ? '⛽' : '🔩'}
-                    </span>
-                  </div>
-                  <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{fmtCantidad(s.stock, s.insumo!.unidad)} <small>{s.insumo!.unidad}</small></div>
-                </div>
-              ))}
-            </div>
-          )}
         </>
       )}
 

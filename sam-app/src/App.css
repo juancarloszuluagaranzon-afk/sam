@@ -6073,6 +6073,32 @@ td.planilla-revisada {
    esto el botón se va a una línea completa incluso en pantallas anchas. */
 .bod-head__btn { flex: 0 0 auto; width: auto; white-space: nowrap; }
 
+/* Acordeón de bodegas: el stock se despliega JUSTO debajo de su bodega. */
+.bod-item { display: flex; flex-direction: column; }
+.bod-row--abierta { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.bod-stock {
+  background: var(--color-bg-soft, #f2f5f0);
+  border: 1px solid var(--color-border, rgba(0, 0, 0, 0.1));
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  padding: 10px 16px 12px;
+}
+.bod-stock__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+.bod-stock__row:first-child { border-top: none; }
+.bod-stock__nom { font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; }
+.bod-stock__val { font-size: 0.95rem; white-space: nowrap; color: #166534; }
+.bod-stock__val small { font-weight: 600; opacity: 0.75; }
+:root[data-theme="dark"] .bod-stock { background: rgba(255, 255, 255, 0.04); }
+:root[data-theme="dark"] .bod-stock__row { border-color: rgba(255, 255, 255, 0.08); }
+:root[data-theme="dark"] .bod-stock__val { color: #7fd6a0; }
+
 .bod-aviso {
   border: 1px solid color-mix(in srgb, var(--color-brand, #1a6b3a) 30%, transparent);
   background: var(--color-bg-soft, #eef6ec);

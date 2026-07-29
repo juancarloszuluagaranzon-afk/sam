@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia, bodegaDeResponsable, bodegaPrincipal, loadStockBodega } from '../services/samApi'
 import type { Bodega, StockBodega } from '../domain/sam'
+import { SearchableSelect } from '../components/SearchableSelect'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
 /**
@@ -479,15 +480,18 @@ export function BandejaInsumosTab() {
             </label>
             <label style={{ marginTop: 10 }}>
               Máquina (tractor) <span style={{ color: '#b3261e' }}>*</span>
-              <select value={entregaEquipo} onChange={(e) => setEntregaEquipo(e.target.value)} disabled={busy}>
-                <option value="">Seleccionar máquina…</option>
-                {entregaEquipo && !sortedEquipment.some((eq) => eq.code === entregaEquipo) && (
-                  <option value={entregaEquipo}>{equipoNombre.get(entregaEquipo) ?? entregaEquipo}</option>
-                )}
-                {sortedEquipment.map((eq) => (
-                  <option key={eq.code} value={eq.code}>{eq.name}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={entregaEquipo}
+                onChange={setEntregaEquipo}
+                options={[
+                  ...(entregaEquipo && !sortedEquipment.some((eq) => eq.code === entregaEquipo)
+                    ? [{ value: entregaEquipo, label: equipoNombre.get(entregaEquipo) ?? entregaEquipo }]
+                    : []),
+                  ...sortedEquipment.map((eq) => ({ value: eq.code, label: eq.name })),
+                ]}
+                placeholder="Buscar máquina…"
+                disabled={busy}
+              />
               <span className="field-hint" style={{ fontSize: '0.76rem' }}>Por defecto el equipo del operario. El material se carga a esta máquina.</span>
             </label>
             <div style={{ marginTop: 10 }}>
@@ -524,10 +528,13 @@ export function BandejaInsumosTab() {
 
             <label>
               Entregar a
-              <select value={dirOperario} onChange={(e) => onDirOperario(e.target.value)} disabled={busy}>
-                <option value="">Elegir operario…</option>
-                {operarios.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={dirOperario}
+                onChange={onDirOperario}
+                options={operarios.map((u) => ({ value: u.id, label: u.name }))}
+                placeholder="Buscar operario…"
+                disabled={busy}
+              />
             </label>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
@@ -537,14 +544,20 @@ export function BandejaInsumosTab() {
                 const excede = Number(row.cantidad) > stock
                 return (
                   <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <select
-                      value={row.insumoId}
-                      onChange={(e) => setDirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: e.target.value } : r)))}
-                      disabled={busy} style={{ flex: 1, minWidth: 0 }}
-                    >
-                      <option value="">Insumo…</option>
-                      {activeInsumos.map((i) => <option key={i.id} value={i.id}>{i.nombre} ({i.unidad}) · {stockMio(i.id)}</option>)}
-                    </select>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <SearchableSelect
+                        value={row.insumoId}
+                        onChange={(v) => setDirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: v } : r)))}
+                        options={activeInsumos.map((i) => ({
+                          value: i.id,
+                          label: `${i.nombre} (${i.unidad})`,
+                          rightLabel: String(stockMio(i.id)),
+                          frecuente: i.frecuente,
+                        }))}
+                        placeholder="Buscar insumo…"
+                        disabled={busy}
+                      />
+                    </div>
                     <input
                       type="number" min={0} step="any" placeholder="Cant."
                       value={row.cantidad}
@@ -570,13 +583,18 @@ export function BandejaInsumosTab() {
             </label>
             <label style={{ marginTop: 10 }}>
               Máquina (tractor) <span style={{ color: '#b3261e' }}>*</span>
-              <select value={dirEquipo} onChange={(e) => setDirEquipo(e.target.value)} disabled={busy}>
-                <option value="">Seleccionar máquina…</option>
-                {dirEquipo && !sortedEquipment.some((eq) => eq.code === dirEquipo) && (
-                  <option value={dirEquipo}>{equipoNombre.get(dirEquipo) ?? dirEquipo}</option>
-                )}
-                {sortedEquipment.map((eq) => <option key={eq.code} value={eq.code}>{eq.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={dirEquipo}
+                onChange={setDirEquipo}
+                options={[
+                  ...(dirEquipo && !sortedEquipment.some((eq) => eq.code === dirEquipo)
+                    ? [{ value: dirEquipo, label: equipoNombre.get(dirEquipo) ?? dirEquipo }]
+                    : []),
+                  ...sortedEquipment.map((eq) => ({ value: eq.code, label: eq.name })),
+                ]}
+                placeholder="Buscar máquina…"
+                disabled={busy}
+              />
             </label>
             <label style={{ marginTop: 10 }}>
               Nota <span className="field-optional">(opcional)</span>

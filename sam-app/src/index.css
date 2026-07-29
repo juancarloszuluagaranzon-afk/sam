@@ -171,6 +171,15 @@ a {
   border-bottom: 1px solid var(--color-border);
   z-index: 1;
 }
+/* "⋯ Otros (N)": despliega los que NO son de uso frecuente. Va al final,
+   separado, para que la lista del día a día se vea corta y limpia. */
+.searchable-select-otros {
+  border-top: 1px solid var(--color-border);
+  color: var(--color-brand);
+  font-weight: 600;
+  justify-content: center;
+  font-size: 0.88rem;
+}
 .searchable-select-empty {
   color: var(--color-ink-light);
   cursor: default;

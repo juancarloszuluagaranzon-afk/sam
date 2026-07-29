@@ -38,4 +38,5 @@
 - [Reportar versión vigente](feedback_report_version.md) — al final de cada implementación/deploy, indicar siempre qué `__APP_VERSION__` quedó activa
 - [Seguridad NO es prioridad ahora](feedback_security_low_priority.md) — no sacar el tema de claves filtradas sin que el usuario lo pida
 - [Área siempre como ejecutada / asignada](feedback_area_ejecutada_asignada.md) — en toda tarjeta de labor mostrar `ejec / asignada` separadas por `/`, nunca solo ejecutada
+- [🔴 Selectores con búsqueda SIEMPRE](feedback_selectores_con_busqueda.md) — nunca `<select>` plano en listas largas: usar `SearchableSelect`; + insumos frecuentes con "⋯ Otros"
 - [Probar programadas Y campo](feedback_test_programadas_campo.md) — todo cambio en labores debe verificarse en ASIGNADA (programada) y LIBRE (tomada en campo); + regla: migración de columna nueva ANTES del deploy (rompe toda edición si no)

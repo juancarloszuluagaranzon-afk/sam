@@ -1309,6 +1309,7 @@ function mapInsumo(row: Record<string, unknown>): Insumo {
     unidad: String(row.unidad ?? 'unidad'),
     stock: Number(row.stock ?? 0),
     stockMinimo: Number(row.stock_minimo ?? 0),
+    frecuente: Boolean(row.frecuente ?? false),
     activo: row.activo == null ? true : Boolean(row.activo),
   }
 }
@@ -1342,7 +1343,7 @@ export async function createInsumo(
 
 export async function updateInsumo(
   id: string,
-  patch: { nombre?: string; categoria?: InsumoCategoria; unidad?: string; activo?: boolean; stockMinimo?: number },
+  patch: { nombre?: string; categoria?: InsumoCategoria; unidad?: string; activo?: boolean; stockMinimo?: number; frecuente?: boolean },
 ): Promise<Insumo> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
@@ -1350,6 +1351,7 @@ export async function updateInsumo(
   if (patch.unidad !== undefined) payload.unidad = patch.unidad.trim() || 'unidad'
   if (patch.activo !== undefined) payload.activo = patch.activo
   if (patch.stockMinimo !== undefined) payload.stock_minimo = patch.stockMinimo
+  if (patch.frecuente !== undefined) payload.frecuente = patch.frecuente
   const { data, error } = await supabase
     .from('insumos')
     .update(payload)

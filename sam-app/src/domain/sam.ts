@@ -337,6 +337,9 @@ export interface Insumo {
   stock: number
   // Umbral de alerta de stock bajo (0 = sin alerta).
   stockMinimo: number
+  // De uso frecuente: aparece de entrada en los selectores; el resto queda
+  // detrás de "⋯ Otros" para no saturar la lista.
+  frecuente: boolean
   activo: boolean
 }
 

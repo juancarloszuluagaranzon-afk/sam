@@ -118,6 +118,20 @@ export function InsumosInventarioTab() {
     } finally { setBusy(false) }
   }
 
+  // Frecuentes: los de uso diario. Aparecen de entrada en los selectores; el
+  // resto queda detrás de "⋯ Otros" para no saturar visualmente.
+  async function toggleFrecuente(i: Insumo) {
+    setBusy(true); setError('')
+    try {
+      const upd = await updateInsumo(i.id, { frecuente: !i.frecuente })
+      setInsumos((prev) => prev.map((x) => (x.id === upd.id ? upd : x)))
+      setInfo(upd.frecuente ? `"${upd.nombre}" ahora aparece de entrada en las listas.` : `"${upd.nombre}" pasó a "Otros".`)
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo cambiar. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
+  }
+
   async function toggleActivo(i: Insumo) {
     setBusy(true); setError('')
     try {
@@ -249,6 +263,7 @@ export function InsumosInventarioTab() {
               <span className={`inv-cat ${i.categoria === 'COMBUSTIBLE' ? 'inv-cat--comb' : 'inv-cat--mat'}`}>
                 {i.categoria === 'COMBUSTIBLE' ? '⛽ Combustible' : '🔩 Material'}
               </span>
+              {i.frecuente && <span className="inv-cat inv-cat--frec" title="Aparece de entrada en las listas">⭐ Frecuente</span>}
               {!i.activo && <span className="inv-cat inv-cat--off">Inactivo</span>}
               {i.activo && esBajo(i) && <span className="inv-cat inv-cat--bajo">⚠ Stock bajo</span>}
             </div>
@@ -273,6 +288,9 @@ export function InsumosInventarioTab() {
                     <div className="inv-kebab__backdrop" onClick={() => setMenuFor(null)} />
                     <div className="inv-kebab__menu" role="menu">
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void openKardex(i) }}>📒 Kardex</button>
+                      <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void toggleFrecuente(i) }}>
+                        {i.frecuente ? '☆ Quitar de frecuentes' : '⭐ Marcar como frecuente'}
+                      </button>
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openAjuste(i) }}>⚖️ Ajustar (conteo)</button>
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); openEdit(i) }}>✏️ Editar</button>
                       <button type="button" role="menuitem" onClick={() => { setMenuFor(null); void toggleActivo(i) }}>

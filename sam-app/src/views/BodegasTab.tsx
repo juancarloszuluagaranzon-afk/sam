@@ -5,6 +5,7 @@ import {
   crearTraslado, loadTraslados,
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado, TrasladoItem } from '../domain/sam'
+import { SearchableSelect } from '../components/SearchableSelect'
 
 /**
  * Bodegas (administración/dueño): la PRINCIPAL y los SATÉLITES (el vehículo de
@@ -243,10 +244,13 @@ export function BodegasTab() {
             </div>
             <label>Nombre<input type="text" placeholder="ej. CARRO GENARO" value={nNombre} onChange={(e) => setNNombre(e.target.value)} disabled={busy} autoFocus /></label>
             <label>Responsable (supervisor de insumos)
-              <select value={nResp} onChange={(e) => setNResp(e.target.value)} disabled={busy}>
-                <option value="">Sin asignar</option>
-                {supervisoresInsumos.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
+              <SearchableSelect
+                value={nResp}
+                onChange={setNResp}
+                options={supervisoresInsumos.map((u) => ({ value: u.id, label: u.name }))}
+                placeholder="Buscar responsable…"
+                disabled={busy}
+              />
             </label>
             <label>Vehículo (placa) <span className="field-optional">(opcional)</span>
               <input type="text" value={nVehiculo} onChange={(e) => setNVehiculo(e.target.value)} disabled={busy} />
@@ -278,16 +282,20 @@ export function BodegasTab() {
                 const excede = Number(row.cantidad) > disp
                 return (
                   <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <select
-                      value={row.insumoId}
-                      onChange={(e) => setSurtirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: e.target.value } : r)))}
-                      disabled={busy} style={{ flex: 1, minWidth: 0 }}
-                    >
-                      <option value="">Insumo…</option>
-                      {insumosActivos.map((i) => (
-                        <option key={i.id} value={i.id}>{i.nombre} ({i.unidad}) · {stockDe(i.id, principal.id)}</option>
-                      ))}
-                    </select>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <SearchableSelect
+                        value={row.insumoId}
+                        onChange={(v) => setSurtirItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: v } : r)))}
+                        options={insumosActivos.map((i) => ({
+                          value: i.id,
+                          label: `${i.nombre} (${i.unidad})`,
+                          rightLabel: String(stockDe(i.id, principal.id)),
+                          frecuente: i.frecuente,
+                        }))}
+                        placeholder="Buscar insumo…"
+                        disabled={busy}
+                      />
+                    </div>
                     <input
                       type="number" min={0} step="any" placeholder="Cant."
                       value={row.cantidad}

@@ -29,6 +29,15 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    el SQL se corrompe (`select`→`seleccione`). Recordárselo SIEMPRE.
 5. **Cargas resilientes**: usar `select('*')` en tablas que evolucionan, para que una
    columna nueva sin migrar no rompa la pantalla.
+5b. **🔴 NUNCA un `<select>` plano para listas largas.** Operarios, insumos, máquinas,
+   suertes, usuarios… TODO eso va con **`<SearchableSelect>`** (`src/components/`):
+   se escribe para filtrar. Un desplegable con 40 nombres es inusable en celular y
+   el cliente ya lo reclamó. Si la lista es larga y no tiene búsqueda, **está mal**.
+   - Además soporta **frecuentes**: pasar `frecuente: true` en las opciones de uso
+     diario → solo esas se ven al abrir, el resto queda tras "⋯ Otros (N)".
+     En insumos sale de la columna `insumos.frecuente` (se marca desde Inventario).
+   - Al crear cualquier formulario nuevo: **revisar cada selector antes de dar por
+     terminado**. Esta regla aplica a todo lo que se construya de aquí en adelante.
 6. **Área ejecutada**: el fallback `executedArea>0?executedArea:area` aplica **SOLO** a
    estados `COMPLETADA`/`PARCIAL`. Una labor no cerrada muestra 0.00. Es dinero real.
 7. **Al terminar un deploy, reportar la versión** (`git rev-parse --short HEAD`).

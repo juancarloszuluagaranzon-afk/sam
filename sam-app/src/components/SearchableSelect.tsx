@@ -4,6 +4,8 @@ export interface SearchableSelectOption {
   value: string
   label: string
   rightLabel?: string
+  /** Marcada como frecuente: se muestra de entrada; el resto va tras "Otros". */
+  frecuente?: boolean
 }
 
 interface Props {
@@ -11,16 +13,28 @@ interface Props {
   onChange: (value: string) => void
   options: SearchableSelectOption[]
   placeholder?: string
+  disabled?: boolean
 }
 
+/**
+ * Selector con BÚSQUEDA: se escribe para ir acotando la lista. Es el estándar
+ * del proyecto para cualquier lista larga (operarios, insumos, máquinas…) —
+ * nunca un <select> plano con decenas de opciones.
+ *
+ * Si alguna opción viene marcada como `frecuente`, al abrir solo se muestran
+ * esas (las de uso diario) más un botón "Otros (N)" que despliega el resto:
+ * así la lista no satura visualmente. Al escribir se busca SIEMPRE en todas.
+ */
 export function SearchableSelect({
   value,
   onChange,
   options,
   placeholder = 'Seleccionar',
+  disabled = false,
 }: Props) {
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [verTodos, setVerTodos] = useState(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -35,6 +49,7 @@ export function SearchableSelect({
   function close() {
     setIsOpen(false)
     setQuery('')
+    setVerTodos(false)
   }
 
   useEffect(() => {
@@ -47,10 +62,19 @@ export function SearchableSelect({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  const filteredOptions = options.filter((opt) =>
+  const coincide = (opt: SearchableSelectOption) =>
     opt.label.toLowerCase().includes(query.toLowerCase()) ||
-    (opt.rightLabel && opt.rightLabel.toLowerCase().includes(query.toLowerCase())),
-  )
+    (opt.rightLabel != null && opt.rightLabel.toLowerCase().includes(query.toLowerCase()))
+
+  // Con búsqueda activa se busca en TODAS (aunque no sean frecuentes).
+  const hayFrecuentes = options.some((o) => o.frecuente)
+  const buscando = query.trim().length > 0
+  const base = options.filter(coincide)
+  const filteredOptions =
+    hayFrecuentes && !buscando && !verTodos ? base.filter((o) => o.frecuente) : base
+  const ocultas = hayFrecuentes && !buscando && !verTodos
+    ? base.filter((o) => !o.frecuente).length
+    : 0
 
   const inputPlaceholder = isOpen ? `Buscar ${placeholder.toLowerCase()}...` : placeholder
 
@@ -62,14 +86,17 @@ export function SearchableSelect({
         type="text"
         placeholder={inputPlaceholder}
         value={displayValue}
+        disabled={disabled}
         onChange={(e) => {
           setQuery(e.target.value)
           if (!isOpen) setIsOpen(true)
         }}
         onFocus={() => {
           // Toque directo sobre el input → teclado nativo (iOS/Android) + abrir lista.
+          if (disabled) return
           setIsOpen(true)
           setQuery('')
+          setVerTodos(false)
         }}
         autoComplete="off"
       />
@@ -117,6 +144,14 @@ export function SearchableSelect({
             ))
           ) : (
             <li className="searchable-select-item searchable-select-empty">Sin resultados</li>
+          )}
+          {ocultas > 0 && (
+            <li
+              className="searchable-select-item searchable-select-otros"
+              onMouseDown={(e) => { e.preventDefault(); setVerTodos(true) }}
+            >
+              ⋯ Otros ({ocultas})
+            </li>
           )}
         </ul>
       )}

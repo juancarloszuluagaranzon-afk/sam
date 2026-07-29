@@ -5,6 +5,7 @@ import {
   registrarCombustibleExterno, uploadEvidencia,
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
+import { SearchableSelect } from '../components/SearchableSelect'
 
 /**
  * "Mi bodega" — vista del supervisor de insumos sobre SU satélite (su vehículo):
@@ -278,10 +279,13 @@ export function MiBodegaTab() {
             <div className="flota-grid">
               <label>Fecha<input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} disabled={busy} /></label>
               <label>Combustible
-                <select value={tInsumo} onChange={(e) => setTInsumo(e.target.value)} disabled={busy}>
-                  <option value="">Elegir…</option>
-                  {combustibles.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                </select>
+                <SearchableSelect
+                  value={tInsumo}
+                  onChange={setTInsumo}
+                  options={combustibles.map((i) => ({ value: i.id, label: i.nombre, frecuente: i.frecuente }))}
+                  placeholder="Buscar combustible…"
+                  disabled={busy}
+                />
               </label>
               <label>Galones cargados <span style={{ color: '#b3261e' }}>*</span>
                 <input type="number" min={0} step="any" value={tGalones} onChange={(e) => setTGalones(e.target.value)} disabled={busy} />

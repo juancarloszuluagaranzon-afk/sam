@@ -1128,6 +1128,8 @@
 :root[data-theme="dark"] .inv-stock--zero { color: var(--color-ink-mid); background: rgba(255, 255, 255, 0.07); }
 :root[data-theme="dark"] .inv-stock--bajo { color: #f0c34e; background: rgba(217, 119, 6, 0.2); }
 .inv-cat--bajo { background: rgba(217, 119, 6, 0.16); color: #9a5a12; }
+.inv-cat--frec { background: rgba(124, 58, 237, 0.12); color: #6d28d9; }
+:root[data-theme="dark"] .inv-cat--frec { color: #c4b5fd; background: rgba(124, 58, 237, 0.22); }
 :root[data-theme="dark"] .inv-cat--bajo { color: #f0c34e; }
 
 /* Banner de alerta de stock bajo (clic = filtrar). */

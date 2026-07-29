@@ -1072,10 +1072,13 @@ export function OperatorView({
             <div className="flota-grid">
               <label>Fecha<input type="date" value={tqFecha} onChange={(e) => setTqFecha(e.target.value)} disabled={tqGuardando} /></label>
               <label>Combustible
-                <select value={tqInsumo} onChange={(e) => setTqInsumo(e.target.value)} disabled={tqGuardando}>
-                  <option value="">Elegir…</option>
-                  {combustiblesActivos.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                </select>
+                <SearchableSelect
+                  value={tqInsumo}
+                  onChange={setTqInsumo}
+                  options={combustiblesActivos.map((i) => ({ value: i.id, label: i.nombre, frecuente: i.frecuente }))}
+                  placeholder="Buscar combustible…"
+                  disabled={tqGuardando}
+                />
               </label>
               <label>Galones <span style={{ color: '#b3261e' }}>*</span>
                 <input type="number" min={0} step="any" inputMode="decimal" value={tqGalones} onChange={(e) => setTqGalones(e.target.value)} disabled={tqGuardando} />
@@ -1130,17 +1133,19 @@ export function OperatorView({
                     const ins = insumos.find((i) => i.id === row.insumoId)
                     return (
                       <div key={idx} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                        <select
-                          value={row.insumoId}
-                          onChange={(e) => setSolItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: e.target.value } : r)))}
-                          disabled={savingSol}
-                          style={{ flex: 1, minWidth: 0 }}
-                        >
-                          <option value="">Insumo…</option>
-                          {activeInsumos.map((i) => (
-                            <option key={i.id} value={i.id}>{i.nombre} ({i.unidad})</option>
-                          ))}
-                        </select>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <SearchableSelect
+                            value={row.insumoId}
+                            onChange={(v) => setSolItems((prev) => prev.map((r, i) => (i === idx ? { ...r, insumoId: v } : r)))}
+                            options={activeInsumos.map((i) => ({
+                              value: i.id,
+                              label: `${i.nombre} (${i.unidad})`,
+                              frecuente: i.frecuente,
+                            }))}
+                            placeholder="Buscar insumo…"
+                            disabled={savingSol}
+                          />
+                        </div>
                         <input
                           type="number" min={0} step="any" placeholder="Cant."
                           value={row.cantidad}

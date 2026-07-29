@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia, bodegaDeResponsable, bodegaPrincipal, loadStockBodega } from '../services/samApi'
 import type { Bodega, StockBodega } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { fmtCantidad } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
 /**
@@ -551,7 +552,7 @@ export function BandejaInsumosTab() {
                         options={activeInsumos.map((i) => ({
                           value: i.id,
                           label: `${i.nombre} (${i.unidad})`,
-                          rightLabel: String(stockMio(i.id)),
+                          rightLabel: fmtCantidad(stockMio(i.id)),
                           frecuente: i.frecuente,
                         }))}
                         placeholder="Buscar insumo…"

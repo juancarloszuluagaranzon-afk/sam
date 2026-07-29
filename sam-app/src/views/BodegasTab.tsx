@@ -6,6 +6,7 @@ import {
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado, TrasladoItem } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { fmtCantidad } from '../lib/cantidad'
 
 /**
  * Bodegas (administración/dueño): la PRINCIPAL y los SATÉLITES (el vehículo de
@@ -226,7 +227,7 @@ export function BodegasTab() {
                       {s.insumo!.categoria === 'COMBUSTIBLE' ? '⛽' : '🔩'}
                     </span>
                   </div>
-                  <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{s.stock} <small>{s.insumo!.unidad}</small></div>
+                  <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{fmtCantidad(s.stock)} <small>{s.insumo!.unidad}</small></div>
                 </div>
               ))}
             </div>
@@ -289,7 +290,7 @@ export function BodegasTab() {
                         options={insumosActivos.map((i) => ({
                           value: i.id,
                           label: `${i.nombre} (${i.unidad})`,
-                          rightLabel: String(stockDe(i.id, principal.id)),
+                          rightLabel: fmtCantidad(stockDe(i.id, principal.id)),
                           frecuente: i.frecuente,
                         }))}
                         placeholder="Buscar insumo…"

@@ -40,6 +40,7 @@ import type {
 import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
 import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
+import { redondear2 } from '../lib/cantidad'
 
 type Source = 'supabase' | 'fallback' | 'cache'
 
@@ -1382,9 +1383,9 @@ export async function ajustarStockInsumo(input: {
     bodegaId = p.id
   }
 
-  const nuevo = Number(input.nuevoStock)
+  const nuevo = redondear2(Number(input.nuevoStock))
   const actual = await stockEnBodega(input.insumoId, bodegaId)
-  const delta = Number((nuevo - actual).toFixed(4))
+  const delta = redondear2(nuevo - actual)
 
   const { error: e2 } = await supabase.from('insumos_kardex').insert({
     insumo_id: input.insumoId,
@@ -1547,7 +1548,7 @@ async function stockEnBodega(insumoId: string, bodegaId: string): Promise<number
 /** Recalcula `insumos.stock` como la suma de todas las bodegas (consolidado). */
 async function refrescarTotalInsumo(insumoId: string): Promise<Insumo | null> {
   const { data } = await supabase.from('insumos_stock').select('stock').eq('insumo_id', insumoId)
-  const total = (data ?? []).reduce((a, r) => a + Number(r.stock ?? 0), 0)
+  const total = redondear2((data ?? []).reduce((a, r) => a + Number(r.stock ?? 0), 0))
   const { data: upd } = await supabase
     .from('insumos').update({ stock: total, updated_at: new Date().toISOString() })
     .eq('id', insumoId).select('*').single()
@@ -1577,9 +1578,11 @@ export async function registrarMovimientoInsumo(input: {
     bodegaId = p.id
   }
 
-  const cant = Math.abs(Number(input.cantidad))
+  // Redondeo a 2 decimales: sin esto, sumar/restar en punto flotante deja
+  // colas absurdas en el stock (1020.4100000000001).
+  const cant = redondear2(Math.abs(Number(input.cantidad)))
   const delta = input.tipo === 'SALIDA' ? -cant : cant
-  const saldo = (await stockEnBodega(input.insumoId, bodegaId)) + delta
+  const saldo = redondear2((await stockEnBodega(input.insumoId, bodegaId)) + delta)
 
   const { error: e2 } = await supabase
     .from('insumos_kardex')

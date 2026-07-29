@@ -6,6 +6,7 @@ import {
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { fmtCantidad } from '../lib/cantidad'
 
 /**
  * "Mi bodega" — vista del supervisor de insumos sobre SU satélite (su vehículo):
@@ -197,7 +198,7 @@ export function MiBodegaTab() {
           {pendientes.map((t) => (
             <div key={t.id} className="bod-aviso__row">
               <div className="bod-aviso__info">
-                <strong>{t.items.map((i) => `${i.cantidad} ${i.unidad} ${i.insumoNombre}`).join(', ')}</strong>
+                <strong>{t.items.map((i) => `${fmtCantidad(i.cantidad)} ${i.unidad} ${i.insumoNombre}`).join(', ')}</strong>
                 <span className="subtle-copy">{fmtFecha(t.createdAt)}{t.nota ? ` · ${t.nota}` : ''}</span>
               </div>
               <button type="button" className="primary-button bod-aviso__btn" onClick={() => abrirRecibir(t)} disabled={busy}>
@@ -220,7 +221,7 @@ export function MiBodegaTab() {
                   {s.insumo!.categoria === 'COMBUSTIBLE' ? '⛽ Combustible' : '🔩 Material'}
                 </span>
               </div>
-              <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{s.stock} <small>{s.insumo!.unidad}</small></div>
+              <div className={`inv-stock${s.stock <= 0 ? ' inv-stock--zero' : ''}`}>{fmtCantidad(s.stock)} <small>{s.insumo!.unidad}</small></div>
             </div>
           ))}
         </div>
@@ -247,7 +248,7 @@ export function MiBodegaTab() {
                     onChange={(e) => setCantRecibida((p) => ({ ...p, [it.id ?? '']: e.target.value }))}
                     disabled={busy} style={{ width: 84 }}
                   />
-                  <span className="subtle-copy" style={{ width: 78, fontSize: '0.78rem' }}>de {it.cantidad} {it.unidad}</span>
+                  <span className="subtle-copy" style={{ width: 78, fontSize: '0.78rem' }}>de {fmtCantidad(it.cantidad)} {it.unidad}</span>
                 </div>
               ))}
             </div>

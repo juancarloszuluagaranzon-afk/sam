@@ -5,6 +5,7 @@ import {
   registrarMovimientoInsumo, ajustarStockInsumo, loadKardex,
 } from '../services/samApi'
 import type { Insumo, InsumoCategoria, InsumoKardex } from '../domain/sam'
+import { fmtCantidad } from '../lib/cantidad'
 
 /**
  * Inventario de insumos (módulo Insumos y Combustible) — Fase 1.
@@ -267,8 +268,8 @@ export function InsumosInventarioTab() {
               {!i.activo && <span className="inv-cat inv-cat--off">Inactivo</span>}
               {i.activo && esBajo(i) && <span className="inv-cat inv-cat--bajo">⚠ Stock bajo</span>}
             </div>
-            <div className={`inv-stock${i.stock <= 0 ? ' inv-stock--zero' : esBajo(i) ? ' inv-stock--bajo' : ''}`} title={i.stockMinimo > 0 ? `Stock actual · mínimo ${i.stockMinimo} ${i.unidad}` : 'Stock actual'}>
-              {i.stock} <small>{i.unidad}</small>
+            <div className={`inv-stock${i.stock <= 0 ? ' inv-stock--zero' : esBajo(i) ? ' inv-stock--bajo' : ''}`} title={i.stockMinimo > 0 ? `Stock actual · mínimo ${fmtCantidad(i.stockMinimo)} ${i.unidad}` : 'Stock actual'}>
+              {fmtCantidad(i.stock)} <small>{i.unidad}</small>
             </div>
             <div className="inv-row__actions">
               <button type="button" className="inline-button inv-entrada-btn" onClick={() => openEntrada(i)} disabled={busy}>+ Entrada</button>
@@ -443,12 +444,12 @@ export function InsumosInventarioTab() {
                 <div key={m.id} className="movement-row">
                   <div>
                     <strong style={{ color: negativo ? 'var(--color-danger, #b3261e)' : 'var(--color-brand)' }}>
-                      {negativo ? '−' : '+'}{magnitud} {kardexTarget.unidad}
+                      {negativo ? '−' : '+'}{fmtCantidad(magnitud)} {kardexTarget.unidad}
                     </strong>
                     <span>{m.tipo}{m.equipoCodigo ? ` · 🚜 ${equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo}` : ''}{m.motivo ? ` · ${m.motivo}` : ''}{m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}</span>
                   </div>
                   <div className="movement-side">
-                    <span className="status-pill">Saldo {m.saldo}</span>
+                    <span className="status-pill">Saldo {fmtCantidad(m.saldo)}</span>
                     <small>{fmtFecha(m.createdAt)}</small>
                   </div>
                 </div>

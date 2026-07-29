@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadKardexReporte, loadCombustibleExterno } from '../services/samApi'
 import type { InsumoKardex, CombustibleExterno } from '../domain/sam'
+import { fmtCantidad, redondear2 } from '../lib/cantidad'
 
 /**
  * Reportes de consumo de insumos — por máquina y por insumo, en un rango de
@@ -169,13 +170,13 @@ export function ConsumoEquiposTab() {
       for (const g of porMaquina) {
         for (const [insumoId, total] of g.insumos.entries()) {
           const info = insumoInfo.get(insumoId)
-          filasMaq.push({ 'Máquina': g.nombre, 'Insumo': info?.nombre ?? insumoId, 'Consumo': Number(total.toFixed(2)), 'Unidad': info?.unidad ?? '' })
+          filasMaq.push({ 'Máquina': g.nombre, 'Insumo': info?.nombre ?? insumoId, 'Consumo': redondear2(total), 'Unidad': info?.unidad ?? '' })
         }
       }
       utils.book_append_sheet(wb, utils.json_to_sheet(filasMaq), 'Por máquina')
 
       // Hoja 3 — Consumo por insumo.
-      const filasIns = porInsumo.map((r) => ({ 'Insumo': r.info?.nombre ?? r.id, 'Consumo': Number(r.total.toFixed(2)), 'Unidad': r.info?.unidad ?? '' }))
+      const filasIns = porInsumo.map((r) => ({ 'Insumo': r.info?.nombre ?? r.id, 'Consumo': redondear2(r.total), 'Unidad': r.info?.unidad ?? '' }))
       utils.book_append_sheet(wb, utils.json_to_sheet(filasIns), 'Por insumo')
 
       writeFile(wb, `consumo-insumos-${desde}-a-${hasta}.xlsx`)
@@ -240,7 +241,7 @@ export function ConsumoEquiposTab() {
                     .map(({ insumoId, total, info }) => (
                       <li key={insumoId} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                         <span>{info?.nombre ?? insumoId}</span>
-                        <strong>{Number(total.toFixed(2))} {info?.unidad ?? ''}</strong>
+                        <strong>{fmtCantidad(total)} {info?.unidad ?? ''}</strong>
                       </li>
                     ))}
                 </ul>
@@ -257,7 +258,7 @@ export function ConsumoEquiposTab() {
               {porInsumo.map((r) => (
                 <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
                   <span>{r.info?.nombre ?? r.id}</span>
-                  <strong>{Number(r.total.toFixed(2))} {r.info?.unidad ?? ''}</strong>
+                  <strong>{fmtCantidad(r.total)} {r.info?.unidad ?? ''}</strong>
                 </li>
               ))}
             </ul>

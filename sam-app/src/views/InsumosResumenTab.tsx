@@ -12,13 +12,29 @@ import type { Bodega, StockBodega, InsumoKardex } from '../domain/sam'
  * control, para responder de un vistazo "¿cuánto combustible y ganchos entregó
  * cada uno y con qué les quedó el carro?".
  */
-function primerDiaMes(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-}
 function hoyISO(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** Mismos periodos que Realizadas/Planilla, para que el dueño no cambie de chip. */
+type Periodo = 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES' | 'RANGO'
+const PERIODOS: { value: Periodo; label: string }[] = [
+  { value: 'HOY', label: 'Hoy' },
+  { value: 'PRIMERA', label: '1ra quinc.' },
+  { value: 'SEGUNDA', label: '2da quinc.' },
+  { value: 'MES', label: 'Mes' },
+  { value: 'RANGO', label: 'Rango' },
+]
+
+/** Fechas [desde, hasta] del periodo elegido, sobre el mes en curso. */
+function rangoDe(p: Periodo, hoy: string): { desde: string; hasta: string } {
+  const [y, m] = hoy.split('-')
+  const finMes = `${y}-${m}-${String(new Date(Number(y), Number(m), 0).getDate()).padStart(2, '0')}`
+  if (p === 'PRIMERA') return { desde: `${y}-${m}-01`, hasta: `${y}-${m}-15` }
+  if (p === 'SEGUNDA') return { desde: `${y}-${m}-16`, hasta: finMes }
+  if (p === 'MES') return { desde: `${y}-${m}-01`, hasta: finMes }
+  return { desde: hoy, hasta: hoy } // HOY (y base del rango personalizado)
 }
 
 export function InsumosResumenTab() {
@@ -28,9 +44,20 @@ export function InsumosResumenTab() {
   const [stock, setStock] = useState<StockBodega[]>([])
   const [movs, setMovs] = useState<InsumoKardex[]>([])
   const [cargando, setCargando] = useState(true)
-  const [desde, setDesde] = useState(primerDiaMes())
-  const [hasta, setHasta] = useState(hoyISO())
+  // Arranca en HOY: es lo que el dueño mira a diario.
+  const [periodo, setPeriodo] = useState<Periodo>('HOY')
+  const [desde, setDesde] = useState(() => rangoDe('HOY', hoyISO()).desde)
+  const [hasta, setHasta] = useState(() => rangoDe('HOY', hoyISO()).hasta)
   const [abierta, setAbierta] = useState<string>('')
+
+  function elegirPeriodo(p: Periodo) {
+    setPeriodo(p)
+    if (p !== 'RANGO') {
+      const r = rangoDe(p, hoyISO())
+      setDesde(r.desde)
+      setHasta(r.hasta)
+    }
+  }
 
   const nombreUsuario = useMemo(() => {
     const m = new Map<string, string>()
@@ -155,9 +182,25 @@ export function InsumosResumenTab() {
         Cuánto ha entregado cada supervisor a las máquinas en el rango, y qué le queda cargado en el carro.
       </p>
 
-      <div className="rep-toolbar">
-        <label className="rep-fecha">Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
-        <label className="rep-fecha">Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
+      <div className="realizadas-dateseg">
+        <div className="realizadas-seg" role="group" aria-label="Periodo">
+          {PERIODOS.map((p) => (
+            <button
+              key={p.value}
+              type="button"
+              className={`realizadas-seg__btn ${periodo === p.value ? 'is-active' : ''}`}
+              onClick={() => elegirPeriodo(p.value)}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        {periodo === 'RANGO' && (
+          <div className="realizadas-rango">
+            <label><span>Desde</span><input type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} /></label>
+            <label><span>Hasta</span><input type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} /></label>
+          </div>
+        )}
       </div>
 
       {cargando ? (

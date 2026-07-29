@@ -55,7 +55,7 @@ function AppContent() {
   })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
-    const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'validacion', 'maestros', 'facturacion']
+    const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'maestros', 'facturacion']
     return valid.includes(tab as SupervisorTab) ? (tab as SupervisorTab) : 'labores'
   })
   const [operatorTab, setOperatorTab] = useState<OperatorTab>(() => {

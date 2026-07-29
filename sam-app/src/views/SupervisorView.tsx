@@ -8,6 +8,7 @@ import { MapasTab } from './MapasTab'
 import { FlotaTab } from './FlotaTab'
 import { BodegasTab } from './BodegasTab'
 import { InsumosResumenTab } from './InsumosResumenTab'
+import { DashboardTab } from './DashboardTab'
 import { NAV_OPCIONES, MAX_NAV, NAV_DEFECTO, leerNav, guardarNav, restaurarNav } from '../lib/navPrefs'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
@@ -49,7 +50,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -2141,6 +2142,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
           <MapasTab />
+        ) : null}
+
+        {supervisorTab === 'inicio' ? (
+          <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
         ) : null}
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}

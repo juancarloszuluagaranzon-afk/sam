@@ -821,6 +821,34 @@ export async function loadEquipment(): Promise<{
   }
 }
 
+/**
+ * Equipos CON su estado (activo / en_mantenimiento / inactivo), para el
+ * dashboard del dueño. `loadEquipment` solo trae los activos y sin estado
+ * porque alimenta los selectores; aquí necesitamos el parque completo.
+ */
+export interface EquipoEstado {
+  code: string
+  name: string
+  tipo?: string
+  estado: 'activo' | 'en_mantenimiento' | 'inactivo'
+  activo: boolean
+}
+
+export async function loadEquiposEstado(): Promise<EquipoEstado[]> {
+  const { data, error } = await supabase.from('equipos').select('*').order('codigo')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => {
+    const e = String(r.estado ?? 'activo').toLowerCase()
+    return {
+      code: String(r.codigo ?? ''),
+      name: String(r.nombre ?? ''),
+      tipo: r.tipo ? String(r.tipo) : undefined,
+      estado: e === 'en_mantenimiento' ? 'en_mantenimiento' : e === 'inactivo' ? 'inactivo' : 'activo',
+      activo: r.activo == null ? true : Boolean(r.activo),
+    }
+  })
+}
+
 export async function createEquipment(input: CreateEquipmentInput) {
   const payload: Record<string, unknown> = {
     codigo: input.code,

@@ -55,8 +55,14 @@ function AppContent() {
   })
   const [supervisorTab, setSupervisorTab] = useState<SupervisorTab>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')
-    const valid: SupervisorTab[] = ['resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'maestros', 'facturacion']
-    return valid.includes(tab as SupervisorTab) ? (tab as SupervisorTab) : 'labores'
+    const valid: SupervisorTab[] = ['inicio', 'resumen', 'asignar', 'labores', 'equipos', 'tablero', 'reporte', 'usuarios', 'maestros', 'facturacion']
+    if (valid.includes(tab as SupervisorTab)) return tab as SupervisorTab
+    // El propietario abre en su tablero; el resto, en Labores.
+    try {
+      const raw = window.localStorage.getItem(SESSION_KEY)
+      if (raw && (JSON.parse(raw) as UserProfile).role === 'owner') return 'inicio'
+    } catch { /* sin sesión guardada */ }
+    return 'labores'
   })
   const [operatorTab, setOperatorTab] = useState<OperatorTab>(() => {
     const tab = new URLSearchParams(window.location.search).get('tab')

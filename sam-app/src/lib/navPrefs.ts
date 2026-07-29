@@ -17,6 +17,7 @@ export interface NavOpcion {
 
 /** Catálogo de lo que el dueño/administración puede poner en la barra. */
 export const NAV_OPCIONES: NavOpcion[] = [
+  { id: 'inicio', label: 'Inicio', icon: '◉', desc: 'Tablero con todos los indicadores' },
   { id: 'labores', label: 'Labores', icon: '✓', desc: 'Las labores del día' },
   { id: 'realizadas', label: 'Realizadas', icon: '☑', desc: 'Labores ejecutadas' },
   { id: 'equipos', label: 'Máquinas', icon: '▣', desc: 'Estado de los equipos' },
@@ -35,7 +36,7 @@ export const NAV_OPCIONES: NavOpcion[] = [
 export const MAX_NAV = 4
 
 /** Lo que ve un dueño que nunca ha configurado nada. */
-export const NAV_DEFECTO = ['labores', 'realizadas', 'equipos', 'insumosresumen']
+export const NAV_DEFECTO = ['inicio', 'labores', 'realizadas', 'insumosresumen']
 
 const KEY = 'sam:nav-barra'
 

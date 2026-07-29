@@ -68,7 +68,11 @@ export function InsumosResumenTab() {
 
   const satelites = useMemo(() => bodegas.filter((b) => b.tipo === 'SATELITE'), [bodegas])
 
-  /** Entregado por cada satélite en el rango: SALIDA − devoluciones. */
+  /**
+   * Entregado por cada satélite en el rango: SALIDA − devoluciones.
+   * Se ordena por ACTIVIDAD (más entregas primero): el dueño quiere ver arriba
+   * a quien más movió, y los que no han entregado nada al final.
+   */
   const porSatelite = useMemo(() => {
     return satelites.map((b) => {
       const suyos = movs.filter((m) => m.bodegaId === b.id)
@@ -102,6 +106,15 @@ export function InsumosResumenTab() {
           .filter((m) => m.tipo === 'SALIDA' && m.equipoCodigo)
           .sort((a, b2) => b2.createdAt.localeCompare(a.createdAt)),
       }
+    })
+    .sort((a, b) => {
+      // 1º el que más entregas hizo; si empatan, el que más volumen movió;
+      // por último, alfabético para que el orden sea estable.
+      if (b.entregas !== a.entregas) return b.entregas - a.entregas
+      const volA = a.entregado.reduce((t, e) => t + Math.abs(e.total), 0)
+      const volB = b.entregado.reduce((t, e) => t + Math.abs(e.total), 0)
+      if (volB !== volA) return volB - volA
+      return a.responsable.localeCompare(b.responsable, 'es', { sensitivity: 'base' })
     })
   }, [satelites, movs, stock, insumoInfo, nombreUsuario])
 

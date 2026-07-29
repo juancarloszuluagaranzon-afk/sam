@@ -6,7 +6,7 @@ import {
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado, TrasladoItem } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
-import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
+import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
 
 /**
  * Bodegas (administración/dueño): la PRINCIPAL y los SATÉLITES (el vehículo de
@@ -69,16 +69,32 @@ export function BodegasTab() {
   }
   useEffect(() => { void refresh() /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [])
 
-  /** Stock de UNA bodega (con el insumo resuelto), para el acordeón. */
-  const stockDeBodega = (bodegaId: string) =>
-    stock
-      .filter((s) => s.bodegaId === bodegaId && s.stock !== 0)
-      .map((s) => ({ ...s, insumo: insumos.find((i) => i.id === s.insumoId) }))
-      .filter((s) => s.insumo)
-      .sort((a, b) => (a.insumo!.nombre).localeCompare(b.insumo!.nombre, 'es', { sensitivity: 'base' }))
-
   const stockDe = (insumoId: string, bodegaId: string) =>
     stock.find((s) => s.insumoId === insumoId && s.bodegaId === bodegaId)?.stock ?? 0
+
+  /** Insumos que hoy existen en algún lado (para no listar el catálogo entero). */
+  const enOperacion = useMemo(
+    () => new Set(stock.filter((s) => s.stock !== 0).map((s) => s.insumoId)),
+    [stock],
+  )
+
+  /**
+   * Stock de UNA bodega, con el reparto al lado.
+   *
+   * Muestra también lo que está en CERO aquí pero existe en otra bodega: si el
+   * combustible desaparece de la principal porque está todo en los carros, se
+   * lee como "falta información" y no como "está repartido". Cada fila dice
+   * cuánto hay aquí, cuánto en las otras bodegas y cuánto tiene la empresa.
+   */
+  const stockDeBodega = (bodegaId: string) =>
+    insumos
+      .filter((i) => enOperacion.has(i.id))
+      .map((i) => {
+        const aqui = stockDe(i.id, bodegaId)
+        const total = redondear2(stock.filter((s) => s.insumoId === i.id).reduce((t, s) => t + s.stock, 0))
+        return { insumoId: i.id, insumo: i, stock: aqui, fuera: redondear2(total - aqui), total }
+      })
+      .sort((a, b) => a.insumo.nombre.localeCompare(b.insumo.nombre, 'es', { sensitivity: 'base' }))
 
   async function crearSatelite() {
     if (!nNombre.trim()) { setError('Ponle nombre a la bodega.'); return }
@@ -154,6 +170,11 @@ export function BodegasTab() {
         La <strong>principal</strong> compra y almacena; cada <strong>satélite</strong> es el vehículo de un supervisor de
         insumos, de donde consumen los operarios. Se surten con un traslado que el supervisor confirma al recibir.
       </p>
+      <p className="subtle-copy" style={{ marginTop: 0 }}>
+        Ojo con la lectura: aquí cada bodega muestra <strong>lo que tiene ella</strong>. Lo que ya está en
+        los carros salió de la principal, así que no se cuenta dos veces — el total de la empresa es el
+        que aparece en <strong>Inventario</strong>.
+      </p>
 
       {cargando ? <p className="muted-text">Cargando…</p> : (
         <>
@@ -207,10 +228,16 @@ export function BodegasTab() {
                         suStock.map((s) => (
                           <div key={s.insumoId} className="bod-stock__row">
                             <span className="bod-stock__nom">
-                              {s.insumo!.categoria === 'COMBUSTIBLE' ? '⛽' : '🔩'} {s.insumo!.nombre}
+                              {s.insumo.categoria === 'COMBUSTIBLE' ? '⛽' : '🔩'} {s.insumo.nombre}
+                              {s.fuera > 0 && (
+                                <small className="bod-stock__reparto">
+                                  {b.tipo === 'PRINCIPAL' ? 'En los carros' : 'En otras bodegas'}: {fmtCantidad(s.fuera, s.insumo.unidad)}
+                                  {' · '}Total empresa: {fmtCantidad(s.total, s.insumo.unidad)}
+                                </small>
+                              )}
                             </span>
-                            <strong className="bod-stock__val">
-                              {fmtCantidad(s.stock, s.insumo!.unidad)} <small>{s.insumo!.unidad}</small>
+                            <strong className={`bod-stock__val${s.stock <= 0 ? ' bod-stock__val--cero' : ''}`}>
+                              {fmtCantidad(s.stock, s.insumo.unidad)} <small>{s.insumo.unidad}</small>
                             </strong>
                           </div>
                         ))

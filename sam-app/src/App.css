@@ -6095,6 +6095,10 @@ td.planilla-revisada {
 .bod-stock__nom { font-size: 0.9rem; min-width: 0; overflow-wrap: anywhere; }
 .bod-stock__val { font-size: 0.95rem; white-space: nowrap; color: #166534; }
 .bod-stock__val small { font-weight: 600; opacity: 0.75; }
+/* Reparto: cuánto de este insumo está en otra bodega. Sin esta línea, un cero
+   en la principal se lee como "falta información" y no como "está en los carros". */
+.bod-stock__reparto { display: block; font-size: 0.72rem; color: var(--color-ink-mid); font-weight: 500; margin-top: 2px; }
+.bod-stock__val--cero { color: var(--color-ink-mid); }
 /* ═══════════════ Dashboard del propietario ═══════════════
    Paleta categórica VALIDADA (guía de dataviz). Los pasos claros no alcanzan
    3:1 sobre el fondo oscuro, así que el modo oscuro tiene sus propios pasos
@@ -6379,6 +6383,7 @@ td.planilla-revisada {
 :root[data-theme="dark"] .bod-stock { background: rgba(255, 255, 255, 0.04); }
 :root[data-theme="dark"] .bod-stock__row { border-color: rgba(255, 255, 255, 0.08); }
 :root[data-theme="dark"] .bod-stock__val { color: #7fd6a0; }
+:root[data-theme="dark"] .bod-stock__val--cero { color: var(--color-ink-mid); }
 
 .bod-aviso {
   border: 1px solid color-mix(in srgb, var(--color-brand, #1a6b3a) 30%, transparent);

@@ -223,6 +223,10 @@ export function InsumosInventarioTab() {
         {combustibles} combustible(s) · {materiales} material(es). Registra <strong>entradas</strong> (compras) que
         suman al inventario; las salidas se descuentan con los despachos.
       </p>
+      <p className="subtle-copy" style={{ marginTop: 0 }}>
+        La cantidad de cada insumo es el <strong>total de la empresa</strong>: lo que está en la bodega
+        principal más lo que llevan los carros. Para ver dónde está repartido, entra a <strong>Bodegas</strong>.
+      </p>
 
       {bajos.length > 0 && (
         <button

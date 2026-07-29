@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadEquiposEstado, executionDateKey, type EquipoEstado } from '../services/samApi'
+import { loadEquiposEstado, executionDateKey, loadKardexReporte, loadBodegas, type EquipoEstado } from '../services/samApi'
+import { fmtCantidad } from '../lib/cantidad'
 import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../components/Charts'
-import type { Assignment } from '../domain/sam'
+import type { Assignment, InsumoKardex, Bodega } from '../domain/sam'
 
 /**
  * Inicio del propietario — el tablero de la operación.
@@ -18,9 +19,10 @@ import type { Assignment } from '../domain/sam'
  *  · Evolución por día → columnas.
  */
 
-type Periodo = 'HOY' | 'PRIMERA' | 'SEGUNDA' | 'MES' | 'RANGO'
+type Periodo = 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES' | 'RANGO'
 const PERIODOS: { value: Periodo; label: string }[] = [
   { value: 'HOY', label: 'Hoy' },
+  { value: 'AYER', label: 'Ayer' },
   { value: 'PRIMERA', label: '1ra quinc.' },
   { value: 'SEGUNDA', label: '2da quinc.' },
   { value: 'MES', label: 'Mes' },
@@ -28,6 +30,12 @@ const PERIODOS: { value: Periodo; label: string }[] = [
 ]
 
 function rangoDe(p: Periodo, hoy: string): { desde: string; hasta: string } {
+  if (p === 'AYER') {
+    const d = new Date(`${hoy}T12:00:00`)
+    d.setDate(d.getDate() - 1)
+    const ayer = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return { desde: ayer, hasta: ayer }
+  }
   const [y, m] = hoy.split('-')
   const fin = `${y}-${m}-${String(new Date(Number(y), Number(m), 0).getDate()).padStart(2, '0')}`
   if (p === 'PRIMERA') return { desde: `${y}-${m}-01`, hasta: `${y}-${m}-15` }
@@ -47,17 +55,73 @@ function fmtDia(key: string): string {
   return `${d}/${m}`
 }
 
+/**
+ * Pie de un ranking: dice cuánto de lo que hay se está viendo y deja abrirlo todo.
+ *
+ * Los rankings arrancan cortados (los primeros) para que quepan en el celular,
+ * pero eso hacía que la suma de las barras no cuadrara con el total de arriba —
+ * y el dueño lee ese total. Así que la línea muestra "8 de 34 · 1.204 de 3.150 ha"
+ * y el botón despliega el resto.
+ */
+function VerTodo({
+  datos,
+  visto,
+  ver,
+  onVer,
+  unidad,
+}: {
+  datos: Punto[]
+  visto: number
+  ver: boolean
+  onVer: (v: boolean) => void
+  unidad: string
+}) {
+  if (datos.length <= visto && !ver) return null
+  const total = datos.reduce((t, d) => t + d.valor, 0)
+  const mostrados = ver ? datos : datos.slice(0, visto)
+  const suma = mostrados.reduce((t, d) => t + d.valor, 0)
+  const dec = (n: number) => n.toFixed(n >= 100 ? 0 : 2)
+  return (
+    <div className="dash-vertodo">
+      <span className="dash-vertodo__res">
+        {mostrados.length} de {datos.length} · {dec(suma)} de {dec(total)} {unidad}
+      </span>
+      <button type="button" className="dash-vertodo__btn" onClick={() => onVer(!ver)}>
+        {ver ? 'Mostrar menos' : `Mostrar todos (${datos.length})`}
+      </button>
+    </div>
+  )
+}
+
 export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
-  const { assignments, users, todayKey, operatorStatusMap } = useAppData()
+  const { assignments, users, insumos, todayKey, operatorStatusMap } = useAppData()
 
   const [periodo, setPeriodo] = useState<Periodo>('HOY')
   const [desde, setDesde] = useState(() => rangoDe('HOY', todayKey).desde)
   const [hasta, setHasta] = useState(() => rangoDe('HOY', todayKey).hasta)
   const [equipos, setEquipos] = useState<EquipoEstado[]>([])
+  const [movs, setMovs] = useState<InsumoKardex[]>([])
+  const [bodegas, setBodegas] = useState<Bodega[]>([])
+  // Detalle de insumos (entregas) en ventana emergente.
+  const [detIns, setDetIns] = useState<{ titulo: string; items: InsumoKardex[] } | null>(null)
+  // Los rankings muestran los primeros y ocultan la cola tras "Mostrar todos",
+  // para que el dueño pueda cuadrar contra el total de arriba.
+  const [verOp, setVerOp] = useState(false)
+  const [verHac, setVerHac] = useState(false)
+  const [verProd, setVerProd] = useState(false)
+  const TOPE = 8
   // Ventana emergente de detalle: título + labores que lo componen.
   const [detalle, setDetalle] = useState<{ titulo: string; items: Assignment[] } | null>(null)
 
-  useEffect(() => { void loadEquiposEstado().then(setEquipos) }, [])
+  useEffect(() => {
+    void loadEquiposEstado().then(setEquipos)
+    void loadBodegas().then(setBodegas)
+  }, [])
+
+  // Movimientos de insumos del periodo (para el indicador de entregas).
+  useEffect(() => {
+    void loadKardexReporte({ desde, hasta: `${hasta}T23:59:59` }).then(setMovs)
+  }, [desde, hasta])
 
   function elegir(p: Periodo) {
     setPeriodo(p)
@@ -109,7 +173,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     return Array.from(m.entries())
       .map(([k, v]) => ({ id: k, label: k, valor: v }))
       .sort((a, b) => b.valor - a.valor)
-      .slice(0, 8)
   }, [cerradas])
 
   const porHacienda = useMemo<Punto[]>(() => {
@@ -118,7 +181,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     return Array.from(m.entries())
       .map(([k, v]) => ({ id: k, label: k, valor: v }))
       .sort((a, b) => b.valor - a.valor)
-      .slice(0, 8)
   }, [cerradas])
 
   const porDia = useMemo<Punto[]>(() => {
@@ -131,6 +193,47 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => ({ id: k, label: fmtDia(k), valor: v }))
   }, [cerradas])
+
+  // ── Insumos entregados en el periodo ──
+  // Entregas = SALIDA con máquina. El CONCEPTO sale del motivo del movimiento
+  // (Despacho de solicitud, Entrega directa, Traslado a satélite, Carga en
+  // estación…), así el dueño ve por qué se movió cada galón.
+  const insumosMovs = useMemo(() => movs.filter((m) => m.tipo === 'SALIDA' && m.equipoCodigo), [movs])
+
+  const insumoNombre = useMemo(() => {
+    const m = new Map<string, { nombre: string; unidad: string }>()
+    insumos.forEach((i) => m.set(i.id, { nombre: i.nombre, unidad: i.unidad }))
+    return m
+  }, [insumos])
+  const bodegaNombre = useMemo(() => {
+    const m = new Map<string, string>()
+    bodegas.forEach((b) => m.set(b.id, b.nombre))
+    return m
+  }, [bodegas])
+
+  /** Total entregado por insumo (lo que salió a las máquinas). */
+  const insPorProducto = useMemo<Punto[]>(() => {
+    const m = new Map<string, number>()
+    insumosMovs.forEach((k) => m.set(k.insumoId, (m.get(k.insumoId) ?? 0) + k.cantidad))
+    return Array.from(m.entries())
+      .map(([id, v]) => ({ id, label: insumoNombre.get(id)?.nombre ?? id, valor: v }))
+      .sort((a, b) => b.valor - a.valor)
+  }, [insumosMovs, insumoNombre])
+
+  /** Participación por CONCEPTO (el motivo del movimiento). */
+  const insPorConcepto = useMemo<Punto[]>(() => {
+    const m = new Map<string, number>()
+    insumosMovs.forEach((k) => {
+      const c = (k.motivo ?? 'Otro').split('(')[0].trim()
+      m.set(c, (m.get(c) ?? 0) + k.cantidad)
+    })
+    return plegarOtros(Array.from(m.entries()).map(([k, v]) => ({ id: k, label: k, valor: v })))
+  }, [insumosMovs])
+
+  const maquinasAtendidas = useMemo(
+    () => new Set(insumosMovs.map((k) => k.equipoCodigo)).size,
+    [insumosMovs],
+  )
 
   /* ── Abrir detalle ── */
   const abrir = (titulo: string, items: Assignment[]) => setDetalle({ titulo, items })
@@ -235,10 +338,11 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
           <span className="dash-card__hint">Toca un nombre</span>
         </div>
         <BarrasH
-          datos={porOperario}
+          datos={verOp ? porOperario : porOperario.slice(0, TOPE)}
           unidad="ha"
           onPick={(p) => abrir(p.label, cerradas.filter((a) => a.operatorName === p.id))}
         />
+        <VerTodo datos={porOperario} visto={TOPE} ver={verOp} onVer={setVerOp} unidad="ha" />
       </div>
 
       {/* Ranking de haciendas */}
@@ -248,11 +352,57 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
           <span className="dash-card__hint">Toca una hacienda</span>
         </div>
         <BarrasH
-          datos={porHacienda}
+          datos={verHac ? porHacienda : porHacienda.slice(0, TOPE)}
           unidad="ha"
           color={SERIES[1]}
           onPick={(p) => abrir(p.label, cerradas.filter((a) => a.haciendaName === p.id))}
         />
+        <VerTodo datos={porHacienda} visto={TOPE} ver={verHac} onVer={setVerHac} unidad="ha" />
+      </div>
+
+      {/* Insumos entregados: qué salió, por qué concepto y a qué máquinas */}
+      <div className="dash-card">
+        <div className="dash-card__head">
+          <h3>Insumos entregados</h3>
+          <button type="button" className="dash-card__link" onClick={() => setDetIns({ titulo: 'Todas las entregas', items: insumosMovs })}>
+            Ver todo →
+          </button>
+        </div>
+        {insumosMovs.length === 0 ? (
+          <p className="dash-vacio">Sin entregas de insumos en este periodo.</p>
+        ) : (
+          <>
+            <div className="dash-maq" style={{ gridTemplateColumns: '1fr 1fr' }}>
+              <div className="dash-maq__box"><strong>{insumosMovs.length}</strong><span>entregas</span></div>
+              <div className="dash-maq__box"><strong>{maquinasAtendidas}</strong><span>máquinas atendidas</span></div>
+            </div>
+
+            <p className="ins-res__lbl" style={{ marginTop: 12 }}>Por producto</p>
+            <BarrasH
+              datos={verProd ? insPorProducto : insPorProducto.slice(0, 6)}
+              unidad=""
+              color={SERIES[3]}
+              onPick={(p) => setDetIns({
+                titulo: insumoNombre.get(p.id)?.nombre ?? p.label,
+                items: insumosMovs.filter((k) => k.insumoId === p.id),
+              })}
+            />
+            <VerTodo datos={insPorProducto} visto={6} ver={verProd} onVer={setVerProd} unidad="" />
+
+            <p className="ins-res__lbl" style={{ marginTop: 12 }}>Por concepto</p>
+            <BarrasH
+              datos={insPorConcepto}
+              unidad=""
+              color={SERIES[5]}
+              onPick={(p) => setDetIns({
+                titulo: p.label,
+                items: p.id === '__otros'
+                  ? insumosMovs.filter((k) => !insPorConcepto.some((c) => c.id !== '__otros' && c.id === (k.motivo ?? 'Otro').split('(')[0].trim()))
+                  : insumosMovs.filter((k) => (k.motivo ?? 'Otro').split('(')[0].trim() === p.id),
+              })}
+            />
+          </>
+        )}
       </div>
 
       {/* Máquinas: pocos valores → fichas, no gráfico */}
@@ -272,27 +422,45 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
         )}
       </div>
 
-      {/* Accesos rápidos: el dashboard es el centro, desde aquí va a todo */}
-      {onIr && (
-        <div className="dash-card">
-          <div className="dash-card__head"><h3>Ir a</h3></div>
-          <div className="dash-accesos">
-            {[
-              { id: 'labores', ico: '✓', txt: 'Labores' },
-              { id: 'realizadas', ico: '☑', txt: 'Realizadas' },
-              { id: 'aprobaciones', ico: '✔', txt: 'A facturar' },
-              { id: 'asignar', ico: '＋', txt: 'Asignar' },
-              { id: 'equipos', ico: '▣', txt: 'Máquinas' },
-              { id: 'insumosresumen', ico: '🛢️', txt: 'Insumos' },
-              { id: 'planilla', ico: '▦', txt: 'Planilla' },
-              { id: 'reporte', ico: '⬦', txt: 'Reporte' },
-              { id: 'usuarios', ico: '👤', txt: 'Usuarios' },
-              { id: 'mapa', ico: '🗺️', txt: 'Mapa' },
-            ].map((x) => (
-              <button key={x.id} type="button" className="dash-acceso" onClick={() => onIr(x.id)}>
-                <span aria-hidden>{x.ico}</span>{x.txt}
-              </button>
-            ))}
+      {/* Detalle de entregas de insumos */}
+      {detIns && (
+        <div className="modal-overlay open" onClick={() => setDetIns(null)}>
+          <div className="modal-card dash-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Insumos entregados</p><h3>{detIns.titulo}</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setDetIns(null)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              {detIns.items.length} entrega{detIns.items.length === 1 ? '' : 's'} ·{' '}
+              <strong>{fmtCantidad(detIns.items.reduce((t, k) => t + k.cantidad, 0))}</strong> en total
+            </p>
+            <div className="dash-detalle">
+              {detIns.items.length === 0 ? (
+                <p className="muted-text">Nada que mostrar.</p>
+              ) : (
+                [...detIns.items]
+                  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+                  .map((k) => {
+                    const info = insumoNombre.get(k.insumoId)
+                    return (
+                      <div key={k.id} className="dash-detalle__row">
+                        <div className="dash-detalle__main">
+                          <strong>{info?.nombre ?? k.insumoId}</strong>
+                          <span>
+                            {k.motivo ?? 'Entrega'}
+                            {k.equipoCodigo ? ` · 🚜 ${k.equipoCodigo}` : ''}
+                            {k.bodegaId && bodegaNombre.get(k.bodegaId) ? ` · ${bodegaNombre.get(k.bodegaId)}` : ''}
+                          </span>
+                        </div>
+                        <div className="dash-detalle__side">
+                          <strong>{fmtCantidad(k.cantidad, info?.unidad)} {info?.unidad ?? ''}</strong>
+                          <small>{new Date(k.createdAt).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })}</small>
+                        </div>
+                      </div>
+                    )
+                  })
+              )}
+            </div>
           </div>
         </div>
       )}

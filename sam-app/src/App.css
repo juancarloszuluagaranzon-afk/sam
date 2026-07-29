@@ -6158,6 +6158,33 @@ td.planilla-revisada {
 .dash-card__link { background: none; border: none; color: var(--color-brand); font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 0; }
 .dash-vacio { color: var(--color-ink-mid); font-size: 0.88rem; margin: 6px 0; }
 
+/* Pie del ranking: cuánto se ve del total + botón para abrirlo completo. */
+.dash-vertodo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border);
+}
+.dash-vertodo__res { font-size: 0.74rem; color: var(--color-ink-mid); }
+.dash-vertodo__btn {
+  flex: 0 0 auto;
+  width: auto;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  color: var(--color-brand);
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 6px 14px;
+  min-height: 34px;
+  cursor: pointer;
+}
+.dash-vertodo__btn:active { background: var(--color-surface-alt); }
+
 /* Dona */
 .dash-donut { display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .dash-donut__svg { width: 100%; max-width: 190px; height: auto; }

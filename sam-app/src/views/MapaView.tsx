@@ -1068,7 +1068,7 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                   ✅ {procesados.length} plano(s) listo(s) para agregar
                 </p>
                 {procesados.map((r) => (
-                  <div key={r.id} className="avz-listos__row">
+                  <div key={r.mapId} className="avz-listos__row">
                     <span>{r.nombre}</span>
                     <button type="button" onClick={() => void agregarProcesado(r)}>Agregar al visor</button>
                   </div>

@@ -208,3 +208,15 @@ cada persona en `localStorage` (`sam:ultima-placa:<userId>`) y sale preseleccion
 |---|---|
 | `operador` | solo `MAQUINA` (su máquina, horómetro obligatorio) |
 | `supervisor_insumos` | `CARRO`, `PIMPINAS`, `VEHICULO`, `MAQUINA` |
+
+
+## El taller es OTRO inventario conceptual, la MISMA bodega técnica (30-jul-2026)
+
+Los repuestos viven en el mismo catálogo `insumos` y el mismo kardex, en una
+bodega `tipo = 'TALLER'`. Lo que los distingue son campos propios
+(`es_repuesto`, `referencia`, `marca`, `numero_parte`, `ubicacion`,
+`stock_maximo`, `costo_promedio`) y la tabla `insumos_aplicabilidad` (a qué
+marca/modelo/máquina sirve cada uno).
+
+No crear un segundo inventario: serían dos verdades. Ver
+`.agent/skills/managing-taller/`.

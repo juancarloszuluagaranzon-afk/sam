@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos' | 'taller'
 
 export type UserId = 'U002' | 'U003' | 'U004'
 
@@ -254,7 +254,9 @@ export interface CreateFlotaServicioInput {
 
 // Bodegas: una PRINCIPAL (fija, compra y almacena) y varias SATELITE (el
 // vehículo de cada supervisor de insumos, de donde consumen los operarios).
-export type BodegaTipo = 'PRINCIPAL' | 'SATELITE'
+// TALLER: la bodega de repuestos. Es una bodega mas sobre el mismo kardex,
+// no un inventario paralelo.
+export type BodegaTipo = 'PRINCIPAL' | 'SATELITE' | 'TALLER'
 
 export interface Bodega {
   id: string
@@ -381,6 +383,19 @@ export interface Insumo {
   // detrás de "⋯ Otros" para no saturar la lista.
   frecuente: boolean
   activo: boolean
+  // ── Campos de TALLER ──
+  // Vacíos en un insumo de uso diario; llenos en un repuesto. Son los que
+  // permiten encontrar la pieza correcta: un filtro sirve para un modelo y no
+  // para otro, y sin referencia/número de parte se termina comprando duplicado.
+  esRepuesto?: boolean
+  referencia?: string
+  marca?: string
+  numeroParte?: string
+  ubicacion?: string
+  stockMaximo?: number
+  stockSeguridad?: number
+  costoPromedio?: number
+  fichaUrl?: string
 }
 
 export type KardexTipo = 'ENTRADA' | 'SALIDA' | 'AJUSTE'
@@ -508,4 +523,201 @@ export interface UpdateAssignmentInput {
   editadoPor?: string
   // Facturación: N° de factura (o null/'' para desfacturar).
   facturaNumero?: string | null
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+ * Taller de maquinaria
+ *
+ * El inventario de uso diario responde "¿qué le entregué hoy al operario?".
+ * Esto responde otra cosa: "¿qué le he metido a esta máquina en toda su vida
+ * y cuánto me cuesta la hora?".
+ * ══════════════════════════════════════════════════════════════════════════ */
+
+/** Lectura vigente del horómetro, ya depurada de dedazos. */
+export interface EquipoHorometro {
+  codigo: string
+  horometro: number
+  leidoEn: string
+  fuente: string
+}
+
+/**
+ * Lectura que quedo fuera de la magnitud dominante del equipo.
+ *
+ * No se esconde: se muestra en la hoja de vida para que alguien vaya a
+ * corregirla en la labor de origen. `magnitudEsperada` es el orden de magnitud
+ * en el que si estan las demas lecturas (1.000, 10.000...), que es la pista de
+ * cuantos digitos sobran o faltan.
+ */
+export interface HorometroDudoso {
+  origenId: string
+  codigo: string
+  horas: number
+  cuando: string
+  fuente: string
+  magnitudEsperada: number
+}
+
+export type ProveedorTipo = 'REPUESTOS' | 'AGROINSUMOS' | 'SERVICIOS' | 'OTRO'
+
+export interface Proveedor {
+  id: string
+  nombre: string
+  nit?: string
+  tipo: ProveedorTipo
+  contacto?: string
+  telefono?: string
+  email?: string
+  zona?: string
+  direccion?: string
+  nota?: string
+  activo: boolean
+}
+
+/** Precio y referencia de UN proveedor para UN repuesto. */
+export interface InsumoProveedor {
+  id: string
+  insumoId: string
+  proveedorId: string
+  proveedorNombre?: string
+  referenciaProveedor?: string
+  precio?: number
+  diasEntrega?: number
+  preferido: boolean
+  ultimaCompra?: string
+}
+
+/** A qué máquinas sirve un repuesto. Sin filas = genérico. */
+export interface Aplicabilidad {
+  id: string
+  insumoId: string
+  marca?: string
+  modelo?: string
+  equipoCodigo?: string
+  nota?: string
+}
+
+export type CompraEstado = 'BORRADOR' | 'RECIBIDA' | 'ANULADA'
+
+export interface CompraItem {
+  id?: string
+  insumoId: string
+  insumoNombre?: string
+  unidad?: string
+  cantidad: number
+  precioUnitario: number
+}
+
+export interface Compra {
+  id: string
+  consecutivo: number
+  proveedorId?: string
+  proveedorNombre?: string
+  bodegaId?: string
+  fecha: string
+  factura?: string
+  estado: CompraEstado
+  subtotal: number
+  impuestos: number
+  total: number
+  nota?: string
+  soporteUrl?: string
+  creadoNombre?: string
+  recibidaEn?: string
+  createdAt: string
+  items: CompraItem[]
+}
+
+/** Tarea preventiva que se dispara por horómetro (y opcionalmente por días). */
+export interface MttoPlan {
+  id: string
+  equipoCodigo?: string
+  marca?: string
+  modelo?: string
+  tarea: string
+  cadaHoras?: number
+  cadaDias?: number
+  avisarAntesHoras: number
+  ultimaHoras?: number
+  ultimaFecha?: string
+  activo: boolean
+  nota?: string
+}
+
+/** Estado de un plan frente al horómetro de HOY. */
+export interface PlanVencimiento {
+  plan: MttoPlan
+  equipoCodigo: string
+  horometro: number
+  /** Horómetro al que toca la próxima. */
+  proximaEn: number
+  /** Horas que faltan (negativo = vencido). */
+  faltan: number
+  estado: 'VENCIDO' | 'PROXIMO' | 'OK' | 'SIN_LECTURA'
+}
+
+export type OtTipo = 'PREVENTIVO' | 'CORRECTIVO' | 'MEJORA'
+export type OtEstado = 'ABIERTA' | 'EN_PROCESO' | 'CERRADA' | 'ANULADA'
+
+export const OT_TIPO_LABEL: Record<OtTipo, string> = {
+  PREVENTIVO: 'Preventivo',
+  CORRECTIVO: 'Correctivo',
+  MEJORA: 'Mejora',
+}
+
+export interface OtRepuesto {
+  id?: string
+  insumoId: string
+  insumoNombre?: string
+  unidad?: string
+  bodegaId?: string
+  cantidad: number
+  costoUnitario: number
+  descargado?: boolean
+}
+
+export interface OrdenTrabajo {
+  id: string
+  consecutivo: number
+  equipoCodigo: string
+  tipo: OtTipo
+  estado: OtEstado
+  planId?: string
+  descripcion: string
+  causa?: string
+  trabajoRealizado?: string
+  horometro?: number
+  /** El reloj de la parada: de aquí salen disponibilidad y TMR. */
+  paroEn?: string
+  arranqueEn?: string
+  horasMo: number
+  valorHoraMo: number
+  costoExterno: number
+  proveedorExternoId?: string
+  responsable?: string
+  evidenciaUrls?: string[]
+  creadoNombre?: string
+  cerradaEn?: string
+  createdAt: string
+  repuestos: OtRepuesto[]
+}
+
+export type CostoConcepto = 'SEGURO' | 'IMPUESTO' | 'DEPRECIACION' | 'ADMINISTRATIVO' | 'OTRO'
+
+export const COSTO_LABEL: Record<CostoConcepto, string> = {
+  SEGURO: 'Seguro',
+  IMPUESTO: 'Impuestos',
+  DEPRECIACION: 'Depreciación',
+  ADMINISTRATIVO: 'Administrativo',
+  OTRO: 'Otro',
+}
+
+/** Costo que no sale de la operación: alguien lo carga por equipo y periodo. */
+export interface EquipoCosto {
+  id: string
+  equipoCodigo: string
+  concepto: CostoConcepto
+  periodo: string
+  valor: number
+  nota?: string
 }

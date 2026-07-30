@@ -19,6 +19,7 @@ function roleLabel(role: UserProfile['role']): string {
   if (role === 'supervisor_insumos') return 'Supervisor de insumos'
   if (role === 'conductor') return 'Conductor de escolta'
   if (role === 'analista_insumos') return 'Analista de insumos y materiales'
+  if (role === 'taller') return 'Taller'
   return 'Operario'
 }
 

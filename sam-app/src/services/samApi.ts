@@ -762,7 +762,7 @@ export async function loadAssignments(): Promise<{
 // a operador. Fuente única para evitar que vuelva a divergir.
 export function mapRole(rol: unknown): UserProfile['role'] {
   const r = String(rol ?? '')
-  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor' || r === 'analista_insumos') {
+  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor' || r === 'analista_insumos' || r === 'taller') {
     return r
   }
   return 'operador'
@@ -1344,6 +1344,15 @@ function mapInsumo(row: Record<string, unknown>): Insumo {
     stockMinimo: Number(row.stock_minimo ?? 0),
     frecuente: Boolean(row.frecuente ?? false),
     activo: row.activo == null ? true : Boolean(row.activo),
+    esRepuesto: Boolean(row.es_repuesto ?? false),
+    referencia: row.referencia ? String(row.referencia) : undefined,
+    marca: row.marca ? String(row.marca) : undefined,
+    numeroParte: row.numero_parte ? String(row.numero_parte) : undefined,
+    ubicacion: row.ubicacion ? String(row.ubicacion) : undefined,
+    stockMaximo: row.stock_maximo == null ? undefined : Number(row.stock_maximo),
+    stockSeguridad: row.stock_seguridad == null ? undefined : Number(row.stock_seguridad),
+    costoPromedio: row.costo_promedio == null ? undefined : Number(row.costo_promedio),
+    fichaUrl: row.ficha_url ? String(row.ficha_url) : undefined,
   }
 }
 
@@ -1506,11 +1515,17 @@ export async function loadKardexSalidasEquipo(limit = 1000): Promise<InsumoKarde
 
 // ── BODEGAS (principal + satélites) ─────────────────────────────────────────
 
+/** PRINCIPAL | SATELITE | TALLER; cualquier otra cosa cae en SATELITE. */
+function bodegaTipoDe(v: unknown): BodegaTipo {
+  const t = String(v ?? 'SATELITE').toUpperCase()
+  return t === 'PRINCIPAL' || t === 'TALLER' ? (t as BodegaTipo) : 'SATELITE'
+}
+
 function mapBodega(row: Record<string, unknown>): Bodega {
   return {
     id: String(row.id),
     nombre: String(row.nombre ?? ''),
-    tipo: String(row.tipo ?? 'SATELITE').toUpperCase() === 'PRINCIPAL' ? 'PRINCIPAL' : 'SATELITE',
+    tipo: bodegaTipoDe(row.tipo),
     responsableId: row.responsable_id ? String(row.responsable_id) : undefined,
     vehiculo: row.vehiculo ? String(row.vehiculo) : undefined,
     activo: row.activo == null ? true : Boolean(row.activo),

@@ -7676,3 +7676,85 @@ td.planilla-vacio:hover { background: #fde047; }
 .reuse-alert__text span { font-size: 0.82rem; color: var(--color-ink-mid, #4a5040); }
 .reuse-alert__btn { flex: 0 0 auto; width: auto; padding: 9px 18px; }
 
+
+
+/* ══════════════════ TALLER DE MAQUINARIA ══════════════════ */
+
+.taller-aviso {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 10px 12px; border-radius: 10px; margin-top: 10px;
+  border: 1px solid var(--color-border); background: var(--color-surface-alt);
+}
+.taller-aviso span { font-size: 0.8rem; color: var(--color-ink-mid); }
+.taller-aviso--warn { border-color: rgba(217, 119, 6, .45); background: rgba(217, 119, 6, .10); }
+
+/* Ficha en rejilla: etiqueta arriba, dato abajo. Cabe en 2 columnas en celular. */
+.taller-ficha {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px; margin-top: 10px;
+}
+.taller-ficha > div {
+  display: flex; flex-direction: column; gap: 1px;
+  padding: 8px 10px; border-radius: 8px; background: var(--color-surface-alt);
+}
+.taller-ficha span { font-size: 0.7rem; color: var(--color-ink-mid); text-transform: uppercase; letter-spacing: .02em; }
+.taller-ficha strong { font-size: 0.92rem; overflow-wrap: anywhere; }
+
+.taller-acciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.taller-acciones .primary-button { width: auto; flex: 0 0 auto; }
+
+/* Fila de orden de trabajo: toda la tarjeta es tocable. */
+.taller-ot {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer; color: inherit;
+  padding: 12px; border: 1px solid var(--color-border); border-radius: 12px;
+  background: var(--color-surface);
+}
+.taller-ot:active { background: var(--color-surface-alt); }
+.taller-ot__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+
+/* Vencimientos del preventivo: el color dice la urgencia de un vistazo. */
+.taller-venc {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 12px; border-radius: 12px;
+  border: 1px solid var(--color-border); border-left-width: 4px;
+  background: var(--color-surface);
+}
+.taller-venc__main { flex: 1 1 220px; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.taller-venc--vencido { border-left-color: #c2410c; }
+.taller-venc--proximo { border-left-color: #b45309; }
+.taller-venc--ok { border-left-color: #15803d; }
+.taller-venc--sin_lectura { border-left-color: var(--color-ink-mid); }
+
+.taller-check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
+.taller-check input { width: 20px; height: 20px; margin-top: 2px; flex: 0 0 auto; }
+.taller-check span { display: flex; flex-direction: column; gap: 2px; }
+.taller-check small { font-size: 0.75rem; color: var(--color-ink-mid); }
+
+/* Fila de item de compra: selector ancho, cantidades angostas. */
+.taller-item-row {
+  display: grid; grid-template-columns: 1fr 80px 100px auto;
+  gap: 6px; align-items: center; margin-bottom: 6px;
+}
+@media (max-width: 520px) {
+  .taller-item-row { grid-template-columns: 1fr 70px 90px auto; }
+}
+
+.taller-costo { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.taller-costo__hero {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 16px; border-radius: 12px; background: var(--color-surface-alt);
+}
+.taller-costo__hero strong { font-size: 1.9rem; line-height: 1; color: var(--color-brand); }
+.taller-costo__hero span { font-size: 0.78rem; color: var(--color-ink-mid); }
+
+.taller-badge {
+  display: inline-block; margin-left: 6px; padding: 1px 7px;
+  border-radius: 999px; background: #c2410c; color: #fff;
+  font-size: 0.68rem; font-weight: 700;
+}
+
+:root[data-theme="dark"] .taller-aviso--warn { border-color: rgba(251, 191, 36, .35); background: rgba(251, 191, 36, .10); }
+:root[data-theme="dark"] .taller-venc--vencido { border-left-color: #f97316; }
+:root[data-theme="dark"] .taller-venc--proximo { border-left-color: #fbbf24; }
+:root[data-theme="dark"] .taller-venc--ok { border-left-color: #4ade80; }

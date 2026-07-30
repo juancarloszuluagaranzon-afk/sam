@@ -77,6 +77,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Tanqueo + avales | `components/TanqueoModal`, `views/AvalesCombustibleTab`, `VehiculosTab` | Todo el combustible que no pasa por un despacho entra por aquí y lo avala el **analista de insumos** |
 | Mapas offline | `views/MapaView`, `MapasTab` | Visor tipo Avenza (capas, medir, marcadores) + tiles de FieldMaps |
 | Flota / Escolta | `views/Flota*` | Formato CDA-F-68, rol `conductor`, firma táctil + foto |
+| Taller de maquinaria | `views/TallerModule`, `views/taller/*` | Hoja de vida, preventivo por horómetro, órdenes de trabajo, repuestos, compras e indicadores ($/hora, disponibilidad, TMEF, TMR) |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
 
 ## Detalles que muerden
@@ -106,9 +107,19 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
     catálogo `vehiculos`) y **MAQUINA** (exige horómetro) son consumo, no tocan stock.
   Todo nace `PENDIENTE` y lo avala el analista en `AvalesCombustibleTab`. **Rechazar
   REVERSA** los movimientos — si tocas ese flujo, mantén la reversa simétrica.
+- **🔴 Horómetro: nunca el máximo ni la mediana.** Es la base del preventivo y los
+  datos vienen sucios de dos formas: dedazos sueltos (un `14.142.545` entre lecturas
+  de ~145.200) y **escalas mezcladas** (unos digitan `5407`, otros `54030` — la misma
+  lectura con y sin la décima). `equipo_horometro_v` usa **magnitud dominante**: agrupa
+  las últimas 12 lecturas por `floor(log10(h))`, gana el grupo más numeroso y dentro de
+  él la más reciente. La lectura **manual manda siempre**. Ver `.agent/skills/managing-taller/`.
+- **🔴 La orden de trabajo es la pieza central del taller.** Sin `paro_en`/`arranque_en`
+  no hay disponibilidad ni TMR. Los repuestos se descuentan **al cerrar**, marcados uno
+  por uno (`ot_repuestos.descargado`) para que cerrar dos veces no descuente doble.
+  Igual con las compras: nacen en BORRADOR y solo **recibirlas** mueve el inventario.
 - **Skills del repo**: `sam-app/.agent/skills/` — leerlas antes de tocar su área
   (`managing-assignments`, `managing-insumos`, `managing-mapas`, `managing-supabase`,
-  `managing-maestro`, `capturing-gotchas`).
+  `managing-maestro`, `managing-taller`, `capturing-gotchas`).
 
 ## Cómo trabaja el usuario
 

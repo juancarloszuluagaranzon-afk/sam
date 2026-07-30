@@ -7793,3 +7793,26 @@ td.planilla-vacio:hover { background: #fde047; }
   font-size: 0.78rem; line-height: 1.5; white-space: pre-wrap;
   overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto;
 }
+
+
+/* Gestion del mapa desde el panel de Capas (solo admin/jefe). */
+.avz-capa__mas {
+  flex: 0 0 auto; width: 32px; height: 32px;
+  border: none; border-radius: 8px; cursor: pointer;
+  background: rgba(255,255,255,.08); color: #cbd5e1;
+  font-size: 17px; line-height: 1; letter-spacing: 1px;
+}
+.avz-capa__mas:hover, .avz-capa__mas[aria-expanded="true"] { background: rgba(255,255,255,.16); color: #fff; }
+.avz-capa__menu {
+  flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 6px;
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+.avz-capa__menu button {
+  flex: 0 0 auto; padding: 8px 14px; min-height: 38px;
+  border: 1px solid rgba(255,255,255,.18); border-radius: 999px;
+  background: rgba(255,255,255,.06); color: #e2e8f0;
+  font-size: 0.82rem; font-weight: 600; cursor: pointer;
+}
+.avz-capa__menu button:active { background: rgba(255,255,255,.14); }
+.avz-capa__menu .es-borrar { color: #fca5a5; border-color: rgba(252,165,165,.35); }

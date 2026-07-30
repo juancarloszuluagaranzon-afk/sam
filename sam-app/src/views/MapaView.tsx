@@ -4,7 +4,7 @@ import 'leaflet/dist/leaflet.css'
 // Rotación del mapa estilo Avenza (dos dedos en móvil, Shift+arrastrar en PC).
 import 'leaflet-rotate'
 import type { MapaConfig } from '../domain/sam'
-import { loadMapas, loadMapasAdmin, createMapa } from '../services/samApi'
+import { loadMapas, loadMapasAdmin, createMapa, updateMapa, deleteMapa } from '../services/samApi'
 import { listarCartografias, type CartografiaRemota } from '../services/fieldmapsApi'
 import { useAppData } from '../context/AppDataContext'
 import { MapaFormModal } from '../components/MapaFormModal'
@@ -84,6 +84,14 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   // el que los subia no volvia a saber de ellos: dos planos quedaron listos y
   // sin agregar cuatro dias. Ahora el ciclo se cierra donde empieza.
   const [procesados, setProcesados] = useState<CartografiaRemota[]>([])
+  // Gestion del mapa desde el propio visor: renombrar, reemplazar la
+  // cartografia y eliminar. Antes solo se podia desde Catalogos -> Mapas, que
+  // es un sitio al que no llega quien esta mirando el plano.
+  const [menuMapa, setMenuMapa] = useState<string>('')
+  // Con valor = se esta REEMPLAZANDO la cartografia de ese mapa (mismo id).
+  const [editTarget, setEditTarget] = useState<MapaConfig | null>(null)
+  const [renombrando, setRenombrando] = useState<{ id: string; nombre: string } | null>(null)
+  const [borrando, setBorrando] = useState<MapaConfig | null>(null)
   const [gpsOn, setGpsOn] = useState(false)
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number; acc: number } | null>(null)
   const [gpsError, setGpsError] = useState('')
@@ -580,6 +588,42 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     }
   }
 
+  /** Renombra el mapa en el catalogo (lo ven todos los equipos). */
+  async function guardarNombre() {
+    if (!renombrando) return
+    const nom = renombrando.nombre.trim()
+    if (!nom) { setMsg('Escribe un nombre.'); return }
+    try {
+      await updateMapa(renombrando.id, { nombre: nom })
+      setMapas((prev) => (prev ?? []).map((m) => (m.id === renombrando.id ? { ...m, nombre: nom } : m)))
+      setRenombrando(null)
+      setMsg(`Renombrado a "${nom}".`)
+    } catch (err) {
+      setMsg(`No se pudo renombrar. (${(err as { message?: string })?.message ?? 'error'})`)
+    }
+  }
+
+  /**
+   * Saca el mapa del catalogo. Es para TODOS los equipos, no solo para este,
+   * asi que se confirma antes. Tambien se borra la descarga local: dejarla
+   * ocuparia espacio en el telefono por un mapa que ya no existe.
+   */
+  async function eliminarMapa() {
+    if (!borrando) return
+    const nom = borrando.nombre
+    try {
+      await borrarMapa(borrando).catch(() => { /* puede no estar descargado */ })
+      await deleteMapa(borrando.id)
+      setMapas((prev) => (prev ?? []).filter((m) => m.id !== borrando.id))
+      setCapas((prev) => { const n = { ...prev }; delete n[borrando.id]; return n })
+      setBorrando(null)
+      setDescargasVersion((v) => v + 1)
+      setMsg(`"${nom}" eliminado del visor.`)
+    } catch (err) {
+      setMsg(`No se pudo eliminar. (${(err as { message?: string })?.message ?? 'error'})`)
+    }
+  }
+
   async function refreshTrasGuardar(accion: 'creado' | 'reemplazado' | 'procesando', nombreMapa: string) {
     if (accion === 'procesando') {
       setMsg(`"${nombreMapa}" subido. Se esta procesando; en unos minutos aparece aqui mismo, en Capas, listo para agregar.`)
@@ -779,7 +823,13 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
             )}
           </div>
         </div>
-        <MapaFormModal open={formOpen} onClose={() => setFormOpen(false)} mapas={mapas} onSaved={(a, n) => void refreshTrasGuardar(a, n)} />
+      <MapaFormModal
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditTarget(null) }}
+        editar={editTarget}
+        mapas={mapas}
+        onSaved={(a, n) => void refreshTrasGuardar(a, n)}
+      />
       </div>
     )
   }
@@ -1102,6 +1152,16 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                     aria-label={`Opacidad de ${m.nombre}`}
                     title="Opacidad (para ver el traslape con las otras capas)"
                   />
+                  {puedeGestionar && (
+                    <button
+                      type="button"
+                      className="avz-capa__mas"
+                      onClick={() => setMenuMapa(menuMapa === m.id ? '' : m.id)}
+                      aria-label={`Opciones de ${m.nombre}`}
+                      aria-expanded={menuMapa === m.id}
+                      title="Renombrar, reemplazar o eliminar"
+                    >⋯</button>
+                  )}
                   <span className="avz-capa__estado">
                     {bajandoEsta ? (
                       <button type="button" className="avz-capa__btn" onClick={() => abortRef.current?.abort()}>
@@ -1127,6 +1187,20 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                       </button>
                     )}
                   </span>
+
+                  {puedeGestionar && menuMapa === m.id && (
+                    <div className="avz-capa__menu">
+                      <button type="button" onClick={() => { setRenombrando({ id: m.id, nombre: m.nombre }); setMenuMapa('') }}>
+                        ✎ Renombrar
+                      </button>
+                      <button type="button" onClick={() => { setEditTarget(m); setFormOpen(true); setMenuMapa('') }}>
+                        🔄 Reemplazar cartografía
+                      </button>
+                      <button type="button" className="es-borrar" onClick={() => { setBorrando(m); setMenuMapa('') }}>
+                        🗑 Eliminar del visor
+                      </button>
+                    </div>
+                  )}
                 </div>
               )
             })}
@@ -1187,7 +1261,64 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
         </div>
       )}
 
-      <MapaFormModal open={formOpen} onClose={() => setFormOpen(false)} mapas={mapas} onSaved={(a, n) => void refreshTrasGuardar(a, n)} />
+        {/* Renombrar */}
+      {renombrando && (
+        <div className="modal-overlay open" onClick={() => setRenombrando(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(400px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Mapa</p><h3>Renombrar</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setRenombrando(null)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <label>Nombre
+              <input
+                type="text" value={renombrando.nombre} autoFocus
+                onChange={(e) => setRenombrando({ ...renombrando, nombre: e.target.value })}
+                onKeyDown={(e) => { if (e.key === 'Enter') void guardarNombre() }}
+              />
+            </label>
+            <p className="subtle-copy">Lo verán todos los equipos.</p>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setRenombrando(null)}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void guardarNombre()}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Eliminar */}
+      {borrando && (
+        <div className="modal-overlay open" onClick={() => setBorrando(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Mapa</p><h3>¿Eliminar “{borrando.nombre}”?</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setBorrando(null)} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Sale del visor <strong>para todos los equipos</strong>, y se borra la copia
+              descargada de este dispositivo. La cartografía original queda en el
+              procesador: se puede volver a agregar.
+            </p>
+            <p className="subtle-copy">
+              Si solo quieres liberar espacio en este equipo, cierra esto y toca
+              <strong> ✓ Sin señal</strong> en la capa.
+            </p>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setBorrando(null)}>Cancelar</button>
+              <button type="button" className="primary-button" style={{ background: '#b3261e' }} onClick={() => void eliminarMapa()}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <MapaFormModal
+        open={formOpen}
+        onClose={() => { setFormOpen(false); setEditTarget(null) }}
+        editar={editTarget}
+        mapas={mapas}
+        onSaved={(a, n) => void refreshTrasGuardar(a, n)}
+      />
     </div>
   )
 }

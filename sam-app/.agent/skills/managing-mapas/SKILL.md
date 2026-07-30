@@ -131,3 +131,25 @@ select nombre, tiles_base, activo from public.mapas order by created_at desc;
 ```
 
 Si en FieldMaps está `ready` y en ASM no aparece, es que falta el paso 2.
+
+## Gestión del mapa desde el visor (30-jul-2026)
+
+Renombrar, reemplazar la cartografía y eliminar ya no viven solo en Catálogos →
+Mapas: el panel de **Capas** del visor tiene un `⋯` por capa (solo owner y
+administración) con las tres acciones. Quien está mirando el plano es quien
+detecta que está mal nombrado o desactualizado, y hacerlo ir a otra pantalla era
+garantía de que no lo hiciera.
+
+- **Renombrar** cambia el nombre en el catálogo: lo ven todos los equipos.
+- **Reemplazar** reusa `MapaFormModal` con `editar`, así el mapa conserva su id
+  y los equipos que lo tenían descargado ven "🔄 Actualizar".
+- **Eliminar** pide confirmación (es para todos los equipos, no solo este) y
+  borra además la copia descargada del dispositivo — dejarla ocuparía espacio
+  por un mapa que ya no existe.
+
+⚠️ Ojo al colocar modales en `MapaView`: hay **dos** `return` con `<MapaFormModal>`
+— uno en la rama de "aún no hay mapas" y otro en el render principal. Un modal
+puesto en la primera rama no se renderiza nunca cuando sí hay mapas. Ya pasó.
+
+Ocultar/mostrar (`activo`) se queda en Catálogos a propósito: el visor solo
+carga los activos, así que desde ahí no habría forma de recuperar uno oculto.

@@ -535,3 +535,25 @@ Reclamo grave del cliente (perdía confianza; el dueño llamó molesto). Investi
 - **[2026-04-09]** `operatorAssignments` hace matching por nombre además de ID porque filas históricas no tienen `operador_id` consistente — no eliminar ese fallback por nombre
 - **[2026-04-09]** El `dateKey` se calcula en zona `America/Bogota`. Si el servidor guarda `created_at` en UTC, una asignación creada a las 11pm Colombia (3am UTC del día siguiente) puede aparecer en el día incorrecto si se calcula sin zona
 - **[2026-04-09]** Los caracteres `Â·` en la UI son un bug de encoding (UTF-8 leído como Latin-1). El separador correcto es `·` (U+00B7). Verificar encoding del archivo antes de editar App.tsx
+
+## 🔴 El tope de área sale del MAESTRO, no del máximo planificado (30-jul-2026)
+
+`suerteTotalArea` se calculaba como el **máximo de las áreas planificadas** del
+ciclo, asumiendo que cada fila nace con el área completa de la suerte. Eso vale
+para el patrón "programo la suerte entera y la ejecuto en varios parciales",
+pero **se rompe cuando la suerte se reparte en pedazos**.
+
+Caso real: **EL REFLEJO suerte 040 = 6,82 ha**. El DESPEJE se programó en dos
+asignaciones, 3,10 + 3,72 (que suman la suerte). El máximo daba **3,72**, y al
+restarle los 3,10 ya ejecutados el tope quedaba en **0,62 ha**: era imposible
+registrar las 3,72 que de verdad se hicieron.
+
+Ahora manda `maestro_risaralda.area_neta` (`areaOficialSuerte()`), y el máximo
+del ciclo queda solo como respaldo para suertes que aún no están en el maestro.
+
+⚠️ La búsqueda va por **nombre de hacienda**, no por código: hay códigos
+compartidos entre haciendas distintas (ver `project_maestro_codigo_compartido`).
+
+Aplica en los DOS sitios donde se topa el área: `finishAssignment` (cierre en
+campo) y `editAssignment` (corrección desde el Reporte). Si se toca uno, tocar
+el otro — antes ya habían divergido.

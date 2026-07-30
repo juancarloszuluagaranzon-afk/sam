@@ -24,7 +24,30 @@ export function useAssignmentActions() {
     setBusy,
     todayKey,
     supervisors,
+    maestro,
   } = useAppData()
+
+  /**
+   * Área REAL de la suerte, según el maestro del ingenio.
+   *
+   * 🔴 Antes se usaba el MÁXIMO de las áreas planificadas del ciclo como proxy.
+   * Eso funciona cuando la suerte se programa entera y se ejecuta en varios
+   * parciales (cada fila nace con el área completa), pero **falla cuando la
+   * suerte se reparte en pedazos**: en EL REFLEJO 040 (6,82 ha) el DESPEJE se
+   * programó 3,10 + 3,72 — el máximo daba 3,72 y el tope quedaba en la mitad
+   * del área real, impidiendo registrar lo que de verdad se hizo.
+   *
+   * ⚠️ Se busca por NOMBRE de hacienda, no por código: hay códigos compartidos
+   * entre haciendas distintas (ver `project_maestro_codigo_compartido`).
+   */
+  function areaOficialSuerte(a: Assignment): number | null {
+    const suerte = a.suerte.trim().toUpperCase()
+    const hacienda = a.haciendaName.trim().toUpperCase()
+    const fila = maestro.find(
+      (m) => m.suerte.trim().toUpperCase() === suerte && m.haciendaName.trim().toUpperCase() === hacienda,
+    )
+    return fila && fila.area > 0 ? fila.area : null
+  }
 
   const [finishDrafts, setFinishDrafts] = useState<Record<string, FinishDraft>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})
@@ -224,18 +247,23 @@ export function useAssignmentActions() {
     // `assignment.area` directo en ese caso restaria dos veces lo ya hecho
     // y el cap quedaria en 0 (el operario no podria registrar nada). Tomamos
     // el MAX de las areas del ciclo = area completa real de la suerte.
-    const suerteTotalArea = Math.max(
-      assignment.area,
-      ...assignments
-        .filter(
-          (a) =>
-            a.suerteCode === assignment.suerteCode &&
-            a.labor.trim().toUpperCase() === normalizedLabor &&
-            isSameCycle(a.dateKey, assignment.dateKey) &&
-            a.status !== 'CANCELADA',
-        )
-        .map((a) => a.area),
-    )
+    // Mismo criterio que en la edicion: el area OFICIAL del maestro manda. El
+    // maximo del ciclo solo sirve de respaldo, y se queda corto cuando la
+    // suerte se programo en pedazos en vez de entera.
+    const suerteTotalArea =
+      areaOficialSuerte(assignment) ??
+      Math.max(
+        assignment.area,
+        ...assignments
+          .filter(
+            (a) =>
+              a.suerteCode === assignment.suerteCode &&
+              a.labor.trim().toUpperCase() === normalizedLabor &&
+              isSameCycle(a.dateKey, assignment.dateKey) &&
+              a.status !== 'CANCELADA',
+          )
+          .map((a) => a.area),
+      )
     const suerteRemaining = Math.max(
       0,
       suerteTotalArea - (suerteExecutedOthers + ownExecuted),
@@ -610,7 +638,11 @@ export function useAssignmentActions() {
           isSameCycle(a.dateKey, assignment.dateKey) &&
           a.status !== 'CANCELADA',
       )
-      const suerteTotalArea = Math.max(assignment.area, ...mismoCiclo.map((a) => a.area))
+      // El área oficial manda; el máximo del ciclo es solo el respaldo para
+      // cuando la suerte todavía no está en el maestro.
+      const suerteTotalArea =
+        areaOficialSuerte(assignment) ??
+        Math.max(assignment.area, ...mismoCiclo.map((a) => a.area))
       // Ejecutado por los OTROS parciales/completadas del ciclo (no esta fila).
       const ejecOtros = mismoCiclo
         .filter((a) => a.id !== assignment.id && (a.status === 'COMPLETADA' || a.status === 'PARCIAL'))

@@ -7776,3 +7776,20 @@ td.planilla-vacio:hover { background: #fde047; }
   background: #22c55e; color: #06280f; font-weight: 700; font-size: 0.82rem;
 }
 .avz-listos__row button:active { opacity: .8; }
+
+
+/* Codigo propio del repuesto: es la llave, se lee antes que el nombre. */
+.rep-codigo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.72rem; font-weight: 700; letter-spacing: .03em;
+  padding: 2px 7px; border-radius: 6px;
+  background: var(--color-surface-alt); color: var(--color-ink-mid);
+}
+/* El texto del pedido tal como le va a llegar al proveedor. */
+.rep-pedido {
+  margin: 6px 0 0; padding: 12px; border-radius: 10px;
+  background: var(--color-surface-alt); border: 1px solid var(--color-border);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem; line-height: 1.5; white-space: pre-wrap;
+  overflow-wrap: anywhere; max-height: 40vh; overflow-y: auto;
+}

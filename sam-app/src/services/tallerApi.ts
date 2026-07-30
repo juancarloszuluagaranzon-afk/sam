@@ -147,9 +147,36 @@ export async function saveProveedor(input: Partial<Proveedor> & { nombre: string
   return mapProveedor(data as Record<string, unknown>)
 }
 
+/* ── Familias y codigo propio ────────────────────────────────────────────── */
+
+export interface Familia { codigo: string; nombre: string; orden: number }
+
+export async function loadFamilias(): Promise<Familia[]> {
+  const { data, error } = await supabase.from('insumos_familias').select('*').order('orden')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => ({
+    codigo: String(r.codigo), nombre: String(r.nombre), orden: Number(r.orden ?? 100),
+  }))
+}
+
+/**
+ * Siguiente codigo propio de la familia (FIL-0004).
+ *
+ * Lo calcula la BASE, no el cliente: si dos personas crean un repuesto a la vez,
+ * en el cliente les tocaria el mismo numero.
+ */
+export async function siguienteCodigo(familia: string): Promise<string> {
+  const { data, error } = await supabase.rpc('siguiente_codigo_insumo', { p_familia: familia })
+  if (error || !data) throw new Error(error?.message || 'No se pudo generar el codigo')
+  return String(data)
+}
+
 /* ── Ficha del repuesto ──────────────────────────────────────────────────── */
 
 export async function updateRepuestoFicha(insumoId: string, patch: {
+  codigo?: string
+  familia?: string
+  descripcion?: string
   referencia?: string
   marca?: string
   numeroParte?: string
@@ -160,6 +187,9 @@ export async function updateRepuestoFicha(insumoId: string, patch: {
   costoPromedio?: number | null
 }): Promise<void> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.codigo !== undefined) payload.codigo = patch.codigo.trim().toUpperCase() || null
+  if (patch.familia !== undefined) payload.familia = patch.familia.trim().toUpperCase() || null
+  if (patch.descripcion !== undefined) payload.descripcion = patch.descripcion.trim() || null
   if (patch.referencia !== undefined) payload.referencia = patch.referencia.trim() || null
   if (patch.marca !== undefined) payload.marca = patch.marca.trim().toUpperCase() || null
   if (patch.numeroParte !== undefined) payload.numero_parte = patch.numeroParte.trim().toUpperCase() || null

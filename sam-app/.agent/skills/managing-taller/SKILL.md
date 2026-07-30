@@ -126,3 +126,61 @@ segregar, todavía sin vista propia.
 - Vista propia para el rol `taller` (hoy entra por SupervisorView).
 - Adjuntar la ficha técnica del repuesto (`insumos.ficha_url` ya existe, sin UI).
 - `stock_seguridad` se guarda pero todavía no alerta.
+
+## Codificación de repuestos (la estructura del cuaderno, 15-jul)
+
+```
+LLAVE                DESCRIPCIÓN                     SOPORTE
+# Código propio  │  Nombre, Ref, Marca, Partida  │  Texto soporte
+                 └──────────────┬────────────────┘
+                  Históricos · $ · Proveedores vinculados
+```
+
+**Dos capas, y confundirlas es el error clásico:**
+
+| | Para quién | Campo |
+|---|---|---|
+| Código propio `ROD-0002` | **interno** — que todos aquí hablen del mismo ítem | `insumos.codigo` |
+| Referencia del fabricante `30206` | **el proveedor** — es lo único inequívoco | `referencia` / `numero_parte` |
+| Marca `SKF` | el proveedor | `marca` |
+| Para qué máquina | el proveedor | `insumos_aplicabilidad` |
+| Referencia del proveedor `SKF-30206-N` | ese proveedor, en SU sistema | `insumos_proveedores.referencia_proveedor` |
+
+El código propio **no se le manda al proveedor** para que lo busque (no lo tiene);
+va al final del pedido solo para emparejar la cotización cuando responda.
+
+### El código
+
+`FAM-####`, familia de 3 letras + consecutivo. Las familias viven en
+`insumos_familias` (FIL, LUB, COM, ROD, COR, HID, ELE, MOT, TRA, LLA, TOR, IMP,
+HER, OTR).
+
+El consecutivo lo genera **la base** (`siguiente_codigo_insumo(familia)`), no el
+cliente: si dos personas crean un repuesto a la vez, en el cliente les tocaría
+el mismo número.
+
+### Por qué hacía falta
+
+El catálogo tenía "PUNTERA" y "PUNTERAS" como ítems distintos, y "RODAMIENTO
+30206" con la referencia del fabricante metida dentro del nombre, donde nadie la
+puede buscar. La migración `20260730140000` clasificó los 16 ítems existentes por
+familia, les asignó código y extrajo la referencia del final del nombre cuando
+era claramente una (`\s[0-9][0-9A-Z/\-\.]{3,}$`).
+
+### El texto del pedido
+
+`lib/pedidoTexto.ts` traduce el registro interno a lo que entiende un proveedor:
+
+```
+1) RODAMIENTO — Cónico, 30x62x17,25 mm
+   Su referencia: SKF-30206-N
+   Referencia fabricante: 30206
+   Marca: SKF
+   Aplica a: CASE JX95
+   Cantidad: 4 unidad
+   (cód. interno ROD-0002)
+```
+
+Texto plano a propósito: se manda por WhatsApp y ahí cualquier formato se rompe.
+`faltantesParaPedir()` avisa en la ficha qué le falta al repuesto para que el
+proveedor no tenga que preguntar — mejor antes de mandarlo que después.

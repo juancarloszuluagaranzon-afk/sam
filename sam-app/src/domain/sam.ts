@@ -384,6 +384,13 @@ export interface Insumo {
   frecuente: boolean
   activo: boolean
   // ── Campos de TALLER ──
+  // El codigo propio es la LLAVE con la que se habla del item puertas adentro
+  // (FIL-0003). El uuid no sirve para dictar por telefono ni para rotular un
+  // estante. La `descripcion` es el "texto soporte" del apunte: lo que se le
+  // manda al proveedor cuando el nombre corto no alcanza.
+  codigo?: string
+  familia?: string
+  descripcion?: string
   // Vacíos en un insumo de uso diario; llenos en un repuesto. Son los que
   // permiten encontrar la pieza correcta: un filtro sirve para un modelo y no
   // para otro, y sin referencia/número de parte se termina comprando duplicado.

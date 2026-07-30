@@ -104,3 +104,30 @@ el visor montado; cleanup en el efecto y al desmontar. `maximumAge: 5000`,
 RIOPAILA — Plano detallado (map `2ae98a6c`, z10-16, ~40-50 MB) · ZONA 1
 (`8039e5f2`, z11-16) · Mapa general Riopaila-Castilla (`a7f8b8d2`, z8-15,
 pesado — mejor online). Todos de la org `d2598200-…`.
+
+## El plano sube desde el visor pero se registra aparte (30-jul-2026)
+
+Subir un GeoPDF y que aparezca en el visor son **dos pasos**, y eso ya costó:
+dos planos (PICHICHI y PICHICHI SUR) quedaron procesados y sin registrar porque
+quien los subió no supo que faltaba confirmarlos.
+
+1. `subirCartografia()` manda el PDF a FieldMaps → el worker lo procesa en
+   segundo plano (minutos). Esto NO crea nada en ASM.
+2. Cuando queda `status = 'ready'`, hay que **registrarlo** en `mapas` de ASM
+   con `createMapa()`.
+
+La reconciliación (comparar `listarCartografias()` contra `loadMapasAdmin()` por
+`tiles_base` normalizado) está ahora en **los dos sitios**: Catálogos → Mapas y
+el panel de Capas del visor. El ciclo se cierra donde empieza — quien sube el
+plano lo ve aparecer ahí mismo con un botón "Agregar al visor".
+
+Para diagnosticar un plano que "no quedó":
+
+```sql
+-- En fieldmaps-db: ¿lo proceso el worker?
+select nombre, status, error, created_at from public.maps order by created_at desc limit 5;
+-- En supabase-db (ASM): ¿quedo registrado?
+select nombre, tiles_base, activo from public.mapas order by created_at desc;
+```
+
+Si en FieldMaps está `ready` y en ASM no aparece, es que falta el paso 2.

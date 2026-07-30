@@ -7758,3 +7758,21 @@ td.planilla-vacio:hover { background: #fde047; }
 :root[data-theme="dark"] .taller-venc--vencido { border-left-color: #f97316; }
 :root[data-theme="dark"] .taller-venc--proximo { border-left-color: #fbbf24; }
 :root[data-theme="dark"] .taller-venc--ok { border-left-color: #4ade80; }
+
+
+/* Planos procesados y pendientes de registrar, dentro del panel de Capas. */
+.avz-listos {
+  margin: 10px 0; padding: 10px 12px; border-radius: 10px;
+  background: rgba(34, 197, 94, .14); border: 1px solid rgba(34, 197, 94, .35);
+}
+.avz-listos__lbl { margin: 0 0 6px; font-size: 0.82rem; font-weight: 700; color: #86efac; }
+.avz-listos__row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 5px 0; font-size: 0.9rem; color: #f8fafc;
+}
+.avz-listos__row button {
+  flex: 0 0 auto; padding: 7px 14px; min-height: 36px;
+  border-radius: 999px; border: none; cursor: pointer;
+  background: #22c55e; color: #06280f; font-weight: 700; font-size: 0.82rem;
+}
+.avz-listos__row button:active { opacity: .8; }

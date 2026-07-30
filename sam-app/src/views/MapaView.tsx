@@ -4,7 +4,8 @@ import 'leaflet/dist/leaflet.css'
 // Rotación del mapa estilo Avenza (dos dedos en móvil, Shift+arrastrar en PC).
 import 'leaflet-rotate'
 import type { MapaConfig } from '../domain/sam'
-import { loadMapas } from '../services/samApi'
+import { loadMapas, loadMapasAdmin, createMapa } from '../services/samApi'
+import { listarCartografias, type CartografiaRemota } from '../services/fieldmapsApi'
 import { useAppData } from '../context/AppDataContext'
 import { MapaFormModal } from '../components/MapaFormModal'
 import {
@@ -78,12 +79,18 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [q, setQ] = useState('')
   const [formOpen, setFormOpen] = useState(false)
+  // Planos ya procesados en FieldMaps que todavia no estan en el visor.
+  // Se subian desde aqui pero solo se podian confirmar en Catalogos -> Mapas, y
+  // el que los subia no volvia a saber de ellos: dos planos quedaron listos y
+  // sin agregar cuatro dias. Ahora el ciclo se cierra donde empieza.
+  const [procesados, setProcesados] = useState<CartografiaRemota[]>([])
   const [gpsOn, setGpsOn] = useState(false)
   const [gpsPos, setGpsPos] = useState<{ lat: number; lng: number; acc: number } | null>(null)
   const [gpsError, setGpsError] = useState('')
   const [descargandoId, setDescargandoId] = useState<string | null>(null)
   const [progreso, setProgreso] = useState<{ hechos: number; total: number } | null>(null)
   const [msg, setMsg] = useState('')
+  const procesadosTimer = useRef<number | null>(null)
   // Rumbo actual del mapa (grados). La aguja de la brújula gira con él.
   const [bearing, setBearing] = useState(0)
 
@@ -528,15 +535,55 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
     }
   }
 
+  // Mientras el panel de Capas este abierto, se revisa si termino de procesarse
+  // algun plano. 30 s: lo que tarda el worker no se mide en segundos.
+  useEffect(() => {
+    if (!sheetOpen || !puedeGestionar) return
+    void reconciliarProcesados()
+    procesadosTimer.current = window.setInterval(() => { void reconciliarProcesados() }, 30_000)
+    return () => { if (procesadosTimer.current) { clearInterval(procesadosTimer.current); procesadosTimer.current = null } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sheetOpen, puedeGestionar])
+
   async function handleBorrar(m: MapaConfig) {
     await borrarMapa(m)
     setMsg(`"${m.nombre}" eliminado del dispositivo.`)
     setDescargasVersion((v) => v + 1)
   }
 
+  /** Lo que ya proceso FieldMaps y aun no esta registrado en el visor. */
+  async function reconciliarProcesados() {
+    if (!puedeGestionar) return
+    try {
+      const [ms, remotos] = await Promise.all([loadMapasAdmin(), listarCartografias()])
+      const norm = (u: string) => (u || '').replace(/\/$/, '')
+      const yaEstan = new Set(ms.map((m) => norm(m.tilesBase)))
+      setProcesados(remotos.filter((r) => r.status === 'ready' && r.tilesBase && !yaEstan.has(norm(r.tilesBase))))
+    } catch { /* FieldMaps no respondio: no bloquea el visor */ }
+  }
+
+  /** Registra en el visor un plano que ya termino de procesarse. */
+  async function agregarProcesado(r: CartografiaRemota) {
+    if (!r.tilesBase || !r.bounds) return
+    try {
+      await createMapa({
+        nombre: r.nombre?.trim() || 'MAPA',
+        tilesBase: r.tilesBase,
+        bounds: r.bounds,
+        minzoom: r.minzoom ?? 8,
+        maxzoom: r.maxzoom ?? 16,
+      })
+      await reconciliarProcesados()
+      await refreshTrasGuardar('creado', r.nombre?.trim() || 'MAPA')
+    } catch (err) {
+      setMsg(`No se pudo agregar "${r.nombre}". (${(err as { message?: string })?.message ?? 'error'})`)
+    }
+  }
+
   async function refreshTrasGuardar(accion: 'creado' | 'reemplazado' | 'procesando', nombreMapa: string) {
     if (accion === 'procesando') {
-      setMsg(`"${nombreMapa}" subido. Se está procesando — aparecerá en Catálogos → Mapas → "Listos para agregar" en unos minutos.`)
+      setMsg(`"${nombreMapa}" subido. Se esta procesando; en unos minutos aparece aqui mismo, en Capas, listo para agregar.`)
+      void reconciliarProcesados()
       return
     }
     const ms = await loadMapas()
@@ -1013,6 +1060,22 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
                 <button type="button" className="avz-iconbtn" onClick={() => { setSheetOpen(false); setSearchOpen(false); setQ('') }} aria-label="Cerrar capas">✕</button>
               </div>
             </div>
+            {/* Planos que terminaron de procesarse y falta registrar. Aparecen
+                aqui para que quien los subio no tenga que ir a buscarlos. */}
+            {puedeGestionar && procesados.length > 0 && (
+              <div className="avz-listos">
+                <p className="avz-listos__lbl">
+                  ✅ {procesados.length} plano(s) listo(s) para agregar
+                </p>
+                {procesados.map((r) => (
+                  <div key={r.id} className="avz-listos__row">
+                    <span>{r.nombre}</span>
+                    <button type="button" onClick={() => void agregarProcesado(r)}>Agregar al visor</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Fondo del visor (como el original): satélite o plano limpio. */}
             <div className="avz-base">
               <span>Fondo</span>

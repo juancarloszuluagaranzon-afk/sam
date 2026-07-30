@@ -36,7 +36,7 @@ function TallerInterno() {
   // Badges: lo que exige atención hoy. Un módulo de mantenimiento que no grita
   // cuando algo está vencido es un archivador.
   const vencidos = useMemo(() => {
-    const eq = equipment.map((e) => ({ codigo: e.code, marca: undefined, modelo: undefined }))
+    const eq = equipment.map((e) => ({ codigo: e.code, marca: e.brand, modelo: e.model }))
     return vencimientosDe(planes, horasDe, eq).filter((v) => v.estado === 'VENCIDO').length
   }, [planes, horasDe, equipment])
 

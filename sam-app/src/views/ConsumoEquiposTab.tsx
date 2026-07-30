@@ -86,9 +86,13 @@ export function ConsumoEquiposTab() {
       g.insumos.set(m.insumoId, (g.insumos.get(m.insumoId) ?? 0) + delta)
       byEquipo.set(m.equipoCodigo!, g)
     }
-    // Combustible tanqueado en bomba directo a la máquina (sin pasar por bodega).
+    // Combustible comprado en la BOMBA: es el unico que no dejo huella en el
+    // kardex, porque nunca paso por una bodega. El tanqueo `origen=SEDE` SI la
+    // dejo (sale de la principal), asi que sumarlo aqui lo contaria dos veces.
+    // Y los rechazados por el analista no cuentan: ese combustible se reverso.
     for (const t of tanqueos) {
       if (!t.equipoCodigo || !t.insumoId) continue
+      if (t.origen !== 'ESTACION' || t.estado === 'RECHAZADO') continue
       const g = get(t.equipoCodigo)
       g.tanqueos += 1
       g.insumos.set(t.insumoId, (g.insumos.get(t.insumoId) ?? 0) + t.galones)

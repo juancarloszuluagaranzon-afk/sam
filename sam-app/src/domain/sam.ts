@@ -30,6 +30,13 @@ export interface UserProfile {
 export interface Equipment {
   code: string
   name: string
+  // Marca y modelo hacen falta para que un plan preventivo definido POR MODELO
+  // ("cambio de aceite cada 250 h en toda CASE JX95") encuentre sus maquinas, y
+  // para decirle al proveedor a que equipo va un repuesto. Sin ellos el filtro
+  // compara contra undefined y no aplica a nada, sin avisar.
+  brand?: string
+  model?: string
+  serial?: string
 }
 
 export interface CreateEquipmentInput {

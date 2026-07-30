@@ -229,3 +229,42 @@ export function horasTrabajadas(lecturas: { horas: number }[]): number {
   const vals = lecturas.map((l) => l.horas).sort((a, b) => a - b)
   return Math.max(0, vals[vals.length - 1] - vals[0])
 }
+
+/* ── Consumo de combustible de una máquina ───────────────────────────────── */
+
+/**
+ * Galones consumidos por una máquina en un periodo. **Una sola definición**,
+ * compartida, porque había dos implementaciones que daban cifras distintas del
+ * mismo mes.
+ *
+ * 🔴 El combustible llega por dos caminos que NO se pueden sumar a ciegas:
+ *
+ *  · **Kardex** — ya cubre el despacho de una solicitud, la entrega directa y
+ *    el tanqueo `origen=SEDE`, porque los tres generan una SALIDA con la
+ *    máquina encima.
+ *  · **`combustible_externo`** — el evento. Para `origen=SEDE` es la MISMA
+ *    salida que ya está en el kardex: sumar las dos fuentes contaba el galón
+ *    dos veces e inflaba el costo por hora. Solo hay que sumar aparte los de
+ *    `origen=ESTACION`, que se compraron en la bomba y nunca pasaron por una
+ *    bodega.
+ *
+ * Los rechazados por el analista no cuentan: ese combustible se reversó.
+ */
+export function galonesDeMaquina(input: {
+  /** Movimientos de kardex del periodo, ya filtrados por esta máquina. */
+  kardex: { tipo: string; insumoId: string; cantidad: number }[]
+  /** Eventos de combustible del periodo, ya filtrados por esta máquina. */
+  tanqueos: { origen: string; estado: string; galones: number }[]
+  esCombustible: (insumoId: string) => boolean
+}): number {
+  // Salidas menos devoluciones: si el operario recibió menos, no se le carga.
+  const porBodega = input.kardex
+    .filter((m) => input.esCombustible(m.insumoId))
+    .reduce((t, m) => t + (m.tipo === 'SALIDA' ? m.cantidad : m.tipo === 'ENTRADA' ? -m.cantidad : 0), 0)
+
+  const enEstacion = input.tanqueos
+    .filter((t) => t.origen === 'ESTACION' && t.estado !== 'RECHAZADO')
+    .reduce((t, c) => t + c.galones, 0)
+
+  return Math.max(0, porBodega + enEstacion)
+}

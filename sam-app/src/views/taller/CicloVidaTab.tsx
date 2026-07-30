@@ -4,8 +4,8 @@ import { useTaller } from './TallerContext'
 import { loadEquipoCostos, saveEquipoCosto } from '../../services/tallerApi'
 import { loadCombustibleExterno, loadKardexReporte } from '../../services/samApi'
 import { SearchableSelect } from '../../components/SearchableSelect'
-import { calcularIndicadores, calcularCostoActivo } from '../../lib/indicadores'
-import { COSTO_LABEL, type CostoConcepto, type EquipoCosto, type InsumoKardex } from '../../domain/sam'
+import { calcularIndicadores, calcularCostoActivo, galonesDeMaquina } from '../../lib/indicadores'
+import { COSTO_LABEL, type CostoConcepto, type EquipoCosto, type InsumoKardex, type CombustibleExterno } from '../../domain/sam'
 
 /**
  * Ciclo de vida del activo — el "$/unitario" del apunte.
@@ -33,7 +33,7 @@ export function CicloVidaTab() {
   const [periodo, setPeriodo] = useState(mesActual)
   const [costos, setCostos] = useState<EquipoCosto[]>([])
   const [movs, setMovs] = useState<InsumoKardex[]>([])
-  const [galones, setGalones] = useState(0)
+  const [tanqueos, setTanqueos] = useState<CombustibleExterno[]>([])
   const [precioGalon, setPrecioGalon] = useState('16000')
   const [nuevoCosto, setNuevoCosto] = useState<{ concepto: CostoConcepto; valor: string } | null>(null)
 
@@ -44,30 +44,29 @@ export function CicloVidaTab() {
   }, [periodo])
 
   useEffect(() => {
-    if (!equipo) { setCostos([]); setMovs([]); setGalones(0); return }
+    if (!equipo) { setCostos([]); setMovs([]); setTanqueos([]); return }
     void loadEquipoCostos({ equipoCodigo: equipo, desde: periodo, hasta: periodo }).then(setCostos)
     void loadKardexReporte({ desde, hasta: `${hasta}T23:59:59` }).then((ms) =>
       setMovs(ms.filter((m) => m.equipoCodigo === equipo)))
-    // El combustible del periodo: lo entregado desde bodega + lo tanqueado
-    // directo en estación. Las dos vías cuentan como consumo de la máquina.
-    void loadCombustibleExterno({ desde, hasta, limit: 500 }).then((cs) => {
-      const externo = cs
-        .filter((c) => c.equipoCodigo === equipo && c.estado !== 'RECHAZADO')
-        .reduce((t, c) => t + c.galones, 0)
-      setGalones(externo)
-    })
+    void loadCombustibleExterno({ desde, hasta, limit: 500 })
+      .then((cs) => setTanqueos(cs.filter((c) => c.equipoCodigo === equipo)))
   }, [equipo, periodo, desde, hasta])
 
   const combustibleInsumos = useMemo(
     () => new Set(insumos.filter((i) => i.categoria === 'COMBUSTIBLE').map((i) => i.id)),
     [insumos],
   )
-  const galonesDespachados = useMemo(
-    () => movs.filter((m) => m.tipo === 'SALIDA' && combustibleInsumos.has(m.insumoId))
-      .reduce((t, m) => t + m.cantidad, 0),
-    [movs, combustibleInsumos],
+  // Una sola definicion, compartida con el reporte de consumo: sumar el kardex
+  // y `combustible_externo` a ciegas contaba dos veces el tanqueo en sede, que
+  // deja las DOS huellas. El costo por hora salia inflado.
+  const galonesTotal = useMemo(
+    () => galonesDeMaquina({
+      kardex: movs,
+      tanqueos,
+      esCombustible: (id) => combustibleInsumos.has(id),
+    }),
+    [movs, tanqueos, combustibleInsumos],
   )
-  const galonesTotal = galones + galonesDespachados
 
   const otsPeriodo = useMemo(
     () => ordenes.filter((o) => o.equipoCodigo === equipo && o.createdAt >= desde && o.createdAt <= `${hasta}T23:59:59`),

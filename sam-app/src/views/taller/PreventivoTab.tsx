@@ -27,8 +27,10 @@ export function PreventivoTab() {
   const [editar, setEditar] = useState<Partial<MttoPlan> | null>(null)
   const [verTodo, setVerTodo] = useState(false)
 
+  // Marca y modelo REALES: con undefined, un plan definido por modelo no
+  // encontraba ninguna maquina y no generaba ningun vencimiento, en silencio.
   const equiposMin = useMemo(
-    () => equipment.map((e) => ({ codigo: e.code, marca: undefined, modelo: undefined })),
+    () => equipment.map((e) => ({ codigo: e.code, marca: e.brand, modelo: e.model })),
     [equipment],
   )
 

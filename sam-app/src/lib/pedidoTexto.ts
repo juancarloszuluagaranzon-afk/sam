@@ -1,4 +1,6 @@
 import type { Insumo, Aplicabilidad } from '../domain/sam'
+import { fmtCantidad } from './cantidad'
+import { fmtFechaHora } from './fechas'
 
 /**
  * Traduce un repuesto del catálogo al texto que se le manda al proveedor.
@@ -18,6 +20,14 @@ import type { Insumo, Aplicabilidad } from '../domain/sam'
  * cotización cuando responda — no para que él lo use.
  */
 
+/** Ficha mínima de la máquina, para decirle al proveedor a qué va la pieza. */
+export interface EquipoRef {
+  codigo: string
+  marca?: string
+  modelo?: string
+  serie?: string
+}
+
 export interface LineaPedido {
   insumo: Insumo
   cantidad: number
@@ -25,16 +35,38 @@ export interface LineaPedido {
   aplica?: Aplicabilidad[]
   /** La referencia con la que ESTE proveedor lo tiene en su sistema. */
   referenciaProveedor?: string
+  /** Máquinas por código, para traducir el código interno a marca y modelo. */
+  equipos?: Map<string, EquipoRef>
 }
 
-function aplicaTexto(aplica?: Aplicabilidad[]): string {
+/**
+ * A qué máquinas aplica, dicho como lo entiende un mostrador de repuestos.
+ *
+ * 🔴 Nunca mandar solo el código interno. "Aplica a: CASE1301" no le dice nada
+ * a quien despacha: él necesita MARCA y MODELO. El código interno va detrás,
+ * entre corchetes, por si hay que hablar de esa máquina en concreto.
+ *
+ * Si son muchas, se cortan: una línea con doce máquinas no la lee nadie.
+ */
+function aplicaTexto(aplica?: Aplicabilidad[], equipos?: Map<string, EquipoRef>): string {
   if (!aplica || aplica.length === 0) return ''
-  const partes = aplica.map((a) =>
-    a.equipoCodigo
-      ? `máquina ${a.equipoCodigo}`
-      : [a.marca, a.modelo].filter(Boolean).join(' '))
-    .filter(Boolean)
-  return [...new Set(partes)].join(', ')
+  const partes = aplica.map((a) => {
+    if (a.equipoCodigo) {
+      const eq = equipos?.get(a.equipoCodigo)
+      const desc = [eq?.marca, eq?.modelo].filter(Boolean).join(' ')
+      // Sin marca/modelo cargados solo queda el código; mejor eso que nada,
+      // pero la ficha avisa aparte de que falta ese dato.
+      if (!desc) return a.equipoCodigo
+      return eq?.serie
+        ? `${desc} (serie ${eq.serie}) [${a.equipoCodigo}]`
+        : `${desc} [${a.equipoCodigo}]`
+    }
+    return [a.marca, a.modelo].filter(Boolean).join(' ')
+  }).filter(Boolean)
+
+  const unicas = [...new Set(partes)]
+  if (unicas.length <= 3) return unicas.join(', ')
+  return `${unicas.slice(0, 3).join(', ')} y otras ${unicas.length - 3}`
 }
 
 /** Un ítem, como se lo lee un proveedor. */
@@ -45,15 +77,18 @@ export function lineaPedidoTexto(l: LineaPedido, indice?: number): string {
   out.push(indice != null ? `${indice}) ${titulo}` : titulo)
 
   if (l.referenciaProveedor) out.push(`   Su referencia: ${l.referenciaProveedor}`)
-  // Referencia y número de parte suelen ser lo mismo; si difieren, van los dos.
-  const refs = [...new Set([i.referencia, i.numeroParte].filter(Boolean))] as string[]
-  if (refs.length) out.push(`   Referencia fabricante: ${refs.join(' / ')}`)
+  // Referencia y número de parte van ETIQUETADOS por separado: unirlos con "/"
+  // deja al proveedor sin saber cuál es cuál.
+  if (i.referencia) out.push(`   Referencia: ${i.referencia}`)
+  if (i.numeroParte && i.numeroParte !== i.referencia) out.push(`   N° de parte: ${i.numeroParte}`)
   if (i.marca) out.push(`   Marca: ${i.marca}`)
 
-  const ap = aplicaTexto(l.aplica)
+  const ap = aplicaTexto(l.aplica, l.equipos)
   if (ap) out.push(`   Aplica a: ${ap}`)
 
-  out.push(`   Cantidad: ${l.cantidad} ${i.unidad}`)
+  // fmtCantidad respeta la regla del proyecto: las unidades enteras (ganchos,
+  // tornillos) van sin decimales, y nunca sale un 3.0000000001.
+  out.push(`   Cantidad: ${fmtCantidad(l.cantidad, i.unidad)} ${i.unidad ?? ''}`.trimEnd())
   if (i.codigo) out.push(`   (cód. interno ${i.codigo})`)
   return out.join('\n')
 }
@@ -63,44 +98,94 @@ export function lineaPedidoTexto(l: LineaPedido, indice?: number): string {
  *
  * Sin markdown ni tablas: se manda por WhatsApp y ahí cualquier formato se ve
  * roto. Texto plano con sangría, que se lee igual en todas partes.
+ *
+ * Lleva las cinco cosas que el mostrador pregunta siempre y que, si no van
+ * escritas, cuestan un ida y vuelta cada una: para cuándo, si acepta
+ * alternativo, dónde se entrega, a nombre de quién se factura y a qué número
+ * responder.
  */
 export function pedidoTexto(input: {
   lineas: LineaPedido[]
   empresa?: string
+  nit?: string
   proveedor?: string
   fecha?: string
   nota?: string
   /** Quién pide, para que el proveedor sepa a quién responderle. */
   solicita?: string
+  telefono?: string
+  /** Consecutivo del pedido: sin esto, tres cotizaciones del mismo día se mezclan. */
+  consecutivo?: string
+  /** Cuándo se necesita. Es la primera pregunta del mostrador. */
+  requeridoPara?: string
+  /** Si la máquina está parada, el proveedor prioriza distinto. */
+  maquinaParada?: boolean
+  /** ¿Sirve un homólogo o tiene que ser original? */
+  aceptaAlternativo?: boolean
+  entrega?: string
+  /** Cotización = pide precio; Pedido = ya es en firme. */
+  tipo?: 'COTIZACION' | 'PEDIDO'
 }): string {
-  const f = input.fecha ?? new Date().toLocaleDateString('es-CO', {
-    timeZone: 'America/Bogota', day: '2-digit', month: '2-digit', year: 'numeric',
-  })
+  const f = input.fecha ?? fmtFechaHora(new Date().toISOString())
   const out: string[] = []
-  out.push('SOLICITUD DE REPUESTOS')
-  out.push(`${input.empresa ?? 'AgroServicios Morales'} · ${f}`)
+  out.push(input.tipo === 'PEDIDO' ? 'PEDIDO DE REPUESTOS' : 'SOLICITUD DE COTIZACIÓN — REPUESTOS')
+  out.push(`${input.empresa ?? 'AgroServicios Morales'}${input.nit ? ` · NIT ${input.nit}` : ''} · ${f}`)
+  if (input.consecutivo) out.push(`Pedido ${input.consecutivo}`)
   if (input.proveedor) out.push(`Para: ${input.proveedor}`)
   out.push('')
+
   input.lineas.forEach((l, idx) => {
     out.push(lineaPedidoTexto(l, idx + 1))
     out.push('')
   })
-  if (input.nota) { out.push(`Nota: ${input.nota}`); out.push('') }
+
+  const cond: string[] = []
+  if (input.requeridoPara) cond.push(`Se necesita para: ${input.requeridoPara}`)
+  if (input.maquinaParada) cond.push('⚠ La máquina está PARADA.')
+  if (input.aceptaAlternativo !== undefined) {
+    cond.push(input.aceptaAlternativo
+      ? 'Se acepta repuesto alternativo/homólogo.'
+      : 'Debe ser ORIGINAL, no alternativo.')
+  }
+  if (input.entrega) cond.push(`Entrega: ${input.entrega}`)
+  if (input.nota) cond.push(`Nota: ${input.nota}`)
+  if (cond.length) { out.push(...cond); out.push('') }
+
   out.push('Agradecemos confirmar disponibilidad, precio y tiempo de entrega.')
-  if (input.solicita) out.push(`Solicita: ${input.solicita}`)
+  const quien = [input.solicita, input.telefono].filter(Boolean).join(' · ')
+  if (quien) out.push(`Solicita: ${quien}`)
   return out.join('\n')
 }
 
 /**
  * Qué le falta a un repuesto para que el proveedor lo entienda sin preguntar.
  *
- * Se muestra en la ficha: es más útil avisar antes de mandar el pedido que
- * después de recibir "¿cuál de todos?".
+ * Depende de la FAMILIA, que es donde ese campo se gana el sueldo: a un
+ * rodamiento se le pide la referencia, pero a una manguera, un tornillo o una
+ * llanta lo que hace falta es **la medida**. Exigirle referencia a una manguera
+ * es tan inútil como no exigirle nada.
  */
+const MEDIDA_POR_FAMILIA: Record<string, string> = {
+  HID: 'la medida (diámetro, largo, presión y tipo de terminales)',
+  TOR: 'la medida (diámetro × largo, rosca y grado)',
+  COR: 'el número de correa o el largo y perfil',
+  LLA: 'la medida (ej. 18.4-38) y el número de lonas',
+  LUB: 'la especificación (ej. 15W40 API CJ-4) y la presentación',
+}
+
 export function faltantesParaPedir(i: Insumo, aplica?: Aplicabilidad[]): string[] {
   const f: string[] = []
-  if (!i.referencia && !i.numeroParte) f.push('referencia del fabricante')
-  if (!i.marca) f.push('marca')
+  const fam = (i.familia ?? '').toUpperCase()
+  const porMedida = MEDIDA_POR_FAMILIA[fam]
+
+  if (porMedida) {
+    // Aquí la referencia rara vez existe; lo que identifica la pieza es la medida.
+    if (!i.descripcion) f.push(porMedida)
+  } else if (!i.referencia && !i.numeroParte) {
+    f.push('la referencia del fabricante')
+  }
+
+  if (!i.marca) f.push('la marca')
   if (!aplica || aplica.length === 0) f.push('a qué máquina aplica')
   return f
 }

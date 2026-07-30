@@ -807,7 +807,7 @@ export async function loadEquipment(): Promise<{
   try {
     const { data, error } = await supabase
       .from('equipos')
-      .select('codigo,nombre')
+      .select('codigo,nombre,marca,modelo,numero_serie')
       .eq('activo', true)
       .order('codigo')
 
@@ -816,6 +816,9 @@ export async function loadEquipment(): Promise<{
     const mapped: Equipment[] = data.map((row) => ({
       code: String(row.codigo),
       name: String(row.nombre),
+      brand: row.marca ? String(row.marca) : undefined,
+      model: row.modelo ? String(row.modelo) : undefined,
+      serial: row.numero_serie ? String(row.numero_serie) : undefined,
     }))
     void db.equipment.clear().then(() => db.equipment.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }
@@ -2062,6 +2065,11 @@ export async function revisarCombustible(input: {
       motivo,
       referencia: evento.id,
       creadoPor: input.revisadoPor,
+      // 🔴 La maquina va TAMBIEN en la reversa. Sin ella el stock volvia a su
+      // sitio pero el consumo quedaba cargado al equipo para siempre: el
+      // reporte neta salidas menos entradas POR MAQUINA, y la entrada sin
+      // equipo no cancelaba nada.
+      equipoCodigo: evento.destino === 'MAQUINA' ? evento.equipoCodigo : undefined,
       bodegaId: evento.bodegaOrigenId,
     })
   }

@@ -39,6 +39,11 @@ do $$ begin
   create policy vehiculos_all on public.vehiculos for all using (true) with check (true);
 exception when duplicate_object then null; end $$;
 
+-- Sin estos GRANT la policy no sirve de nada: la app entra con el anon_key y
+-- se toparia con "permission denied for table vehiculos". Las demas tablas del
+-- proyecto los tienen; una tabla nueva NO los hereda.
+grant select, insert, update, delete on public.vehiculos to anon, authenticated;
+
 -- ── Eventos de combustible: origen, conceptos nuevos y aval ────────────────
 alter table public.combustible_externo
   add column if not exists origen text not null default 'ESTACION',
@@ -77,24 +82,15 @@ alter table public.combustible_externo
 create index if not exists combustible_externo_estado_ix on public.combustible_externo (estado, fecha desc);
 
 -- ── Rol nuevo: analista de insumos y materiales ─────────────────────────────
--- Es quien avala todos estos eventos. Si `usuarios.rol` tiene check, ampliarlo.
-do $$
-declare c text;
-begin
-  select conname into c from pg_constraint
-   where conrelid = 'public.usuarios'::regclass and contype = 'c' and pg_get_constraintdef(oid) ilike '%rol%';
-  if c is not null then
-    execute format('alter table public.usuarios drop constraint %I', c);
-  end if;
-exception when undefined_table then null;
-end $$;
-
-do $$ begin
-  alter table public.usuarios add constraint usuarios_rol_check check (
-    rol in ('owner','administracion','supervisor','operador','soporte',
-            'supervisor_insumos','conductor','analista_insumos')
-  );
-exception when undefined_table then null; when duplicate_object then null; end $$;
+-- La tabla de usuarios se llama `app_usuarios` (no `usuarios`), y su CHECK de
+-- rol se quedó atrás: no admite `analista_insumos` NI `conductor`, aunque el
+-- codigo ya tiene los dos. Sin esto, crear a Diego revienta con violacion de
+-- restriccion — y un conductor tampoco se podia crear (bug latente).
+alter table public.app_usuarios drop constraint if exists app_usuarios_rol_check;
+alter table public.app_usuarios add constraint app_usuarios_rol_check check (
+  rol in ('owner','administracion','supervisor','operador','soporte',
+          'supervisor_insumos','conductor','analista_insumos')
+);
 
 -- ── Placas de arranque ──────────────────────────────────────────────────────
 insert into public.vehiculos (placa, descripcion, frecuente)

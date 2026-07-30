@@ -24,9 +24,16 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    consola sin errores). Hubo un incidente de **pantalla blanca** por un chunk lazy.
 3. **NO introducir `React.lazy` / chunks nuevos** sin verificar el preview real de
    Vercel: el chunking de Vercel difiere del local y tumbó producción (17-jul-2026).
-4. **Migraciones**: van en `sam-app/supabase/migrations/`, pero **las corre el usuario
-   a mano en Supabase Studio**. ⚠️ Debe **apagar la extensión traductora de Chrome** o
-   el SQL se corrompe (`select`→`seleccione`). Recordárselo SIEMPRE.
+4. **Migraciones**: van en `sam-app/supabase/migrations/`. Normalmente **las corre el
+   usuario en Supabase Studio** — ⚠️ debe **apagar la extensión traductora de Chrome** o
+   el SQL se corrompe (`select`→`seleccione`); recordárselo SIEMPRE. También se pueden
+   aplicar por SSH como `supabase_admin` (`postgres` NO es dueño de las tablas y no
+   puede hacer `SET ROLE`); siempre con `-v ON_ERROR_STOP=1 --single-transaction`.
+   Ver `.agent/skills/managing-supabase/`. Dos trampas ya cobradas: la tabla de
+   usuarios se llama **`app_usuarios`** (no `usuarios`) y su CHECK de `rol` hay que
+   ampliarlo a mano por cada rol nuevo; y una tabla nueva **no hereda los GRANT** —
+   sin `grant … to anon, authenticated` la app responde *permission denied* aunque
+   la policy RLS exista.
 5. **Cargas resilientes**: usar `select('*')` en tablas que evolucionan, para que una
    columna nueva sin migrar no rompa la pantalla.
 5b. **🔴 NUNCA un `<select>` plano para listas largas.** Operarios, insumos, máquinas,

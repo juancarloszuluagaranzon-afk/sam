@@ -208,3 +208,51 @@ function dayKey(value: string | null | undefined) {
 - **[2026-04-09]** `normalizeStatus` debe existir porque la DB tiene valores legacy (`ASIGNADO`, `EN PROGRESO`, `FINALIZADO`) que NO coinciden con el tipo `AssignmentStatus`
 - **[2026-04-09]** El `suerteCode` en filas antiguas puede estar ausente — reconstruirlo como `${haciendaCode}-${suerte}` si `suerte_codigo` viene vacío
 - **[2026-04-09]** Al usar `.eq('activo', true)` en `maestro_risaralda`, si no hay resultados retorna fallback a `LOCAL_MAESTRO` — no lanzar error, es comportamiento esperado
+
+## Dos trampas al crear tablas o roles (29-jul-2026)
+
+### 1. La tabla de usuarios se llama `app_usuarios`, no `usuarios`
+
+Y su CHECK de rol hay que **ampliarlo a mano** cada vez que se agrega un rol. Se
+descubrió que `conductor` llevaba tiempo en el código pero el CHECK no lo
+admitía: nunca se había podido crear un conductor desde la app y nadie lo notó
+porque el error solo aparece al guardar.
+
+```sql
+alter table public.app_usuarios drop constraint if exists app_usuarios_rol_check;
+alter table public.app_usuarios add constraint app_usuarios_rol_check check (
+  rol in ('owner','administracion','supervisor','operador','soporte',
+          'supervisor_insumos','conductor','analista_insumos')
+);
+```
+
+Si escribes `public.usuarios` en una migración, un `exception when undefined_table`
+se lo traga en silencio y la migración "pasa" sin hacer nada.
+
+### 2. Una tabla nueva NO hereda los GRANT
+
+La app entra con el **anon_key**. Crear la tabla y su policy RLS no basta: sin
+`GRANT`, PostgREST responde `permission denied for table X`. La policy decide
+*qué filas*; el grant decide *si puedes tocar la tabla*.
+
+```sql
+alter table public.mi_tabla enable row level security;
+create policy mi_tabla_all on public.mi_tabla for all using (true) with check (true);
+grant select, insert, update, delete on public.mi_tabla to anon, authenticated;  -- ← este
+```
+
+Verificar después de cualquier tabla nueva:
+```sql
+select table_name, grantee from information_schema.role_table_grants
+ where table_name = 'mi_tabla';
+```
+
+### Correr una migración por SSH
+
+Las tablas son de `supabase_admin`; `postgres` **no** puede alterarlas ni hacer
+`SET ROLE`. Hay que conectarse como ese rol, y siempre en transacción:
+
+```bash
+python put_b64.py <local.sql> /root/mig.sql
+python ssh_run.py 'docker cp /root/mig.sql supabase-db:/tmp/mig.sql && docker exec supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 --single-transaction -f /tmp/mig.sql'
+```

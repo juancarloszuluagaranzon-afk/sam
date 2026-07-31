@@ -7853,3 +7853,8 @@ td.planilla-vacio:hover { background: #fde047; }
 .pend-aviso__err { color: #b3261e; font-size: 0.78rem; overflow-wrap: anywhere; }
 .pend-aviso__pie { margin: 6px 0 0; font-size: 0.78rem; color: var(--color-ink-mid); }
 :root[data-theme="dark"] .pend-aviso__err { color: #fca5a5; }
+
+
+/* Dos acciones en la cabecera de Mi bodega: surtirse y tanquear. */
+.bod-head__acciones { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
+.bod-head__acciones .primary-button { width: auto; flex: 0 0 auto; }

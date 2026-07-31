@@ -1,7 +1,7 @@
 import { db } from './db'
 import {
   entregarSolicitud, entregarDirecto, confirmarRecepcion, createSolicitud,
-  confirmarTraslado, registrarCombustibleExterno,
+  confirmarTraslado, registrarCombustibleExterno, autoAbastecer,
 } from '../services/samApi'
 
 /**
@@ -30,6 +30,7 @@ export type InsumoOpKind =
   | 'CONFIRMAR_RECEPCION'  // el operario avala lo que recibió
   | 'CONFIRMAR_TRASLADO'   // el supervisor recibe material de la principal
   | 'TANQUEO'              // combustible: estación o sede
+  | 'AUTOABASTECER'        // el supervisor toma material de la principal
 
 /** Etiqueta para la pantalla de pendientes; el operario no lee códigos. */
 export const OP_LABEL: Record<InsumoOpKind, string> = {
@@ -39,6 +40,7 @@ export const OP_LABEL: Record<InsumoOpKind, string> = {
   CONFIRMAR_RECEPCION: 'Confirmación de recibido',
   CONFIRMAR_TRASLADO: 'Recepción de traslado',
   TANQUEO: 'Tanqueo de combustible',
+  AUTOABASTECER: 'Abastecimiento del carro',
 }
 
 /**
@@ -86,6 +88,7 @@ export async function ejecutarInsumo(kind: InsumoOpKind, payload: unknown): Prom
     case 'CONFIRMAR_RECEPCION': await confirmarRecepcion(p); return
     case 'CONFIRMAR_TRASLADO': await confirmarTraslado(p); return
     case 'TANQUEO': await registrarCombustibleExterno(p); return
+    case 'AUTOABASTECER': await autoAbastecer(p); return
     default: throw new Error(`Operación desconocida en la cola: ${kind}`)
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */

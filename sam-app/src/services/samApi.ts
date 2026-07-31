@@ -1682,6 +1682,12 @@ function mapTraslado(row: Record<string, unknown>): Traslado {
     recibidoPor: row.recibido_por ? String(row.recibido_por) : undefined,
     conforme: row.conforme == null ? null : Boolean(row.conforme),
     notaRecepcion: row.nota_recepcion ? String(row.nota_recepcion) : undefined,
+    autoservicio: Boolean(row.autoservicio),
+    avalEstado: row.aval_estado ? (String(row.aval_estado).toUpperCase() as 'PENDIENTE' | 'APROBADO' | 'RECHAZADO') : undefined,
+    avaladoPor: row.avalado_por ? String(row.avalado_por) : undefined,
+    avaladoNombre: row.avalado_nombre ? String(row.avalado_nombre) : undefined,
+    avaladoEn: row.avalado_en ? String(row.avalado_en) : undefined,
+    avalNota: row.aval_nota ? String(row.aval_nota) : undefined,
     items: raw.map((it) => ({
       id: String(it.id),
       insumoId: String(it.insumo_id),
@@ -2040,7 +2046,7 @@ export async function revisarCombustible(input: {
   const { evento } = input
   if (evento.estado !== 'PENDIENTE') throw new Error('Este registro ya fue revisado')
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('combustible_externo')
     .update({
       estado: input.aprobar ? 'APROBADO' : 'RECHAZADO',
@@ -2051,7 +2057,11 @@ export async function revisarCombustible(input: {
     })
     .eq('id', evento.id)
     .eq('estado', 'PENDIENTE')
+    .select('id')
   if (error) throw new Error(error.message || 'No se pudo registrar el aval')
+  // Misma guarda que en el autoabastecimiento: sin comprobar que el UPDATE
+  // tocó una fila, un doble aval reversaría el combustible dos veces.
+  if (!data || data.length === 0) throw new Error('Este registro ya fue revisado por otra persona')
 
   if (input.aprobar || !evento.insumoId || evento.galones <= 0) return
 
@@ -3242,4 +3252,162 @@ export function formatExecutionDate(a: Assignment): string {
     month: 'short',
     year: 'numeric',
   })
+}
+
+/**
+ * El supervisor toma material de la principal por su cuenta.
+ *
+ * Existe por un motivo concreto de la operación: el supervisor de insumos llega
+ * a las 5:30 de la mañana y el analista entra a las 7:00. Antes solo podía
+ * servirse solo el combustible; los materiales dependían de que administración
+ * le enviara un traslado, así que si no había nadie se quedaba sin ganchos —
+ * o se los llevaba sin registrar, que es peor.
+ *
+ * El movimiento se hace de UNA (ya se lo llevó físicamente) y el traslado nace
+ * `RECIBIDO` porque quien saca y quien recibe son la misma persona: pedirle que
+ * "confirme" lo que él mismo tomó sería un paso vacío. Lo que sí queda es el
+ * aval del analista, igual que con el combustible.
+ */
+export async function autoAbastecer(input: {
+  bodegaDestinoId: string
+  supervisorId: string
+  supervisorNombre?: string
+  nota?: string
+  items: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
+}): Promise<void> {
+  const principal = await bodegaPrincipal()
+  if (!principal) throw new Error('No hay bodega principal configurada')
+  if (principal.id === input.bodegaDestinoId) throw new Error('No puedes abastecerte de tu propia bodega')
+
+  const items = input.items.filter((i) => i.insumoId && i.cantidad > 0)
+  if (items.length === 0) throw new Error('Elige al menos un insumo con cantidad')
+
+  const { data, error } = await supabase
+    .from('insumos_traslados')
+    .insert({
+      origen_id: principal.id,
+      destino_id: input.bodegaDestinoId,
+      estado: 'RECIBIDO',
+      enviado_por: input.supervisorId,
+      nota: input.nota?.trim() || null,
+      recibido_en: new Date().toISOString(),
+      recibido_por: input.supervisorId,
+      conforme: true,
+      autoservicio: true,
+      aval_estado: 'PENDIENTE',
+    })
+    .select('id')
+    .single()
+  if (error || !data) throw error ?? new Error('No se pudo registrar el abastecimiento')
+  const trasladoId = String(data.id)
+
+  const { error: e2 } = await supabase.from('insumos_traslado_items').insert(
+    items.map((i) => ({
+      traslado_id: trasladoId,
+      insumo_id: i.insumoId,
+      insumo_nombre: i.insumoNombre,
+      unidad: i.unidad,
+      cantidad: redondear2(i.cantidad),
+      cantidad_recibida: redondear2(i.cantidad),
+    })),
+  )
+  if (e2) throw new Error(e2.message || 'No se pudieron guardar los ítems')
+
+  // Sale de la principal y entra al carro, en el mismo acto.
+  for (const i of items) {
+    await registrarMovimientoInsumo({
+      insumoId: i.insumoId,
+      tipo: 'SALIDA',
+      cantidad: i.cantidad,
+      motivo: 'Autoabastecimiento del satélite (pendiente de aval)',
+      referencia: trasladoId,
+      creadoPor: input.supervisorId,
+      bodegaId: principal.id,
+    })
+    await registrarMovimientoInsumo({
+      insumoId: i.insumoId,
+      tipo: 'ENTRADA',
+      cantidad: i.cantidad,
+      motivo: 'Autoabastecimiento del satélite (pendiente de aval)',
+      referencia: trasladoId,
+      creadoPor: input.supervisorId,
+      bodegaId: input.bodegaDestinoId,
+    })
+  }
+}
+
+/** Autoabastecimientos por estado de aval (la bandeja del analista). */
+export async function loadAutoabastecimientos(estado?: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'): Promise<Traslado[]> {
+  let q = supabase
+    .from('insumos_traslados')
+    .select('*, items:insumos_traslado_items(*)')
+    .eq('autoservicio', true)
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (estado) q = q.eq('aval_estado', estado)
+  const { data, error } = await q
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapTraslado)
+}
+
+/**
+ * Aval del analista sobre un autoabastecimiento.
+ *
+ * Aprobar solo lo sella: el material ya se movió al registrarlo. Rechazar
+ * REVERSA — el material regresa a la principal y sale del carro — con la misma
+ * simetría que la reversa del combustible.
+ */
+export async function revisarAutoabastecimiento(input: {
+  traslado: Traslado
+  aprobar: boolean
+  revisadoPor: string
+  revisadoNombre: string
+  nota?: string
+}): Promise<void> {
+  const { traslado } = input
+  if (traslado.avalEstado !== 'PENDIENTE') throw new Error('Este abastecimiento ya fue revisado')
+
+  const { data, error } = await supabase
+    .from('insumos_traslados')
+    .update({
+      aval_estado: input.aprobar ? 'APROBADO' : 'RECHAZADO',
+      avalado_por: input.revisadoPor,
+      avalado_nombre: input.revisadoNombre,
+      avalado_en: new Date().toISOString(),
+      aval_nota: input.nota?.trim() || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', traslado.id)
+    .eq('aval_estado', 'PENDIENTE')
+    .select('id')
+  if (error) throw new Error(error.message || 'No se pudo registrar el aval')
+  // 🔴 Hay que comprobar que el UPDATE de verdad tocó una fila. Sin `.select`,
+  // avalar algo ya avalado no falla —simplemente no coincide ninguna fila— y la
+  // reversa de abajo se ejecutaría igual, descontando el material DOS VECES.
+  if (!data || data.length === 0) throw new Error('Este abastecimiento ya fue revisado por otra persona')
+
+  if (input.aprobar) return
+
+  for (const it of traslado.items) {
+    const cant = it.cantidadRecibida ?? it.cantidad
+    if (cant <= 0) continue
+    await registrarMovimientoInsumo({
+      insumoId: it.insumoId,
+      tipo: 'SALIDA',
+      cantidad: cant,
+      motivo: 'Reversa por rechazo del aval',
+      referencia: traslado.id,
+      creadoPor: input.revisadoPor,
+      bodegaId: traslado.destinoId,
+    })
+    await registrarMovimientoInsumo({
+      insumoId: it.insumoId,
+      tipo: 'ENTRADA',
+      cantidad: cant,
+      motivo: 'Reversa por rechazo del aval',
+      referencia: traslado.id,
+      creadoPor: input.revisadoPor,
+      bodegaId: traslado.origenId,
+    })
+  }
 }

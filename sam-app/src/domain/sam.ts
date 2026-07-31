@@ -307,6 +307,14 @@ export interface Traslado {
   recibidoPor?: string
   conforme?: boolean | null
   notaRecepcion?: string
+  // El supervisor lo tomo de la principal por su cuenta (llega a las 5:30 y el
+  // analista entra a las 7:00). Va con aval posterior, como el combustible.
+  autoservicio?: boolean
+  avalEstado?: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
+  avaladoPor?: string
+  avaladoNombre?: string
+  avaladoEn?: string
+  avalNota?: string
   items: TrasladoItem[]
 }
 

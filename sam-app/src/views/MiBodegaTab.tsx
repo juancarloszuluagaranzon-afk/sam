@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado } from '../services/samApi'
+import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado, autoAbastecer } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { enviarOEncolar } from '../lib/outboxInsumos'
 import { fmtFechaHora as fmtFecha } from '../lib/fechas'
-import { fmtCantidad, stepDe } from '../lib/cantidad'
+import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
+import { SearchableSelect } from '../components/SearchableSelect'
 
 /**
  * "Mi bodega" — vista del supervisor de insumos sobre SU satélite (su vehículo):
@@ -36,6 +37,54 @@ export function MiBodegaTab() {
   const [notaRecepcion, setNotaRecepcion] = useState('')
 
   const [tanqueoOpen, setTanqueoOpen] = useState(false)
+  // Tomar material de la principal sin esperar a nadie: el supervisor entra a
+  // las 5:30 y el analista a las 7:00.
+  const [surtirOpen, setSurtirOpen] = useState(false)
+  const [surtirItems, setSurtirItems] = useState<{ insumoId: string; cantidad: string }[]>([{ insumoId: '', cantidad: '' }])
+  const [surtirNota, setSurtirNota] = useState('')
+
+  const materiales = useMemo(
+    () => insumos.filter((i) => i.activo && i.categoria !== 'COMBUSTIBLE')
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+    [insumos],
+  )
+
+  async function guardarSurtido() {
+    if (!bodega) return
+    const items = surtirItems
+      .filter((it) => it.insumoId && Number(it.cantidad) > 0)
+      .map((it) => {
+        const ins = insumos.find((i) => i.id === it.insumoId)!
+        return {
+          insumoId: it.insumoId,
+          insumoNombre: ins.nombre,
+          unidad: ins.unidad,
+          cantidad: normalizarCantidad(Number(it.cantidad), ins.unidad),
+        }
+      })
+    if (items.length === 0) { setError('Elige al menos un insumo con cantidad.'); return }
+    setBusy(true); setError('')
+    try {
+      const payload = {
+        bodegaDestinoId: bodega.id,
+        supervisorId: session!.id,
+        supervisorNombre: session?.name,
+        nota: surtirNota.trim() || undefined,
+        items,
+      }
+      const { enviado } = await enviarOEncolar('AUTOABASTECER', payload, () => autoAbastecer(payload))
+      setInfo(enviado
+        ? 'Material cargado a tu carro. Queda pendiente del aval del analista.'
+        : 'Guardado sin señal. Se registra solo cuando haya cobertura.')
+      setSurtirOpen(false)
+      setSurtirItems([{ insumoId: '', cantidad: '' }])
+      setSurtirNota('')
+      void refresh()
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo registrar. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
+  }
 
   async function refresh() {
     if (!session) return
@@ -125,9 +174,14 @@ export function MiBodegaTab() {
     <section className="panel-card">
       <div className="bod-head">
         <h2 className="bod-head__title">🚚 {bodega.nombre}</h2>
-        <button type="button" className="primary-button bod-head__btn" onClick={() => setTanqueoOpen(true)} disabled={busy}>
-          ⛽ Registrar tanqueo
-        </button>
+        <div className="bod-head__acciones">
+          <button type="button" className="primary-button bod-head__btn" onClick={() => { setSurtirOpen(true); setError('') }} disabled={busy}>
+            📦 Surtirme de la principal
+          </button>
+          <button type="button" className="primary-button bod-head__btn" onClick={() => setTanqueoOpen(true)} disabled={busy}>
+            ⛽ Registrar tanqueo
+          </button>
+        </div>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>
         Lo que tienes cargado en tu vehículo. De aquí sale lo que entregas a los operarios.
@@ -201,6 +255,63 @@ export function MiBodegaTab() {
               <button type="button" className="inline-button" onClick={() => void confirmarRecibo(false)} disabled={busy}>Faltó algo</button>
               <button type="button" className="primary-button" onClick={() => void confirmarRecibo(true)} disabled={busy}>
                 {busy ? 'Guardando…' : '✔ Recibí todo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Surtirse de la principal */}
+      {surtirOpen && (
+        <div className="modal-overlay open" onClick={() => { if (!busy) setSurtirOpen(false) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(500px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Bodega principal</p><h3>📦 Surtirme</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setSurtirOpen(false)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Toma de la bodega principal lo que necesites para el día. Sale de la
+              principal y entra a tu carro de una; el analista lo avala después.
+            </p>
+            <p className="subtle-copy">
+              Para combustible usa <strong>⛽ Registrar tanqueo</strong>, que además pide los
+              galones y la tirilla.
+            </p>
+
+            {surtirItems.map((it, idx) => (
+              <div key={idx} className="taller-item-row" style={{ gridTemplateColumns: '1fr 90px auto' }}>
+                <SearchableSelect
+                  value={it.insumoId}
+                  onChange={(v) => setSurtirItems(surtirItems.map((x, i) => (i === idx ? { ...x, insumoId: v } : x)))}
+                  options={materiales.map((i) => ({
+                    value: i.id, label: i.nombre, rightLabel: i.unidad, frecuente: i.frecuente,
+                  }))}
+                  placeholder="Buscar insumo…"
+                  disabled={busy}
+                />
+                <input
+                  type="number" min={0} step={stepDe(insumos.find((i) => i.id === it.insumoId)?.unidad)}
+                  placeholder="Cant." value={it.cantidad}
+                  onChange={(e) => setSurtirItems(surtirItems.map((x, i) => (i === idx ? { ...x, cantidad: e.target.value } : x)))}
+                  disabled={busy}
+                />
+                <button type="button" className="inline-button" disabled={busy || surtirItems.length === 1}
+                  onClick={() => setSurtirItems(surtirItems.filter((_, i) => i !== idx))}>✕</button>
+              </div>
+            ))}
+            <button type="button" className="inline-button" style={{ marginTop: 6 }} disabled={busy}
+              onClick={() => setSurtirItems([...surtirItems, { insumoId: '', cantidad: '' }])}>
+              + Otro insumo
+            </button>
+
+            <label style={{ marginTop: 10 }}>Nota <span className="field-optional">(opcional)</span>
+              <input type="text" value={surtirNota} onChange={(e) => setSurtirNota(e.target.value)} disabled={busy} />
+            </label>
+
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setSurtirOpen(false)} disabled={busy}>Cancelar</button>
+              <button type="button" className="primary-button" onClick={() => void guardarSurtido()} disabled={busy}>
+                {busy ? 'Guardando…' : 'Cargar a mi carro'}
               </button>
             </div>
           </div>

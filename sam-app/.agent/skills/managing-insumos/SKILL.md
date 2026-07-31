@@ -266,3 +266,38 @@ de un `<img>` roto.
 del operario: dice cuántos registros esperan señal y, al tocarlo, cuáles. Sin
 él la pantalla se ve igual con la cola vacía que con diez despachos dentro —
 que es exactamente por qué el supervisor creía que se perdían.
+
+## Autoabastecimiento del satélite (31-jul-2026)
+
+**El supervisor puede tomar material de la principal por su cuenta.** Existe por
+un motivo de horario: entra a las 5:30 de la mañana y el analista a las 7:00.
+Con el combustible ya podía servirse solo (tanqueo `origen=SEDE`), pero los
+materiales solo entraban a su carro por un traslado que creaba administración —
+así que si no había nadie, se quedaba sin ganchos o se los llevaba sin
+registrar, que es peor.
+
+`autoAbastecer()` en Mi bodega → **📦 Surtirme de la principal**. El material
+sale de la principal y entra al carro **en el mismo acto** (ya se lo llevó
+físicamente) y queda `aval_estado = 'PENDIENTE'`. El analista lo ve en su
+bandeja junto a los tanqueos; si rechaza, `revisarAutoabastecimiento` reversa.
+
+Se reusó `insumos_traslados` con `autoservicio = true` en vez de crear una tabla:
+es exactamente lo que ya modela (material entre dos bodegas, con ítems), y dos
+tablas para el mismo hecho obligarían a unirlas en cada reporte.
+
+- El traslado nace `RECIBIDO`: quien saca y quien recibe son la misma persona,
+  pedirle que "confirme" lo que él mismo tomó sería un paso vacío.
+- Los traslados normales (los que envía administración) **no** llevan
+  `aval_estado`: ya los avala quien recibe, y pedir dos avales sobra.
+- Para combustible sigue el tanqueo, que además pide galones y tirilla. El
+  formulario lo dice para que nadie use el camino equivocado.
+
+### 🔴 El doble aval reversaba dos veces
+
+`update(...).eq('estado','PENDIENTE')` **no falla** cuando ninguna fila coincide:
+Supabase devuelve 0 filas sin error. Así que avalar algo ya avalado seguía de
+largo y ejecutaba la reversa otra vez, descontando el material dos veces.
+
+Ahora los dos avales (`revisarAutoabastecimiento` y `revisarCombustible`) hacen
+`.select('id')` y comprueban que el UPDATE tocó una fila antes de reversar. **Si
+agregas otro flujo con aval, copia esa guarda.**

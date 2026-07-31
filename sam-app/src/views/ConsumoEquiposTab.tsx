@@ -37,7 +37,7 @@ export function ConsumoEquiposTab() {
   const [busca, setBusca] = useState('')
   const [desde, setDesde] = useState(primerDiaMes())
   const [hasta, setHasta] = useState(hoyISO())
-  const [vista, setVista] = useState<'maquina' | 'insumo'>('maquina')
+  const [vista, setVista] = useState<'maquina' | 'insumo' | 'despacho'>('maquina')
 
   const equipoNombre = useMemo(() => {
     const m = new Map<string, string>()
@@ -75,6 +75,65 @@ export function ConsumoEquiposTab() {
 
   // Solo movimientos con máquina cuentan como consumo (despacho/devolución).
   const conEquipo = useMemo(() => movimientos.filter((m) => m.equipoCodigo), [movimientos])
+
+  /**
+   * Cada despacho por separado, del más nuevo al más viejo.
+   *
+   * Las otras dos vistas agrupan —una por máquina, otra por insumo— y ahí se
+   * pierde el hecho suelto: quién entregó qué, cuándo y por qué. Esta no agrupa
+   * nada; es el libro corrido.
+   */
+  const porDespacho = useMemo(() => {
+    type Fila = {
+      id: string; cuando: string; equipo: string; insumoId: string
+      cantidad: number; concepto: string; quien: string; nota: string
+      devuelto: boolean; pendiente: boolean
+    }
+    const filas: Fila[] = []
+
+    for (const m of conEquipo) {
+      filas.push({
+        id: m.id,
+        cuando: m.createdAt,
+        equipo: m.equipoCodigo!,
+        insumoId: m.insumoId,
+        cantidad: m.cantidad,
+        concepto: m.motivo ?? 'Movimiento',
+        quien: m.creadoPor ? (userName.get(m.creadoPor) ?? m.creadoPor) : '',
+        nota: '',
+        devuelto: m.tipo === 'ENTRADA',
+        pendiente: false,
+      })
+    }
+    // Los tanqueos en estación no pasan por bodega, así que no están en el
+    // kardex: hay que traerlos aparte o el libro quedaría incompleto.
+    for (const t of tanqueos) {
+      if (!t.equipoCodigo || t.origen !== 'ESTACION' || t.estado === 'RECHAZADO') continue
+      filas.push({
+        id: t.id,
+        cuando: t.createdAt || `${t.fecha}T12:00:00`,
+        equipo: t.equipoCodigo,
+        insumoId: t.insumoId ?? '',
+        cantidad: t.galones,
+        concepto: `Tanqueo en estación${t.estacion ? ` (${t.estacion})` : ''}`,
+        quien: t.registradoNombre ?? '',
+        nota: [t.horometro != null ? `horómetro ${t.horometro}` : '', t.factura ? `tirilla ${t.factura}` : '', t.nota ?? '']
+          .filter(Boolean).join(' · '),
+        devuelto: false,
+        pendiente: t.estado === 'PENDIENTE',
+      })
+    }
+
+    const q = busca.trim().toLowerCase()
+    return filas
+      .filter((f) => {
+        if (!q) return true
+        const ins = insumoInfo.get(f.insumoId)?.nombre ?? ''
+        const eq = equipoNombre.get(f.equipo) ?? f.equipo
+        return [eq, ins, f.concepto, f.quien, f.nota].some((v) => v.toLowerCase().includes(q))
+      })
+      .sort((a, b) => b.cuando.localeCompare(a.cuando))
+  }, [conEquipo, tanqueos, insumoInfo, equipoNombre, userName, busca])
 
   // Agrupación por MÁQUINA → insumo (neto).
   const porMaquina = useMemo(() => {
@@ -211,12 +270,13 @@ export function ConsumoEquiposTab() {
       <div className="sol-filtros" style={{ marginTop: 12 }}>
         <button type="button" className={`sol-filtro${vista === 'maquina' ? ' is-active' : ''}`} onClick={() => setVista('maquina')}>🚜 Por máquina</button>
         <button type="button" className={`sol-filtro${vista === 'insumo' ? ' is-active' : ''}`} onClick={() => setVista('insumo')}>🛢️ Por insumo</button>
+        <button type="button" className={`sol-filtro${vista === 'despacho' ? ' is-active' : ''}`} onClick={() => setVista('despacho')}>📋 Despacho por despacho</button>
       </div>
 
       <input
         type="search"
         className="labores-search-input"
-        placeholder={vista === 'maquina' ? 'Buscar máquina…' : 'Buscar insumo…'}
+        placeholder={vista === 'maquina' ? 'Buscar máquina…' : vista === 'insumo' ? 'Buscar insumo…' : 'Buscar máquina, insumo, concepto o persona…'}
         value={busca}
         onChange={(e) => setBusca(e.target.value)}
         style={{ margin: '12px 0' }}
@@ -261,7 +321,7 @@ export function ConsumoEquiposTab() {
             ))}
           </div>
         )
-      ) : (
+      ) : vista === 'insumo' ? (
         porInsumo.length === 0 ? (
           <p className="muted-text">Sin consumos en este rango.</p>
         ) : (
@@ -275,6 +335,38 @@ export function ConsumoEquiposTab() {
               ))}
             </ul>
           </div>
+        )
+      ) : (
+        porDespacho.length === 0 ? (
+          <p className="muted-text">Sin despachos en este rango.</p>
+        ) : (
+          <>
+            <p className="ins-res__lbl">{porDespacho.length} despacho(s), del más reciente al más antiguo</p>
+            <div className="inv-list">
+              {porDespacho.map((d) => {
+                const info = insumoInfo.get(d.insumoId)
+                return (
+                  <div key={d.id} className="desp-row">
+                    <div className="desp-row__main">
+                      <div className="aval-row__top">
+                        <strong>{equipoNombre.get(d.equipo) ?? d.equipo}</strong>
+                        {d.devuelto && <span className="aval-tag aval-tag--vehiculo">devolución</span>}
+                        {d.pendiente && <span className="aval-tag aval-tag--maquina">⏳ sin avalar</span>}
+                      </div>
+                      <span className="subtle-copy">{info?.nombre ?? d.insumoId} · {d.concepto}</span>
+                      <span className="subtle-copy">
+                        {fmtFecha(d.cuando)}{d.quien ? ` · ${d.quien}` : ''}
+                      </span>
+                      {d.nota && <span className="subtle-copy">{d.nota}</span>}
+                    </div>
+                    <strong className={`bod-stock__val${d.devuelto ? ' bod-stock__val--cero' : ''}`}>
+                      {d.devuelto ? '−' : ''}{fmtCantidad(d.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
+                    </strong>
+                  </div>
+                )
+              })}
+            </div>
+          </>
         )
       )}
 

@@ -24,6 +24,8 @@ import { isSameCycle } from '../utils/suerteCycle'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
+import { AvisoPendientes } from '../components/AvisoPendientes'
+import { enviarOEncolar } from '../lib/outboxInsumos'
 import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo } from '../domain/sam'
 
@@ -337,8 +339,11 @@ export function OperatorView({
     if (items.length === 0) { setError('Agrega al menos un insumo con cantidad.'); return }
     setSavingSol(true); setError('')
     try {
-      await createSolicitud({ operarioId: session.id, operarioNombre: session.name, nota: solNota.trim() || undefined, items })
-      setInfo(`Solicitud enviada (${items.length} ítem${items.length === 1 ? '' : 's'}).`)
+      const payload = { operarioId: session.id, operarioNombre: session.name, nota: solNota.trim() || undefined, items }
+      const { enviado } = await enviarOEncolar('SOLICITUD', payload, async () => { await createSolicitud(payload) })
+      setInfo(enviado
+        ? `Solicitud enviada (${items.length} ítem${items.length === 1 ? '' : 's'}).`
+        : `Solicitud guardada (${items.length} ítem${items.length === 1 ? '' : 's'}). Se envía sola cuando haya señal.`)
       setSolOpen(false)
       void refreshMisSolicitudes()
     } catch {
@@ -395,8 +400,11 @@ export function OperatorView({
     setConfirmandoSol(true)
     setError('')
     try {
-      await confirmarRecepcion({ solicitudId: s.id, operarioId: session.id, conforme, nota, equipoCodigo: s.equipoCodigo, bodegaId: s.bodegaId, items })
-      setInfo(conforme ? 'Recepción confirmada. ¡Gracias!' : 'Problema reportado. El supervisor de insumos lo revisará.')
+      const payload = { solicitudId: s.id, operarioId: session.id, conforme, nota, equipoCodigo: s.equipoCodigo, bodegaId: s.bodegaId, items }
+      const { enviado } = await enviarOEncolar('CONFIRMAR_RECEPCION', payload, () => confirmarRecepcion(payload))
+      setInfo(!enviado
+        ? 'Guardado. Se envía solo cuando haya señal.'
+        : conforme ? 'Recepción confirmada. ¡Gracias!' : 'Problema reportado. El supervisor de insumos lo revisará.')
       setProblemaSol(null)
       setProblemaMotivo('')
       setProblemaCant({})
@@ -1308,6 +1316,8 @@ export function OperatorView({
                 )}
               </div>
             )}
+
+            <AvisoPendientes />
 
             <div className="operator-novedades-bar" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" className="operator-novedad-trigger" onClick={openNovedadModal} style={{ flex: 1 }}>

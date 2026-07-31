@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
+import { AvisoPendientes } from '../components/AvisoPendientes'
 import { InsumosInventarioTab } from './InsumosInventarioTab'
 import { BandejaInsumosTab } from './BandejaInsumosTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
@@ -48,6 +49,9 @@ export function InsumosModule({
   const setTab = onTabChange ?? setTabInterno
   return (
     <div>
+      {/* Lo registrado sin senal, visible arriba de todo: si no se ve, el
+          supervisor cree que se perdio. */}
+      <AvisoPendientes />
       <div className="insumos-tabs" role="tablist" aria-label="Secciones de insumos">
         {tabsVisibles.map((t) => (
           <button

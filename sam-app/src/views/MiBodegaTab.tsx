@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
+import { enviarOEncolar } from '../lib/outboxInsumos'
 import { fmtFechaHora as fmtFecha } from '../lib/fechas'
 import { fmtCantidad, stepDe } from '../lib/cantidad'
 
@@ -85,7 +86,7 @@ export function MiBodegaTab() {
     }
     setBusy(true); setError('')
     try {
-      await confirmarTraslado({
+      const payload = {
         trasladoId: recibir.id,
         origenId: recibir.origenId,
         destinoId: bodega.id,
@@ -93,8 +94,11 @@ export function MiBodegaTab() {
         conforme,
         nota: notaRecepcion.trim() || undefined,
         items,
-      })
-      setInfo(conforme ? 'Recepción confirmada. El material ya está en tu bodega.' : 'Diferencia reportada. Lo que faltó regresó a la principal.')
+      }
+      const { enviado } = await enviarOEncolar('CONFIRMAR_TRASLADO', payload, () => confirmarTraslado(payload))
+      setInfo(!enviado
+        ? 'Guardado. Se confirma solo cuando haya señal.'
+        : conforme ? 'Recepción confirmada. El material ya está en tu bodega.' : 'Diferencia reportada. Lo que faltó regresó a la principal.')
       setRecibir(null)
       void refresh()
     } catch (err) {

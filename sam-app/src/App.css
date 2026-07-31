@@ -7816,3 +7816,40 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .avz-capa__menu button:active { background: rgba(255,255,255,.14); }
 .avz-capa__menu .es-borrar { color: #fca5a5; border-color: rgba(252,165,165,.35); }
+
+
+/* Foto de evidencia tomada sin senal: aun no tiene URL que mostrar. */
+.foto-pendiente {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; padding: 4px; text-align: center;
+  border-radius: 8px; border: 1px dashed var(--color-border);
+  background: var(--color-surface-alt); color: var(--color-ink-mid);
+  font-size: 0.62rem; font-weight: 600; line-height: 1.2;
+}
+
+/* ── Aviso de registros sin enviar (offline) ─────────────────────────────── */
+.pend-aviso {
+  margin: 0 0 12px; border-radius: 12px; overflow: hidden;
+  border: 1px solid rgba(180, 83, 9, .35); background: rgba(217, 119, 6, .10);
+}
+.pend-aviso--error { border-color: rgba(179, 38, 30, .4); background: rgba(179, 38, 30, .08); }
+.pend-aviso__head {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 14px; min-height: 56px; cursor: pointer;
+  background: none; border: none; color: inherit; text-align: left;
+}
+.pend-aviso__icono { font-size: 1.1rem; flex: 0 0 auto; }
+.pend-aviso__txt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.pend-aviso__txt strong { font-size: 0.92rem; }
+.pend-aviso__txt small { font-size: 0.76rem; color: var(--color-ink-mid); }
+.pend-aviso__chevron { flex: 0 0 auto; color: var(--color-ink-mid); }
+.pend-aviso__lista { padding: 0 14px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pend-aviso__row {
+  display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline;
+  padding: 8px 0; border-top: 1px solid var(--color-border); font-size: 0.86rem;
+}
+.pend-aviso__row span { display: flex; flex-direction: column; gap: 1px; }
+.pend-aviso__row small { font-size: 0.72rem; color: var(--color-ink-mid); }
+.pend-aviso__err { color: #b3261e; font-size: 0.78rem; overflow-wrap: anywhere; }
+.pend-aviso__pie { margin: 6px 0 0; font-size: 0.78rem; color: var(--color-ink-mid); }
+:root[data-theme="dark"] .pend-aviso__err { color: #fca5a5; }

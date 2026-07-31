@@ -6,8 +6,10 @@ import {
   loadAssignments,
   loadMaestro,
   updateAssignment,
+  uploadEvidencia,
 } from '../services/samApi'
 import { supabase } from '../lib/supabase'
+import { ejecutarInsumo, resolverFotosDePayload, type InsumoOpKind } from '../lib/outboxInsumos'
 
 interface UseSyncParams {
   onAssignmentsReloaded: (data: Assignment[]) => void
@@ -68,6 +70,28 @@ export function useSync({
         await db.outbox.delete(item.id!)
         synced++
       } catch (err) {
+        await db.outbox.update(item.id!, { status: 'error', errorMessage: errMsg(err) })
+      }
+    }
+
+    // Pass 3: INSUMOS. Van al final a proposito: si un despacho y el cierre de
+    // la labor de esa misma maquina estaban en cola, primero queda la labor.
+    // Cada uno reejecuta la operacion COMPLETA contra el servidor, asi que el
+    // saldo del kardex se calcula con el stock real de ahora, no con el que
+    // habia en el telefono cuando se registro sin senal.
+    for (const item of items.filter((i) => i.type === 'INSUMO')) {
+      try {
+        // Primero las fotos: si se tomaron sin señal viven en el equipo con un
+        // marcador `local://`, y hay que subirlas y cambiar el marcador por la
+        // URL real antes de mandar el registro.
+        const payload = await resolverFotosDePayload(item.insumoOp!.payload, uploadEvidencia)
+        await ejecutarInsumo(item.insumoOp!.kind as InsumoOpKind, payload)
+        await db.outbox.delete(item.id!)
+        synced++
+      } catch (err) {
+        // Un rechazo del servidor (stock insuficiente, solicitud ya despachada)
+        // NO se borra: queda en error y el contador lo sigue mostrando, para
+        // que alguien lo resuelva en vez de que desaparezca en silencio.
         await db.outbox.update(item.id!, { status: 'error', errorMessage: errMsg(err) })
       }
     }

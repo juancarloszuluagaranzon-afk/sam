@@ -4,7 +4,8 @@ import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDire
 import type { Bodega, StockBodega } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { fmtFechaHora as fmtFecha, fmtLapso } from '../lib/fechas'
-import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
+import { enviarOEncolar, subirOGuardarFoto, esFotoLocal } from '../lib/outboxInsumos'
+import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 
 /**
@@ -58,6 +59,21 @@ export function BandejaInsumosTab() {
   /** Stock del insumo EN mi bodega (lo que realmente puedo entregar). */
   const stockMio = (insumoId: string) =>
     stockBodega.find((s) => s.insumoId === insumoId)?.stock ?? 0
+
+  /**
+   * Descuenta del stock local lo que se acaba de entregar SIN señal.
+   *
+   * Sin esto el supervisor seguiría viendo el carro lleno después de entregar y
+   * podría despachar de más creyendo que le queda. Es una estimación local: al
+   * sincronizar, el stock real llega del servidor y manda.
+   */
+  function descontarLocal(movs: { insumoId: string; cantidad: number }[]) {
+    setStockBodega((prev) => {
+      const m = new Map(prev.map((x) => [x.insumoId, x.stock]))
+      for (const mv of movs) m.set(mv.insumoId, redondear2((m.get(mv.insumoId) ?? 0) - mv.cantidad))
+      return prev.map((x) => ({ ...x, stock: m.get(x.insumoId) ?? x.stock }))
+    })
+  }
 
   async function refrescarStockBodega() {
     if (miBodega) setStockBodega(await loadStockBodega(miBodega.id))
@@ -164,8 +180,9 @@ export function BandejaInsumosTab() {
     if (!file.type.startsWith('image/')) { setError('Selecciona una imagen.'); input.value = ''; return }
     setSubiendoFoto(true); setError('')
     try {
-      const url = await uploadEvidencia(entregaTarget.id, file, evidencias.length)
+      const { url, local } = await subirOGuardarFoto(entregaTarget.id, file, evidencias.length, uploadEvidencia)
       setEvidencias((prev) => [...prev, url])
+      if (local) setInfo('Foto guardada en el equipo. Se sube sola cuando haya señal.')
     } catch {
       setError('No se pudo subir la foto.')
     } finally { setSubiendoFoto(false); input.value = '' }
@@ -191,7 +208,7 @@ export function BandejaInsumosTab() {
         setBusy(false)
         return
       }
-      const actualizados = await entregarSolicitud({
+      const payload = {
         solicitudId: entregaTarget.id,
         despachadoPor: session?.id,
         ruta: entregaRuta.trim() || undefined,
@@ -200,13 +217,21 @@ export function BandejaInsumosTab() {
         evidenciaUrls: evidencias,
         bodegaId: miBodega?.id,
         items,
-      })
-      // Refresca el stock en el contexto con los insumos devueltos.
-      if (actualizados.length) {
-        setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
       }
-      void refrescarStockBodega()
-      setInfo(`Entrega registrada y descontada de ${miBodega?.nombre ?? 'la bodega'}.`)
+      const { enviado } = await enviarOEncolar('DESPACHO', payload, async () => {
+        const actualizados = await entregarSolicitud(payload)
+        // Refresca el stock en el contexto con los insumos devueltos.
+        if (actualizados.length) {
+          setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
+        }
+      })
+      if (enviado) {
+        void refrescarStockBodega()
+        setInfo(`Entrega registrada y descontada de ${miBodega?.nombre ?? 'la bodega'}.`)
+      } else {
+        descontarLocal(items.filter((it) => it.insumoId).map((it) => ({ insumoId: it.insumoId!, cantidad: it.cantidadDespachada })))
+        setInfo('Entrega guardada sin señal. Se envía sola cuando haya cobertura.')
+      }
       setEntregaTarget(null)
       void refresh()
     } catch (err) {
@@ -234,8 +259,9 @@ export function BandejaInsumosTab() {
     if (!file.type.startsWith('image/')) { setError('Selecciona una imagen.'); input.value = ''; return }
     setDirSubiendo(true); setError('')
     try {
-      const url = await uploadEvidencia(dirTempIdRef.current, file, dirFotos.length)
+      const { url, local } = await subirOGuardarFoto(dirTempIdRef.current, file, dirFotos.length, uploadEvidencia)
       setDirFotos((prev) => [...prev, url])
+      if (local) setInfo('Foto guardada en el equipo. Se sube sola cuando haya señal.')
     } catch {
       setError('No se pudo subir la foto.')
     } finally { setDirSubiendo(false); input.value = '' }
@@ -268,7 +294,7 @@ export function BandejaInsumosTab() {
         setBusy(false)
         return
       }
-      const { insumos: actualizados } = await entregarDirecto({
+      const payload = {
         operarioId: operario.id,
         operarioNombre: operario.name,
         despachadoPor: session?.id,
@@ -278,12 +304,20 @@ export function BandejaInsumosTab() {
         evidenciaUrls: dirFotos,
         bodegaId: miBodega?.id,
         items,
-      })
-      void refrescarStockBodega()
-      if (actualizados.length) {
-        setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
       }
-      setInfo(`Entrega directa registrada a ${operario.name}. Queda pendiente de su aval.`)
+      const { enviado } = await enviarOEncolar('ENTREGA_DIRECTA', payload, async () => {
+        const { insumos: actualizados } = await entregarDirecto(payload)
+        if (actualizados.length) {
+          setInsumos((prev) => prev.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
+        }
+      })
+      if (enviado) {
+        void refrescarStockBodega()
+        setInfo(`Entrega directa registrada a ${operario.name}. Queda pendiente de su aval.`)
+      } else {
+        descontarLocal(items.map((it) => ({ insumoId: it.insumoId, cantidad: it.cantidad })))
+        setInfo(`Entrega a ${operario.name} guardada sin señal. Se envía sola cuando haya cobertura.`)
+      }
       setDirectaOpen(false)
       void refresh()
     } catch (err) {
@@ -508,7 +542,9 @@ export function BandejaInsumosTab() {
               <span className="subtle-copy" style={{ display: 'block', marginBottom: 6 }}>Evidencia (fotos)</span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {evidencias.map((u, i) => (
-                  <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
+                  esFotoLocal(u)
+                  ? <span key={i} className="foto-pendiente" title="Guardada en el equipo; se sube cuando haya senal">&#128247; sin subir</span>
+                  : <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
                 ))}
                 <button type="button" className="inline-button" onClick={() => fotoInputRef.current?.click()} disabled={busy || subiendoFoto}>
                   {subiendoFoto ? 'Subiendo…' : '📷 Agregar foto'}
@@ -615,7 +651,9 @@ export function BandejaInsumosTab() {
               <span className="subtle-copy" style={{ display: 'block', marginBottom: 6 }}>Evidencia (fotos)</span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {dirFotos.map((u, i) => (
-                  <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
+                  esFotoLocal(u)
+                  ? <span key={i} className="foto-pendiente" title="Guardada en el equipo; se sube cuando haya senal">&#128247; sin subir</span>
+                  : <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
                 ))}
                 <button type="button" className="inline-button" onClick={() => dirFotoRef.current?.click()} disabled={busy || dirSubiendo}>
                   {dirSubiendo ? 'Subiendo…' : '📷 Agregar foto'}

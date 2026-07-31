@@ -220,3 +220,49 @@ marca/modelo/máquina sirve cada uno).
 
 No crear un segundo inventario: serían dos verdades. Ver
 `.agent/skills/managing-taller/`.
+
+## 🔴 Offline: los insumos también encolan (31-jul-2026)
+
+**El outbox existía solo para las labores.** Todo el módulo de insumos escribía
+directo a Supabase, así que sin señal la promesa fallaba, la pantalla decía "no
+se pudo" y **el registro se perdía**. El supervisor de insumos trabaja justo
+donde no hay cobertura: era el peor sitio posible para no tener cola.
+
+`lib/outboxInsumos.ts` encola seis operaciones de campo: `SOLICITUD`,
+`DESPACHO`, `ENTREGA_DIRECTA`, `CONFIRMAR_RECEPCION`, `CONFIRMAR_TRASLADO` y
+`TANQUEO`. Inventario, compras y taller NO se encolan: los hace administración
+con señal, y ahí un error a la cara es mejor que una cola invisible.
+
+### Tres reglas que sostienen esto
+
+1. **Se encola la INTENCIÓN, no el resultado.** Un despacho guarda "saqué 12
+   galones de esta bodega", nunca "el saldo quedó en 78". El saldo del kardex se
+   recalcula al sincronizar, contra el stock real de ese momento. Guardar el
+   saldo calculado en el celular y aplicarlo días después descuadra el inventario.
+2. **Fallo de red ≠ rechazo del servidor** (`esFalloDeRed`). Un "stock
+   insuficiente" o un duplicado **no se encolan**: reintentarlos mañana volvería
+   a fallar y le habríamos dicho al usuario "quedó guardado". Solo se encola
+   cuando de verdad no se pudo hablar con el servidor.
+3. **La pantalla dice la verdad.** `enviarOEncolar` devuelve `enviado`, y el
+   mensaje cambia: "Entrega registrada" vs "Entrega guardada sin señal. Se envía
+   sola cuando haya cobertura". Decir "listo" en los dos casos es como se pierde
+   la confianza.
+
+### Fotos
+
+La evidencia se subía al tomarla; sin señal fallaba. Ahora `subirOGuardarFoto`
+la guarda en Dexie (`db.fotos`, v8) y devuelve un marcador `local://<id>` que
+viaja dentro del registro encolado. Al sincronizar, `resolverFotosDePayload`
+sube la foto y cambia el marcador por la URL real **antes** de mandar el
+registro. Si una foto no sube, se descarta esa foto pero la entrega sigue: es
+mejor perder una foto que perder la entrega.
+
+En el formulario, una foto aún sin subir se muestra como "📷 sin subir" en vez
+de un `<img>` roto.
+
+### Que se vea
+
+`components/AvisoPendientes.tsx` va arriba del módulo de insumos y de la vista
+del operario: dice cuántos registros esperan señal y, al tocarlo, cuáles. Sin
+él la pantalla se ve igual con la cola vacía que con diez despachos dentro —
+que es exactamente por qué el supervisor creía que se perdían.

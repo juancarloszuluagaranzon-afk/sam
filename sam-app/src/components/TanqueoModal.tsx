@@ -4,6 +4,7 @@ import { registrarCombustibleExterno, uploadEvidencia, loadVehiculos } from '../
 import { DESTINO_LABEL, type CombustibleDestino, type CombustibleOrigen, type Vehiculo } from '../domain/sam'
 import { SearchableSelect } from './SearchableSelect'
 import { redondear2 } from '../lib/cantidad'
+import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
 
 /**
  * Tanqueo — el único camino por el que entra o sale combustible sin pasar por
@@ -108,7 +109,11 @@ export function TanqueoModal({
     if (!file) return
     setSubiendo(true); setError('')
     try {
-      setTirilla(await uploadEvidencia(`tanqueo-${session?.id ?? 'x'}-${Date.now()}`, file, 0))
+      const { url, local } = await subirOGuardarFoto(
+        `tanqueo-${session?.id ?? 'x'}-${Date.now()}`, file, 0, uploadEvidencia,
+      )
+      setTirilla(url)
+      if (local) setInfo('Foto guardada en el equipo. Se sube sola cuando haya señal.')
     } catch {
       setError('No se pudo subir la foto.')
     } finally { setSubiendo(false) }
@@ -130,7 +135,7 @@ export function TanqueoModal({
     }
     setBusy(true); setError('')
     try {
-      await registrarCombustibleExterno({
+      const payload = {
         fecha,
         origen,
         destino,
@@ -148,11 +153,14 @@ export function TanqueoModal({
         tirillaUrl: tirilla || undefined,
         registradoPor: session?.id,
         registradoNombre: session?.name,
-      })
+      }
+      const { enviado } = await enviarOEncolar('TANQUEO', payload, () => registrarCombustibleExterno(payload))
       if (destino === 'VEHICULO' && placa) {
         try { localStorage.setItem(`${PLACA_KEY}:${session?.id ?? ''}`, placa) } catch { /* storage lleno */ }
       }
-      setInfo(`Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval del analista.`)
+      setInfo(enviado
+        ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval del analista.`
+        : `Guardado sin señal: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Se envía solo cuando haya cobertura.`)
       onClose()
       onSaved?.()
     } catch (err) {

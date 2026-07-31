@@ -7,6 +7,10 @@ import type {
   MaestroRow,
   UpdateAssignmentInput,
   UserProfile,
+  Insumo,
+  Bodega,
+  StockBodega,
+  SolicitudInsumo,
 } from '../domain/sam'
 
 export interface OutboxItem {
@@ -55,6 +59,13 @@ class SamDb extends Dexie {
   labores!: Table<Labor>
   outbox!: Table<OutboxItem>
   fotos!: Table<FotoPendiente>
+  // Lo que el supervisor de insumos necesita LEER en campo. Sin esto podia
+  // guardar sin senal (el outbox) pero no tenia catalogo del cual escoger:
+  // la pantalla salia vacia y no habia nada que despachar.
+  insumosCat!: Table<Insumo>
+  bodegas!: Table<Bodega>
+  stockBodega!: Table<StockBodega & { clave: string }>
+  solicitudes!: Table<SolicitudInsumo>
   meta!: Table<{ key: string; value: string }>
 
   constructor() {
@@ -119,6 +130,16 @@ class SamDb extends Dexie {
     // v8: fotos de evidencia tomadas sin señal. Se suben al sincronizar.
     this.version(8).stores({
       fotos: 'localId, queuedAt',
+    })
+
+    // v9: catálogo de insumos, bodegas, stock y solicitudes cacheados. El
+    // outbox resolvía guardar sin señal, pero sin estos el supervisor abría la
+    // pantalla en blanco y no tenía qué despachar.
+    this.version(9).stores({
+      insumosCat: 'id, nombre, categoria',
+      bodegas: 'id, tipo, responsableId',
+      stockBodega: 'clave, insumoId, bodegaId',
+      solicitudes: 'id, estado, operarioId, createdAt',
     })
   }
 }

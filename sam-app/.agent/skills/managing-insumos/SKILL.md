@@ -301,3 +301,26 @@ largo y ejecutaba la reversa otra vez, descontando el material dos veces.
 Ahora los dos avales (`revisarAutoabastecimiento` y `revisarCombustible`) hacen
 `.select('id')` y comprueban que el UPDATE tocó una fila antes de reversar. **Si
 agregas otro flujo con aval, copia esa guarda.**
+
+## 🔴 Offline también es LEER, no solo guardar (31-jul-2026)
+
+La cola de salida resolvió guardar sin señal, pero el supervisor abría la
+pantalla en blanco: **`loadInsumos` devolvía `[]` cuando fallaba la red**. Podía
+guardar pero no tenía catálogo del cual escoger. Guardar sin poder leer no sirve
+de nada.
+
+Cuatro cargas tienen respaldo en Dexie (v9): `insumosCat`, `bodegas`,
+`stockBodega` (clave `insumoId|bodegaId`) y `solicitudes`. Cada `load*` guarda
+lo que trae del servidor y, si la red falla, lee del respaldo aplicando los
+mismos filtros en memoria.
+
+El caso que más dolía era **el stock**: sin respaldo el carro salía en CERO y la
+validación "no tienes suficiente" bloqueaba cualquier despacho. El respaldo es
+del último momento con señal — puede estar algo viejo, pero es infinitamente
+mejor que un cero que miente.
+
+`AvisoPendientes` muestra **"Sin señal"** aunque no haya nada en cola, para que
+quede claro que lo que se ve es de la última conexión.
+
+**Regla para lo que venga:** una pantalla que se use en campo necesita las dos
+mitades — cola de salida Y respaldo de lectura. Tener solo una es no tenerlo.

@@ -30,6 +30,9 @@ export function ConsumoEquiposTab() {
   // Tanqueos en bomba cargados a una máquina: NO pasan por inventario, pero su
   // costo/consumo sí es de la máquina — se suman al reporte.
   const [tanqueos, setTanqueos] = useState<CombustibleExterno[]>([])
+  // Detalle de una máquina: el total no dice de dónde salió ni por qué. Al
+  // tocar la tarjeta se ven los movimientos uno por uno, con su nota.
+  const [detalle, setDetalle] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [busca, setBusca] = useState('')
   const [desde, setDesde] = useState(primerDiaMes())
@@ -227,12 +230,20 @@ export function ConsumoEquiposTab() {
         ) : (
           <div className="list-rows">
             {porMaquina.map((g) => (
-              <div key={g.equipo} className="panel-card" style={{ padding: '12px 14px', marginBottom: 10 }}>
+              <button
+                key={g.equipo}
+                type="button"
+                className="panel-card consumo-maq"
+                style={{ padding: '12px 14px', marginBottom: 10 }}
+                onClick={() => setDetalle(g.equipo)}
+                aria-label={`Ver el detalle de ${g.nombre}`}
+              >
                 <div className="panel-title split" style={{ marginBottom: 6 }}>
                   <h3 style={{ margin: 0, fontSize: '1rem' }}>🚜 {g.nombre}</h3>
                   <span className="subtle-copy">
                     {g.entregas} despacho{g.entregas === 1 ? '' : 's'}
                     {g.tanqueos > 0 && ` · ⛽ ${g.tanqueos} tanqueo${g.tanqueos === 1 ? '' : 's'} en estación`}
+                    {' · '}<span className="consumo-maq__ver">ver detalle →</span>
                   </span>
                 </div>
                 <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -246,7 +257,7 @@ export function ConsumoEquiposTab() {
                       </li>
                     ))}
                 </ul>
-              </div>
+              </button>
             ))}
           </div>
         )
@@ -266,6 +277,80 @@ export function ConsumoEquiposTab() {
           </div>
         )
       )}
+
+      {/* Detalle de la máquina: cada movimiento con su fecha, su concepto y su
+          nota. El total de la tarjeta no dice de dónde salió ni por qué. */}
+      {detalle && (() => {
+        const movs = conEquipo
+          .filter((m) => m.equipoCodigo === detalle)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        const tqs = tanqueos
+          .filter((t) => t.equipoCodigo === detalle && t.origen === 'ESTACION' && t.estado !== 'RECHAZADO')
+          .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+        const nombre = equipoNombre.get(detalle) ?? detalle
+        return (
+          <div className="modal-overlay open" onClick={() => setDetalle('')}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(560px, calc(100vw - 32px))' }}>
+              <div className="labor-detail-header">
+                <div><p className="eyebrow">Consumo</p><h3>🚜 {nombre}</h3></div>
+                <button type="button" className="modal-close-btn" onClick={() => setDetalle('')} aria-label="Cerrar">&#x2715;</button>
+              </div>
+              <p className="subtle-copy" style={{ marginTop: 0 }}>
+                {movs.length + tqs.length} movimiento(s) entre {desde || 'el inicio'} y {hasta || 'hoy'}.
+              </p>
+
+              {movs.length === 0 && tqs.length === 0 ? (
+                <p className="muted-text">Sin movimientos en este rango.</p>
+              ) : (
+                <div className="inv-list" style={{ marginTop: 8 }}>
+                  {movs.map((m) => {
+                    const info = insumoInfo.get(m.insumoId)
+                    const devuelto = m.tipo === 'ENTRADA'
+                    return (
+                      <div key={m.id} className="bod-stock__row">
+                        <span className="bod-stock__nom">
+                          {info?.nombre ?? m.insumoId}
+                          {devuelto && <span className="inv-cat inv-cat--off"> devolución</span>}
+                          <small className="bod-stock__reparto">
+                            {fmtFecha(m.createdAt)}
+                            {m.motivo ? ` · ${m.motivo}` : ''}
+                            {m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}
+                          </small>
+                        </span>
+                        <strong className={`bod-stock__val${devuelto ? ' bod-stock__val--cero' : ''}`}>
+                          {devuelto ? '−' : ''}{fmtCantidad(m.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
+                        </strong>
+                      </div>
+                    )
+                  })}
+
+                  {tqs.map((t) => {
+                    const info = t.insumoId ? insumoInfo.get(t.insumoId) : undefined
+                    return (
+                      <div key={t.id} className="bod-stock__row">
+                        <span className="bod-stock__nom">
+                          ⛽ {info?.nombre ?? 'COMBUSTIBLE'}
+                          <small className="bod-stock__reparto">
+                            {fmtFecha(t.createdAt)} · Tanqueo en estación
+                            {t.estacion ? ` (${t.estacion})` : ''}
+                            {t.horometro != null ? ` · horómetro ${t.horometro}` : ''}
+                            {t.registradoNombre ? ` · ${t.registradoNombre}` : ''}
+                            {t.nota ? ` · ${t.nota}` : ''}
+                            {t.estado === 'PENDIENTE' ? ' · ⏳ sin avalar' : ''}
+                          </small>
+                        </span>
+                        <strong className="bod-stock__val">
+                          {fmtCantidad(t.galones, 'galón')} <small>galón</small>
+                        </strong>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })()}
     </section>
   )
 }

@@ -39,12 +39,29 @@ export function AvisoPendientes() {
   // al día sin necesidad de sondear.
   useEffect(() => { void revisar() }, [revisar, outboxCount, isOnline])
 
-  if (items.length === 0) return null
+  // Sin señal se avisa aunque no haya nada en cola: el supervisor tiene que
+  // saber que lo que ve —stock, catálogo, solicitudes— es de la última vez que
+  // hubo cobertura, no de este momento.
+  if (items.length === 0 && isOnline) return null
+
+  if (items.length === 0) {
+    return (
+      <div className="pend-aviso pend-aviso--offline">
+        <div className="pend-aviso__head" style={{ cursor: 'default' }}>
+          <span className="pend-aviso__icono" aria-hidden>⏸</span>
+          <span className="pend-aviso__txt">
+            <strong>Sin señal</strong>
+            <small>Puedes seguir trabajando: lo que registres se envía solo cuando vuelva.</small>
+          </span>
+        </div>
+      </div>
+    )
+  }
 
   const conError = items.filter((i) => i.error)
 
   return (
-    <div className={`pend-aviso${conError.length ? ' pend-aviso--error' : ''}`}>
+    <div className={`pend-aviso${conError.length ? ' pend-aviso--error' : !isOnline ? ' pend-aviso--offline' : ''}`}>
       <button type="button" className="pend-aviso__head" onClick={() => setAbierto(!abierto)} aria-expanded={abierto}>
         <span className="pend-aviso__icono" aria-hidden>{isOnline ? '↑' : '⏸'}</span>
         <span className="pend-aviso__txt">

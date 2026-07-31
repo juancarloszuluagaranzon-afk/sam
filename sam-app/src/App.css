@@ -7858,3 +7858,14 @@ td.planilla-vacio:hover { background: #fde047; }
 /* Dos acciones en la cabecera de Mi bodega: surtirse y tanquear. */
 .bod-head__acciones { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }
 .bod-head__acciones .primary-button { width: auto; flex: 0 0 auto; }
+.pend-aviso--offline { border-color: rgba(100, 116, 139, .4); background: rgba(100, 116, 139, .10); }
+
+
+/* Tarjeta de máquina en el reporte de consumo: toda es tocable. */
+.consumo-maq {
+  display: block; width: 100%; text-align: left;
+  cursor: pointer; color: inherit; font: inherit;
+  border: 1px solid var(--color-border);
+}
+.consumo-maq:active { background: var(--color-surface-alt); }
+.consumo-maq__ver { color: var(--color-brand); font-weight: 600; white-space: nowrap; }

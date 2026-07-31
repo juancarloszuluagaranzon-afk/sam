@@ -1362,15 +1362,28 @@ function mapInsumo(row: Record<string, unknown>): Insumo {
   }
 }
 
+/**
+ * Catálogo de insumos, con respaldo en el equipo.
+ *
+ * 🔴 Antes devolvía una lista VACÍA cuando fallaba la red. El supervisor abría
+ * la pantalla sin señal y no tenía nada que despachar: podía guardar (el
+ * outbox) pero no había de dónde escoger. Guardar sin poder leer no sirve.
+ */
 export async function loadInsumos(): Promise<{ data: Insumo[]; source: Source }> {
   try {
     // `*` a propósito: así la carga NO se rompe si la migración de una columna
     // nueva (ej. stock_minimo) aún no se ha corrido (lección factura_numero).
     const { data, error } = await supabase.from('insumos').select('*').order('nombre')
     if (error || !data) throw error ?? new Error('empty')
-    return { data: data.map(mapInsumo), source: 'supabase' }
+    const mapped = data.map(mapInsumo)
+    void db.insumosCat.clear().then(() => db.insumosCat.bulkPut(mapped))
+    return { data: mapped, source: 'supabase' }
   } catch {
-    return { data: [], source: 'fallback' }
+    const cache = await db.insumosCat.toArray()
+    return {
+      data: cache.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' })),
+      source: 'fallback',
+    }
   }
 }
 
@@ -1538,10 +1551,17 @@ function mapBodega(row: Record<string, unknown>): Bodega {
   }
 }
 
+/** Bodegas, con respaldo local: sin ellas el supervisor no sabe de dónde saca. */
 export async function loadBodegas(): Promise<Bodega[]> {
-  const { data, error } = await supabase.from('bodegas').select('*').order('tipo').order('nombre')
-  if (error || !data) return []
-  return (data as Record<string, unknown>[]).map(mapBodega)
+  try {
+    const { data, error } = await supabase.from('bodegas').select('*').order('tipo').order('nombre')
+    if (error || !data) throw error ?? new Error('empty')
+    const mapped = (data as Record<string, unknown>[]).map(mapBodega)
+    void db.bodegas.clear().then(() => db.bodegas.bulkPut(mapped))
+    return mapped
+  } catch {
+    return db.bodegas.toArray()
+  }
 }
 
 export async function createBodega(input: { nombre: string; tipo: BodegaTipo; responsableId?: string; vehiculo?: string }): Promise<Bodega> {
@@ -1583,12 +1603,39 @@ export async function bodegaPrincipal(): Promise<Bodega | null> {
 }
 
 /** Stock por bodega. Sin `bodegaId` devuelve el de todas. */
+/**
+ * Stock por bodega, con respaldo local.
+ *
+ * Sin esto, el supervisor sin señal veía su carro en CERO y la validación
+ * ("no tienes suficiente") le bloqueaba cualquier despacho. El respaldo es del
+ * último momento con señal: puede estar un poco viejo, pero es infinitamente
+ * mejor que un cero que miente.
+ */
 export async function loadStockBodega(bodegaId?: string): Promise<StockBodega[]> {
-  let q = supabase.from('insumos_stock').select('insumo_id,bodega_id,stock')
-  if (bodegaId) q = q.eq('bodega_id', bodegaId)
-  const { data, error } = await q
-  if (error || !data) return []
-  return data.map((r) => ({ insumoId: String(r.insumo_id), bodegaId: String(r.bodega_id), stock: Number(r.stock ?? 0) }))
+  try {
+    let q = supabase.from('insumos_stock').select('insumo_id,bodega_id,stock')
+    if (bodegaId) q = q.eq('bodega_id', bodegaId)
+    const { data, error } = await q
+    if (error || !data) throw error ?? new Error('empty')
+    const mapped = data.map((r) => ({
+      insumoId: String(r.insumo_id), bodegaId: String(r.bodega_id), stock: Number(r.stock ?? 0),
+    }))
+    void (async () => {
+      // Solo se reemplaza lo de las bodegas que vinieron, para no borrar el
+      // respaldo de las demás cuando la consulta trae una sola.
+      const bodegasTraidas = new Set(mapped.map((m) => m.bodegaId))
+      const viejos = await db.stockBodega.toArray()
+      await db.stockBodega.bulkDelete(
+        viejos.filter((v) => bodegasTraidas.has(v.bodegaId)).map((v) => v.clave),
+      )
+      await db.stockBodega.bulkPut(mapped.map((m) => ({ ...m, clave: `${m.insumoId}|${m.bodegaId}` })))
+    })()
+    return mapped
+  } catch {
+    const cache = await db.stockBodega.toArray()
+    const filtrado = bodegaId ? cache.filter((c) => c.bodegaId === bodegaId) : cache
+    return filtrado.map((c) => ({ insumoId: c.insumoId, bodegaId: c.bodegaId, stock: c.stock }))
+  }
 }
 
 /** Stock actual de un insumo en una bodega (0 si no tiene fila todavía). */
@@ -2273,9 +2320,22 @@ export async function loadSolicitudes(opts?: {
     .limit(opts?.limit ?? 200)
   if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
   if (opts?.estados && opts.estados.length) query = query.in('estado', opts.estados)
-  const { data, error } = await query
-  if (error || !data) return []
-  return (data as Record<string, unknown>[]).map(mapSolicitud)
+  try {
+    const { data, error } = await query
+    if (error || !data) throw error ?? new Error('empty')
+    const mapped = (data as Record<string, unknown>[]).map(mapSolicitud)
+    // Se guarda TODO lo que llega para que sin senal el supervisor siga viendo
+    // las solicitudes que le tocaba despachar. Sin esto la bandeja salia vacia.
+    void db.solicitudes.bulkPut(mapped)
+    return mapped
+  } catch {
+    let cache = await db.solicitudes.toArray()
+    if (opts?.operarioId) cache = cache.filter((x) => x.operarioId === opts.operarioId)
+    if (opts?.estados && opts.estados.length) cache = cache.filter((x) => opts.estados!.includes(x.estado))
+    return cache
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, opts?.limit ?? 200)
+  }
 }
 
 export async function updateSolicitudEstado(

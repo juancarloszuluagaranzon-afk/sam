@@ -114,8 +114,6 @@ export function BandejaInsumosTab() {
   const dirFotoRef = useRef<HTMLInputElement>(null)
   const dirTempIdRef = useRef('')
 
-  const stockDe = (insumoId?: string) => (insumoId ? insumos.find((i) => i.id === insumoId)?.stock ?? 0 : 0)
-
   const userName = useMemo(() => {
     const m = new Map<string, string>()
     users.forEach((u) => m.set(u.id, u.name))
@@ -491,17 +489,20 @@ export function BandejaInsumosTab() {
               <div><p className="eyebrow">Despacho</p><h3>📦 Entregar a {entregaTarget.operarioNombre ?? userName.get(entregaTarget.operarioId) ?? entregaTarget.operarioId}</h3></div>
               <button type="button" className="modal-close-btn" onClick={() => setEntregaTarget(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
             </div>
-            <p className="subtle-copy" style={{ marginTop: 0 }}>Confirma la cantidad despachada por ítem. Se descontará del inventario (kardex SALIDA).</p>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Confirma la cantidad despachada por ítem. Se descuenta de {miBodega?.nombre ?? 'tu bodega'}.
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {entregaItems.map((row, idx) => {
-                const stock = stockDe(row.insumoId)
+                const stock = row.insumoId ? stockMio(row.insumoId) : 0
                 const excede = Number(row.cantidad) > stock
                 return (
                   <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <strong style={{ fontSize: '0.9rem' }}>{row.insumoNombre}</strong>
                       <div className="subtle-copy" style={{ fontSize: '0.76rem', color: excede ? '#b3261e' : undefined }}>
-                        Stock: {stock} {row.unidad}{excede ? ' · excede el stock' : ''}
+                        En {miBodega?.nombre ?? 'mi bodega'}: {fmtCantidad(stock, row.unidad)} {row.unidad}
+                        {excede ? ' · no te alcanza' : ''}
                       </div>
                     </div>
                     <input type="number" min={0} step="any" value={row.cantidad}

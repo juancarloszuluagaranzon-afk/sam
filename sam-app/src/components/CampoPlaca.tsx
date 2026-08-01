@@ -1,90 +1,149 @@
 import { useEffect, useId, useMemo, useState } from 'react'
+import { loadCatalogo } from '../services/samApi'
 import { normalizarPlaca } from '../lib/texto'
 
-/** Placas que ya se han escrito en este equipo. */
-const CACHE_KEY = 'sam:placas-usadas'
+/** Lo que ya se ha escrito en este equipo, por tipo de lista. */
+const CACHE_KEY = 'sam:lista-usada'
+/** Copia de la lista del servidor, para que sin señal siga sugiriendo. */
+const ESPEJO_KEY = 'sam:lista-servidor'
 const MAX = 20
 
-function leerCache(): string[] {
+function leer(clave: string, tipo: string): string[] {
   try {
-    const crudo = JSON.parse(localStorage.getItem(CACHE_KEY) ?? '[]')
+    const crudo = JSON.parse(localStorage.getItem(`${clave}:${tipo}`) ?? '[]')
     return Array.isArray(crudo) ? crudo.filter((x): x is string => typeof x === 'string') : []
   } catch {
     return []
   }
 }
 
-/** Guarda la placa de primera en la lista, sin repetirla. */
-export function recordarPlaca(placa: string): void {
-  const p = normalizarPlaca(placa)
-  if (!p) return
+function guardar(clave: string, tipo: string, valores: string[]): void {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify([p, ...leerCache().filter((x) => x !== p)].slice(0, MAX)))
+    localStorage.setItem(`${clave}:${tipo}`, JSON.stringify(valores))
   } catch {
     /* almacenamiento lleno: la sugerencia es un lujo, no se rompe el registro */
   }
 }
 
+/** Deja el valor de primero en lo usado en este equipo, sin repetirlo. */
+export function recordarValor(tipo: string, valor: string): void {
+  const v = valor.trim().toUpperCase()
+  if (!v) return
+  guardar(CACHE_KEY, tipo, [v, ...leer(CACHE_KEY, tipo).filter((x) => x !== v)].slice(0, MAX))
+}
+
+/** Compatibilidad: la placa es la lista 'PLACA' como cualquier otra. */
+export function recordarPlaca(placa: string): void {
+  recordarValor('PLACA', normalizarPlaca(placa))
+}
+
 /**
- * Campo de placa: se escribe libre, con sugerencias de lo ya usado.
+ * Sugerencias de una lista: primero lo que se escribió en este equipo, después
+ * lo que tiene cargado el catálogo.
  *
- * Antes salía de un catálogo cerrado y había que dar de alta el vehículo antes
- * de poder tanquearlo — en la bomba, a las seis de la mañana, eso es un muro.
- * Ahora se digita, y las placas que ya pasaron por este equipo se ofrecen como
- * sugerencia; a la segunda vez el conductor solo la toca.
- *
- * Lo que se escribe queda en MAYÚSCULA y sin espacios ni guiones, para que
- * "abc 123" y "ABC-123" no terminen siendo dos vehículos distintos.
+ * La lista del servidor se espeja en el equipo. Sin eso, el supervisor sin
+ * señal —que es la mitad del día— se quedaría sin ninguna sugerencia.
  */
-export function CampoPlaca({
+export function useSugerencias(tipo: string): string[] {
+  const [delServidor, setDelServidor] = useState<string[]>(() => leer(ESPEJO_KEY, tipo))
+  const [delEquipo, setDelEquipo] = useState<string[]>(() => leer(CACHE_KEY, tipo))
+
+  useEffect(() => {
+    setDelEquipo(leer(CACHE_KEY, tipo))
+    setDelServidor(leer(ESPEJO_KEY, tipo))
+    let vivo = true
+    void loadCatalogo(tipo).then((vs) => {
+      if (!vivo || vs.length === 0) return
+      const valores = vs.map((v) => v.valor)
+      setDelServidor(valores)
+      guardar(ESPEJO_KEY, tipo, valores)
+    })
+    return () => { vivo = false }
+  }, [tipo])
+
+  return useMemo(() => {
+    const vistas = new Set<string>()
+    return [...delEquipo, ...delServidor].filter((v) => v && !vistas.has(v) && vistas.add(v))
+  }, [delEquipo, delServidor])
+}
+
+/**
+ * Campo de texto con sugerencias de una lista de catálogo.
+ *
+ * Sugiere, no obliga. La lista se carga en Insumos → Catálogos, pero si
+ * aparece una bomba nueva a las seis de la mañana se escribe y ya; después se
+ * agrega a la lista con calma. Obligar a dar de alta el valor antes de poder
+ * registrar era un muro en pleno campo.
+ */
+export function CampoLista({
+  tipo,
   value,
   onChange,
   disabled,
-  sugerenciasExtra = [],
-  placeholder = 'ABC123',
+  placeholder,
+  normalizar = (v) => v.toLocaleUpperCase('es-CO'),
   autoFocus,
 }: {
+  /** Qué lista alimenta las sugerencias: 'ESTACION', 'PLACA', 'USO'… */
+  tipo: string
   value: string
   onChange: (v: string) => void
   disabled?: boolean
-  /** Placas conocidas de otra fuente (el catálogo, si todavía se usa). */
-  sugerenciasExtra?: string[]
   placeholder?: string
+  normalizar?: (v: string) => string
   autoFocus?: boolean
 }) {
   const listaId = useId()
-  const [cache, setCache] = useState<string[]>([])
-
-  useEffect(() => { setCache(leerCache()) }, [])
-
-  const sugerencias = useMemo(() => {
-    const vistas = new Set<string>()
-    // Primero las de este equipo: son las que de verdad usa quien está mirando.
-    return [...cache, ...sugerenciasExtra.map(normalizarPlaca)]
-      .filter((p) => p && !vistas.has(p) && vistas.add(p))
-  }, [cache, sugerenciasExtra])
+  const sugerencias = useSugerencias(tipo)
 
   return (
     <>
       <input
         type="text"
-        inputMode="text"
         autoCapitalize="characters"
         autoCorrect="off"
         spellCheck={false}
         list={sugerencias.length ? listaId : undefined}
         value={value}
-        onChange={(e) => onChange(normalizarPlaca(e.target.value))}
+        onChange={(e) => onChange(normalizar(e.target.value))}
         placeholder={placeholder}
         disabled={disabled}
         autoFocus={autoFocus}
       />
       {sugerencias.length > 0 && (
         <datalist id={listaId}>
-          {sugerencias.map((p) => <option key={p} value={p} />)}
+          {sugerencias.map((v) => <option key={v} value={v} />)}
         </datalist>
       )}
     </>
+  )
+}
+
+/**
+ * La placa: igual que cualquier lista, pero sin espacios ni guiones.
+ *
+ * En campo escriben "abc 123", "ABC-123" y "abc123" para el mismo carro; se
+ * normaliza a `ABC123` para que no terminen siendo tres vehículos.
+ */
+export function CampoPlaca({
+  value, onChange, disabled, placeholder = 'ABC123', autoFocus,
+}: {
+  value: string
+  onChange: (v: string) => void
+  disabled?: boolean
+  placeholder?: string
+  autoFocus?: boolean
+}) {
+  return (
+    <CampoLista
+      tipo="PLACA"
+      value={value}
+      onChange={onChange}
+      normalizar={normalizarPlaca}
+      placeholder={placeholder}
+      disabled={disabled}
+      autoFocus={autoFocus}
+    />
   )
 }
 

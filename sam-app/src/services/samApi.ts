@@ -2,6 +2,7 @@ import { LOCAL_MAESTRO } from '../data/constants'
 import { ingenioNombre, slugIngenio } from '../data/ingenios'
 import { DESTINO_LABEL } from '../domain/sam'
 import type {
+  ValorCatalogo,
   ApprovalStatus,
   Assignment,
   AssignmentStatus,
@@ -3470,4 +3471,98 @@ export async function revisarAutoabastecimiento(input: {
       bodegaId: traslado.origenId,
     })
   }
+}
+
+// ─────────────────────── Listas de los formularios ───────────────────────
+
+function mapValorCatalogo(r: Record<string, unknown>): ValorCatalogo {
+  return {
+    id: String(r.id),
+    tipo: String(r.tipo),
+    valor: String(r.valor),
+    descripcion: (r.descripcion as string) ?? undefined,
+    frecuente: Boolean(r.frecuente),
+    activo: r.activo !== false,
+    orden: Number(r.orden ?? 0),
+  }
+}
+
+/**
+ * Valores de una lista. `soloActivos` para los formularios; la pantalla de
+ * catálogos los pide todos, porque ahí sí hay que ver los desactivados para
+ * poder volver a activarlos.
+ */
+export async function loadCatalogo(tipo: string, soloActivos = true): Promise<ValorCatalogo[]> {
+  let q = supabase.from('catalogos_valores').select('*').eq('tipo', tipo)
+  if (soloActivos) q = q.eq('activo', true)
+  const { data, error } = await q.order('orden').order('valor')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapValorCatalogo)
+}
+
+export async function crearValorCatalogo(input: {
+  tipo: string; valor: string; descripcion?: string; frecuente?: boolean; orden?: number
+}): Promise<ValorCatalogo> {
+  const { data, error } = await supabase
+    .from('catalogos_valores')
+    .insert({
+      tipo: input.tipo,
+      valor: input.valor.trim(),
+      descripcion: input.descripcion?.trim() || null,
+      frecuente: input.frecuente ?? false,
+      orden: input.orden ?? 0,
+    })
+    .select('*').single()
+  // El índice único es por (tipo, upper(valor)): repetir uno no es un error de
+  // sistema, es que ya está en la lista.
+  if (error?.code === '23505') throw new Error('Ese valor ya está en la lista.')
+  if (error || !data) throw new Error(error?.message || 'No se pudo guardar')
+  return mapValorCatalogo(data)
+}
+
+export async function actualizarValorCatalogo(id: string, patch: {
+  valor?: string; descripcion?: string; frecuente?: boolean; activo?: boolean; orden?: number
+}): Promise<void> {
+  const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (patch.valor !== undefined) payload.valor = patch.valor.trim()
+  if (patch.descripcion !== undefined) payload.descripcion = patch.descripcion.trim() || null
+  if (patch.frecuente !== undefined) payload.frecuente = patch.frecuente
+  if (patch.activo !== undefined) payload.activo = patch.activo
+  if (patch.orden !== undefined) payload.orden = patch.orden
+  const { error } = await supabase.from('catalogos_valores').update(payload).eq('id', id)
+  if (error?.code === '23505') throw new Error('Ese valor ya está en la lista.')
+  if (error) throw new Error(error.message)
+}
+
+export async function eliminarValorCatalogo(id: string): Promise<void> {
+  const { error } = await supabase.from('catalogos_valores').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Carga varios valores de una sola vez, pegando una lista completa.
+ *
+ * Cargar treinta estaciones de a una por el celular no lo hace nadie. Se pega
+ * la lista —una por línea— y las repetidas se ignoran en silencio.
+ */
+export async function cargarListaCatalogo(tipo: string, texto: string): Promise<{ nuevos: number; repetidos: number }> {
+  const yaEstan = new Set((await loadCatalogo(tipo, false)).map((v) => v.valor.toUpperCase()))
+  const vistos = new Set<string>()
+  const nuevos: string[] = []
+  for (const linea of texto.split(/\r?\n/)) {
+    // Se aceptan viñetas y guiones al principio: la lista suele venir pegada
+    // de una nota o un WhatsApp.
+    const v = linea.replace(/^[\s\-•*·]+/, '').trim()
+    if (!v) continue
+    const clave = v.toUpperCase()
+    if (yaEstan.has(clave) || vistos.has(clave)) continue
+    vistos.add(clave)
+    nuevos.push(clave)
+  }
+  if (nuevos.length === 0) return { nuevos: 0, repetidos: vistos.size }
+  const { error } = await supabase.from('catalogos_valores').insert(
+    nuevos.map((valor, i) => ({ tipo, valor, frecuente: false, orden: i })),
+  )
+  if (error) throw new Error(error.message)
+  return { nuevos: nuevos.length, repetidos: 0 }
 }

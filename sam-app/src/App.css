@@ -7879,3 +7879,19 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .desp-row__main { flex: 1 1 60%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .desp-row > strong { margin-left: auto; white-space: nowrap; }
+
+/* Catálogos: las listas que alimentan los formularios de insumos. */
+.cat-agregar { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.cat-agregar input { flex: 1 1 auto; min-width: 0; }
+.cat-pegar { margin-top: 10px; }
+.cat-pegar textarea { width: 100%; font-family: inherit; }
+
+.cat-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border: 1px solid var(--color-border); border-radius: 12px;
+  background: var(--color-surface);
+}
+.cat-row--off { opacity: 0.55; }
+.cat-row__val { flex: 1 1 auto; min-width: 0; font-weight: 600; word-break: break-word; }
+.cat-row__acciones { display: flex; gap: 4px; flex: 0 0 auto; }
+.cat-row__acciones .inline-button { padding: 4px 8px; }

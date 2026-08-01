@@ -5,6 +5,7 @@ import { InsumosInventarioTab } from './InsumosInventarioTab'
 import { BandejaInsumosTab } from './BandejaInsumosTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 import { MiBodegaTab } from './MiBodegaTab'
+import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
 
@@ -19,13 +20,14 @@ import { MapaView } from './MapaView'
  * y se acabó la trazabilidad. Lo que entra a su carro entra por un traslado
  * avalado o por un tanqueo avalado — nunca a dedo.
  */
-export type InsumosTab = 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'mapa'
+export type InsumosTab = 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'catalogos' | 'mapa'
 
 const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Solicitudes y entregas' },
   { key: 'mibodega', icon: '🚚', label: 'Mi bodega', desc: 'Mi carro · recibir · tanquear' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
   { key: 'equipos', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
+  { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
 
@@ -40,7 +42,11 @@ export function InsumosModule({
   const { session } = useAppData()
   const [tabInterno, setTabInterno] = useState<InsumosTab>('bandeja')
   const tabsVisibles = useMemo(
-    () => (session?.role === 'supervisor_insumos' ? TABS.filter((t) => t.key !== 'inventario') : TABS),
+    // Los catálogos los maneja administración, igual que Inventario: si cada
+    // supervisor pudiera editarlos, cada carro tendría su propia lista.
+    () => (session?.role === 'supervisor_insumos'
+      ? TABS.filter((t) => t.key !== 'inventario' && t.key !== 'catalogos')
+      : TABS),
     [session?.role],
   )
   const tabPedida = tabExterno ?? tabInterno
@@ -74,6 +80,7 @@ export function InsumosModule({
         : tab === 'mibodega' ? <MiBodegaTab />
         : tab === 'inventario' ? <InsumosInventarioTab />
         : tab === 'equipos' ? <ConsumoEquiposTab />
+        : tab === 'catalogos' ? <CatalogosInsumosTab />
         : <MapaView onBack={() => setTab('bandeja')} />}
     </div>
   )

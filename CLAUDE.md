@@ -52,11 +52,15 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    24 h, para que la hora no dependa del reloj del equipo de quien mira. Aplica
    a pantallas Y a los Excel. Al crear cualquier listado de movimientos, entregas
    o despachos: **revisar que la hora esté antes de darlo por terminado.**
-5d. **🔴 La placa se digita, no se elige de un catálogo.** Usar **`<CampoPlaca>`**
-   (`src/components/`): campo libre con sugerencias de las últimas 20 placas escritas
-   en ese equipo (`localStorage`), normalizadas a mayúscula y sin espacios ni guiones
-   (`abc 123` = `ABC-123` = `ABC123`). Obligar a dar de alta el vehículo antes de
-   tanquearlo era un muro en la bomba a las 6 a.m. Al guardar, llamar `recordarPlaca()`.
+5d. **🔴 Los campos de lista SUGIEREN, no obligan.** Usar **`<CampoLista tipo="…">`**
+   (`src/components/CampoPlaca.tsx`): campo escribible + `datalist`. Las sugerencias
+   salen de `catalogos_valores` (lista por `tipo`) espejada en `localStorage` —así
+   sigue sugiriendo sin señal— más lo que ya se escribió en ese equipo. Al guardar,
+   `recordarValor(tipo, v)`. Obligar a dar de alta el valor antes de registrar era un
+   muro en la bomba a las 6 a.m. Tipos vivos: `ESTACION`, `PLACA`, `USO`,
+   `MOTIVO_RECHAZO`. Para `PLACA` va `<CampoPlaca>`, que además quita espacios y
+   guiones (`abc 123` = `ABC-123` = `ABC123`). **Agregar una lista nueva NO necesita
+   migración**: basta un `tipo` nuevo en `LISTAS` de `CatalogosInsumosTab`.
 5e. **🔴 Lo que se digita va en MAYÚSCULA.** `lib/texto.ts` (`aMayus`, `normalizarPlaca`)
    + `autoCapitalize="characters"` en el input. Los mismos datos los escriben cinco
    personas distintas y "campoalegre"/"CampoAlegre" terminan siendo dos valores en un
@@ -82,8 +86,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Labores / asignaciones | `views/SupervisorView`, `OperatorView` | Núcleo: asignar, tomar en campo, cerrar, aprobar, facturar |
 | Planilla | `views/PlanillaTab` | Cuadrícula quincenal + novedades (V, T, F, OV, MT, IN, SP, LL…) |
 | Maestro de suertes | `views/MaestrosTab` | Áreas oficiales; ⚠️ hay códigos de hacienda compartidos |
-| Insumos y combustible | `views/Insumos*`, `Bodegas*`, `MiBodegaTab` | **Stock por BODEGA** (principal + satélites = el carro de cada supervisor), traslados con aval, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
-| Tanqueo + avales | `components/TanqueoModal`, `views/AvalesCombustibleTab`, `VehiculosTab` | Todo el combustible que no pasa por un despacho entra por aquí y lo avala el **analista de insumos** |
+| Insumos y combustible | `views/Insumos*`, `Bodegas*`, `MiBodegaTab`, `CatalogosInsumosTab` | **Stock por BODEGA** (principal + satélites = el carro de cada supervisor), traslados con aval, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
+| Tanqueo + avales | `components/TanqueoModal`, `views/AvalesCombustibleTab` | Todo el combustible que no pasa por un despacho entra por aquí y lo avala el **analista de insumos** (`AnalistaView`), que además ve Inventario/kardex, Bodegas y Catálogos: es el administrador del proceso, no solo el que firma |
 | Mapas offline | `views/MapaView`, `MapasTab` | Visor tipo Avenza (capas, medir, marcadores) + tiles de FieldMaps |
 | Flota / Escolta | `views/Flota*` | Formato CDA-F-68, rol `conductor`, firma táctil + foto |
 | Taller de maquinaria | `views/TallerModule`, `views/taller/*` | Hoja de vida, preventivo por horómetro, órdenes de trabajo, repuestos, compras e indicadores ($/hora, disponibilidad, TMEF, TMR) |

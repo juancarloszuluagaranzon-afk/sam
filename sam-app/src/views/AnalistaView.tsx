@@ -4,7 +4,9 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { MapButton } from '../components/MapButton'
 import { AvalesCombustibleTab } from './AvalesCombustibleTab'
-import { VehiculosTab } from './VehiculosTab'
+import { CatalogosInsumosTab } from './CatalogosInsumosTab'
+import { InsumosInventarioTab } from './InsumosInventarioTab'
+import { BodegasTab } from './BodegasTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
@@ -12,16 +14,20 @@ import { MapaView } from './MapaView'
 /**
  * Vista del rol "Analista de insumos y materiales".
  *
- * Su trabajo es uno: avalar el combustible. Todo tanqueo que registra un
- * operario o un supervisor de insumos —en estación o en la sede— le llega aquí
- * pendiente. También mantiene el catálogo de placas para que los registros de
- * vehículo salgan de una lista y no del teclado de cada quien.
+ * Es el administrador del proceso de insumos, no solo el que firma. Todo
+ * tanqueo que registra un operario o un supervisor —en estación o en la sede—
+ * le llega aquí pendiente de aval; además ve el inventario con su kardex, el
+ * stock de cada bodega (la principal y el carro de cada supervisor) y mantiene
+ * los catálogos —estaciones, placas, motivos— para que los formularios sugieran
+ * una lista y no dependan del teclado de cada quien.
  */
-type AnalistaTab = 'avales' | 'placas' | 'reportes' | 'mapa'
+type AnalistaTab = 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'reportes' | 'mapa'
 
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
   { key: 'avales', icon: '✅', label: 'Avales', desc: 'Tanqueos por aprobar' },
-  { key: 'placas', icon: '🚗', label: 'Placas', desc: 'Catálogo de vehículos' },
+  { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
+  { key: 'bodegas', icon: '🏢', label: 'Bodegas', desc: 'Principal y carros' },
+  { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },
   { key: 'reportes', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
@@ -81,7 +87,9 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
         </div>
 
         {tab === 'avales' ? <AvalesCombustibleTab />
-          : tab === 'placas' ? <VehiculosTab />
+          : tab === 'inventario' ? <InsumosInventarioTab />
+          : tab === 'bodegas' ? <BodegasTab />
+          : tab === 'catalogos' ? <CatalogosInsumosTab />
           : tab === 'reportes' ? <ConsumoEquiposTab />
           : <MapaView onBack={() => setTab('avales')} />}
       </div>

@@ -743,3 +743,17 @@ export interface EquipoCosto {
   valor: number
   nota?: string
 }
+
+/**
+ * Un valor de una lista de los formularios de insumos: una estación, una
+ * placa, un motivo. Todas viven en la misma tabla, separadas por `tipo`.
+ */
+export interface ValorCatalogo {
+  id: string
+  tipo: string
+  valor: string
+  descripcion?: string
+  frecuente: boolean
+  activo: boolean
+  orden: number
+}

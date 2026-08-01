@@ -9,7 +9,6 @@ import { FlotaTab } from './FlotaTab'
 import { BodegasTab } from './BodegasTab'
 import { InsumosResumenTab } from './InsumosResumenTab'
 import { AvalesCombustibleTab } from './AvalesCombustibleTab'
-import { VehiculosTab } from './VehiculosTab'
 import { TallerModule } from './TallerModule'
 import { DashboardTab } from './DashboardTab'
 import { NAV_OPCIONES, MAX_NAV, NAV_DEFECTO, leerNav, guardarNav, restaurarNav } from '../lib/navPrefs'
@@ -53,7 +52,7 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'vehiculos' | 'taller'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1146,18 +1145,6 @@ export function SupervisorView({
                 )}
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
-                    className={`more-sheet__item ${supervisorTab === 'vehiculos' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('vehiculos'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">🚗</span>
-                    <div>
-                      <div className="more-sheet__label">Placas de vehículos</div>
-                      <div className="more-sheet__desc">Catálogo para el registro de tanqueo</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
                     className={`more-sheet__item ${supervisorTab === 'bodegas' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('bodegas'); setMoreMenuOpen(false) }}
                   >
@@ -1493,7 +1480,7 @@ export function SupervisorView({
                   )
                 })}
                 <button
-                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'vehiculos' || supervisorTab === 'taller' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -2201,10 +2188,6 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'avales' ? (
           <AvalesCombustibleTab />
-        ) : null}
-
-        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'vehiculos' ? (
-          <VehiculosTab />
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'taller' ? (

@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadSolicitudes, updateSolicitudEstado, entregarSolicitud, entregarDirecto, uploadEvidencia, bodegaDeResponsable, bodegaPrincipal, loadStockBodega } from '../services/samApi'
 import type { Bodega, StockBodega } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { CampoLista, recordarValor } from '../components/CampoPlaca'
 import { fmtFechaHora as fmtFecha, fmtLapso } from '../lib/fechas'
 import { enviarOEncolar, subirOGuardarFoto, esFotoLocal } from '../lib/outboxInsumos'
 import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
@@ -149,6 +150,7 @@ export function BandejaInsumosTab() {
     setBusy(true); setError('')
     try {
       await updateSolicitudEstado(rechazoTarget.id, 'RECHAZADA', motivo.trim() || undefined)
+      if (motivo.trim()) recordarValor('MOTIVO_RECHAZO', motivo)
       setInfo('Solicitud rechazada.')
       setRechazoTarget(null); setMotivo('')
       void refresh()
@@ -303,6 +305,7 @@ export function BandejaInsumosTab() {
         bodegaId: miBodega?.id,
         items,
       }
+      if (dirNota.trim()) recordarValor('USO', dirNota)
       const { enviado } = await enviarOEncolar('ENTREGA_DIRECTA', payload, async () => {
         const { insumos: actualizados } = await entregarDirecto(payload)
         if (actualizados.length) {
@@ -472,7 +475,7 @@ export function BandejaInsumosTab() {
             </div>
             <label>
               Motivo <span className="field-optional">(opcional)</span>
-              <input type="text" placeholder="Sin stock, no procede…" value={motivo} onChange={(e) => setMotivo(e.target.value)} disabled={busy} autoFocus />
+              <CampoLista tipo="MOTIVO_RECHAZO" value={motivo} onChange={setMotivo} disabled={busy} placeholder="Sin stock, no procede…" autoFocus />
             </label>
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setRechazoTarget(null)} disabled={busy}>Cancelar</button>
@@ -645,7 +648,7 @@ export function BandejaInsumosTab() {
             </label>
             <label style={{ marginTop: 10 }}>
               Nota <span className="field-optional">(opcional)</span>
-              <input type="text" placeholder="Para qué / dónde…" value={dirNota} onChange={(e) => setDirNota(e.target.value)} disabled={busy} />
+              <CampoLista tipo="USO" value={dirNota} onChange={setDirNota} disabled={busy} placeholder="Para qué / dónde…" />
             </label>
 
             <div style={{ marginTop: 10 }}>

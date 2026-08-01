@@ -3,7 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { registrarCombustibleExterno, uploadEvidencia } from '../services/samApi'
 import { DESTINO_LABEL, type CombustibleDestino, type CombustibleOrigen } from '../domain/sam'
 import { SearchableSelect } from './SearchableSelect'
-import { CampoPlaca, recordarPlaca } from './CampoPlaca'
+import { CampoPlaca, CampoLista, recordarPlaca, recordarValor } from './CampoPlaca'
 import { aMayus } from '../lib/texto'
 import { redondear2 } from '../lib/cantidad'
 import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
@@ -159,6 +159,9 @@ export function TanqueoModal({
         try { localStorage.setItem(`${PLACA_KEY}:${session?.id ?? ''}`, placa) } catch { /* storage lleno */ }
         recordarPlaca(placa)
       }
+      // Si la bomba todavía no está en el catálogo, al menos queda sugerida en
+      // este equipo para el próximo tanqueo.
+      if (estacion) recordarValor('ESTACION', estacion)
       setInfo(enviado
         ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval del analista.`
         : `Guardado sin señal: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Se envía solo cuando haya cobertura.`)
@@ -276,7 +279,9 @@ export function TanqueoModal({
 
           {origen === 'ESTACION' && (
             <>
-              <label>Estación<input type="text" autoCapitalize="characters" value={estacion} onChange={(e) => setEstacion(aMayus(e.target.value))} disabled={busy} /></label>
+              <label>Estación
+                <CampoLista tipo="ESTACION" value={estacion} onChange={setEstacion} disabled={busy} placeholder="Buscar o escribir…" />
+              </label>
               <label>N° tirilla / factura<input type="text" autoCapitalize="characters" value={factura} onChange={(e) => setFactura(aMayus(e.target.value))} disabled={busy} /></label>
               <label>Valor <span className="field-optional">(opcional)</span>
                 <input type="number" min={0} step="any" value={valor} onChange={(e) => setValor(e.target.value)} disabled={busy} />

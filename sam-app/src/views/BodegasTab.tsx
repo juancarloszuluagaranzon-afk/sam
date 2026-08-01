@@ -170,7 +170,7 @@ export function BodegasTab() {
         rol: 'ENVIA',
         motivo: anularMotivo,
       })
-      setInfo('Traslado anulado. El material volvió a la bodega principal.')
+      setInfo('Traslado eliminado. La principal quedó como si nunca hubiera salido.')
       setAnular(null); setAnularMotivo('')
       void refresh()
     } catch (err) {
@@ -299,7 +299,7 @@ export function BodegasTab() {
                     onClick={() => { setAnular(t); setAnularMotivo(''); setError('') }}
                     disabled={busy}
                   >
-                    Anular
+                    Eliminar
                   </button>
                 </div>
               ))}
@@ -409,7 +409,7 @@ export function BodegasTab() {
         <div className="modal-overlay open" onClick={() => { if (!busy) setAnular(null) }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
             <div className="labor-detail-header">
-              <div><p className="eyebrow">Traslado</p><h3>Anular y devolver</h3></div>
+              <div><p className="eyebrow">Traslado</p><h3>Eliminar este traslado</h3></div>
               <button type="button" className="modal-close-btn" onClick={() => setAnular(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
@@ -425,8 +425,9 @@ export function BodegasTab() {
               ))}
             </div>
             <p className="subtle-copy">
-              Todo esto <strong>regresa a la bodega principal</strong> y queda su movimiento en el kardex.
-              El satélite no recibe nada.
+              Se borra como si nunca hubiera salido: la principal recupera todo y <strong>no queda
+              ninguna salida en el kardex</strong>. El satélite no recibe nada. La equivocación sí
+              queda registrada en el historial del traslado.
             </p>
             <label>
               Motivo <span className="field-optional">(opcional)</span>
@@ -436,7 +437,7 @@ export function BodegasTab() {
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setAnular(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="release-confirm-btn" onClick={() => void confirmarAnular()} disabled={busy}>
-                {busy ? 'Anulando…' : 'Anular y devolver'}
+                {busy ? 'Eliminando…' : 'Eliminar traslado'}
               </button>
             </div>
           </div>

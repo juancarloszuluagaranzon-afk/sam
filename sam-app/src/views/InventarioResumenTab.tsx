@@ -118,15 +118,26 @@ export function InventarioResumenTab() {
     [stockVisible],
   )
 
-  /** Movimiento del periodo: lo que SALIÓ menos lo que volvió (devoluciones). */
+  /**
+   * Consumo del periodo: lo que de verdad se gastó.
+   *
+   * ⚠️ Consumo NO es "todo lo que salió de la bodega". Surtir un carro es un
+   * MOVIMIENTO entre bodegas: el material sigue siendo de la empresa, está en
+   * el carro, no se gastó. Contarlo aquí inflaba el consumo de la principal
+   * con los 330 galones que solo se habían pasado a los carros.
+   *
+   * Se gasta cuando va a una MÁQUINA. Por eso el criterio es `equipoCodigo`:
+   * lo mismo que usa el reporte de consumo por equipo, para que los dos den
+   * el mismo número.
+   */
   const consumo = useMemo(() => {
     const enRango = bodegaFiltro ? movs.filter((m) => m.bodegaId === bodegaFiltro) : movs
     const m = new Map<string, number>()
     for (const k of enRango) {
+      if (!k.equipoCodigo) continue
       if (k.tipo === 'SALIDA') m.set(k.insumoId, (m.get(k.insumoId) ?? 0) + k.cantidad)
-      // Solo cuenta como devolución lo que regresó de una máquina; una compra
-      // no es "menos consumo".
-      else if (k.tipo === 'ENTRADA' && k.equipoCodigo) m.set(k.insumoId, (m.get(k.insumoId) ?? 0) - k.cantidad)
+      // Lo que el operario devolvió por diferencia: descuenta del consumo.
+      else if (k.tipo === 'ENTRADA') m.set(k.insumoId, (m.get(k.insumoId) ?? 0) - k.cantidad)
     }
     return Array.from(m.entries())
       .map(([id, total]) => ({ id, total, insumo: info.get(id) }))
@@ -176,7 +187,10 @@ export function InventarioResumenTab() {
         ))}
       </div>
 
-      {cargando ? (
+      {/* El catálogo llega por el contexto compartido, no con esta pantalla.
+          Sin esperarlo se ve un parpadeo feo: el UUID crudo del insumo y un
+          "no has elegido destacados" que no es cierto. */}
+      {cargando || insumos.length === 0 ? (
         <p className="muted-text">Cargando…</p>
       ) : (
         <>
@@ -270,7 +284,7 @@ export function InventarioResumenTab() {
           )}
 
           {/* ── Lo que más se mueve ── */}
-          <p className="ins-res__lbl" style={{ marginTop: 18 }}>Lo que más se mueve</p>
+          <p className="ins-res__lbl" style={{ marginTop: 18 }}>Lo que más se gasta <span className="field-optional">(lo cargado a máquinas)</span></p>
           <div className="sol-filtros">
             {PERIODOS.map((p) => (
               <button key={p.value} type="button"

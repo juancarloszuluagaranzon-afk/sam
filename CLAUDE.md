@@ -136,15 +136,22 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   lectura con y sin la décima). `equipo_horometro_v` usa **magnitud dominante**: agrupa
   las últimas 12 lecturas por `floor(log10(h))`, gana el grupo más numeroso y dentro de
   él la más reciente. La lectura **manual manda siempre**. Ver `.agent/skills/managing-taller/`.
-- **🔴 Un traslado EN TRÁNSITO se puede devolver, por dos lados.** El material sale de
-  la principal al despacharlo; si el traslado no debía existir, ese stock queda en el
-  aire. `anularTraslado()` lo devuelve ENTERO al origen y marca `estado=ANULADO`.
-  Dos roles, mismo efecto sobre el inventario pero auditoría distinta: `ENVIA` (quien
-  despachó se equivocó — botón **Anular** en Bodegas) y `RECIBE` (el satélite lo
-  rechaza — botón **No es para mí** en Mi bodega, que va por la cola offline). ⚠️ El
-  guard `.eq('estado','EN_TRANSITO').select()` es lo que impide devolver dos veces:
-  sin él, dos personas tocando el botón duplican el material. NO confundir con
+- **🔴 Anular un traslado BORRA su kardex, no lo compensa.** `anularTraslado()` elimina
+  las filas de `insumos_kardex` con esa `referencia` y recalcula el saldo con
+  `recalcularStockBodega()`. **No** se registra una entrada de devolución: un traslado
+  en tránsito que se anula nunca ocurrió, y dejar salida+devolución cuadra el saldo
+  pero mete dos movimientos físicos que nadie hizo — y la salida sigue contando como
+  consumo de la principal (el cliente lo reclamó, 1-ago-2026). El rastro de la
+  equivocación vive en el traslado (`estado=ANULADO` + quién/cuándo/por qué), no en el
+  libro de inventario. Dos caminos: `ENVIA` (**Eliminar** en Bodegas) y `RECIBE`
+  (**No es para mí** en Mi bodega, por la cola offline). ⚠️ El guard
+  `.eq('estado','EN_TRANSITO').select()` impide anular dos veces. NO confundir con
   "faltó algo" (recepción parcial), que es un traslado válido.
+- **🔴 CONSUMO ≠ todo lo que salió de la bodega.** Surtir un carro es un MOVIMIENTO
+  entre bodegas: el material sigue siendo de la empresa. Consumo = movimientos **con
+  `equipoCodigo`** (SALIDA menos ENTRADA de devolución). Es el criterio de
+  `ConsumoEquiposTab` y ahora también del Resumen de inventario, para que den el mismo
+  número. Contar los traslados inflaba el consumo de la principal en 330 galones.
 - **🔴 La orden de trabajo es la pieza central del taller.** Sin `paro_en`/`arranque_en`
   no hay disponibilidad ni TMR. Los repuestos se descuentan **al cerrar**, marcados uno
   por uno (`ot_repuestos.descargado`) para que cerrar dos veces no descuente doble.

@@ -181,7 +181,7 @@ export function MiBodegaTab() {
       }
       const { enviado } = await enviarOEncolar('ANULAR_TRASLADO', payload, () => anularTraslado(payload))
       setInfo(enviado
-        ? 'Traslado rechazado. El material volvió a la bodega principal.'
+        ? 'Traslado rechazado. Todo volvió a la principal, sin movimiento.'
         : 'Guardado. Se rechaza solo cuando haya señal.')
       setRechazar(null); setRechazoMotivo('')
       void refresh()
@@ -384,9 +384,9 @@ export function MiBodegaTab() {
               ))}
             </div>
             <p className="subtle-copy">
-              Todo esto <strong>regresa a la bodega principal</strong> y no entra a tu carro.
-              Si el envío sí era tuyo pero llegó incompleto, no uses esto: entra a
-              <strong> Revisar y recibir</strong> y baja la cantidad.
+              Todo esto <strong>vuelve a la bodega principal</strong> y no entra a tu carro; queda como
+              si nunca hubiera salido. Si el envío sí era tuyo pero llegó incompleto, no uses esto:
+              entra a <strong>Revisar y recibir</strong> y baja la cantidad.
             </p>
             <label>
               Motivo <span className="field-optional">(opcional)</span>
@@ -396,7 +396,7 @@ export function MiBodegaTab() {
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setRechazar(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="release-confirm-btn" onClick={() => void confirmarRechazo()} disabled={busy}>
-                {busy ? 'Rechazando…' : 'Rechazar y devolver'}
+                {busy ? 'Rechazando…' : 'Rechazar el envío'}
               </button>
             </div>
           </div>

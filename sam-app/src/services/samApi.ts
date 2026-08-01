@@ -1915,25 +1915,61 @@ export async function anularTraslado(input: {
     throw new Error('Este traslado ya fue recibido o anulado por otra persona.')
   }
 
-  // El estado se marca ANTES de devolver: si el proceso se corta a mitad, es
-  // preferible un traslado anulado con material sin devolver (se ve y se
-  // corrige) que uno vivo con el material ya devuelto (se duplicaría).
-  const motivo = input.rol === 'RECIBE'
-    ? 'Devolución por rechazo del satélite'
-    : 'Devolución por traslado anulado'
-  for (const it of input.items) {
-    if (it.cantidad > 0) {
-      await registrarMovimientoInsumo({
-        insumoId: it.insumoId,
-        tipo: 'ENTRADA',
-        cantidad: it.cantidad,
-        motivo,
-        referencia: input.trasladoId,
-        creadoPor: input.anuladoPor,
-        bodegaId: input.origenId,
-      })
-    }
+  // Se BORRAN las salidas, no se compensan con una entrada.
+  //
+  // Un traslado en tránsito que se anula nunca ocurrió: el material no se
+  // gastó ni se movió a ningún lado. Dejar la salida y una devolución que la
+  // compensa deja el saldo bien pero ensucia el kardex con dos movimientos
+  // físicos que nadie hizo — y la salida sigue apareciendo como consumo de la
+  // principal, que fue justo lo que el cliente no quería ver.
+  //
+  // El rastro de la equivocación no se pierde: vive en el traslado, que queda
+  // ANULADO con quién, cuándo y por qué. Lo que se limpia es el libro de
+  // inventario, que solo debe contar movimientos reales.
+  const { error: eBorrar } = await supabase
+    .from('insumos_kardex')
+    .delete()
+    .eq('referencia', input.trasladoId)
+  if (eBorrar) throw new Error(eBorrar.message || 'No se pudo limpiar el movimiento')
+
+  // Los saldos se recalculan desde cero por bodega: el `saldo` que llevaba
+  // cada fila borrada ya no sirve de referencia.
+  const insumosTocados = [...new Set(input.items.map((it) => it.insumoId))]
+  for (const insumoId of insumosTocados) {
+    await recalcularStockBodega(insumoId, input.origenId)
   }
+}
+
+/**
+ * Recalcula el stock de un insumo en una bodega sumando su kardex.
+ *
+ * Se usa cuando se BORRAN movimientos: el stock guardado venía del último
+ * `saldo`, y si esa fila desapareció hay que rehacer la cuenta desde el
+ * principio en vez de confiar en un acumulado que ya no existe.
+ */
+export async function recalcularStockBodega(insumoId: string, bodegaId: string): Promise<void> {
+  const { data, error } = await supabase
+    .from('insumos_kardex')
+    .select('tipo,cantidad,saldo,created_at')
+    .eq('insumo_id', insumoId)
+    .eq('bodega_id', bodegaId)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+
+  let saldo = 0
+  for (const r of (data ?? []) as { tipo: string; cantidad: number; saldo: number }[]) {
+    // El AJUSTE no suma ni resta: FIJA el saldo al conteo físico.
+    if (r.tipo === 'AJUSTE') saldo = Number(r.saldo)
+    else saldo += (r.tipo === 'SALIDA' ? -1 : 1) * Number(r.cantidad)
+  }
+  saldo = redondear2(saldo)
+
+  const { error: e2 } = await supabase
+    .from('insumos_stock')
+    .upsert({ insumo_id: insumoId, bodega_id: bodegaId, stock: saldo, updated_at: new Date().toISOString() },
+            { onConflict: 'insumo_id,bodega_id' })
+  if (e2) throw new Error(e2.message)
+  await refrescarTotalInsumo(insumoId)
 }
 
 // ── COMBUSTIBLE de bomba externa ────────────────────────────────────────────

@@ -7873,10 +7873,14 @@ td.planilla-vacio:hover { background: #fde047; }
 
 /* Libro corrido de despachos: uno por fila, sin agrupar. */
 .desp-row {
-  display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start;
+  display: flex; flex-direction: column; gap: 2px;
   padding: 12px; border: 1px solid var(--color-border); border-radius: 12px;
   background: var(--color-surface);
 }
+/* Máquina a la izquierda, cantidad a la derecha, en la misma línea. */
+.desp-row__cab { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.desp-row__cant { margin-left: auto; white-space: nowrap; }
+.desp-row__cant small { font-size: 0.72rem; font-weight: 500; opacity: 0.7; }
 .desp-row__main { flex: 1 1 60%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .desp-row > strong { margin-left: auto; white-space: nowrap; }
 
@@ -7934,3 +7938,19 @@ td.planilla-vacio:hover { background: #fde047; }
 /* Aviso de traslado: dos acciones (rechazar / recibir) que en celular se
    apilan en vez de apretarse. */
 .bod-aviso__acciones { display: flex; flex-wrap: wrap; gap: 6px; flex: 0 0 auto; }
+
+/* Fila del libro de despachos: toda tocable, abre el formulario completo. */
+.desp-row--tocable {
+  cursor: pointer; color: inherit; font: inherit; text-align: left; width: 100%;
+}
+.desp-row--tocable:active { background: var(--color-surface-alt); }
+
+/* Detalle de un despacho: pares dato/valor, legibles en celular. */
+.desp-det { display: flex; flex-direction: column; gap: 2px; }
+.desp-det__fila {
+  display: flex; justify-content: space-between; gap: 12px; align-items: baseline;
+  padding: 5px 0; border-bottom: 1px solid var(--color-border);
+}
+.desp-det__fila > span { font-size: 0.84rem; opacity: 0.75; }
+.desp-det__fila > strong { text-align: right; word-break: break-word; }
+.desp-det__fotos { display: flex; flex-wrap: wrap; gap: 8px; }

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadKardexReporte, loadCombustibleExterno } from '../services/samApi'
-import type { InsumoKardex, CombustibleExterno } from '../domain/sam'
-import { fmtFechaHoraLarga as fmtFecha } from '../lib/fechas'
+import { loadKardexReporte, loadCombustibleExterno, loadSolicitudes } from '../services/samApi'
+import type { InsumoKardex, CombustibleExterno, SolicitudInsumo } from '../domain/sam'
+import { fmtFechaHoraLarga as fmtFecha, fmtFechaHora as fmtFechaCorta, fmtLapso } from '../lib/fechas'
 import { fmtCantidad, redondear2 } from '../lib/cantidad'
 
 /**
@@ -33,6 +33,16 @@ export function ConsumoEquiposTab() {
   // Detalle de una máquina: el total no dice de dónde salió ni por qué. Al
   // tocar la tarjeta se ven los movimientos uno por uno, con su nota.
   const [detalle, setDetalle] = useState<string>('')
+  /**
+   * La entrega completa detrás de cada despacho.
+   *
+   * El kardex sabe qué salió y de dónde, pero no a quién: el operario, la
+   * evidencia, el horómetro y el aval viven en la solicitud. Sin esto la
+   * pregunta "¿quién recibió esos 40 ganchos?" no tiene respuesta en pantalla.
+   */
+  const [entregas, setEntregas] = useState<SolicitudInsumo[]>([])
+  /** Despacho abierto en el detalle. */
+  const [verDespacho, setVerDespacho] = useState<{ mov?: InsumoKardex; tq?: CombustibleExterno } | null>(null)
   const [loading, setLoading] = useState(false)
   const [busca, setBusca] = useState('')
   const [desde, setDesde] = useState(primerDiaMes())
@@ -60,12 +70,14 @@ export function ConsumoEquiposTab() {
     try {
       // `hasta` inclusivo hasta el final del día.
       const hastaFin = hasta ? `${hasta}T23:59:59` : undefined
-      const [kx, cb] = await Promise.all([
+      const [kx, cb, sol] = await Promise.all([
         loadKardexReporte({ desde: desde || undefined, hasta: hastaFin }),
         loadCombustibleExterno({ desde: desde || undefined, hasta: hasta || undefined, destino: 'MAQUINA' }),
+        loadSolicitudes({ limit: 800 }),
       ])
       setMovimientos(kx)
       setTanqueos(cb)
+      setEntregas(sol)
     } finally { setLoading(false) }
   }
   useEffect(() => {
@@ -75,6 +87,28 @@ export function ConsumoEquiposTab() {
 
   // Solo movimientos con máquina cuentan como consumo (despacho/devolución).
   const conEquipo = useMemo(() => movimientos.filter((m) => m.equipoCodigo), [movimientos])
+
+  /** La entrega de la que salió cada movimiento: el kardex la guarda en `referencia`. */
+  const entregaPorId = useMemo(() => {
+    const m = new Map<string, SolicitudInsumo>()
+    entregas.forEach((e) => m.set(e.id, e))
+    return m
+  }, [entregas])
+  const entregaDe = (m?: InsumoKardex) => (m?.referencia ? entregaPorId.get(m.referencia) : undefined)
+
+  /**
+   * El tanqueo del que salió el movimiento.
+   *
+   * Un abastecimiento en SEDE cargado a una máquina sale de la principal, así
+   * que SÍ deja huella en el kardex, y su `referencia` apunta al tanqueo — no
+   * a una solicitud. Sin esto el detalle salía vacío ("Registró —").
+   */
+  const tanqueoPorId = useMemo(() => {
+    const m = new Map<string, CombustibleExterno>()
+    tanqueos.forEach((t) => m.set(t.id, t))
+    return m
+  }, [tanqueos])
+  const tanqueoDe = (m?: InsumoKardex) => (m?.referencia ? tanqueoPorId.get(m.referencia) : undefined)
 
   /**
    * Cada despacho por separado, del más nuevo al más viejo.
@@ -86,8 +120,9 @@ export function ConsumoEquiposTab() {
   const porDespacho = useMemo(() => {
     type Fila = {
       id: string; cuando: string; equipo: string; insumoId: string
-      cantidad: number; concepto: string; quien: string; nota: string
+      cantidad: number; concepto: string; quien: string; recibio: string; nota: string
       devuelto: boolean; pendiente: boolean
+      mov?: InsumoKardex; tq?: CombustibleExterno
     }
     const filas: Fila[] = []
 
@@ -100,9 +135,14 @@ export function ConsumoEquiposTab() {
         cantidad: m.cantidad,
         concepto: m.motivo ?? 'Movimiento',
         quien: m.creadoPor ? (userName.get(m.creadoPor) ?? m.creadoPor) : '',
-        nota: '',
+        recibio: (() => {
+          const e = entregaDe(m)
+          return e?.operarioNombre ?? (e ? (userName.get(e.operarioId) ?? '') : '')
+        })(),
+        nota: entregaDe(m)?.nota ?? '',
         devuelto: m.tipo === 'ENTRADA',
         pendiente: false,
+        mov: m,
       })
     }
     // Los tanqueos en estación no pasan por bodega, así que no están en el
@@ -117,10 +157,13 @@ export function ConsumoEquiposTab() {
         cantidad: t.galones,
         concepto: `Tanqueo en estación${t.estacion ? ` (${t.estacion})` : ''}`,
         quien: t.registradoNombre ?? '',
+        // El tanqueo en bomba va directo a la máquina: no hay operario que reciba.
+        recibio: '',
         nota: [t.horometro != null ? `horómetro ${t.horometro}` : '', t.factura ? `tirilla ${t.factura}` : '', t.nota ?? '']
           .filter(Boolean).join(' · '),
         devuelto: false,
         pendiente: t.estado === 'PENDIENTE',
+        tq: t,
       })
     }
 
@@ -130,10 +173,11 @@ export function ConsumoEquiposTab() {
         if (!q) return true
         const ins = insumoInfo.get(f.insumoId)?.nombre ?? ''
         const eq = equipoNombre.get(f.equipo) ?? f.equipo
-        return [eq, ins, f.concepto, f.quien, f.nota].some((v) => v.toLowerCase().includes(q))
+        return [eq, ins, f.concepto, f.quien, f.recibio, f.nota].some((v) => v.toLowerCase().includes(q))
       })
       .sort((a, b) => b.cuando.localeCompare(a.cuando))
-  }, [conEquipo, tanqueos, insumoInfo, equipoNombre, userName, busca])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conEquipo, tanqueos, insumoInfo, equipoNombre, userName, entregaPorId, busca])
 
   // Agrupación por MÁQUINA → insumo (neto).
   const porMaquina = useMemo(() => {
@@ -282,7 +326,7 @@ export function ConsumoEquiposTab() {
         style={{ margin: '12px 0' }}
       />
 
-      {loading ? (
+      {loading || insumos.length === 0 ? (
         <p className="muted-text">Cargando…</p>
       ) : vista === 'maquina' ? (
         porMaquina.length === 0 ? (
@@ -346,23 +390,31 @@ export function ConsumoEquiposTab() {
               {porDespacho.map((d) => {
                 const info = insumoInfo.get(d.insumoId)
                 return (
-                  <div key={d.id} className="desp-row">
-                    <div className="desp-row__main">
-                      <div className="aval-row__top">
-                        <strong>{equipoNombre.get(d.equipo) ?? d.equipo}</strong>
-                        {d.devuelto && <span className="aval-tag aval-tag--vehiculo">devolución</span>}
-                        {d.pendiente && <span className="aval-tag aval-tag--maquina">⏳ sin avalar</span>}
-                      </div>
-                      <span className="subtle-copy">{info?.nombre ?? d.insumoId} · {d.concepto}</span>
-                      <span className="subtle-copy">
-                        {fmtFecha(d.cuando)}{d.quien ? ` · ${d.quien}` : ''}
-                      </span>
-                      {d.nota && <span className="subtle-copy">{d.nota}</span>}
+                  <button
+                    key={d.id}
+                    type="button"
+                    className="desp-row desp-row--tocable"
+                    onClick={() => setVerDespacho({ mov: d.mov, tq: d.tq })}
+                    aria-label={`Ver el detalle de la entrega a ${d.recibio || d.equipo}`}
+                  >
+                    <div className="desp-row__cab">
+                      <strong>{equipoNombre.get(d.equipo) ?? d.equipo}</strong>
+                      {d.devuelto && <span className="aval-tag aval-tag--vehiculo">devolución</span>}
+                      {d.pendiente && <span className="aval-tag aval-tag--maquina">⏳ sin avalar</span>}
+                      <strong className={`desp-row__cant${d.devuelto ? ' bod-stock__val--cero' : ''}`}>
+                        {d.devuelto ? '−' : ''}{fmtCantidad(d.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
+                      </strong>
                     </div>
-                    <strong className={`bod-stock__val${d.devuelto ? ' bod-stock__val--cero' : ''}`}>
-                      {d.devuelto ? '−' : ''}{fmtCantidad(d.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
-                    </strong>
-                  </div>
+                    <span className="subtle-copy">{info?.nombre ?? d.insumoId} · {d.concepto}</span>
+                    {d.recibio && (
+                      <span className="subtle-copy">🙋 Recibió <strong>{d.recibio}</strong></span>
+                    )}
+                    <span className="subtle-copy">
+                      {fmtFechaCorta(d.cuando)}{d.quien ? ` · entregó ${d.quien}` : ''}
+                      {' · '}<span className="consumo-maq__ver">ver detalle →</span>
+                    </span>
+                    {d.nota && <span className="subtle-copy">{d.nota}</span>}
+                  </button>
                 )
               })}
             </div>
@@ -439,6 +491,143 @@ export function ConsumoEquiposTab() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* Detalle de UN despacho: el formulario completo tal como se llenó.
+          La fila dice qué salió; aquí está a quién, con qué evidencia, con qué
+          horómetro y si el operario ya lo avaló. */}
+      {verDespacho && (() => {
+        const { mov } = verDespacho
+        const e = entregaDe(mov)
+        // Si el movimiento no viene de una entrega, puede venir de un tanqueo.
+        const tq = verDespacho.tq ?? tanqueoDe(mov)
+        const insumoIdVer = mov?.insumoId ?? tq?.insumoId ?? ''
+        const infoVer = insumoInfo.get(insumoIdVer)
+        const equipoVer = mov?.equipoCodigo ?? tq?.equipoCodigo ?? ''
+        const fotos = e?.evidenciaUrls ?? (tq?.tirillaUrl ? [tq.tirillaUrl] : [])
+        const espera = e?.entregadoEn ? fmtLapso(e.createdAt, e.entregadoEn) : ''
+
+        const Dato = ({ k, v }: { k: string; v: ReactNode }) => (
+          <div className="desp-det__fila"><span>{k}</span><strong>{v}</strong></div>
+        )
+
+        return (
+          <div className="modal-overlay open" onClick={() => setVerDespacho(null)}>
+            <div className="modal-card" onClick={(ev) => ev.stopPropagation()} style={{ maxWidth: 'min(520px, calc(100vw - 32px))' }}>
+              <div className="labor-detail-header">
+                <div>
+                  <p className="eyebrow">{tq ? (tq.origen === 'SEDE' ? 'Abastecimiento en sede' : 'Tanqueo en estación') : 'Entrega'}</p>
+                  <h3>🚜 {equipoNombre.get(equipoVer) ?? equipoVer}</h3>
+                </div>
+                <button type="button" className="modal-close-btn" onClick={() => setVerDespacho(null)} aria-label="Cerrar">&#x2715;</button>
+              </div>
+
+              <div className="desp-det">
+                {/* Qué se entregó — con TODOS los ítems del despacho, no solo
+                    el de la fila que se tocó. */}
+                {e && e.items.length > 0 ? (
+                  <>
+                    <p className="ins-res__lbl">Qué se entregó</p>
+                    {e.items.map((it, idx) => (
+                      <Dato key={idx}
+                        k={it.insumoNombre ?? insumoInfo.get(it.insumoId ?? '')?.nombre ?? 'Insumo'}
+                        v={`${fmtCantidad(it.cantidadDespachada ?? it.cantidad, it.unidad)} ${it.unidad ?? ''}`} />
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    <p className="ins-res__lbl">Qué se entregó</p>
+                    <Dato k={infoVer?.nombre ?? 'Combustible'}
+                      v={`${fmtCantidad(mov?.cantidad ?? tq?.galones ?? 0, infoVer?.unidad ?? 'galón')} ${infoVer?.unidad ?? 'galón'}`} />
+                  </>
+                )}
+
+                <p className="ins-res__lbl" style={{ marginTop: 12 }}>Quién</p>
+                {e ? (
+                  <>
+                    <Dato k="Recibió" v={e.operarioNombre ?? userName.get(e.operarioId) ?? e.operarioId} />
+                    <Dato k="Entregó" v={e.despachadoPor ? (userName.get(e.despachadoPor) ?? e.despachadoPor) : '—'} />
+                  </>
+                ) : (
+                  <Dato k="Registró" v={tq?.registradoNombre ?? '—'} />
+                )}
+
+                <p className="ins-res__lbl" style={{ marginTop: 12 }}>Cuándo</p>
+                {e && (
+                  <Dato k={e.origen === 'DIRECTA' ? 'Entregado' : 'Lo pidió'}
+                    v={fmtFecha(e.createdAt)} />
+                )}
+                {e?.entregadoEn && e.origen !== 'DIRECTA' && (
+                  <Dato k="Se lo entregaron" v={
+                    <>{fmtFecha(e.entregadoEn)}{espera && <> <small>· {espera} de espera</small></>}</>
+                  } />
+                )}
+                {!e && <Dato k={tq?.origen === 'SEDE' ? 'Abastecido' : 'Tanqueado'} v={fmtFecha(tq?.createdAt ?? mov?.createdAt ?? '')} />}
+
+                {/* Lo que se llenó en el formulario */}
+                {(e?.horometro != null || tq?.horometro != null) && (
+                  <>
+                    <p className="ins-res__lbl" style={{ marginTop: 12 }}>Máquina</p>
+                    <Dato k="Horómetro" v={e?.horometro ?? tq?.horometro} />
+                  </>
+                )}
+                {tq && (
+                  <>
+                    {tq.origen === 'SEDE' && <Dato k="Salió de" v="Bodega principal" />}
+                    {tq.estacion && <Dato k="Estación" v={tq.estacion} />}
+                    {tq.factura && <Dato k="N° tirilla" v={tq.factura} />}
+                    {tq.valor != null && tq.valor > 0 && <Dato k="Valor" v={`$${tq.valor.toLocaleString('es-CO')}`} />}
+                  </>
+                )}
+                {(e?.nota || tq?.nota) && (
+                  <>
+                    <p className="ins-res__lbl" style={{ marginTop: 12 }}>Nota</p>
+                    <p className="subtle-copy" style={{ margin: 0 }}>{e?.nota ?? tq?.nota}</p>
+                  </>
+                )}
+
+                {/* El aval: sin esto no se sabe si el operario reconoció lo que
+                    recibió, que es lo que sostiene el cobro. */}
+                {e && (
+                  <>
+                    <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del operario</p>
+                    {e.confirmadoEn ? (
+                      <>
+                        <Dato k={e.conforme === false ? '⚠️ Reportó diferencia' : '✔ Confirmado'} v={fmtFecha(e.confirmadoEn)} />
+                        {e.confirmacionNota && <p className="subtle-copy" style={{ margin: 0 }}>{e.confirmacionNota}</p>}
+                      </>
+                    ) : (
+                      <p className="subtle-copy" style={{ margin: 0 }}>⏳ Todavía no lo ha confirmado.</p>
+                    )}
+                  </>
+                )}
+                {tq && (
+                  <>
+                    <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del analista</p>
+                    <p className="subtle-copy" style={{ margin: 0 }}>
+                      {tq.estado === 'PENDIENTE' ? '⏳ Pendiente de aval.'
+                        : tq.estado === 'RECHAZADO' ? '✖ Rechazado.'
+                        : `✔ Avalado${tq.revisadoNombre ? ` por ${tq.revisadoNombre}` : ''}${tq.revisadoEn ? ` · ${fmtFecha(tq.revisadoEn)}` : ''}`}
+                    </p>
+                  </>
+                )}
+
+                {fotos.length > 0 && (
+                  <>
+                    <p className="ins-res__lbl" style={{ marginTop: 12 }}>Evidencia</p>
+                    <div className="desp-det__fotos">
+                      {fotos.map((u, i) => (
+                        <a key={i} href={u} target="_blank" rel="noreferrer">
+                          <img src={u} alt={`evidencia ${i + 1}`} className="flota-foto-thumb" />
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )

@@ -5,6 +5,7 @@ import { fmtCantidad } from '../lib/cantidad'
 import { fmtFechaHora } from '../lib/fechas'
 import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../components/Charts'
 import type { Assignment, InsumoKardex, Bodega } from '../domain/sam'
+import { agruparDespachos } from '../lib/despachos'
 
 /**
  * Inicio del propietario — el tablero de la operación.
@@ -446,34 +447,37 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
               <button type="button" className="modal-close-btn" onClick={() => setDetIns(null)} aria-label="Cerrar">&#x2715;</button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
-              {detIns.items.length} entrega{detIns.items.length === 1 ? '' : 's'} ·{' '}
-              <strong>{fmtCantidad(detIns.items.reduce((t, k) => t + k.cantidad, 0))}</strong> en total
+              {agruparDespachos(detIns.items).length} entrega{agruparDespachos(detIns.items).length === 1 ? '' : 's'}
+              {' · '}{detIns.items.length} ítem{detIns.items.length === 1 ? '' : 's'}
             </p>
             <div className="dash-detalle">
               {detIns.items.length === 0 ? (
                 <p className="muted-text">Nada que mostrar.</p>
               ) : (
-                [...detIns.items]
-                  .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-                  .map((k) => {
-                    const info = insumoNombre.get(k.insumoId)
-                    return (
-                      <div key={k.id} className="dash-detalle__row">
-                        <div className="dash-detalle__main">
-                          <strong>{info?.nombre ?? k.insumoId}</strong>
-                          <span>
-                            {k.motivo ?? 'Entrega'}
-                            {k.equipoCodigo ? ` · 🚜 ${k.equipoCodigo}` : ''}
-                            {k.bodegaId && bodegaNombre.get(k.bodegaId) ? ` · ${bodegaNombre.get(k.bodegaId)}` : ''}
-                          </span>
-                        </div>
-                        <div className="dash-detalle__side">
-                          <strong>{fmtCantidad(k.cantidad, info?.unidad)} {info?.unidad ?? ''}</strong>
-                          <small>{fmtFechaHora(k.createdAt)}</small>
-                        </div>
-                      </div>
-                    )
-                  })
+                agruparDespachos(detIns.items).map((g) => (
+                  <div key={g.id} className="dash-detalle__row">
+                    <div className="dash-detalle__main">
+                      <strong>
+                        {g.movs.map((m) => insumoNombre.get(m.insumoId)?.nombre ?? m.insumoId).join(' · ')}
+                      </strong>
+                      <span>
+                        {g.cabeza.motivo ?? 'Entrega'}
+                        {g.cabeza.equipoCodigo ? ` · 🚜 ${g.cabeza.equipoCodigo}` : ''}
+                        {g.cabeza.bodegaId && bodegaNombre.get(g.cabeza.bodegaId) ? ` · ${bodegaNombre.get(g.cabeza.bodegaId)}` : ''}
+                      </span>
+                    </div>
+                    <div className="dash-detalle__side">
+                      {/* Cada insumo con su unidad: no se suman entre sí. */}
+                      {g.movs.map((m) => {
+                        const info = insumoNombre.get(m.insumoId)
+                        return (
+                          <strong key={m.id}>{fmtCantidad(m.cantidad, info?.unidad)} {info?.unidad ?? ''}</strong>
+                        )
+                      })}
+                      <small>{fmtFechaHora(g.cuando)}</small>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>

@@ -95,6 +95,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 ## Detalles que muerden
 
+- **🔴 Un despacho es UN hecho, no una fila por insumo.** El kardex guarda una fila
+  por insumo, así que una entrega de ganchos + combustible sale duplicada —misma
+  máquina, misma hora, mismo operario— y en celular llena la lista sin decir nada.
+  Usar **`agruparDespachos()`** (`lib/despachos.ts`): agrupa por `referencia`, y el
+  TIPO entra en la llave para que la devolución del operario NO se mezcle con la
+  salida. Ya aplicado en Reportes (lista y detalle de máquina) y en el modal de
+  Inicio. Al listar movimientos de kardex en una pantalla nueva: agrupar.
 - **🔴 El texto que explica una pantalla va dentro de `<Ayuda>`** (`src/components/`):
   un botoncito "ⓘ Info", cerrado por defecto. Sirve la primera vez, pero al que entra
   quince veces al día le come media pantalla del celular — en Bodegas eran **231 px**,

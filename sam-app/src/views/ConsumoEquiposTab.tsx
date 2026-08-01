@@ -5,6 +5,7 @@ import type { InsumoKardex, CombustibleExterno, SolicitudInsumo } from '../domai
 import { fmtFechaHoraLarga as fmtFecha, fmtFechaHora as fmtFechaCorta, fmtLapso } from '../lib/fechas'
 import { fmtCantidad, redondear2 } from '../lib/cantidad'
 import { Ayuda } from '../components/Ayuda'
+import { agruparDespachos } from '../lib/despachos'
 
 /**
  * Reportes de consumo de insumos — por máquina y por insumo, en un rango de
@@ -121,31 +122,31 @@ export function ConsumoEquiposTab() {
    * nada; es el libro corrido.
    */
   const porDespacho = useMemo(() => {
+    type Item = { insumoId: string; cantidad: number }
     type Fila = {
-      id: string; cuando: string; equipo: string; insumoId: string
-      cantidad: number; concepto: string; quien: string; recibio: string; nota: string
+      id: string; cuando: string; equipo: string; items: Item[]
+      concepto: string; quien: string; recibio: string; nota: string
       devuelto: boolean; pendiente: boolean
       mov?: InsumoKardex; tq?: CombustibleExterno
     }
     const filas: Fila[] = []
 
-    for (const m of conEquipo) {
+    // Una entrega de ganchos + combustible son dos filas de kardex, pero UN
+    // solo hecho. Se agrupan o la lista se duplica sin decir nada nuevo.
+    for (const g of agruparDespachos(conEquipo)) {
+      const e = entregaDe(g.cabeza)
       filas.push({
-        id: m.id,
-        cuando: m.createdAt,
-        equipo: m.equipoCodigo!,
-        insumoId: m.insumoId,
-        cantidad: m.cantidad,
-        concepto: m.motivo ?? 'Movimiento',
-        quien: m.creadoPor ? (userName.get(m.creadoPor) ?? m.creadoPor) : '',
-        recibio: (() => {
-          const e = entregaDe(m)
-          return e?.operarioNombre ?? (e ? (userName.get(e.operarioId) ?? '') : '')
-        })(),
-        nota: entregaDe(m)?.nota ?? '',
-        devuelto: m.tipo === 'ENTRADA',
+        id: g.id,
+        cuando: g.cuando,
+        equipo: g.cabeza.equipoCodigo!,
+        items: g.movs.map((m) => ({ insumoId: m.insumoId, cantidad: m.cantidad })),
+        concepto: g.cabeza.motivo ?? 'Movimiento',
+        quien: g.cabeza.creadoPor ? (userName.get(g.cabeza.creadoPor) ?? g.cabeza.creadoPor) : '',
+        recibio: e?.operarioNombre ?? (e ? (userName.get(e.operarioId) ?? '') : ''),
+        nota: e?.nota ?? '',
+        devuelto: g.devuelto,
         pendiente: false,
-        mov: m,
+        mov: g.cabeza,
       })
     }
     // Los tanqueos en estación no pasan por bodega, así que no están en el
@@ -156,8 +157,7 @@ export function ConsumoEquiposTab() {
         id: t.id,
         cuando: t.createdAt || `${t.fecha}T12:00:00`,
         equipo: t.equipoCodigo,
-        insumoId: t.insumoId ?? '',
-        cantidad: t.galones,
+        items: [{ insumoId: t.insumoId ?? '', cantidad: t.galones }],
         concepto: `Tanqueo en estación${t.estacion ? ` (${t.estacion})` : ''}`,
         quien: t.registradoNombre ?? '',
         // El tanqueo en bomba va directo a la máquina: no hay operario que reciba.
@@ -174,7 +174,7 @@ export function ConsumoEquiposTab() {
     return filas
       .filter((f) => {
         if (!q) return true
-        const ins = insumoInfo.get(f.insumoId)?.nombre ?? ''
+        const ins = f.items.map((i) => insumoInfo.get(i.insumoId)?.nombre ?? '').join(' ')
         const eq = equipoNombre.get(f.equipo) ?? f.equipo
         return [eq, ins, f.concepto, f.quien, f.recibio, f.nota].some((v) => v.toLowerCase().includes(q))
       })
@@ -399,36 +399,45 @@ export function ConsumoEquiposTab() {
           <>
             <p className="ins-res__lbl">{porDespacho.length} despacho(s), del más reciente al más antiguo</p>
             <div className="inv-list">
-              {porDespacho.map((d) => {
-                const info = insumoInfo.get(d.insumoId)
-                return (
-                  <button
-                    key={d.id}
-                    type="button"
-                    className="desp-row desp-row--tocable"
-                    onClick={() => setVerDespacho({ mov: d.mov, tq: d.tq })}
-                    aria-label={`Ver el detalle de la entrega a ${d.recibio || d.equipo}`}
-                  >
-                    <div className="desp-row__cab">
-                      <strong>{equipoNombre.get(d.equipo) ?? d.equipo}</strong>
-                      {d.devuelto && <span className="aval-tag aval-tag--vehiculo">devolución</span>}
-                      {d.pendiente && <span className="aval-tag aval-tag--maquina">⏳ sin avalar</span>}
-                      <strong className={`desp-row__cant${d.devuelto ? ' bod-stock__val--cero' : ''}`}>
-                        {d.devuelto ? '−' : ''}{fmtCantidad(d.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
-                      </strong>
-                    </div>
-                    <span className="subtle-copy">{info?.nombre ?? d.insumoId} · {d.concepto}</span>
-                    {d.recibio && (
-                      <span className="subtle-copy">🙋 Recibió <strong>{d.recibio}</strong></span>
-                    )}
-                    <span className="subtle-copy">
-                      {fmtFechaCorta(d.cuando)}{d.quien ? ` · entregó ${d.quien}` : ''}
-                      {' · '}<span className="consumo-maq__ver">ver detalle →</span>
-                    </span>
-                    {d.nota && <span className="subtle-copy">{d.nota}</span>}
-                  </button>
-                )
-              })}
+              {porDespacho.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  className="desp-row desp-row--tocable"
+                  onClick={() => setVerDespacho({ mov: d.mov, tq: d.tq })}
+                  aria-label={`Ver el detalle de la entrega a ${d.recibio || d.equipo}`}
+                >
+                  <div className="desp-row__cab">
+                    <strong>{equipoNombre.get(d.equipo) ?? d.equipo}</strong>
+                    {d.devuelto && <span className="aval-tag aval-tag--vehiculo">devolución</span>}
+                    {d.pendiente && <span className="aval-tag aval-tag--maquina">⏳ sin avalar</span>}
+                    <span className="desp-row__cant">{d.concepto}</span>
+                  </div>
+                  {/* Los insumos del MISMO despacho, cada uno con su unidad: no
+                      se suman entre sí (galones con unidades no dan nada). */}
+                  <div className="desp-row__items">
+                    {d.items.map((it, i) => {
+                      const info = insumoInfo.get(it.insumoId)
+                      return (
+                        <span key={i} className="desp-row__item">
+                          {info?.nombre ?? it.insumoId}
+                          <strong className={d.devuelto ? ' bod-stock__val--cero' : ''}>
+                            {' '}{d.devuelto ? '−' : ''}{fmtCantidad(it.cantidad, info?.unidad)} {info?.unidad ?? ''}
+                          </strong>
+                        </span>
+                      )
+                    })}
+                  </div>
+                  {d.recibio && (
+                    <span className="subtle-copy">🙋 Recibió <strong>{d.recibio}</strong></span>
+                  )}
+                  <span className="subtle-copy">
+                    {fmtFechaCorta(d.cuando)}{d.quien ? ` · entregó ${d.quien}` : ''}
+                    {' · '}<span className="consumo-maq__ver">ver detalle →</span>
+                  </span>
+                  {d.nota && <span className="subtle-copy">{d.nota}</span>}
+                </button>
+              ))}
             </div>
           </>
         )
@@ -452,36 +461,43 @@ export function ConsumoEquiposTab() {
                 <button type="button" className="modal-close-btn" onClick={() => setDetalle('')} aria-label="Cerrar">&#x2715;</button>
               </div>
               <p className="subtle-copy" style={{ marginTop: 0 }}>
-                {movs.length + tqs.length} movimiento(s) entre {desde || 'el inicio'} y {hasta || 'hoy'}.
+                {agruparDespachos(movs).length + tqs.length} despacho(s) entre {desde || 'el inicio'} y {hasta || 'hoy'}.
               </p>
 
               {movs.length === 0 && tqs.length === 0 ? (
                 <p className="muted-text">Sin movimientos en este rango.</p>
               ) : (
                 <div className="inv-list" style={{ marginTop: 8 }}>
-                  {movs.map((m) => {
-                    const info = insumoInfo.get(m.insumoId)
-                    const devuelto = m.tipo === 'ENTRADA'
-                    const e = entregaDe(m)
+                  {agruparDespachos(movs).map((g) => {
+                    const e = entregaDe(g.cabeza)
                     const recibio = e?.operarioNombre ?? (e ? userName.get(e.operarioId) : '')
                     return (
-                      <button key={m.id} type="button" className="bod-stock__row mov-row"
-                        onClick={() => setVerDespacho({ mov: m })}
+                      <button key={g.id} type="button" className="bod-stock__row mov-row"
+                        onClick={() => setVerDespacho({ mov: g.cabeza })}
                         aria-label={`Ver el detalle de la entrega a ${recibio || detalle}`}>
                         <span className="bod-stock__nom">
-                          {info?.nombre ?? m.insumoId}
-                          {devuelto && <span className="inv-cat inv-cat--off"> devolución</span>}
+                          <span className="mov-row__items">
+                            {g.movs.map((m) => {
+                              const info = insumoInfo.get(m.insumoId)
+                              return (
+                                <span key={m.id} className="desp-row__item">
+                                  {info?.nombre ?? m.insumoId}
+                                  <strong className={g.devuelto ? ' bod-stock__val--cero' : ''}>
+                                    {' '}{g.devuelto ? '−' : ''}{fmtCantidad(m.cantidad, info?.unidad)} {info?.unidad ?? ''}
+                                  </strong>
+                                </span>
+                              )
+                            })}
+                            {g.devuelto && <span className="inv-cat inv-cat--off">devolución</span>}
+                          </span>
                           <small className="bod-stock__reparto">
-                            {fmtFecha(m.createdAt)}
-                            {m.motivo ? ` · ${m.motivo}` : ''}
-                            {m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}
+                            {fmtFecha(g.cuando)}
+                            {g.cabeza.motivo ? ` · ${g.cabeza.motivo}` : ''}
+                            {g.cabeza.creadoPor ? ` · ${userName.get(g.cabeza.creadoPor) ?? g.cabeza.creadoPor}` : ''}
                           </small>
                           {recibio && <small className="bod-stock__reparto">🙋 Recibió {recibio}</small>}
                           <small className="consumo-maq__ver">ver detalle →</small>
                         </span>
-                        <strong className={`bod-stock__val${devuelto ? ' bod-stock__val--cero' : ''}`}>
-                          {devuelto ? '−' : ''}{fmtCantidad(m.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
-                        </strong>
                       </button>
                     )
                   })}

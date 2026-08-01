@@ -7,6 +7,9 @@
  * siendo legibles para saber qué se ve (evidencia de una entrega, una firma, un
  * estado). Se aplica en TODOS los puntos donde el app sube una foto.
  *
+ * Medido en producción (1-ago-2026): las fotos de campo pesan ~70 KB con el
+ * perfil viejo. Con el nuevo bajan a ~35 KB sin perder lo que se necesita ver.
+ *
  * Detalles técnicos:
  *  - `createImageBitmap(file, { imageOrientation: 'from-image' })` corrige la
  *    orientación EXIF (fotos de celular no salen rotadas). Con fallback a
@@ -115,12 +118,24 @@ export async function comprimirImagen(file: File, opts: OpcionesImagen = {}): Pr
   return new File([blob], nombre, { type: 'image/jpeg', lastModified: Date.now() })
 }
 
-/** Perfiles de compresión por caso de uso (para uniformidad en todo el app). */
+/**
+ * Perfiles de compresión por caso de uso.
+ *
+ * El criterio no es "lo más chico posible": es lo más chico que TODAVÍA SIRVE
+ * para lo que se va a mirar. Una foto de una pimpina solo tiene que dejar ver
+ * que es una pimpina; una tirilla de la bomba tiene que dejar LEER los números,
+ * y ahí achicar de más convierte la evidencia en nada. Por eso van separadas.
+ */
 export const PERFIL_IMAGEN = {
-  /** Evidencia de campo (despacho, movimiento, estado): muy liviana. ~30–70 KB. */
-  evidencia: { maxLado: 1000, calidad: 0.5, maxBytes: 90_000 },
-  /** Foto de perfil / avatar: chica. ~15–40 KB. */
-  avatar: { maxLado: 512, calidad: 0.7, maxBytes: 60_000 },
-  /** Imagen motivacional (se muestra grande, pero igual comprimida). ~60–150 KB. */
-  motivacion: { maxLado: 1200, calidad: 0.7, maxBytes: 200_000 },
+  /** Evidencia de campo (despacho, entrega, estado): se mira, no se lee. ~25–45 KB. */
+  evidencia: { maxLado: 800, calidad: 0.45, maxBytes: 60_000 },
+  /**
+   * Documento con texto que hay que poder leer: tirilla de la bomba, factura.
+   * Va más grande a propósito — son pocas y el número es la prueba. ~60–140 KB.
+   */
+  documento: { maxLado: 1400, calidad: 0.6, maxBytes: 150_000 },
+  /** Foto de perfil / avatar: se ve en un círculo de 40 px. ~10–25 KB. */
+  avatar: { maxLado: 400, calidad: 0.65, maxBytes: 40_000 },
+  /** Imagen motivacional (se muestra grande). ~50–120 KB. */
+  motivacion: { maxLado: 1000, calidad: 0.65, maxBytes: 150_000 },
 } as const

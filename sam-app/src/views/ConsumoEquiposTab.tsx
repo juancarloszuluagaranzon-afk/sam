@@ -44,6 +44,8 @@ export function ConsumoEquiposTab() {
   const [entregas, setEntregas] = useState<SolicitudInsumo[]>([])
   /** Despacho abierto en el detalle. */
   const [verDespacho, setVerDespacho] = useState<{ mov?: InsumoKardex; tq?: CombustibleExterno } | null>(null)
+  /** Insumo abierto en la vista "por insumo": el total tampoco dice de dónde salió. */
+  const [detalleInsumo, setDetalleInsumo] = useState<string>('')
   const [loading, setLoading] = useState(false)
   const [busca, setBusca] = useState('')
   const [desde, setDesde] = useState(primerDiaMes())
@@ -373,9 +375,18 @@ export function ConsumoEquiposTab() {
           <div className="panel-card" style={{ padding: '12px 14px' }}>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {porInsumo.map((r) => (
-                <li key={r.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                  <span>{r.info?.nombre ?? r.id}</span>
-                  <strong>{fmtCantidad(r.total, r.info?.unidad)} {r.info?.unidad ?? ''}</strong>
+                <li key={r.id}>
+                  <button type="button" className="bod-stock__row mov-row"
+                    onClick={() => setDetalleInsumo(r.id)}
+                    aria-label={`Ver en qué máquinas se gastó ${r.info?.nombre ?? r.id}`}>
+                    <span className="bod-stock__nom">
+                      {r.info?.nombre ?? r.id}
+                      <small className="consumo-maq__ver">ver detalle →</small>
+                    </span>
+                    <strong className="bod-stock__val">
+                      {fmtCantidad(r.total, r.info?.unidad)} <small>{r.info?.unidad ?? ''}</small>
+                    </strong>
+                  </button>
                 </li>
               ))}
             </ul>
@@ -451,8 +462,12 @@ export function ConsumoEquiposTab() {
                   {movs.map((m) => {
                     const info = insumoInfo.get(m.insumoId)
                     const devuelto = m.tipo === 'ENTRADA'
+                    const e = entregaDe(m)
+                    const recibio = e?.operarioNombre ?? (e ? userName.get(e.operarioId) : '')
                     return (
-                      <div key={m.id} className="bod-stock__row">
+                      <button key={m.id} type="button" className="bod-stock__row mov-row"
+                        onClick={() => setVerDespacho({ mov: m })}
+                        aria-label={`Ver el detalle de la entrega a ${recibio || detalle}`}>
                         <span className="bod-stock__nom">
                           {info?.nombre ?? m.insumoId}
                           {devuelto && <span className="inv-cat inv-cat--off"> devolución</span>}
@@ -461,18 +476,22 @@ export function ConsumoEquiposTab() {
                             {m.motivo ? ` · ${m.motivo}` : ''}
                             {m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}
                           </small>
+                          {recibio && <small className="bod-stock__reparto">🙋 Recibió {recibio}</small>}
+                          <small className="consumo-maq__ver">ver detalle →</small>
                         </span>
                         <strong className={`bod-stock__val${devuelto ? ' bod-stock__val--cero' : ''}`}>
                           {devuelto ? '−' : ''}{fmtCantidad(m.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
                         </strong>
-                      </div>
+                      </button>
                     )
                   })}
 
                   {tqs.map((t) => {
                     const info = t.insumoId ? insumoInfo.get(t.insumoId) : undefined
                     return (
-                      <div key={t.id} className="bod-stock__row">
+                      <button key={t.id} type="button" className="bod-stock__row mov-row"
+                        onClick={() => setVerDespacho({ tq: t })}
+                        aria-label={`Ver el detalle del tanqueo de ${detalle}`}>
                         <span className="bod-stock__nom">
                           ⛽ {info?.nombre ?? 'COMBUSTIBLE'}
                           <small className="bod-stock__reparto">
@@ -483,15 +502,90 @@ export function ConsumoEquiposTab() {
                             {t.nota ? ` · ${t.nota}` : ''}
                             {t.estado === 'PENDIENTE' ? ' · ⏳ sin avalar' : ''}
                           </small>
+                          <small className="consumo-maq__ver">ver detalle →</small>
                         </span>
                         <strong className="bod-stock__val">
                           {fmtCantidad(t.galones, 'galón')} <small>galón</small>
                         </strong>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
               )}
+            </div>
+          </div>
+        )
+      })()}
+
+
+      {/* Detalle de un insumo: en qué máquinas se gastó, movimiento a
+          movimiento. El total suelto no dice a quién ni cuándo. */}
+      {detalleInsumo && (() => {
+        const movs = conEquipo
+          .filter((m) => m.insumoId === detalleInsumo)
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+        const tqs = tanqueos
+          .filter((t) => t.insumoId === detalleInsumo && t.origen === 'ESTACION' && t.estado !== 'RECHAZADO')
+          .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
+        const info = insumoInfo.get(detalleInsumo)
+        return (
+          <div className="modal-overlay open" onClick={() => setDetalleInsumo('')}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(560px, calc(100vw - 32px))' }}>
+              <div className="labor-detail-header">
+                <div><p className="eyebrow">Consumo</p><h3>{info?.nombre ?? detalleInsumo}</h3></div>
+                <button type="button" className="modal-close-btn" onClick={() => setDetalleInsumo('')} aria-label="Cerrar">&#x2715;</button>
+              </div>
+              <p className="subtle-copy" style={{ marginTop: 0 }}>
+                {movs.length + tqs.length} movimiento(s) entre {desde || 'el inicio'} y {hasta || 'hoy'}.
+              </p>
+
+              <div className="inv-list" style={{ marginTop: 8 }}>
+                {movs.map((m) => {
+                  const devuelto = m.tipo === 'ENTRADA'
+                  const e = entregaDe(m)
+                  const recibio = e?.operarioNombre ?? (e ? userName.get(e.operarioId) : '')
+                  return (
+                    <button key={m.id} type="button" className="bod-stock__row mov-row"
+                      onClick={() => setVerDespacho({ mov: m })}
+                      aria-label={`Ver el detalle de la entrega a ${recibio || m.equipoCodigo}`}>
+                      <span className="bod-stock__nom">
+                        🚜 {equipoNombre.get(m.equipoCodigo ?? '') ?? m.equipoCodigo}
+                        {devuelto && <span className="inv-cat inv-cat--off"> devolución</span>}
+                        <small className="bod-stock__reparto">
+                          {fmtFecha(m.createdAt)}
+                          {m.motivo ? ` · ${m.motivo}` : ''}
+                          {m.creadoPor ? ` · ${userName.get(m.creadoPor) ?? m.creadoPor}` : ''}
+                        </small>
+                        {recibio && <small className="bod-stock__reparto">🙋 Recibió {recibio}</small>}
+                        <small className="consumo-maq__ver">ver detalle →</small>
+                      </span>
+                      <strong className={`bod-stock__val${devuelto ? ' bod-stock__val--cero' : ''}`}>
+                        {devuelto ? '−' : ''}{fmtCantidad(m.cantidad, info?.unidad)} <small>{info?.unidad ?? ''}</small>
+                      </strong>
+                    </button>
+                  )
+                })}
+
+                {tqs.map((t) => (
+                  <button key={t.id} type="button" className="bod-stock__row mov-row"
+                    onClick={() => setVerDespacho({ tq: t })}
+                    aria-label={`Ver el detalle del tanqueo de ${t.equipoCodigo}`}>
+                    <span className="bod-stock__nom">
+                      ⛽ {equipoNombre.get(t.equipoCodigo ?? '') ?? t.equipoCodigo}
+                      <small className="bod-stock__reparto">
+                        {fmtFecha(t.createdAt)} · Tanqueo en estación
+                        {t.estacion ? ` (${t.estacion})` : ''}
+                        {t.registradoNombre ? ` · ${t.registradoNombre}` : ''}
+                        {t.estado === 'PENDIENTE' ? ' · ⏳ sin avalar' : ''}
+                      </small>
+                      <small className="consumo-maq__ver">ver detalle →</small>
+                    </span>
+                    <strong className="bod-stock__val">
+                      {fmtCantidad(t.galones, 'galón')} <small>galón</small>
+                    </strong>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )

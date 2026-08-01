@@ -2517,7 +2517,10 @@ export async function confirmarRecepcion(input: {
 // Sube una foto de evidencia de despacho al bucket `avatars` (público) y
 // devuelve su URL. Reutiliza el mismo storage de las fotos de usuario.
 export async function uploadEvidencia(solicitudId: string, file: File, idx: number): Promise<string> {
-  const liviana = await comprimirImagen(file, PERFIL_IMAGEN.evidencia)
+  // La tirilla de la bomba entra por aquí igual que una foto de campo, pero de
+  // ella hay que poder LEER el número: va con el perfil de documento.
+  const esDocumento = solicitudId.startsWith('tanqueo-')
+  const liviana = await comprimirImagen(file, esDocumento ? PERFIL_IMAGEN.documento : PERFIL_IMAGEN.evidencia)
   const ext = (liviana.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `despachos/${solicitudId}-${idx}-${Date.now()}.${ext}`
   const { error } = await supabase.storage

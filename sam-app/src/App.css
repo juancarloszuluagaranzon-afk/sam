@@ -7977,3 +7977,13 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .ayuda__texto > p { margin: 0 0 6px; }
 .ayuda__texto > p:last-child { margin-bottom: 0; }
+
+/* Movimiento dentro del detalle de una máquina: toda la línea abre el despacho. */
+.mov-row {
+  width: 100%; text-align: left; cursor: pointer;
+  color: inherit; font: inherit; border: none;
+  background: transparent; border-bottom: 1px solid var(--color-border);
+}
+.mov-row:last-child { border-bottom: none; }
+.mov-row:active { background: var(--color-bg-muted); }
+.mov-row .bod-stock__nom { display: flex; flex-direction: column; gap: 1px; }

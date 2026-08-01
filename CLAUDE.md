@@ -100,8 +100,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   quince veces al día le come media pantalla del celular — en Bodegas eran **231 px**,
   más de un cuarto de la pantalla, antes de ver el primer dato. Al crear una pantalla
   nueva: el párrafo introductorio va plegado, no suelto.
-- **Fotos**: toda subida pasa por `lib/imagenLigera.ts` (comprime a ~20–80 KB). No
-  subir imágenes crudas nunca — llenan el servidor.
+- **Fotos**: toda subida pasa por `lib/imagenLigera.ts`. Perfiles por uso, y el criterio
+  NO es "lo más chico posible" sino lo más chico que TODAVÍA SIRVE: `evidencia` 800 px
+  (~45 KB, solo hay que ver qué es), `documento` 1400 px (~120 KB, la tirilla hay que
+  poder LEERLA), `avatar` 400 px (~24 KB), `motivacion` 1000 px. Nunca subir crudo.
+  ⚠️ **Las fotos NO son el problema de disco** (medido 1-ago-2026: 30 MB en total, ~12
+  fotos/día ≈ 200 MB/año contra 201 GB libres). Lo que llena el VPS es el **build cache
+  de Docker** de los otros SaaS: 103 GB, 94 recuperables con `docker builder prune`.
 - **🔴 NUNCA sumar cantidades de insumos distintos.** Galones + unidades = un número
   que no significa nada (ya pasó en el Inicio: "Entrega directa 63,95" era 40 ganchos
   + 23,95 galones). Cuando una serie mezcla unidades: o se cuentan MOVIMIENTOS, o cada

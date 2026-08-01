@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado, autoAbastecer } from '../services/samApi'
+import { bodegaDeResponsable, loadStockBodega, loadTraslados, confirmarTraslado, autoAbastecer, anularTraslado } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { enviarOEncolar } from '../lib/outboxInsumos'
@@ -33,6 +33,9 @@ export function MiBodegaTab() {
 
   // Recepción de traslado
   const [recibir, setRecibir] = useState<Traslado | null>(null)
+  // Rechazo: el traslado no le corresponde. Distinto de "faltó algo".
+  const [rechazar, setRechazar] = useState<Traslado | null>(null)
+  const [rechazoMotivo, setRechazoMotivo] = useState('')
   const [cantRecibida, setCantRecibida] = useState<Record<string, string>>({})
   const [notaRecepcion, setNotaRecepcion] = useState('')
 
@@ -156,6 +159,38 @@ export function MiBodegaTab() {
     } finally { setBusy(false) }
   }
 
+  /**
+   * Rechazar el traslado completo: no era para mí.
+   *
+   * No es lo mismo que "faltó algo" —eso es un traslado válido que llegó
+   * incompleto—. Aquí el traslado entero no debía existir y el material
+   * regresa completo a la principal, sin pasar nunca por este carro.
+   */
+  async function confirmarRechazo() {
+    if (!rechazar) return
+    setBusy(true); setError('')
+    try {
+      const payload = {
+        trasladoId: rechazar.id,
+        origenId: rechazar.origenId,
+        items: rechazar.items.map((i) => ({ insumoId: i.insumoId, cantidad: i.cantidad })),
+        anuladoPor: session?.id,
+        anuladoNombre: session?.name,
+        rol: 'RECIBE' as const,
+        motivo: rechazoMotivo,
+      }
+      const { enviado } = await enviarOEncolar('ANULAR_TRASLADO', payload, () => anularTraslado(payload))
+      setInfo(enviado
+        ? 'Traslado rechazado. El material volvió a la bodega principal.'
+        : 'Guardado. Se rechaza solo cuando haya señal.')
+      setRechazar(null); setRechazoMotivo('')
+      void refresh()
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(e?.message ?? 'No se pudo rechazar')
+    } finally { setBusy(false) }
+  }
+
   if (cargando) return <section className="panel-card"><p className="muted-text">Cargando…</p></section>
 
   if (!bodega) {
@@ -197,9 +232,15 @@ export function MiBodegaTab() {
                 <strong>{t.items.map((i) => `${fmtCantidad(i.cantidad, i.unidad)} ${i.unidad} ${i.insumoNombre}`).join(', ')}</strong>
                 <span className="subtle-copy">{fmtFecha(t.createdAt)}{t.nota ? ` · ${t.nota}` : ''}</span>
               </div>
-              <button type="button" className="primary-button bod-aviso__btn" onClick={() => abrirRecibir(t)} disabled={busy}>
-                Revisar y recibir
-              </button>
+              <div className="bod-aviso__acciones">
+                <button type="button" className="inline-button maestro-delete-btn"
+                  onClick={() => { setRechazar(t); setRechazoMotivo(''); setError('') }} disabled={busy}>
+                  No es para mí
+                </button>
+                <button type="button" className="primary-button bod-aviso__btn" onClick={() => abrirRecibir(t)} disabled={busy}>
+                  Revisar y recibir
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -325,6 +366,42 @@ export function MiBodegaTab() {
         bodegaId={bodega.id}
         destinos={['CARRO', 'PIMPINAS', 'VEHICULO', 'MAQUINA']}
       />
+
+      {/* Rechazo del traslado completo: no era para este carro. */}
+      {rechazar && (
+        <div className="modal-overlay open" onClick={() => { if (!busy) setRechazar(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Traslado</p><h3>Rechazar este envío</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setRechazar(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <div className="inv-list" style={{ marginTop: 6 }}>
+              {rechazar.items.map((i) => (
+                <div key={i.id} className="bod-stock__row">
+                  <span className="bod-stock__nom">{i.insumoNombre}</span>
+                  <strong className="bod-stock__val">{fmtCantidad(i.cantidad, i.unidad)} <small>{i.unidad}</small></strong>
+                </div>
+              ))}
+            </div>
+            <p className="subtle-copy">
+              Todo esto <strong>regresa a la bodega principal</strong> y no entra a tu carro.
+              Si el envío sí era tuyo pero llegó incompleto, no uses esto: entra a
+              <strong> Revisar y recibir</strong> y baja la cantidad.
+            </p>
+            <label>
+              Motivo <span className="field-optional">(opcional)</span>
+              <input type="text" placeholder="No es para mí, ya tengo, no lo pedí…" value={rechazoMotivo}
+                onChange={(e) => setRechazoMotivo(e.target.value)} disabled={busy} autoFocus />
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setRechazar(null)} disabled={busy}>Cancelar</button>
+              <button type="button" className="release-confirm-btn" onClick={() => void confirmarRechazo()} disabled={busy}>
+                {busy ? 'Rechazando…' : 'Rechazar y devolver'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

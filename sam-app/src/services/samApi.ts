@@ -1736,6 +1736,10 @@ function mapTraslado(row: Record<string, unknown>): Traslado {
     avaladoNombre: row.avalado_nombre ? String(row.avalado_nombre) : undefined,
     avaladoEn: row.avalado_en ? String(row.avalado_en) : undefined,
     avalNota: row.aval_nota ? String(row.aval_nota) : undefined,
+    anuladoNombre: row.anulado_nombre ? String(row.anulado_nombre) : undefined,
+    anuladoEn: row.anulado_en ? String(row.anulado_en) : undefined,
+    anuladoMotivo: row.anulado_motivo ? String(row.anulado_motivo) : undefined,
+    anuladoRol: row.anulado_rol === 'RECIBE' ? 'RECIBE' : row.anulado_rol === 'ENVIA' ? 'ENVIA' : undefined,
     items: raw.map((it) => ({
       id: String(it.id),
       insumoId: String(it.insumo_id),
@@ -1864,6 +1868,72 @@ export async function confirmarTraslado(input: {
     })
     .eq('id', input.trasladoId)
   if (error) throw new Error(error.message || 'No se pudo confirmar el traslado')
+}
+
+/**
+ * Anula un traslado EN TRÁNSITO y devuelve TODO a la bodega de origen.
+ *
+ * Cuando se despacha, el material sale de la principal de una vez. Si el
+ * traslado no debía existir, ese stock queda en el aire: ni en la principal ni
+ * en el carro. Aquí se devuelve entero, con su movimiento de kardex, para que
+ * el saldo cuadre y quede el rastro de por qué volvió.
+ *
+ * Dos caminos, mismo efecto sobre el inventario:
+ *  · rol ENVIA  — quien lo despachó se equivocó.
+ *  · rol RECIBE — el supervisor destino dice que no le corresponde.
+ *
+ * ⚠️ Solo aplica sobre EN_TRANSITO. El `.eq('estado', ...)` + `.select()` es el
+ * seguro contra la doble anulación: si dos personas tocan el botón a la vez,
+ * el segundo update afecta 0 filas y aquí se convierte en error — sin eso, el
+ * material se devolvería dos veces.
+ */
+export async function anularTraslado(input: {
+  trasladoId: string
+  origenId: string
+  items: { insumoId: string; cantidad: number }[]
+  anuladoPor?: string
+  anuladoNombre?: string
+  rol: 'ENVIA' | 'RECIBE'
+  motivo?: string
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from('insumos_traslados')
+    .update({
+      estado: 'ANULADO',
+      anulado_por: input.anuladoPor ?? null,
+      anulado_nombre: input.anuladoNombre ?? null,
+      anulado_en: new Date().toISOString(),
+      anulado_motivo: input.motivo?.trim() || null,
+      anulado_rol: input.rol,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.trasladoId)
+    .eq('estado', 'EN_TRANSITO')
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) {
+    throw new Error('Este traslado ya fue recibido o anulado por otra persona.')
+  }
+
+  // El estado se marca ANTES de devolver: si el proceso se corta a mitad, es
+  // preferible un traslado anulado con material sin devolver (se ve y se
+  // corrige) que uno vivo con el material ya devuelto (se duplicaría).
+  const motivo = input.rol === 'RECIBE'
+    ? 'Devolución por rechazo del satélite'
+    : 'Devolución por traslado anulado'
+  for (const it of input.items) {
+    if (it.cantidad > 0) {
+      await registrarMovimientoInsumo({
+        insumoId: it.insumoId,
+        tipo: 'ENTRADA',
+        cantidad: it.cantidad,
+        motivo,
+        referencia: input.trasladoId,
+        creadoPor: input.anuladoPor,
+        bodegaId: input.origenId,
+      })
+    }
+  }
 }
 
 // ── COMBUSTIBLE de bomba externa ────────────────────────────────────────────

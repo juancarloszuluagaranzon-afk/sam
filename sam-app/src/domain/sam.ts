@@ -315,6 +315,12 @@ export interface Traslado {
   avaladoNombre?: string
   avaladoEn?: string
   avalNota?: string
+  /** Quién lo anuló/rechazó y por qué. Solo cuando estado = ANULADO. */
+  anuladoNombre?: string
+  anuladoEn?: string
+  anuladoMotivo?: string
+  /** ENVIA = se equivocó quien despachó · RECIBE = el satélite lo rechazó. */
+  anuladoRol?: 'ENVIA' | 'RECIBE'
   items: TrasladoItem[]
 }
 

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import {
   loadBodegas, createBodega, updateBodega, loadStockBodega,
-  crearTraslado, loadTraslados,
+  crearTraslado, loadTraslados, anularTraslado,
 } from '../services/samApi'
 import type { Bodega, StockBodega, Traslado, TrasladoItem } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
@@ -27,6 +27,9 @@ export function BodegasTab() {
   const [bodegas, setBodegas] = useState<Bodega[]>([])
   const [stock, setStock] = useState<StockBodega[]>([])
   const [traslados, setTraslados] = useState<Traslado[]>([])
+  // Traslado que se va a anular: se despachó por error y hay que devolverlo.
+  const [anular, setAnular] = useState<Traslado | null>(null)
+  const [anularMotivo, setAnularMotivo] = useState('')
   const [cargando, setCargando] = useState(true)
   const [verBodegaId, setVerBodegaId] = useState<string>('')
 
@@ -147,6 +150,35 @@ export function BodegasTab() {
     } finally { setBusy(false) }
   }
 
+  /**
+   * Devuelve el traslado entero a la principal.
+   *
+   * El material ya había salido; si el traslado no debía existir, ese stock
+   * queda en el aire —ni en la principal ni en el carro— y el saldo no cuadra
+   * con nada. Aquí vuelve completo, con su movimiento en el kardex.
+   */
+  async function confirmarAnular() {
+    if (!anular) return
+    setBusy(true); setError('')
+    try {
+      await anularTraslado({
+        trasladoId: anular.id,
+        origenId: anular.origenId,
+        items: anular.items.map((i) => ({ insumoId: i.insumoId, cantidad: i.cantidad })),
+        anuladoPor: session?.id,
+        anuladoNombre: session?.name,
+        rol: 'ENVIA',
+        motivo: anularMotivo,
+      })
+      setInfo('Traslado anulado. El material volvió a la bodega principal.')
+      setAnular(null); setAnularMotivo('')
+      void refresh()
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(e?.message ?? 'No se pudo anular')
+    } finally { setBusy(false) }
+  }
+
   async function toggleActivo(b: Bodega) {
     setBusy(true); setError('')
     try {
@@ -261,6 +293,14 @@ export function BodegasTab() {
                       {t.items.map((i) => `${fmtCantidad(i.cantidad, i.unidad)} ${i.unidad} ${i.insumoNombre}`).join(', ')} · {fmtFecha(t.createdAt)}
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    className="inline-button maestro-delete-btn"
+                    onClick={() => { setAnular(t); setAnularMotivo(''); setError('') }}
+                    disabled={busy}
+                  >
+                    Anular
+                  </button>
                 </div>
               ))}
             </div>
@@ -358,6 +398,45 @@ export function BodegasTab() {
               <button type="button" className="inline-button" onClick={() => setSurtirDestino(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void confirmarSurtir()} disabled={busy}>
                 {busy ? 'Enviando…' : 'Enviar traslado'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Anular un traslado que no debía salir: el material vuelve entero. */}
+      {anular && (
+        <div className="modal-overlay open" onClick={() => { if (!busy) setAnular(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(440px, calc(100vw - 32px))' }}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Traslado</p><h3>Anular y devolver</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setAnular(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Va para <strong>{bodegas.find((b) => b.id === anular.destinoId)?.nombre ?? 'el satélite'}</strong>,
+              enviado el {fmtFecha(anular.createdAt)}.
+            </p>
+            <div className="inv-list" style={{ marginTop: 6 }}>
+              {anular.items.map((i) => (
+                <div key={i.id} className="bod-stock__row">
+                  <span className="bod-stock__nom">{i.insumoNombre}</span>
+                  <strong className="bod-stock__val">{fmtCantidad(i.cantidad, i.unidad)} <small>{i.unidad}</small></strong>
+                </div>
+              ))}
+            </div>
+            <p className="subtle-copy">
+              Todo esto <strong>regresa a la bodega principal</strong> y queda su movimiento en el kardex.
+              El satélite no recibe nada.
+            </p>
+            <label>
+              Motivo <span className="field-optional">(opcional)</span>
+              <input type="text" placeholder="No era para él, cantidad equivocada…" value={anularMotivo}
+                onChange={(e) => setAnularMotivo(e.target.value)} disabled={busy} autoFocus />
+            </label>
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setAnular(null)} disabled={busy}>Cancelar</button>
+              <button type="button" className="release-confirm-btn" onClick={() => void confirmarAnular()} disabled={busy}>
+                {busy ? 'Anulando…' : 'Anular y devolver'}
               </button>
             </div>
           </div>

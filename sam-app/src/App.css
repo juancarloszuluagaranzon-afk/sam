@@ -7930,3 +7930,7 @@ td.planilla-vacio:hover { background: #fde047; }
 .res-barra__fill { height: 100%; border-radius: 999px; background: var(--color-brand); }
 
 .res-destacados { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--color-border); }
+
+/* Aviso de traslado: dos acciones (rechazar / recibir) que en celular se
+   apilan en vez de apretarse. */
+.bod-aviso__acciones { display: flex; flex-wrap: wrap; gap: 6px; flex: 0 0 auto; }

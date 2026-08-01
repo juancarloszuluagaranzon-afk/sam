@@ -6,6 +6,7 @@ import { BandejaInsumosTab } from './BandejaInsumosTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 import { MiBodegaTab } from './MiBodegaTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
+import { InventarioResumenTab } from './InventarioResumenTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
 
@@ -20,9 +21,10 @@ import { MapaView } from './MapaView'
  * y se acabó la trazabilidad. Lo que entra a su carro entra por un traslado
  * avalado o por un tanqueo avalado — nunca a dedo.
  */
-export type InsumosTab = 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'catalogos' | 'mapa'
+export type InsumosTab = 'resumen' | 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'catalogos' | 'mapa'
 
 const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
+  { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Solicitudes y entregas' },
   { key: 'mibodega', icon: '🚚', label: 'Mi bodega', desc: 'Mi carro · recibir · tanquear' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
@@ -45,7 +47,7 @@ export function InsumosModule({
     // Los catálogos los maneja administración, igual que Inventario: si cada
     // supervisor pudiera editarlos, cada carro tendría su propia lista.
     () => (session?.role === 'supervisor_insumos'
-      ? TABS.filter((t) => t.key !== 'inventario' && t.key !== 'catalogos')
+      ? TABS.filter((t) => !['inventario', 'catalogos', 'resumen'].includes(t.key))
       : TABS),
     [session?.role],
   )
@@ -76,7 +78,8 @@ export function InsumosModule({
           </button>
         ))}
       </div>
-      {tab === 'bandeja' ? <BandejaInsumosTab />
+      {tab === 'resumen' ? <InventarioResumenTab />
+        : tab === 'bandeja' ? <BandejaInsumosTab />
         : tab === 'mibodega' ? <MiBodegaTab />
         : tab === 'inventario' ? <InsumosInventarioTab />
         : tab === 'equipos' ? <ConsumoEquiposTab />

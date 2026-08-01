@@ -97,6 +97,16 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 - **Fotos**: toda subida pasa por `lib/imagenLigera.ts` (comprime a ~20–80 KB). No
   subir imágenes crudas nunca — llenan el servidor.
+- **🔴 NUNCA sumar cantidades de insumos distintos.** Galones + unidades = un número
+  que no significa nada (ya pasó en el Inicio: "Entrega directa 63,95" era 40 ganchos
+  + 23,95 galones). Cuando una serie mezcla unidades: o se cuentan MOVIMIENTOS, o cada
+  punto lleva su unidad al lado (`Punto.sufijo` en `components/Charts`). En el Resumen
+  de inventario, "Otros" cuenta MATERIALES, no cantidades.
+- **⭐ Destacados = `insumos.frecuente`.** Una sola marca con dos efectos: salen de
+  primeras en los selectores Y llevan tarjeta y columna propias en el Resumen de
+  inventario; el resto se pliega en "Otros". Se eligen en **Insumos → 📊 Resumen →
+  ⭐ Elegir materiales destacados** (y también desde Inventario → ⋯). Hoy: COMBUSTIBLE
+  y GANCHOS. Dos o tres es lo sano.
 - **Cantidades de insumos**: `lib/cantidad.ts`. Redondear **al calcular saldos**
   (sin eso el punto flotante guarda `1020.4100000000001`), y mostrar con
   `fmtCantidad(n, unidad)` — las unidades enteras (ganchos, tornillos) van **sin

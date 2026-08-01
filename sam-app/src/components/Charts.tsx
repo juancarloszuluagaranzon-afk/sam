@@ -28,6 +28,8 @@ export interface Punto {
   id: string
   label: string
   valor: number
+  /** Unidad propia del punto, cuando la serie mezcla unidades (galón / unidad). */
+  sufijo?: string
 }
 
 /** Color estable por posición (la entidad manda, no el ranking del filtro). */
@@ -97,7 +99,7 @@ export function Donut({
               className={onPick ? 'dash-arc is-tap' : 'dash-arc'}
               onClick={() => onPick?.(d)}
               role={onPick ? 'button' : undefined}
-              aria-label={`${d.label}: ${d.valor.toFixed(2)} ${unidad}`}
+              aria-label={`${d.label}: ${d.valor.toFixed(2)} ${d.sufijo ?? unidad}`}
             />
           )
         })}
@@ -155,7 +157,12 @@ export function BarrasH({
           <span className="dash-barra__track">
             <span className="dash-barra__fill" style={{ width: `${Math.max((d.valor / max) * 100, 2)}%`, background: color }} />
           </span>
-          <span className="dash-barra__val">{d.valor.toFixed(d.valor >= 100 ? 0 : 2)}</span>
+          <span className="dash-barra__val">
+            {/* Los enteros van sin decimales: "3 entregas" y "40 unidad",
+                no "3.00" ni "40.00". */}
+            {Number.isInteger(d.valor) ? d.valor : d.valor.toFixed(d.valor >= 100 ? 0 : 2)}
+            {d.sufijo && <small> {d.sufijo}</small>}
+          </span>
         </button>
       ))}
     </div>

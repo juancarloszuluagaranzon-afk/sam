@@ -217,16 +217,26 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     const m = new Map<string, number>()
     insumosMovs.forEach((k) => m.set(k.insumoId, (m.get(k.insumoId) ?? 0) + k.cantidad))
     return Array.from(m.entries())
-      .map(([id, v]) => ({ id, label: insumoNombre.get(id)?.nombre ?? id, valor: v }))
+      .map(([id, v]) => ({
+        id,
+        label: insumoNombre.get(id)?.nombre ?? id,
+        valor: v,
+        sufijo: insumoNombre.get(id)?.unidad,
+      }))
       .sort((a, b) => b.valor - a.valor)
   }, [insumosMovs, insumoNombre])
 
-  /** Participación por CONCEPTO (el motivo del movimiento). */
+  /**
+   * Participación por CONCEPTO (el motivo del movimiento).
+   *
+   * Se cuentan ENTREGAS, no cantidades: sumar 40 ganchos con 23,95 galones da
+   * un "63,95" que no significa nada. Las entregas sí son comparables.
+   */
   const insPorConcepto = useMemo<Punto[]>(() => {
     const m = new Map<string, number>()
     insumosMovs.forEach((k) => {
       const c = (k.motivo ?? 'Otro').split('(')[0].trim()
-      m.set(c, (m.get(c) ?? 0) + k.cantidad)
+      m.set(c, (m.get(c) ?? 0) + 1)
     })
     return plegarOtros(Array.from(m.entries()).map(([k, v]) => ({ id: k, label: k, valor: v })))
   }, [insumosMovs])
@@ -369,7 +379,11 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
             Ver todo →
           </button>
         </div>
-        {insumosMovs.length === 0 ? (
+        {insumos.length === 0 ? (
+          /* El catálogo llega por su lado; sin él las barras mostrarían el UUID
+             crudo del insumo en la pantalla de Inicio del dueño. */
+          <p className="dash-vacio">Cargando insumos…</p>
+        ) : insumosMovs.length === 0 ? (
           <p className="dash-vacio">Sin entregas de insumos en este periodo.</p>
         ) : (
           <>
@@ -390,7 +404,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
             />
             <VerTodo datos={insPorProducto} visto={6} ver={verProd} onVer={setVerProd} unidad="" />
 
-            <p className="ins-res__lbl" style={{ marginTop: 12 }}>Por concepto</p>
+            <p className="ins-res__lbl" style={{ marginTop: 12 }}>Por concepto (entregas)</p>
             <BarrasH
               datos={insPorConcepto}
               unidad=""

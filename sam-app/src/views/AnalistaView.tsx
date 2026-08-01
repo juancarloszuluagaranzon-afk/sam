@@ -6,6 +6,7 @@ import { MapButton } from '../components/MapButton'
 import { AvalesCombustibleTab } from './AvalesCombustibleTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { InsumosInventarioTab } from './InsumosInventarioTab'
+import { InventarioResumenTab } from './InventarioResumenTab'
 import { BodegasTab } from './BodegasTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
@@ -21,9 +22,10 @@ import { MapaView } from './MapaView'
  * los catálogos —estaciones, placas, motivos— para que los formularios sugieran
  * una lista y no dependan del teclado de cada quien.
  */
-type AnalistaTab = 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'reportes' | 'mapa'
+type AnalistaTab = 'resumen' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'reportes' | 'mapa'
 
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
+  { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
   { key: 'avales', icon: '✅', label: 'Avales', desc: 'Tanqueos por aprobar' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
   { key: 'bodegas', icon: '🏢', label: 'Bodegas', desc: 'Principal y carros' },
@@ -34,7 +36,7 @@ const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = 
 
 export function AnalistaView({ onLogout }: { onLogout: () => void }) {
   const { session, error, info } = useAppData()
-  const [tab, setTab] = useState<AnalistaTab>('avales')
+  const [tab, setTab] = useState<AnalistaTab>('resumen')
   if (!session) return null
 
   return (
@@ -86,7 +88,8 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
           ))}
         </div>
 
-        {tab === 'avales' ? <AvalesCombustibleTab />
+        {tab === 'resumen' ? <InventarioResumenTab />
+          : tab === 'avales' ? <AvalesCombustibleTab />
           : tab === 'inventario' ? <InsumosInventarioTab />
           : tab === 'bodegas' ? <BodegasTab />
           : tab === 'catalogos' ? <CatalogosInsumosTab />

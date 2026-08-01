@@ -4,6 +4,7 @@ import { loadKardexReporte, loadCombustibleExterno, loadSolicitudes } from '../s
 import type { InsumoKardex, CombustibleExterno, SolicitudInsumo } from '../domain/sam'
 import { fmtFechaHoraLarga as fmtFecha, fmtFechaHora as fmtFechaCorta, fmtLapso } from '../lib/fechas'
 import { fmtCantidad, redondear2 } from '../lib/cantidad'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Reportes de consumo de insumos — por máquina y por insumo, en un rango de
@@ -299,9 +300,9 @@ export function ConsumoEquiposTab() {
         <h2>Reportes de consumo</h2>
         <button type="button" className="inline-button" onClick={() => void refresh()} disabled={loading}>↻ Actualizar</button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Combustible y materiales cargados a cada máquina (consumo neto), en el rango elegido.
-      </p>
+      <Ayuda>
+        <p>Combustible y materiales cargados a cada máquina (consumo neto), en el rango elegido.</p>
+      </Ayuda>
 
       <div className="rep-toolbar">
         <label className="rep-fecha">Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>

@@ -7,6 +7,7 @@ import { enviarOEncolar } from '../lib/outboxInsumos'
 import { fmtFechaHora as fmtFecha } from '../lib/fechas'
 import { fmtCantidad, stepDe, normalizarCantidad } from '../lib/cantidad'
 import { SearchableSelect } from '../components/SearchableSelect'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * "Mi bodega" — vista del supervisor de insumos sobre SU satélite (su vehículo):
@@ -218,9 +219,9 @@ export function MiBodegaTab() {
           </button>
         </div>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Lo que tienes cargado en tu vehículo. De aquí sale lo que entregas a los operarios.
-      </p>
+      <Ayuda>
+        <p>Lo que tienes cargado en tu vehículo. De aquí sale lo que entregas a los operarios.</p>
+      </Ayuda>
 
       {/* Traslados por confirmar */}
       {pendientes.length > 0 && (

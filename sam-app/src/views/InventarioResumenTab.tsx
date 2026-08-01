@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadBodegas, loadStockBodega, loadKardexReporte, updateInsumo } from '../services/samApi'
 import type { Bodega, StockBodega, InsumoKardex, Insumo } from '../domain/sam'
 import { fmtCantidad } from '../lib/cantidad'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Resumen de inventario: cuánto hay, dónde está y qué se mueve.
@@ -168,10 +169,12 @@ export function InventarioResumenTab() {
           ↻ Actualizar
         </button>
       </div>
-      <p className="subtle-copy">
-        Cuánto hay, en qué bodega está y qué se está gastando.
-        {bodegaNombre && <> Mostrando solo <strong>{bodegaNombre}</strong>.</>}
-      </p>
+      <Ayuda>
+        <p>
+          Cuánto hay, en qué bodega está y qué se está gastando.
+          {bodegaNombre && <> Mostrando solo <strong>{bodegaNombre}</strong>.</>}
+        </p>
+      </Ayuda>
 
       {/* Filtro por bodega: manda sobre TODO lo de abajo, existencias y consumo */}
       <div className="sol-filtros" style={{ marginTop: 10 }}>

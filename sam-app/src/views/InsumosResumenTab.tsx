@@ -4,6 +4,7 @@ import { loadBodegas, loadStockBodega, loadKardexReporte } from '../services/sam
 import { fmtCantidad } from '../lib/cantidad'
 import { fmtFechaHora, fmtLapso } from '../lib/fechas'
 import type { Bodega, StockBodega, InsumoKardex } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Insumos — vista de DUEÑO/administración: qué ha entregado cada supervisor
@@ -207,9 +208,9 @@ export function InsumosResumenTab() {
           ⬇ Excel
         </button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Cuánto ha entregado cada supervisor a las máquinas en el rango, y qué le queda cargado en el carro.
-      </p>
+      <Ayuda>
+        <p>Cuánto ha entregado cada supervisor a las máquinas en el rango, y qué le queda cargado en el carro.</p>
+      </Ayuda>
 
       <div className="realizadas-dateseg">
         <div className="realizadas-seg" role="group" aria-label="Periodo">

@@ -95,6 +95,11 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 ## Detalles que muerden
 
+- **🔴 El texto que explica una pantalla va dentro de `<Ayuda>`** (`src/components/`):
+  un botoncito "ⓘ Info", cerrado por defecto. Sirve la primera vez, pero al que entra
+  quince veces al día le come media pantalla del celular — en Bodegas eran **231 px**,
+  más de un cuarto de la pantalla, antes de ver el primer dato. Al crear una pantalla
+  nueva: el párrafo introductorio va plegado, no suelto.
 - **Fotos**: toda subida pasa por `lib/imagenLigera.ts` (comprime a ~20–80 KB). No
   subir imágenes crudas nunca — llenan el servidor.
 - **🔴 NUNCA sumar cantidades de insumos distintos.** Galones + unidades = un número

@@ -7,6 +7,7 @@ import {
 import type { Insumo, InsumoCategoria, InsumoKardex } from '../domain/sam'
 import { fmtFechaHora as fmtFecha } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Inventario de insumos (módulo Insumos y Combustible) — Fase 1.
@@ -215,14 +216,16 @@ export function InsumosInventarioTab() {
           + Nuevo insumo
         </button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        {combustibles} combustible(s) · {materiales} material(es). Registra <strong>entradas</strong> (compras) que
-        suman al inventario; las salidas se descuentan con los despachos.
-      </p>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        La cantidad de cada insumo es el <strong>total de la empresa</strong>: lo que está en la bodega
-        principal más lo que llevan los carros. Para ver dónde está repartido, entra a <strong>Bodegas</strong>.
-      </p>
+      <Ayuda>
+        <p>
+          {combustibles} combustible(s) · {materiales} material(es). Registra <strong>entradas</strong> (compras) que
+          suman al inventario; las salidas se descuentan con los despachos.
+        </p>
+        <p>
+          La cantidad de cada insumo es el <strong>total de la empresa</strong>: lo que está en la bodega
+          principal más lo que llevan los carros. Para ver dónde está repartido, entra a <strong>Bodegas</strong>.
+        </p>
+      </Ayuda>
 
       {bajos.length > 0 && (
         <button

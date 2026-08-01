@@ -7954,3 +7954,26 @@ td.planilla-vacio:hover { background: #fde047; }
 .desp-det__fila > span { font-size: 0.84rem; opacity: 0.75; }
 .desp-det__fila > strong { text-align: right; word-break: break-word; }
 .desp-det__fotos { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Ayuda plegada: el texto que explica la pantalla, detrás de un botoncito.
+   En un celular esas explicaciones ocupaban media pantalla. */
+.ayuda { margin: 2px 0 8px; }
+.ayuda__btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  /* Blanco cómodo para el dedo: 32px de alto, no los 24 de un chip decorativo. */
+  padding: 6px 12px; border-radius: 999px;
+  border: 1px solid var(--color-border); background: transparent;
+  color: var(--color-ink-mid); font: inherit; font-size: 0.78rem; cursor: pointer;
+}
+.ayuda__btn:active { background: var(--color-bg-muted); }
+.ayuda__btn.is-open { border-color: var(--color-brand); background: var(--color-bg-muted); }
+.ayuda__texto {
+  margin-top: 6px; padding: 10px 12px;
+  border-left: 3px solid var(--color-brand);
+  border-radius: 0 10px 10px 0;
+  background: var(--color-bg-soft);
+  color: var(--color-ink-mid);
+  font-size: 0.86rem; line-height: 1.45;
+}
+.ayuda__texto > p { margin: 0 0 6px; }
+.ayuda__texto > p:last-child { margin-bottom: 0; }

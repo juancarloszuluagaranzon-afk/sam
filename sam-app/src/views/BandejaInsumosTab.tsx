@@ -8,6 +8,7 @@ import { fmtFechaHora as fmtFecha, fmtLapso } from '../lib/fechas'
 import { enviarOEncolar, subirOGuardarFoto, esFotoLocal } from '../lib/outboxInsumos'
 import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Bandeja de entrada de solicitudes de insumos (módulo Insumos — fase 2).
@@ -338,9 +339,9 @@ export function BandejaInsumosTab() {
           <button type="button" className="inline-button" onClick={() => void refresh()} disabled={loading}>↻ Actualizar</button>
         </div>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Solicitudes de insumos de los operarios. <strong>Programa</strong> las que vas a despachar o <strong>rechaza</strong> con motivo.
-      </p>
+      <Ayuda>
+        <p>Solicitudes de insumos de los operarios. <strong>Programa</strong> las que vas a despachar o <strong>rechaza</strong> con motivo.</p>
+      </Ayuda>
 
       <div className="sol-filtros" role="tablist" aria-label="Filtrar solicitudes">
         {([

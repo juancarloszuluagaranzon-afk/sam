@@ -6,6 +6,7 @@ import {
 } from '../services/samApi'
 import type { ValorCatalogo } from '../domain/sam'
 import { aMayus, normalizarPlaca } from '../lib/texto'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Las listas que alimentan los formularios de insumos.
@@ -149,11 +150,13 @@ export function CatalogosInsumosTab() {
       <div className="panel-title split">
         <h2>📚 Catálogos</h2>
       </div>
-      <p className="subtle-copy">
-        Las listas que salen como sugerencia en los formularios de insumos. Cargarlas una
-        vez aquí hace que en el celular sea un toque — y que el mismo dato no entre escrito
-        de cinco formas distintas.
-      </p>
+      <Ayuda>
+        <p>
+          Las listas que salen como sugerencia en los formularios de insumos. Cargarlas una
+          vez aquí hace que en el celular sea un toque — y que el mismo dato no entre escrito
+          de cinco formas distintas.
+        </p>
+      </Ayuda>
 
       {/* Qué lista se está editando */}
       <div className="sol-filtros" style={{ marginTop: 10 }}>

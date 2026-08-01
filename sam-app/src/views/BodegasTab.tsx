@@ -7,6 +7,7 @@ import {
 import type { Bodega, StockBodega, Traslado, TrasladoItem } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Bodegas (administración/dueño): la PRINCIPAL y los SATÉLITES (el vehículo de
@@ -198,15 +199,17 @@ export function BodegasTab() {
         <h2>Bodegas</h2>
         <button type="button" className="primary-button" onClick={() => setNuevoOpen(true)} disabled={busy}>+ Nueva bodega satélite</button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        La <strong>principal</strong> compra y almacena; cada <strong>satélite</strong> es el vehículo de un supervisor de
-        insumos, de donde consumen los operarios. Se surten con un traslado que el supervisor confirma al recibir.
-      </p>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Ojo con la lectura: aquí cada bodega muestra <strong>lo que tiene ella</strong>. Lo que ya está en
-        los carros salió de la principal, así que no se cuenta dos veces — el total de la empresa es el
-        que aparece en <strong>Inventario</strong>.
-      </p>
+      <Ayuda>
+        <p>
+          La <strong>principal</strong> compra y almacena; cada <strong>satélite</strong> es el vehículo de un supervisor de
+          insumos, de donde consumen los operarios. Se surten con un traslado que el supervisor confirma al recibir.
+        </p>
+        <p>
+          Ojo con la lectura: aquí cada bodega muestra <strong>lo que tiene ella</strong>. Lo que ya está en
+          los carros salió de la principal, así que no se cuenta dos veces — el total de la empresa es el
+          que aparece en <strong>Inventario</strong>.
+        </p>
+      </Ayuda>
 
       {cargando ? <p className="muted-text">Cargando…</p> : (
         <>

@@ -7,6 +7,7 @@ import {
 import { DESTINO_LABEL, type CombustibleEstado, type CombustibleExterno, type Traslado, type Bodega } from '../domain/sam'
 import { fmtCantidad } from '../lib/cantidad'
 import { fmtDia, fmtFechaHora } from '../lib/fechas'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Avales de combustible — la bandeja del analista de insumos y materiales.
@@ -116,10 +117,12 @@ export function AvalesCombustibleTab() {
   return (
     <section className="panel-card">
       <h2>✅ Avales</h2>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Los tanqueos y el material que los supervisores toman de la bodega principal por su
-        cuenta. Al rechazar, todo regresa a la bodega de donde salió.
-      </p>
+      <Ayuda>
+        <p>
+          Los tanqueos y el material que los supervisores toman de la bodega principal por su
+          cuenta. Al rechazar, todo regresa a la bodega de donde salió.
+        </p>
+      </Ayuda>
 
       <div className="realizadas-seg" role="group" aria-label="Estado del aval" style={{ marginTop: 10 }}>
         {FILTROS.map((f) => (

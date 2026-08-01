@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { registrarCombustibleExterno, uploadEvidencia, loadVehiculos } from '../services/samApi'
-import { DESTINO_LABEL, type CombustibleDestino, type CombustibleOrigen, type Vehiculo } from '../domain/sam'
+import { registrarCombustibleExterno, uploadEvidencia } from '../services/samApi'
+import { DESTINO_LABEL, type CombustibleDestino, type CombustibleOrigen } from '../domain/sam'
 import { SearchableSelect } from './SearchableSelect'
+import { CampoPlaca, recordarPlaca } from './CampoPlaca'
+import { aMayus } from '../lib/texto'
 import { redondear2 } from '../lib/cantidad'
 import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
 
@@ -65,7 +67,6 @@ export function TanqueoModal({
   const [factura, setFactura] = useState('')
   const [tirilla, setTirilla] = useState('')
   const [subiendo, setSubiendo] = useState(false)
-  const [vehiculos, setVehiculos] = useState<Vehiculo[]>([])
   const fotoRef = useRef<HTMLInputElement>(null)
 
   const combustibles = useMemo(
@@ -89,7 +90,6 @@ export function TanqueoModal({
     setEquipoCodigo(equipoFijo ?? '')
     setPlaca(localStorage.getItem(`${PLACA_KEY}:${session?.id ?? ''}`) ?? '')
     setError('')
-    void loadVehiculos().then(setVehiculos)
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
   }, [open])
 
@@ -129,7 +129,7 @@ export function TanqueoModal({
       if (!equipoCodigo) { setError('Elige la máquina que se tanqueó.'); return }
       if (!horometro.trim() || Number(horometro) < 0) { setError('El horómetro de la máquina es obligatorio.'); return }
     }
-    if (destino === 'VEHICULO' && !placa) { setError('Elige la placa del vehículo.'); return }
+    if (destino === 'VEHICULO' && !placa) { setError('Escribe la placa del vehículo.'); return }
     if ((destino === 'CARRO' || destino === 'PIMPINAS') && !bodegaId) {
       setError('No tienes bodega satélite asignada.'); return
     }
@@ -157,6 +157,7 @@ export function TanqueoModal({
       const { enviado } = await enviarOEncolar('TANQUEO', payload, () => registrarCombustibleExterno(payload))
       if (destino === 'VEHICULO' && placa) {
         try { localStorage.setItem(`${PLACA_KEY}:${session?.id ?? ''}`, placa) } catch { /* storage lleno */ }
+        recordarPlaca(placa)
       }
       setInfo(enviado
         ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval del analista.`
@@ -251,13 +252,7 @@ export function TanqueoModal({
 
           {destino === 'VEHICULO' && (
             <label>Placa del vehículo <span style={{ color: '#b3261e' }}>*</span>
-              <SearchableSelect
-                value={placa}
-                onChange={setPlaca}
-                options={vehiculos.map((v) => ({ value: v.placa, label: v.placa, rightLabel: v.descripcion, frecuente: v.frecuente }))}
-                placeholder="Buscar placa…"
-                disabled={busy}
-              />
+              <CampoPlaca value={placa} onChange={setPlaca} disabled={busy} />
             </label>
           )}
 
@@ -281,8 +276,8 @@ export function TanqueoModal({
 
           {origen === 'ESTACION' && (
             <>
-              <label>Estación<input type="text" value={estacion} onChange={(e) => setEstacion(e.target.value)} disabled={busy} /></label>
-              <label>N° tirilla / factura<input type="text" value={factura} onChange={(e) => setFactura(e.target.value)} disabled={busy} /></label>
+              <label>Estación<input type="text" autoCapitalize="characters" value={estacion} onChange={(e) => setEstacion(aMayus(e.target.value))} disabled={busy} /></label>
+              <label>N° tirilla / factura<input type="text" autoCapitalize="characters" value={factura} onChange={(e) => setFactura(aMayus(e.target.value))} disabled={busy} /></label>
               <label>Valor <span className="field-optional">(opcional)</span>
                 <input type="number" min={0} step="any" value={valor} onChange={(e) => setValor(e.target.value)} disabled={busy} />
               </label>

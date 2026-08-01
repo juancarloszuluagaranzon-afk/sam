@@ -52,6 +52,15 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    24 h, para que la hora no dependa del reloj del equipo de quien mira. Aplica
    a pantallas Y a los Excel. Al crear cualquier listado de movimientos, entregas
    o despachos: **revisar que la hora esté antes de darlo por terminado.**
+5d. **🔴 La placa se digita, no se elige de un catálogo.** Usar **`<CampoPlaca>`**
+   (`src/components/`): campo libre con sugerencias de las últimas 20 placas escritas
+   en ese equipo (`localStorage`), normalizadas a mayúscula y sin espacios ni guiones
+   (`abc 123` = `ABC-123` = `ABC123`). Obligar a dar de alta el vehículo antes de
+   tanquearlo era un muro en la bomba a las 6 a.m. Al guardar, llamar `recordarPlaca()`.
+5e. **🔴 Lo que se digita va en MAYÚSCULA.** `lib/texto.ts` (`aMayus`, `normalizarPlaca`)
+   + `autoCapitalize="characters"` en el input. Los mismos datos los escriben cinco
+   personas distintas y "campoalegre"/"CampoAlegre" terminan siendo dos valores en un
+   reporte. NO tocar fechas, horas ni números.
 6. **Área ejecutada**: el fallback `executedArea>0?executedArea:area` aplica **SOLO** a
    estados `COMPLETADA`/`PARCIAL`. Una labor no cerrada muestra 0.00. Es dinero real.
 7. **Al terminar un deploy, reportar la versión** (`git rev-parse --short HEAD`).
@@ -103,8 +112,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   `TanqueoModal`, que registra dos ejes independientes:
   - `origen`: **ESTACION** (se compró en la bomba, no sale de ninguna bodega) o
     **SEDE** (sale de la PRINCIPAL; se descuenta de una vez porque ya se lo llevaron).
-  - `destino`: **CARRO**/**PIMPINAS** suman al satélite · **VEHICULO** (exige placa del
-    catálogo `vehiculos`) y **MAQUINA** (exige horómetro) son consumo, no tocan stock.
+  - `destino`: **CARRO**/**PIMPINAS** suman al satélite · **VEHICULO** (exige placa) y
+    **MAQUINA** (exige horómetro) son consumo, no tocan stock.
   Todo nace `PENDIENTE` y lo avala el analista en `AvalesCombustibleTab`. **Rechazar
   REVERSA** los movimientos — si tocas ese flujo, mantén la reversa simétrica.
 - **🔴 Horómetro: nunca el máximo ni la mediana.** Es la base del preventivo y los

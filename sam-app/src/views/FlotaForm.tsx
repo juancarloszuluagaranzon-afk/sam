@@ -2,6 +2,8 @@ import { useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { createFlotaServicio, uploadImagenFlota } from '../services/samApi'
 import { FirmaPad, type FirmaPadHandle } from '../components/FirmaPad'
+import { CampoPlaca, recordarPlaca } from '../components/CampoPlaca'
+import { aMayus } from '../lib/texto'
 
 /**
  * Formulario de registro de un SERVICIO de escolta (formato CDA-F-68), pensado
@@ -16,6 +18,10 @@ function hoyISO(): string {
 }
 
 const TIPOS = ['ESCOLTA', 'TRANSPORTE', 'DISPONIBILIDAD', 'OTRO']
+
+/** Campos que NO se tocan: fechas, horas y números. El resto va en mayúscula. */
+const CRUDOS = new Set(['fecha', 'tipoServicio', 'horaSalidaOrigen', 'horaLlegadaDestino',
+  'horaSalidaDestino', 'horaLlegadaOrigen', 'horaEspera', 'numPeajes', 'otrosGastos', 'totalKm'])
 
 export function FlotaForm({
   onClose,
@@ -50,7 +56,8 @@ export function FlotaForm({
     observacion: '',
     firmaNombre: '',
   })
-  const set = (k: keyof typeof f, v: string) => setF((prev) => ({ ...prev, [k]: v }))
+  const set = (k: keyof typeof f, v: string) =>
+    setF((prev) => ({ ...prev, [k]: CRUDOS.has(k) ? v : aMayus(v) }))
 
   const firmaRef = useRef<FirmaPadHandle>(null)
   const [hayFirma, setHayFirma] = useState(false)
@@ -103,6 +110,7 @@ export function FlotaForm({
         firmaNombre: f.firmaNombre.trim() || undefined,
         evidenciaUrl,
       })
+      recordarPlaca(f.vehiculo)
       setInfo('Servicio registrado.')
       onSaved()
       onClose()
@@ -122,17 +130,19 @@ export function FlotaForm({
 
         <div className="flota-grid">
           <label>Fecha<input type="date" value={f.fecha} onChange={(e) => set('fecha', e.target.value)} disabled={busy} /></label>
-          <label>Vehículo (placa)<input type="text" value={f.vehiculo} onChange={(e) => set('vehiculo', e.target.value)} placeholder="ABC123" disabled={busy} /></label>
+          <label>Vehículo (placa)
+            <CampoPlaca value={f.vehiculo} onChange={(v) => set('vehiculo', v)} disabled={busy} />
+          </label>
           <label>Tipo de servicio
             <select value={f.tipoServicio} onChange={(e) => set('tipoServicio', e.target.value)} disabled={busy}>
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          <label>Centro de costo<input type="text" value={f.centroCosto} onChange={(e) => set('centroCosto', e.target.value)} disabled={busy} /></label>
-          <label>Proceso solicitante<input type="text" value={f.procesoSolicitante} onChange={(e) => set('procesoSolicitante', e.target.value)} disabled={busy} /></label>
-          <label>Nombre del pasajero<input type="text" value={f.nombrePasajero} onChange={(e) => set('nombrePasajero', e.target.value)} disabled={busy} /></label>
-          <label>Origen <span style={{ color: '#b3261e' }}>*</span><input type="text" value={f.origen} onChange={(e) => set('origen', e.target.value)} disabled={busy} /></label>
-          <label>Destino <span style={{ color: '#b3261e' }}>*</span><input type="text" value={f.destino} onChange={(e) => set('destino', e.target.value)} disabled={busy} /></label>
+          <label>Centro de costo<input type="text" autoCapitalize="characters" value={f.centroCosto} onChange={(e) => set('centroCosto', e.target.value)} disabled={busy} /></label>
+          <label>Proceso solicitante<input type="text" autoCapitalize="characters" value={f.procesoSolicitante} onChange={(e) => set('procesoSolicitante', e.target.value)} disabled={busy} /></label>
+          <label>Nombre del pasajero<input type="text" autoCapitalize="characters" value={f.nombrePasajero} onChange={(e) => set('nombrePasajero', e.target.value)} disabled={busy} /></label>
+          <label>Origen <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.origen} onChange={(e) => set('origen', e.target.value)} disabled={busy} /></label>
+          <label>Destino <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.destino} onChange={(e) => set('destino', e.target.value)} disabled={busy} /></label>
           <label>Hora salida origen<input type="time" value={f.horaSalidaOrigen} onChange={(e) => set('horaSalidaOrigen', e.target.value)} disabled={busy} /></label>
           <label>Hora llegada destino<input type="time" value={f.horaLlegadaDestino} onChange={(e) => set('horaLlegadaDestino', e.target.value)} disabled={busy} /></label>
           <label>Hora salida destino<input type="time" value={f.horaSalidaDestino} onChange={(e) => set('horaSalidaDestino', e.target.value)} disabled={busy} /></label>
@@ -144,7 +154,7 @@ export function FlotaForm({
         </div>
 
         <label style={{ marginTop: 10 }}>Observación
-          <textarea rows={2} value={f.observacion} onChange={(e) => set('observacion', e.target.value)} disabled={busy} />
+          <textarea rows={2} autoCapitalize="characters" value={f.observacion} onChange={(e) => set('observacion', e.target.value)} disabled={busy} />
         </label>
 
         {/* Comprobante: foto de evidencia (liviana) */}
@@ -163,7 +173,7 @@ export function FlotaForm({
         {/* Comprobante: firma del pasajero/responsable */}
         <div className="flota-comprobante">
           <span className="flota-comprobante__lbl">✍️ Firma del pasajero / responsable</span>
-          <input type="text" className="flota-firma-nombre" placeholder="Nombre de quien firma" value={f.firmaNombre} onChange={(e) => set('firmaNombre', e.target.value)} disabled={busy} />
+          <input type="text" className="flota-firma-nombre" placeholder="Nombre de quien firma" autoCapitalize="characters" value={f.firmaNombre} onChange={(e) => set('firmaNombre', e.target.value)} disabled={busy} />
           <FirmaPad ref={firmaRef} onCambio={setHayFirma} disabled={busy} />
         </div>
 

@@ -68,6 +68,11 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
 6. **Área ejecutada**: el fallback `executedArea>0?executedArea:area` aplica **SOLO** a
    estados `COMPLETADA`/`PARCIAL`. Una labor no cerrada muestra 0.00. Es dinero real.
 7. **Al terminar un deploy, reportar la versión** (`git rev-parse --short HEAD`).
+9. **🔴 Nadie avala lo que él mismo registró.** El analista ahora también entrega y
+   tanquea; el aval es el segundo par de ojos y si firma lo suyo el control desaparece.
+   `AvalesCombustibleTab` esconde los botones cuando `registradoPor === session.id` y
+   avisa que lo firma el dueño o administración (que ven la misma pantalla). Al abrir
+   un flujo de aval a quien también origina el registro: cerrar esta puerta.
 8. **Nunca usar `now()`** al normalizar fechas en SQL; usar `coalesce(fecha_inicio, created_at)`.
 
 ## Flujo de trabajo
@@ -87,7 +92,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Planilla | `views/PlanillaTab` | Cuadrícula quincenal + novedades (V, T, F, OV, MT, IN, SP, LL…) |
 | Maestro de suertes | `views/MaestrosTab` | Áreas oficiales; ⚠️ hay códigos de hacienda compartidos |
 | Insumos y combustible | `views/Insumos*`, `Bodegas*`, `MiBodegaTab`, `CatalogosInsumosTab` | **Stock por BODEGA** (principal + satélites = el carro de cada supervisor), traslados con aval, solicitudes, despacho con evidencia, aval del operario, entrega directa, reportes Excel |
-| Tanqueo + avales | `components/TanqueoModal`, `views/AvalesCombustibleTab` | Todo el combustible que no pasa por un despacho entra por aquí y lo avala el **analista de insumos** (`AnalistaView`), que además ve Inventario/kardex, Bodegas y Catálogos: es el administrador del proceso, no solo el que firma |
+| Tanqueo + avales | `components/TanqueoModal`, `views/AvalesCombustibleTab` | Todo el combustible que no pasa por un despacho entra por aquí y lo avala el **analista de insumos** (`AnalistaView`), que además ve Inventario/kardex, Bodegas, Catálogos **y también entrega**: despacha solicitudes, hace entregas directas desde la principal y registra tanqueos. ⚠️ **No puede avalar lo que él mismo registró** — eso lo firma el dueño o administración |
 | Mapas offline | `views/MapaView`, `MapasTab` | Visor tipo Avenza (capas, medir, marcadores) + tiles de FieldMaps |
 | Flota / Escolta | `views/Flota*` | Formato CDA-F-68, rol `conductor`, firma táctil + foto |
 | Taller de maquinaria | `views/TallerModule`, `views/taller/*` | Hoja de vida, preventivo por horómetro, órdenes de trabajo, repuestos, compras e indicadores ($/hora, disponibilidad, TMEF, TMR) |

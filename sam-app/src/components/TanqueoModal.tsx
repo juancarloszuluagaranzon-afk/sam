@@ -69,6 +69,11 @@ export function TanqueoModal({
   const [subiendo, setSubiendo] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
 
+  // El propio analista también tanquea: decirle que "lo avala el analista"
+  // sería decirle que se avala a sí mismo, y no puede.
+  const soyElAnalista = session?.role === 'analista_insumos'
+  const quienAvala = soyElAnalista ? 'del dueño o administración' : 'del analista de insumos y materiales'
+
   const combustibles = useMemo(
     () => insumos.filter((i) => i.activo && i.categoria === 'COMBUSTIBLE'),
     [insumos],
@@ -163,7 +168,7 @@ export function TanqueoModal({
       // este equipo para el próximo tanqueo.
       if (estacion) recordarValor('ESTACION', estacion)
       setInfo(enviado
-        ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval del analista.`
+        ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval ${quienAvala}.`
         : `Guardado sin señal: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Se envía solo cuando haya cobertura.`)
       onClose()
       onSaved?.()
@@ -306,7 +311,7 @@ export function TanqueoModal({
         </div>
 
         <p className="subtle-copy" style={{ marginTop: 10, marginBottom: 0 }}>
-          Queda <strong>pendiente del aval</strong> del analista de insumos y materiales.
+          Queda <strong>pendiente del aval</strong> {quienAvala}.
         </p>
 
         <div className="modal-footer">

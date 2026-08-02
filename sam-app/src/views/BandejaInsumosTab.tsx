@@ -9,6 +9,7 @@ import { enviarOEncolar, subirOGuardarFoto, esFotoLocal } from '../lib/outboxIns
 import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
+import { TanqueoModal } from '../components/TanqueoModal'
 
 /**
  * Bandeja de entrada de solicitudes de insumos (módulo Insumos — fase 2).
@@ -91,6 +92,7 @@ export function BandejaInsumosTab() {
   const [filtro, setFiltro] = useState<'PENDIENTE' | 'PROGRAMADA' | 'ENTREGADA' | 'TODAS'>('PENDIENTE')
   const [solicitudes, setSolicitudes] = useState<SolicitudInsumo[]>([])
   const [loading, setLoading] = useState(false)
+  const [tanqueoOpen, setTanqueoOpen] = useState(false)
   const [rechazoTarget, setRechazoTarget] = useState<SolicitudInsumo | null>(null)
   const [motivo, setMotivo] = useState('')
 
@@ -330,12 +332,26 @@ export function BandejaInsumosTab() {
 
   const pendientesCount = solicitudes.filter((s) => s.estado === 'PENDIENTE').length
 
+  /**
+   * El analista despacha desde la PRINCIPAL, no desde un carro.
+   *
+   * Los supervisores ya tienen el tanqueo en "Mi bodega"; él no tiene bodega
+   * satélite, así que su botón vive aquí. Solo destinos de CONSUMO (máquina y
+   * vehículo): sumar a un carro es del supervisor de ese carro.
+   */
+  const esAnalista = session?.role === 'analista_insumos'
+
   return (
     <section className="panel-card">
       <div className="panel-title split">
         <h2>Bandeja de solicitudes {filtro === 'PENDIENTE' && pendientesCount > 0 ? `(${pendientesCount})` : ''}</h2>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="button" className="primary-button" onClick={openDirecta} disabled={busy}>⚡ Entrega directa</button>
+          {esAnalista && (
+            <button type="button" className="primary-button" onClick={() => setTanqueoOpen(true)} disabled={busy}>
+              ⛽ Registrar tanqueo
+            </button>
+          )}
           <button type="button" className="inline-button" onClick={() => void refresh()} disabled={loading}>↻ Actualizar</button>
         </div>
       </div>
@@ -675,6 +691,18 @@ export function BandejaInsumosTab() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tanqueo del analista: sale de la principal y va a consumo. Nace
+          PENDIENTE como cualquier otro, pero él NO puede avalar el suyo. */}
+      {esAnalista && (
+        <TanqueoModal
+          open={tanqueoOpen}
+          onClose={() => setTanqueoOpen(false)}
+          onSaved={() => void refresh()}
+          bodegaId={miBodega?.id}
+          destinos={['MAQUINA', 'VEHICULO']}
+        />
       )}
     </section>
   )

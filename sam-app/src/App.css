@@ -7994,3 +7994,10 @@ td.planilla-vacio:hover { background: #fde047; }
 .mov-row__items { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; }
 /* El concepto sube a la cabecera; ya no hay una cantidad sola a la derecha. */
 .desp-row__cab .desp-row__cant { font-size: 0.78rem; font-weight: 500; opacity: 0.7; }
+
+/* Aval propio: no se puede firmar lo que uno mismo registró. */
+.aval-row__propio {
+  margin: 6px 0 0; padding: 6px 10px;
+  border-left: 3px solid var(--color-border); border-radius: 0 8px 8px 0;
+  background: var(--color-bg-muted); font-size: 0.8rem;
+}

@@ -54,6 +54,19 @@ export function AvalesCombustibleTab() {
   }, [estado])
   useEffect(() => { void refresh() }, [refresh])
 
+  /**
+   * Nadie avala lo que él mismo registró.
+   *
+   * El analista ahora también entrega y tanquea, y el aval es justamente el
+   * segundo par de ojos: si firma su propio registro, el control deja de
+   * existir. Lo suyo lo avala el dueño o administración, que ven esta misma
+   * pantalla.
+   */
+  const esMio = useCallback(
+    (registradoPor?: string) => !!registradoPor && registradoPor === session?.id,
+    [session?.id],
+  )
+
   const nombreInsumo = useMemo(() => {
     const m = new Map<string, { nombre: string; unidad: string }>()
     insumos.forEach((i) => m.set(i.id, { nombre: i.nombre, unidad: i.unidad }))
@@ -227,7 +240,12 @@ export function AvalesCombustibleTab() {
                         <img src={e.tirillaUrl} alt="soporte" />
                       </a>
                     )}
-                    {e.estado === 'PENDIENTE' && (
+                    {e.estado === 'PENDIENTE' && esMio(e.registradoPor) && (
+                      <p className="subtle-copy aval-row__propio">
+                        🔒 Lo registraste tú: lo avala el dueño o administración.
+                      </p>
+                    )}
+                    {e.estado === 'PENDIENTE' && !esMio(e.registradoPor) && (
                       <div className="aval-row__acts">
                         <button type="button" className="inline-button" onClick={() => { setRevisar({ ev: e, aprobar: false }); setNota('') }} disabled={busy}>
                           Rechazar

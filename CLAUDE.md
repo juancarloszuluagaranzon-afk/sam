@@ -68,7 +68,7 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
 6. **Área ejecutada**: el fallback `executedArea>0?executedArea:area` aplica **SOLO** a
    estados `COMPLETADA`/`PARCIAL`. Una labor no cerrada muestra 0.00. Es dinero real.
 7. **Al terminar un deploy, reportar la versión** (`git rev-parse --short HEAD`).
-9. **🔴 Nadie avala lo que él mismo registró.** El analista ahora también entrega y
+7b. **🔴 Nadie avala lo que él mismo registró.** El analista ahora también entrega y
    tanquea; el aval es el segundo par de ojos y si firma lo suyo el control desaparece.
    `AvalesCombustibleTab` esconde los botones cuando `registradoPor === session.id` y
    avisa que lo firma el dueño o administración (que ven la misma pantalla). Al abrir

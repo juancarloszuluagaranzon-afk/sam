@@ -93,6 +93,11 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // Los manuales son páginas propias, no rutas de la app. Sin esto el
+        // service worker se queda con la navegación y a quien tiene la PWA
+        // instalada le abre el aplicativo en vez del manual — que es justo lo
+        // que pasa al mandar el enlace por WhatsApp.
+        navigateFallbackDenylist: [/^\/manuales\//],
         // Supabase API calls NO se cachean en el SW — ya los manejamos en IndexedDB (Dexie).
         // Cachear aquí causa que las respuestas paginadas (Range header) colisionen con la
         // misma URL cacheada y devuelvan datos incompletos.

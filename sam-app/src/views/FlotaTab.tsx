@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadFlotaServicios, anularFlotaServicio } from '../services/samApi'
 import { FlotaForm } from './FlotaForm'
 import type { FlotaServicio } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Módulo Flota / Escolta — lista de servicios (CDA-F-68), registro de uno nuevo
@@ -109,9 +110,9 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         <h2>{esAdmin ? 'Flota / Escolta' : 'Mis servicios'}</h2>
         <button type="button" className="primary-button" onClick={() => setFormOpen(true)} disabled={busy}>+ Nuevo servicio</button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Control de transporte de flota no propia (CDA-F-68). Cada servicio lleva su firma y foto de evidencia.
-      </p>
+      <Ayuda>
+        <p>Control de transporte de flota no propia (CDA-F-68). Cada servicio lleva su firma y foto de evidencia.</p>
+      </Ayuda>
 
       <div className="rep-toolbar">
         <label className="rep-fecha">Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>

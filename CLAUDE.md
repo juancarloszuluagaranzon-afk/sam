@@ -117,8 +117,20 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 - **🔴 El texto que explica una pantalla va dentro de `<Ayuda>`** (`src/components/`):
   un botoncito "ⓘ Info", cerrado por defecto. Sirve la primera vez, pero al que entra
   quince veces al día le come media pantalla del celular — en Bodegas eran **231 px**,
-  más de un cuarto de la pantalla, antes de ver el primer dato. Al crear una pantalla
-  nueva: el párrafo introductorio va plegado, no suelto.
+  más de un cuarto de la pantalla, antes de ver el primer dato. **Aplicado en las 25
+  pantallas del app**, taller incluido. Al crear una pantalla nueva: el párrafo
+  introductorio va plegado, no suelto. Lo que va dentro de un MODAL se queda suelto —
+  ahí el texto es la instrucción del momento, no un letrero permanente.
+  Ver `.agent/skills/writing-ui-copy/`.
+- **📖 Los manuales** viven en `sam/manuales/` (cuerpos `_cuerpo_*.html` + `_estilo.css`)
+  y se publican con la app en `public/manuales/`, para compartirlos por WhatsApp con un
+  enlace: `/manuales/manual-{operario,supervisor-insumos,analista-diego,taller}.html`.
+  ⚠️ `vite.config.ts` lleva `navigateFallbackDenylist: [/^\/manuales\//]`: sin eso el
+  service worker se queda con la navegación y a quien tiene la PWA instalada le abre el
+  aplicativo en vez del manual. **Al cambiar una pantalla, revisar si el manual quedó
+  mintiendo** — ya pasó con el de insumos (decía que el combustible entraba por tanqueo,
+  y el tanqueo no tiene ningún destino que le sume a la principal; entra por
+  Inventario → + Entrada).
 - **Fotos**: toda subida pasa por `lib/imagenLigera.ts`. Perfiles por uso, y el criterio
   NO es "lo más chico posible" sino lo más chico que TODAVÍA SIRVE: `evidencia` 800 px
   (~45 KB, solo hay que ver qué es), `documento` 1400 px (~120 KB, la tirilla hay que
@@ -187,7 +199,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   Igual con las compras: nacen en BORRADOR y solo **recibirlas** mueve el inventario.
 - **Skills del repo**: `sam-app/.agent/skills/` — leerlas antes de tocar su área
   (`managing-assignments`, `managing-insumos`, `managing-mapas`, `managing-supabase`,
-  `managing-maestro`, `managing-taller`, `capturing-gotchas`).
+  `managing-maestro`, `managing-taller`, `writing-ui-copy`, `capturing-gotchas`).
 
 ## Cómo trabaja el usuario
 

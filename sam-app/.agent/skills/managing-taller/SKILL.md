@@ -184,3 +184,37 @@ era claramente una (`\s[0-9][0-9A-Z/\-\.]{3,}$`).
 Texto plano a propósito: se manda por WhatsApp y ahí cualquier formato se rompe.
 `faltantesParaPedir()` avisa en la ficha qué le falta al repuesto para que el
 proveedor no tenga que preguntar — mejor antes de mandarlo que después.
+
+## Cómo se llena la información (y el manual del cliente)
+
+El módulo tiene un **orden de carga** que no es opcional: cada pantalla se apoya
+en la anterior.
+
+| # | Pantalla | Qué deja listo | Si se salta… |
+|---|---|---|---|
+| 1 | 🚜 Máquinas | marca, modelo, serie, valor de compra, vida útil | el preventivo por modelo **no encuentra máquinas** y el pedido sale sin describir el equipo |
+| 2 | 🔩 Repuestos | código propio + `aplica_a` | se duplican ítems (PUNTERA / PUNTERAS) y no se pueden elegir en la orden |
+| 3 | 🗓️ Preventivo | cada cuántas horas y desde qué horómetro | sin `horometro_ultima_vez` la tarea nace vencida |
+| 4 | 🔧 Órdenes | el día a día | — |
+| 5 | 🧾 Compras | entrada de repuestos | — |
+| 6 | 📈 Ciclo de vida | sale solo de lo anterior + horas del mes y precio del galón | — |
+
+### Los cinco errores que dañan los indicadores
+
+1. **No marcar «la máquina queda parada»** → sin `paro_en` no hay disponibilidad
+   ni TMR. Es el que más se olvida.
+2. **Marca y modelo vacíos** → hoy los 25 equipos los tienen en blanco; hasta que
+   no se carguen, el preventivo por modelo no aplica a nadie.
+3. **Crear el repuesto sin buscarlo antes** → el duplicado parte el stock en dos.
+4. **Abrir la orden al final del día** → la hora del paro queda mal y la
+   disponibilidad miente.
+5. **Horómetro mal copiado** → ver la sección del horómetro arriba.
+
+### El manual
+
+`sam/manuales/_cuerpo_taller.html` → se publica en
+`agroserviciosmorales.vercel.app/manuales/manual-taller.html`.
+
+Cubre el orden de carga, qué significa cada campo y los cinco errores. **Al
+cambiar un campo o una regla de este módulo, revisar si el manual quedó
+mintiendo** — ya pasó una vez con el manual de insumos.

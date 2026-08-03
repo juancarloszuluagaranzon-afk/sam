@@ -1,0 +1,365 @@
+<div class="hoja">
+
+  <div class="portada">
+    <p class="portada__marca">AgroMorales · Manual</p>
+    <h1>Guía del taller de maquinaria</h1>
+    <p class="portada__para">Cómo se llena la información</p>
+    <p class="portada__nota">
+      El taller vive del horómetro. Si ese número entra bien, todo lo demás sale solo:
+      cuándo toca el mantenimiento, cuánto cuesta la hora de cada máquina y cuánto tiempo
+      estuvo parada.
+    </p>
+  </div>
+
+  <nav class="indice">
+    <h2>Qué vas a encontrar</h2>
+    <ol>
+      <li><a href="#orden">El orden en que se carga todo</a></li>
+      <li><a href="#maquinas">Máquinas: la hoja de vida</a></li>
+      <li><a href="#repuestos">Repuestos: cómo se codifican</a></li>
+      <li><a href="#preventivo">Preventivo: cada cuántas horas</a></li>
+      <li><a href="#ordenes">Órdenes de trabajo ← el corazón</a></li>
+      <li><a href="#compras">Compras</a></li>
+      <li><a href="#ciclo">Ciclo de vida y costo por hora</a></li>
+      <li><a href="#errores">Los cinco errores que dañan los números</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section class="paso" id="orden">
+    <h2><span class="paso__num">1</span> El orden en que se carga todo</h2>
+    <p class="paso__intro">
+      No se puede empezar por cualquier lado. Cada cosa se apoya en la anterior, y si te
+      saltas un paso la siguiente pantalla te queda coja.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🔧 Taller</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card r-card--verde"><strong>1 · 🚜 Máquinas</strong><div class="r-sub">Marca, modelo, serie, valor de compra y vida útil</div></div>
+          <div class="r-card r-card--verde"><strong>2 · 🔩 Repuestos</strong><div class="r-sub">Código propio + a qué máquinas aplica</div></div>
+          <div class="r-card r-card--verde"><strong>3 · 🗓️ Preventivo</strong><div class="r-sub">Cada cuántas horas toca cada tarea</div></div>
+          <div class="r-card"><strong>4 · 🔧 Órdenes</strong><div class="r-sub">El día a día: todo lo que se le hace a una máquina</div></div>
+          <div class="r-card"><strong>5 · 🧾 Compras</strong><div class="r-sub">Lo que entra al inventario de repuestos</div></div>
+          <div class="r-card"><strong>6 · 📈 Ciclo de vida</strong><div class="r-sub">Sale solo de lo anterior + los costos del mes</div></div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Primero las máquinas</strong><span>Sin marca y modelo cargados, el preventivo “por modelo” no encuentra a quién aplicarle la tarea. Es el paso que más se salta y el que más duele.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Después los repuestos</strong><span>Antes de la primera orden, porque en la orden se eligen de una lista.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El preventivo, una sola vez</strong><span>Se carga al principio y se corrige de vez en cuando. No es tarea diaria.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Las órdenes son el día a día</strong><span>Lo demás son catálogos que se llenan una vez.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section class="paso" id="maquinas">
+    <h2><span class="paso__num">2</span> Máquinas: la hoja de vida</h2>
+    <p class="paso__intro">El horómetro vigente y todo lo que se le ha hecho a cada equipo.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🚜 Hoja de vida de las máquinas</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card">Buscar máquina… <span class="r-sub">CASE951, tractor…</span></div>
+          <div class="r-card r-card--verde">
+            <div class="r-fila"><span class="r-titulo">CASE 1301</span><span class="r-pill">5444 h</span></div>
+            <div class="r-sub">Última lectura: 2 ago · entrega de insumos</div>
+          </div>
+          <div class="r-card">
+            <div class="r-sub">Datos del activo</div>
+            <div class="r-fila"><span>Marca</span><span>CASE</span></div>
+            <div class="r-fila"><span>Modelo</span><span>JX95</span></div>
+            <div class="r-fila"><span>Valor de compra</span><span>$ —</span></div>
+            <div class="r-fila"><span>Vida útil (horas)</span><span>10000</span></div>
+            <div class="r-fila"><span>Valor residual</span><span>$ —</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>El horómetro no se escribe</strong><span>Sale solo de las labores que cierran los operarios y de los tanqueos. Solo lo escribes si la máquina no pasó por ninguno de los dos.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Marca y modelo</strong><span><em>Obligatorios.</em> Sin ellos el preventivo por modelo no funciona y el pedido al proveedor sale sin describir la máquina.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Valor de compra y vida útil</strong><span>Con esos dos se calcula la depreciación por hora. Sin ellos, el costo por hora sale incompleto.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Valor residual</strong><span>Lo que valdría al final de su vida útil. Si no lo sabes, déjalo en cero: se deprecia todo.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>El aviso de dedazos.</strong> Si arriba te sale
+      <em>“⚠ N lectura(s) de horómetro con dedazo”</em>, son lecturas que la app descartó
+      porque tenían un dígito de más o de menos. No las borres: revisa con el operario cuál
+      era la buena. Un <code>5407</code> escrito como <code>54030</code> desordena todo el
+      plan de mantenimiento de esa máquina.
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section class="paso" id="repuestos">
+    <h2><span class="paso__num">3</span> Repuestos: cómo se codifican</h2>
+    <p class="paso__intro">
+      Aquí está el punto que más se equivoca. El repuesto tiene <strong>dos nombres</strong>
+      y no son intercambiables.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🔩 Repuestos</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Código propio *</div><div class="r-card">ROD-0005</div>
+          <div class="r-sub">Nombre *</div><div class="r-card">RODAMIENTO 30206</div>
+          <div class="r-sub">Familia</div><div class="r-card">RODAMIENTOS</div>
+          <div class="r-fila">
+            <div style="flex:1"><div class="r-sub">Marca</div><div class="r-card">SKF</div></div>
+            <div style="flex:1"><div class="r-sub">N° de parte</div><div class="r-card">30206 J2/Q</div></div>
+          </div>
+          <div class="r-sub">Descripción para el proveedor</div>
+          <div class="r-card">Cónico, 30x62x17,25 mm</div>
+          <div class="r-sub">Aplica a</div>
+          <div class="r-card">CASE JX95 · VALTRA A950 <span class="r-sub">Genérico — sirve para cualquier máquina.</span></div>
+          <div class="r-sub">Ubicación</div><div class="r-card">Estante A-3</div>
+          <div class="r-btn r-btn--ancho">Guardar</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Código propio</strong><span>Es <em>tuyo</em>, no del proveedor. Familia + consecutivo: <code>ROD-0005</code>, <code>FIL-0012</code>. Nunca cambia, aunque cambies de proveedor.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Marca y N° de parte</strong><span>Eso <em>sí</em> es del proveedor. Es lo que él busca en su sistema. Un mismo repuesto puede tener varios.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Descripción para el proveedor</strong><span>Las medidas y el tipo. Es lo que evita que te manden el que no era.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Aplica a</strong><span>Marca las máquinas donde sirve. Es lo que impide comprar dos veces lo mismo con nombres distintos.</span></div></li>
+        <li><span class="marca">5</span><div><strong>Ubicación</strong><span>Dónde está en el estante. Suena tonto hasta que hay 200 referencias.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>El botón “Copiar”.</strong> Arma el texto del pedido tal como lo entiende el
+      proveedor:<br>
+      <code>SKF 30206 J2/Q — Cónico, 30x62x17,25 mm — para CASE JX95 (serie ABC123)</code><br>
+      Lo pegas en WhatsApp y ya. <strong>Nunca le mandes tu código propio</strong>: para él
+      <code>ROD-0005</code> no significa nada.
+    </div>
+
+    <div class="ojo">
+      <strong>Antes de crear uno nuevo, búscalo.</strong> El buscador mira código, nombre,
+      referencia, marca y N° de parte. Crear <em>PUNTERA</em> y <em>PUNTERAS</em> por
+      separado es el error más común, y después el inventario dice que hay 0 de cada uno
+      cuando en realidad hay 40 de lo mismo.
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <section class="paso" id="preventivo">
+    <h2><span class="paso__num">4</span> Preventivo: cada cuántas horas</h2>
+    <p class="paso__intro">Se programa por <strong>horas de máquina</strong>, no por fecha. Un tractor que trabajó 300 horas en el mes necesita el cambio antes que uno que trabajó 40.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🗓️ Preventivo</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Tarea *</div><div class="r-card">Cambio de aceite motor</div>
+          <div class="r-sub">¿A qué aplica?</div>
+          <div class="r-fila">
+            <div class="r-card r-card--verde" style="flex:1"><strong>Marca y modelo</strong><div class="r-sub">CASE · JX95</div></div>
+            <div class="r-card" style="flex:1"><strong>Una máquina puntual</strong></div>
+          </div>
+          <div class="r-sub">Cada cuántas horas *</div><div class="r-card">250</div>
+          <div class="r-sub">Avisar cuántas horas antes</div><div class="r-card">25</div>
+          <div class="r-sub">Horómetro de la última vez</div><div class="r-card">5200</div>
+          <div class="r-btn r-btn--ancho">Guardar</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Por marca y modelo</strong><span>Una sola tarea cubre todos los tractores iguales. Por eso importaba cargar marca y modelo en el paso 2.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Cada cuántas horas</strong><span>Lo que dice el manual del fabricante. 250 h para aceite de motor, 500 h para hidráulico, etc.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Avisar antes</strong><span>Con cuántas horas de anticipación quieres verlo en amarillo. Con 25 h alcanzas a comprar el filtro.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Horómetro de la última vez</strong><span>Cuándo se hizo por última vez. Si no lo pones, la app cree que nunca se ha hecho y te lo marca vencido de una.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      La lista se ordena sola: <strong>lo vencido primero</strong>, después lo que está por
+      vencer, y de último lo que está al día. No tienes que buscar nada.
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <section class="paso" id="ordenes">
+    <h2><span class="paso__num">5</span> Órdenes de trabajo</h2>
+    <p class="paso__intro">
+      <strong>Todo lo que se le hace a una máquina pasa por una orden.</strong> Es la pieza
+      central: de aquí salen la disponibilidad, el tiempo entre fallas y el costo de
+      mantenimiento.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🔧 Nueva orden</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Máquina *</div><div class="r-card">Buscar máquina…</div>
+          <div class="r-sub">Tipo</div>
+          <div class="r-fila"><span class="r-tab">Preventivo</span><span class="r-tab on">Correctivo</span><span class="r-tab">Mejora</span></div>
+          <div class="r-sub">Causa *</div><div class="r-card">Se reventó la manguera del hidráulico</div>
+          <div class="r-sub">Horómetro</div><div class="r-card">5444</div>
+          <div class="r-card r-card--rojo">☑ La máquina queda parada <div class="r-sub">Paro: 2 ago 08:15</div></div>
+          <div class="r-sub">Responsable</div><div class="r-card">Taller · Servicio externo</div>
+          <div class="r-btn r-btn--ancho">Abrir orden</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Tipo</strong><span><strong>Correctivo</strong>: se dañó. <strong>Preventivo</strong>: le tocaba. <strong>Mejora</strong>: se le agregó algo. Solo los correctivos cuentan para el tiempo entre fallas.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Causa</strong><span>Qué pasó, en palabras normales. Es lo que después deja ver que la misma manguera se revienta cada dos meses.</span></div></li>
+        <li><span class="marca">3</span><div><strong>“La máquina queda parada”</strong><span>Márcalo si dejó de trabajar. <em>Sin esto no hay disponibilidad ni tiempo de reparación.</em> Es el dato que más se olvida.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Responsable</strong><span>Taller propio o servicio externo. Si es externo, pones el proveedor y el costo.</span></div></li>
+      </ul>
+    </div>
+
+    <h3 style="margin-top:22px">Al cerrar la orden</h3>
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Cerrar orden · CASE 1301</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Horómetro al cerrar *</div><div class="r-card">5449</div>
+          <div class="r-sub">Arranque</div><div class="r-card">2 ago 14:30</div>
+          <div class="r-sub">Repuestos usados</div>
+          <div class="r-card">
+            <div class="r-fila"><span>ROD-0005 RODAMIENTO 30206</span><span>2 × $48.000</span></div>
+            <div class="r-sub">☑ Descargar del inventario</div>
+          </div>
+          <div class="r-sub">Mano de obra</div>
+          <div class="r-fila">
+            <div class="r-card" style="flex:1">Horas: 3</div>
+            <div class="r-card" style="flex:1">Costo: $90.000</div>
+          </div>
+          <div class="r-btn r-btn--ancho">Cerrar orden</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Arranque</strong><span>Cuándo volvió a trabajar. Con el paro y el arranque se calcula cuánto estuvo quieta.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Los repuestos se descuentan aquí</strong><span>No al agregarlos: <em>al cerrar</em>. Cada uno se marca uno por uno para que cerrar dos veces no descuente doble.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Mano de obra</strong><span>Horas y costo. Si fue servicio externo, va el valor de la factura.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Si era preventivo</strong><span>Al cerrarla, la tarea del plan se reprograma sola para las siguientes 250 h.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>Abre la orden cuando pasa, no al final del día.</strong> El paro se marca con
+      la hora en que la máquina dejó de trabajar. Si la abres a las 5 de la tarde por algo
+      que pasó a las 8 de la mañana, la disponibilidad de esa máquina queda mintiendo.
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────────── -->
+  <section class="paso" id="compras">
+    <h2><span class="paso__num">6</span> Compras</h2>
+    <p class="paso__intro">Lo que le compras al proveedor. Nace en borrador y solo entra al inventario cuando la recibes.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🧾 Nueva compra</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Proveedor *</div><div class="r-card">Buscar proveedor…</div>
+          <div class="r-fila">
+            <div style="flex:1"><div class="r-sub">Factura</div><div class="r-card">4471</div></div>
+            <div style="flex:1"><div class="r-sub">Fecha</div><div class="r-card">02/08/2026</div></div>
+          </div>
+          <div class="r-sub">Ítems</div>
+          <div class="r-card">
+            <div class="r-fila"><span>ROD-0005 RODAMIENTO 30206</span><span>4 × $48.000</span></div>
+          </div>
+          <div class="r-fila"><div class="r-card" style="flex:1">Impuestos: $36.480</div></div>
+          <div class="r-card r-card--rojo">Estado: BORRADOR — todavía no entró al inventario</div>
+          <div class="r-btn r-btn--ancho">Recibir compra</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Borrador ≠ recibida</strong><span>Puedes cargarla cuando haces el pedido. El inventario no se mueve hasta que le das <strong>Recibir</strong>.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Recibir es el momento</strong><span>Ahí sube el stock de cada repuesto y queda el costo unitario para calcular el promedio.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El número de factura</strong><span>Es lo que después permite cuadrar contra contabilidad. No lo dejes en blanco.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Si te equivocaste</strong><span>Una compra recibida se <strong>anula</strong>, y eso reversa el inventario. No la edites a mano.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────────── -->
+  <section class="paso" id="ciclo">
+    <h2><span class="paso__num">7</span> Ciclo de vida y costo por hora</h2>
+    <p class="paso__intro">
+      Aquí no se llena casi nada: la mayoría sale solo de lo que ya cargaste. Solo hay que
+      darle dos datos del mes.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">📈 Ciclo de vida y costo por hora</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Máquina</div><div class="r-card">CASE 1301</div>
+          <div class="r-sub">Periodo</div><div class="r-card">Agosto 2026</div>
+          <div class="r-sub">Horas trabajadas en el mes *</div><div class="r-card">180</div>
+          <div class="r-sub">Precio del galón *</div><div class="r-card">$ 14.500</div>
+          <div class="r-card">
+            <div class="r-sub">INDICADORES DEL PERIODO</div>
+            <div class="r-fila"><span>Combustible</span><span>142 gal</span></div>
+            <div class="r-fila"><span>Repuestos</span><span>$ 96.000</span></div>
+            <div class="r-fila"><span>Mano de obra</span><span>$ 90.000</span></div>
+            <div class="r-fila"><span>Depreciación</span><span>$ —</span></div>
+          </div>
+          <div class="r-sub">Cargar costo · Concepto</div>
+          <div class="r-fila"><span class="r-tab">Operativos</span><span class="r-tab">Administrativos</span><span class="r-tab">Impuestos</span></div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Horas trabajadas</strong><span>El único dato que hay que escribir a mano cada mes. Sale de la diferencia de horómetros.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Precio del galón</strong><span>Para convertir los galones consumidos en plata. Cámbialo cuando cambie el precio.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El resto sale solo</strong><span>El combustible viene de los despachos y tanqueos; los repuestos y la mano de obra, de las órdenes cerradas.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Cargar costo</strong><span>Para lo que no pasa por una orden: seguros, impuestos, administración. Se reparten por hora igual que lo demás.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>Los cuatro indicadores.</strong>
+      <strong>Disponibilidad</strong>: qué porcentaje del tiempo estuvo lista.
+      <strong>TMEF</strong>: cuántas horas aguanta entre una falla y otra.
+      <strong>TMR</strong>: cuánto se demora en repararse.
+      <strong>Costo por hora</strong>: todo lo anterior dividido por las horas trabajadas.
+      Los cuatro dependen de que las órdenes tengan paro y arranque.
+    </div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────────── -->
+  <section class="paso" id="errores">
+    <h2><span class="paso__num">8</span> Los cinco errores que dañan los números</h2>
+
+    <div class="cierre" style="margin-top:0">
+      <table>
+        <tr><th>Error</th><th>Qué se daña</th></tr>
+        <tr>
+          <td><strong>No marcar “la máquina queda parada”</strong></td>
+          <td>No hay disponibilidad ni tiempo de reparación. La máquina aparece trabajando mientras estaba en el taller.</td>
+        </tr>
+        <tr>
+          <td><strong>Dejar marca y modelo vacíos</strong></td>
+          <td>El preventivo por modelo no encuentra a quién aplicarle la tarea y el pedido al proveedor sale sin describir la máquina.</td>
+        </tr>
+        <tr>
+          <td><strong>Crear el repuesto sin buscarlo antes</strong></td>
+          <td>PUNTERA y PUNTERAS quedan como dos cosas distintas. El inventario dice 0 de cada uno cuando hay 40 de lo mismo.</td>
+        </tr>
+        <tr>
+          <td><strong>Abrir la orden al final del día</strong></td>
+          <td>La hora del paro queda mal y la disponibilidad miente.</td>
+        </tr>
+        <tr>
+          <td><strong>El horómetro mal copiado</strong></td>
+          <td>Un <code>5407</code> escrito <code>54030</code> adelanta o atrasa todo el plan de mantenimiento de esa máquina.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="ojo">
+      <strong>Si dudas de un dato, no lo inventes.</strong> Un campo vacío se ve y se puede
+      completar después. Un número inventado se mezcla con los buenos y ya nadie sabe cuál
+      era cuál.
+    </div>
+  </section>
+
+</div>

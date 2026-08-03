@@ -1,6 +1,7 @@
 import { useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { saveMotivacion, uploadMotivacionImagen } from '../services/samApi'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Motivación" (propietario / administración) — submenú Catálogos.
@@ -74,10 +75,10 @@ export function MotivacionTab() {
       <div className="panel-title split">
         <h2>Motivación del operario</h2>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Mensaje e imagen/GIF que ve el operario cuando su rendimiento de la quincena llega al umbral.
-        Las <strong>metas por labor</strong> se ponen en Catálogos → Labores.
-      </p>
+      <Ayuda>
+        <p>Mensaje e imagen/GIF que ve el operario cuando su rendimiento de la quincena llega al umbral.
+        Las <strong>metas por labor</strong> se ponen en Catálogos → Labores.</p>
+      </Ayuda>
 
       <div className="motiv-grid">
         <div className="motiv-form">

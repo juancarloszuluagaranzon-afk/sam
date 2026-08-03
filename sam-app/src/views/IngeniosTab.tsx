@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { createIngenio, updateIngenio, deleteIngenio } from '../services/samApi'
 import { slugIngenio } from '../data/ingenios'
 import type { Ingenio } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Ingenios" (propietario / administración) — submenú Catálogos.
@@ -137,10 +138,10 @@ export function IngeniosTab() {
           {activos} activo{activos === 1 ? '' : 's'} de {ordenados.length}
         </span>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Ingenios/compradores a los que se presta la labor. Al crear uno, queda disponible
-        de inmediato en el cargue masivo del maestro, los formularios y los reportes.
-      </p>
+      <Ayuda>
+        <p>Ingenios/compradores a los que se presta la labor. Al crear uno, queda disponible
+        de inmediato en el cargue masivo del maestro, los formularios y los reportes.</p>
+      </Ayuda>
 
       <div className="labor-cat-add">
         <input

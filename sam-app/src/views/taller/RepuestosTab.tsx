@@ -11,6 +11,7 @@ import { loadStockBodega, loadInsumos } from '../../services/samApi'
 import { SearchableSelect } from '../../components/SearchableSelect'
 import { fmtCantidad } from '../../lib/cantidad'
 import type { Aplicabilidad, InsumoProveedor, StockBodega } from '../../domain/sam'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * Catálogo de repuestos.
@@ -116,11 +117,11 @@ export function RepuestosTab() {
   return (
     <section className="panel-card">
       <h2>🔩 Repuestos</h2>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        El repuesto se identifica por el <strong>código propio</strong>; la referencia del
+      <Ayuda>
+        <p>El repuesto se identifica por el <strong>código propio</strong>; la referencia del
         proveedor es un alias. Marca a qué máquinas aplica para no comprar dos veces lo
-        mismo con nombres distintos.
-      </p>
+        mismo con nombres distintos.</p>
+      </Ayuda>
 
       <label style={{ marginTop: 10 }}>Buscar por código, nombre, referencia, marca o N° de parte
         <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ROD-0002, rodamiento, 30206…" />

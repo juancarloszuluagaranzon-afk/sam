@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { createLabor, updateLabor, deleteLabor } from '../services/samApi'
 import type { Labor, LaborTipo } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Labores" (propietario / administración).
@@ -175,11 +176,11 @@ export function LaboresTab() {
           {activas} activa{activas === 1 ? '' : 's'} de {ordenadas.length}
         </span>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Crea, renombra, activa o desactiva labores. Las <strong>desactivadas</strong> dejan de
+      <Ayuda>
+        <p>Crea, renombra, activa o desactiva labores. Las <strong>desactivadas</strong> dejan de
         aparecer al asignar y al tomar en campo; el histórico que ya las usa se conserva. La
-        <strong> meta ha/día</strong> alimenta el rendimiento quincenal del operario (ej. DESPEJE 12).
-      </p>
+        <strong> meta ha/día</strong> alimenta el rendimiento quincenal del operario (ej. DESPEJE 12).</p>
+      </Ayuda>
 
       {/* Crear nueva labor */}
       <div className="labor-cat-add">

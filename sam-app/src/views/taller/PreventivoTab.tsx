@@ -5,6 +5,7 @@ import { savePlan, deletePlan, crearOrden } from '../../services/tallerApi'
 import { SearchableSelect } from '../../components/SearchableSelect'
 import { vencimientosDe } from '../../lib/indicadores'
 import type { MttoPlan } from '../../domain/sam'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * Plan preventivo — se dispara por HORÓMETRO.
@@ -93,9 +94,9 @@ export function PreventivoTab() {
           + Nuevo plan
         </button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Cada tarea se programa por horas de máquina. Lo vencido va de primero.
-      </p>
+      <Ayuda>
+        <p>Cada tarea se programa por horas de máquina. Lo vencido va de primero.</p>
+      </Ayuda>
 
       {visibles.length === 0 ? (
         <p className="muted-text" style={{ marginTop: 12 }}>

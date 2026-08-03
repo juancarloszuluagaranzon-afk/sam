@@ -18,6 +18,7 @@ import type { MaestroRow } from '../domain/sam'
  */
 
 import { ingenioNombre } from '../data/ingenios'
+import { Ayuda } from '../components/Ayuda'
 
 const LIMIT = 300
 
@@ -189,9 +190,9 @@ export function MaestrosTab() {
           )}
         </div>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Edita el área neta de una suerte o elimínala del catálogo. Usa la búsqueda o los filtros para encontrarla rápido.
-      </p>
+      <Ayuda>
+        <p>Edita el área neta de una suerte o elimínala del catálogo. Usa la búsqueda o los filtros para encontrarla rápido.</p>
+      </Ayuda>
 
       {/* Búsqueda + botón de filtros (mismo patrón que Labores) */}
       <div className="labores-search-row">

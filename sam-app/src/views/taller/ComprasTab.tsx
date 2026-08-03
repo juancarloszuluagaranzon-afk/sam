@@ -9,6 +9,7 @@ import { fmtFechaHora } from '../../lib/fechas'
 import { fmtCantidad } from '../../lib/cantidad'
 import type { Compra, CompraItem, Proveedor, ProveedorTipo } from '../../domain/sam'
 import { useEffect } from 'react'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * Compras y proveedores.
@@ -111,10 +112,10 @@ export function ComprasTab() {
           + Nueva compra
         </button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        La compra nace en <strong>borrador</strong>. Solo al recibirla entra al inventario,
-        con su movimiento de kardex — así se sabe siempre de dónde salió cada repuesto.
-      </p>
+      <Ayuda>
+        <p>La compra nace en <strong>borrador</strong>. Solo al recibirla entra al inventario,
+        con su movimiento de kardex — así se sabe siempre de dónde salió cada repuesto.</p>
+      </Ayuda>
 
       {/* Proveedores */}
       <div className="bod-head" style={{ marginTop: 14 }}>

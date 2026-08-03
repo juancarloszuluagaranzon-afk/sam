@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { createZona, updateZona, deleteZona } from '../services/samApi'
 import type { Zona } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Zonas" (propietario / administración) — submenú Catálogos.
@@ -127,10 +128,10 @@ export function ZonasTab() {
           {activas} activa{activas === 1 ? '' : 's'} de {ordenadas.length}
         </span>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Zonas de trabajo. Asigna una zona a cada <strong>supervisor</strong> en Usuarios; al aprobar
-        labores, la zona se llena sola con la del supervisor.
-      </p>
+      <Ayuda>
+        <p>Zonas de trabajo. Asigna una zona a cada <strong>supervisor</strong> en Usuarios; al aprobar
+        labores, la zona se llena sola con la del supervisor.</p>
+      </Ayuda>
 
       <div className="labor-cat-add">
         <input

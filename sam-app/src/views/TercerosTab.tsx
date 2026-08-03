@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { createTercero, updateTercero, deleteTercero } from '../services/samApi'
 import type { Tercero } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Terceros" (propietario / administración) — submenú Catálogos.
@@ -122,10 +123,10 @@ export function TercerosTab() {
           {activos} activo{activos === 1 ? '' : 's'} de {ordenados.length}
         </span>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Catálogo informativo de ingenios y terceros (clientes a los que se les presta la labor).
-        Crea, renombra, activa o desactiva. Es una lista de referencia, no condiciona la operación.
-      </p>
+      <Ayuda>
+        <p>Catálogo informativo de ingenios y terceros (clientes a los que se les presta la labor).
+        Crea, renombra, activa o desactiva. Es una lista de referencia, no condiciona la operación.</p>
+      </Ayuda>
 
       <div className="labor-cat-add">
         <input

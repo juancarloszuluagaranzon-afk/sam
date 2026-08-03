@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { createEmpresa, updateEmpresa, deleteEmpresa } from '../services/samApi'
 import type { Empresa } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Empresas" (propietario / administración) — submenú Catálogos.
@@ -123,10 +124,10 @@ export function EmpresasTab() {
           {activas} activa{activas === 1 ? '' : 's'} de {ordenadas.length}
         </span>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Compañías operadas en el aplicativo (p. ej. Agroservicios Morales). Crea, renombra,
-        activa o desactiva. Por ahora es solo catálogo.
-      </p>
+      <Ayuda>
+        <p>Compañías operadas en el aplicativo (p. ej. Agroservicios Morales). Crea, renombra,
+        activa o desactiva. Por ahora es solo catálogo.</p>
+      </Ayuda>
 
       <div className="labor-cat-add">
         <input

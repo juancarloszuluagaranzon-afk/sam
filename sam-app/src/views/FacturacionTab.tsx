@@ -7,6 +7,7 @@ import {
   currentQuincena,
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Facturación (administración/owner): lista las labores REALIZADAS
@@ -101,9 +102,9 @@ export function FacturacionTab() {
           Sin facturar: <strong>{haSinFacturar.toFixed(2)} ha</strong> · Facturada: <strong>{haFacturada.toFixed(2)} ha</strong>
         </span>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Labores realizadas del período. Marca varias y asígnales un N° de factura de una sola vez.
-      </p>
+      <Ayuda>
+        <p>Labores realizadas del período. Marca varias y asígnales un N° de factura de una sola vez.</p>
+      </Ayuda>
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>

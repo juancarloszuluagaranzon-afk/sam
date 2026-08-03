@@ -5,6 +5,7 @@ import { setHorometroManual, updateEquipoActivo } from '../../services/tallerApi
 import { fmtFechaHora } from '../../lib/fechas'
 import { calcularIndicadores } from '../../lib/indicadores'
 import { OT_TIPO_LABEL, type OrdenTrabajo } from '../../domain/sam'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * Hoja de vida de la máquina.
@@ -99,11 +100,11 @@ export function MaquinasTab() {
   return (
     <section className="panel-card">
       <h2>🚜 Hoja de vida de las máquinas</h2>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Horómetro vigente y todo lo que se le ha hecho a cada equipo. El horómetro sale
+      <Ayuda>
+        <p>Horómetro vigente y todo lo que se le ha hecho a cada equipo. El horómetro sale
         solo de las labores y los tanqueos; solo hay que escribirlo si la máquina no pasó
-        por ninguno de los dos.
-      </p>
+        por ninguno de los dos.</p>
+      </Ayuda>
 
       {dudosos.length > 0 && (
         <div className="taller-aviso taller-aviso--warn">

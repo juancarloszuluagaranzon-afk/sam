@@ -9,6 +9,7 @@ import { SearchableSelect } from '../../components/SearchableSelect'
 import { fmtFechaHora, fmtLapso } from '../../lib/fechas'
 import { fmtCantidad } from '../../lib/cantidad'
 import { OT_TIPO_LABEL, type OrdenTrabajo, type OtEstado, type OtTipo } from '../../domain/sam'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * Órdenes de trabajo — la pieza central del taller.
@@ -175,11 +176,11 @@ export function OrdenesTab() {
           + Nueva orden
         </button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Todo lo que se le hace a una máquina pasa por una orden. De aquí salen el costo
+      <Ayuda>
+        <p>Todo lo que se le hace a una máquina pasa por una orden. De aquí salen el costo
         de mantenimiento y los indicadores: sin la hora del paro y la del arranque no hay
-        forma de medir disponibilidad ni tiempo de reparación.
-      </p>
+        forma de medir disponibilidad ni tiempo de reparación.</p>
+      </Ayuda>
 
       <div className="realizadas-seg" role="group" aria-label="Estado" style={{ marginTop: 10 }}>
         {ESTADOS.map((e) => (

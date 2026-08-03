@@ -6,6 +6,7 @@ import { loadCombustibleExterno, loadKardexReporte } from '../../services/samApi
 import { SearchableSelect } from '../../components/SearchableSelect'
 import { calcularIndicadores, calcularCostoActivo, galonesDeMaquina } from '../../lib/indicadores'
 import { COSTO_LABEL, type CostoConcepto, type EquipoCosto, type InsumoKardex, type CombustibleExterno } from '../../domain/sam'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * Ciclo de vida del activo — el "$/unitario" del apunte.
@@ -105,9 +106,9 @@ export function CicloVidaTab() {
   return (
     <section className="panel-card">
       <h2>📈 Ciclo de vida y costo por hora</h2>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Las tres bolsas de costo del activo y los cuatro indicadores, en un mes.
-      </p>
+      <Ayuda>
+        <p>Las tres bolsas de costo del activo y los cuatro indicadores, en un mes.</p>
+      </Ayuda>
 
       <div className="flota-grid" style={{ marginTop: 10 }}>
         <label>Máquina

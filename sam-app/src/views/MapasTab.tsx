@@ -5,6 +5,7 @@ import { metaDescarga, formatoBytes } from '../lib/mapaOffline'
 import { listarCartografias, type CartografiaRemota } from '../services/fieldmapsApi'
 import { MapaFormModal } from '../components/MapaFormModal'
 import type { MapaConfig } from '../domain/sam'
+import { Ayuda } from '../components/Ayuda'
 
 /**
  * Pestaña "Mapas" (SOLO propietario/jefe y administración) — submenú Catálogos.
@@ -126,12 +127,12 @@ export function MapasTab() {
           + Agregar mapa
         </button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>
-        Los mapas aparecen en el visor (pestaña Mapa) para todos los roles como capas que se
+      <Ayuda>
+        <p>Los mapas aparecen en el visor (pestaña Mapa) para todos los roles como capas que se
         superponen, y cada uno se descarga para uso <strong>sin señal</strong>. Cuando la
         cartografía cambie, usa <strong>🔄 Reemplazar</strong>: el mapa conserva su identidad y
-        los equipos verán el aviso de re-descarga.
-      </p>
+        los equipos verán el aviso de re-descarga.</p>
+      </Ayuda>
 
       {procesados.length > 0 && (
         <div className="mapa-listos">

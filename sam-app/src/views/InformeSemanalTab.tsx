@@ -100,6 +100,8 @@ export function InformeSemanalTab() {
           'HORAS TRABAJADAS': f.horas ?? '',
           'Combustible(gal)': f.galones || '',
           'GALONES / HORA': f.galonesPorHora ?? '',
+          '¿Engrasó el tractor?': f.engrases.preguntadas === 0 ? ''
+            : f.engrases.si > 0 ? `SI (${f.engrases.si} de ${f.engrases.preguntadas})` : 'NO',
           'Eventos': f.eventos.length,
           'Lecturas descartadas': f.sospechosos || '',
         }
@@ -125,6 +127,7 @@ export function InformeSemanalTab() {
             'Operario': e.operario,
             'Responsable': e.responsable,
             'Insumos': e.insumos.map((i) => `${fmtCantidad(i.cantidad, i.unidad)} ${i.unidad} ${i.nombre}`).join(' · '),
+            '¿Engrasó?': e.engraso == null ? '' : e.engraso ? 'SI' : 'NO',
             '⚠ Horómetro dudoso': e.horometroSospechoso ? 'SÍ' : '',
           })
         }
@@ -191,6 +194,9 @@ export function InformeSemanalTab() {
                   <div className="sem-fila__kpis">
                     <span><small>Horas</small><strong>{f.horas ?? '—'}</strong></span>
                     <span><small>Galones</small><strong>{f.galones || '—'}</strong></span>
+                    {f.engrases.preguntadas > 0 && (
+                      <span><small>Engrase</small><strong>{f.engrases.si}/{f.engrases.preguntadas}</strong></span>
+                    )}
                     <span className={desv != null && Math.abs(desv) >= 25 ? 'sem-alerta' : ''}>
                       <small>gal/hora</small>
                       <strong>
@@ -220,6 +226,7 @@ export function InformeSemanalTab() {
                           <span>Horómetro <strong>{e.horometro}</strong></span>
                           {e.horasDesdeAnterior != null && <span>Trabajó <strong>{e.horasDesdeAnterior} h</strong></span>}
                           {e.galones > 0 && <span>Recibió <strong>{fmtCantidad(e.galones, 'galón')} gal</strong></span>}
+                          {e.engraso != null && <span>{e.engraso ? '🛢️ Engrasó' : '⚠ No engrasó'}</span>}
                         </div>
                         <span className="subtle-copy">
                           {e.insumos.map((i) => `${fmtCantidad(i.cantidad, i.unidad)} ${i.unidad} ${i.nombre}`).join(' · ')}

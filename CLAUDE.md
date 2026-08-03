@@ -160,6 +160,12 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   inventario; el resto se pliega en "Otros". Se eligen en **Insumos → 📊 Resumen →
   ⭐ Elegir materiales destacados** (y también desde Inventario → ⋯). Hoy: COMBUSTIBLE
   y GANCHOS. Dos o tres es lo sano.
+- **🔴 El AJUSTE FIJA el saldo, no lo suma.** Al rehacer stock desde el kardex, sumar
+  `SALIDA/ENTRADA` a ciegas sobre un insumo con ajustes da un número que no corresponde
+  (GANCHOS suma 1480 en el kardex y su saldo real es 1200; las dos cifras son correctas).
+  Y si el recálculo SALTA esos pares "por seguridad", el saldo no se corrige: ya mordió
+  al limpiar una entrega de prueba (3-ago-2026) y quedó 1 gancho abajo. **Después de
+  borrar movimientos, verificar el saldo contra lo que había antes.**
 - **Cantidades de insumos**: `lib/cantidad.ts`. Redondear **al calcular saldos**
   (sin eso el punto flotante guarda `1020.4100000000001`), y mostrar con
   `fmtCantidad(n, unidad)` — las unidades enteras (ganchos, tornillos) van **sin

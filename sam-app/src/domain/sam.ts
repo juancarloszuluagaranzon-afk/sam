@@ -510,6 +510,13 @@ export interface SolicitudInsumo {
   confirmadoPor?: string
   conforme?: boolean | null
   confirmacionNota?: string
+  /**
+   * ¿Se engrasó la máquina en esta entrega?
+   *
+   * `undefined` = no se preguntó (entregas anteriores a agosto 2026). No es lo
+   * mismo que "no engrasó".
+   */
+  engraso?: boolean
 }
 
 export interface CreateAssignmentInput {

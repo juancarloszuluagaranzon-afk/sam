@@ -10,6 +10,7 @@ import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cant
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 import { TanqueoModal } from '../components/TanqueoModal'
+import { SwitchEngraso } from '../components/SwitchEngraso'
 
 /**
  * Bandeja de entrada de solicitudes de insumos (módulo Insumos — fase 2).
@@ -93,6 +94,10 @@ export function BandejaInsumosTab() {
   const [solicitudes, setSolicitudes] = useState<SolicitudInsumo[]>([])
   const [loading, setLoading] = useState(false)
   const [tanqueoOpen, setTanqueoOpen] = useState(false)
+  // Engrase: se pregunta en la entrega porque es cuando se hace. Sin elegir
+  // por defecto — un descuido no debe quedar como "no engrasó".
+  const [entregaEngraso, setEntregaEngraso] = useState<boolean | undefined>(undefined)
+  const [dirEngraso, setDirEngraso] = useState<boolean | undefined>(undefined)
   const [rechazoTarget, setRechazoTarget] = useState<SolicitudInsumo | null>(null)
   const [motivo, setMotivo] = useState('')
 
@@ -172,6 +177,7 @@ export function BandejaInsumosTab() {
     setEntregaRuta('')
     setEntregaEquipo(equipoDeOperario(s.operarioId))
     setEntregaHorometro('')
+    setEntregaEngraso(undefined)
     setEvidencias([])
     setError('')
   }
@@ -194,7 +200,13 @@ export function BandejaInsumosTab() {
   async function confirmarEntrega() {
     if (!entregaTarget) return
     const items = entregaItems
-      .map((r) => ({ itemId: r.itemId, insumoId: r.insumoId, cantidadDespachada: Number(r.cantidad) }))
+      .map((r) => ({
+        itemId: r.itemId,
+        insumoId: r.insumoId,
+        insumoNombre: r.insumoNombre,
+        unidad: r.unidad,
+        cantidadDespachada: Number(r.cantidad),
+      }))
       .filter((r) => r.cantidadDespachada > 0)
     if (items.length === 0) { setError('Indica al menos una cantidad a despachar.'); return }
     if (!entregaEquipo) { setError('Selecciona la máquina a la que se carga el material.'); return }
@@ -219,6 +231,7 @@ export function BandejaInsumosTab() {
         horometro,
         evidenciaUrls: evidencias,
         bodegaId: miBodega?.id,
+        engraso: entregaEngraso,
         items,
       }
       const { enviado } = await enviarOEncolar('DESPACHO', payload, async () => {
@@ -250,6 +263,7 @@ export function BandejaInsumosTab() {
     setDirEquipo('')
     setDirHorometro('')
     setDirNota('')
+    setDirEngraso(undefined)
     setDirFotos([])
     setError('')
     setDirectaOpen(true)
@@ -304,6 +318,7 @@ export function BandejaInsumosTab() {
         equipoCodigo: dirEquipo,
         horometro,
         nota: dirNota.trim() || undefined,
+        engraso: dirEngraso,
         evidenciaUrls: dirFotos,
         bodegaId: miBodega?.id,
         items,
@@ -529,9 +544,43 @@ export function BandejaInsumosTab() {
                       onChange={(e) => setEntregaItems((prev) => prev.map((r, i) => (i === idx ? { ...r, cantidad: e.target.value } : r)))}
                       disabled={busy} style={{ width: 90 }} />
                     <span className="subtle-copy" style={{ width: 44, fontSize: '0.78rem' }}>{row.unidad}</span>
+                    {!row.itemId && (
+                      <button type="button" className="inline-button" disabled={busy}
+                        onClick={() => setEntregaItems((prev) => prev.filter((_, i) => i !== idx))}
+                        aria-label={`Quitar ${row.insumoNombre}`}>✕</button>
+                    )}
                   </div>
                 )
               })}
+            </div>
+
+            {/* Adicionales: el operario pidió una cosa y el supervisor le lleva
+                otra de una. Pasa todo el tiempo, y antes tocaba hacer una
+                entrega directa aparte para lo mismo. */}
+            <div style={{ marginTop: 10 }}>
+              <span className="subtle-copy" style={{ display: 'block', marginBottom: 4 }}>
+                ¿Le vas a entregar algo más que no pidió?
+              </span>
+              <SearchableSelect
+                value=""
+                onChange={(v) => {
+                  const ins = insumos.find((i) => i.id === v)
+                  if (!ins || entregaItems.some((r) => r.insumoId === v)) return
+                  setEntregaItems((prev) => [...prev, {
+                    insumoId: ins.id, insumoNombre: ins.nombre, unidad: ins.unidad, cantidad: '',
+                  }])
+                }}
+                options={activeInsumos
+                  .filter((i) => !entregaItems.some((r) => r.insumoId === i.id))
+                  .map((i) => ({
+                    value: i.id,
+                    label: `${i.nombre} (${i.unidad})`,
+                    rightLabel: fmtCantidad(stockMio(i.id), i.unidad),
+                    frecuente: i.frecuente,
+                  }))}
+                placeholder="+ Agregar otro insumo…"
+                disabled={busy}
+              />
             </div>
             <label style={{ marginTop: 10 }}>
               Horómetro de la máquina <span style={{ color: '#b3261e' }}>*</span>
@@ -543,6 +592,8 @@ export function BandejaInsumosTab() {
                 required
               />
             </label>
+            <SwitchEngraso value={entregaEngraso} onChange={setEntregaEngraso} disabled={busy} />
+
             <label style={{ marginTop: 10 }}>
               Máquina (tractor) <span style={{ color: '#b3261e' }}>*</span>
               <SearchableSelect
@@ -663,6 +714,8 @@ export function BandejaInsumosTab() {
                 disabled={busy}
               />
             </label>
+            <SwitchEngraso value={dirEngraso} onChange={setDirEngraso} disabled={busy} />
+
             <label style={{ marginTop: 10 }}>
               Nota <span className="field-optional">(opcional)</span>
               <CampoLista tipo="USO" value={dirNota} onChange={setDirNota} disabled={busy} placeholder="Para qué / dónde…" />

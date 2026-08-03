@@ -2289,6 +2289,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     confirmadoPor: row.confirmado_por ? String(row.confirmado_por) : undefined,
     conforme: row.conforme == null ? null : Boolean(row.conforme),
     confirmacionNota: row.confirmacion_nota ? String(row.confirmacion_nota) : undefined,
+    engraso: row.engraso == null ? undefined : Boolean(row.engraso),
     items: rawItems.map((it) => ({
       id: String(it.id),
       insumoId: it.insumo_id ? String(it.insumo_id) : undefined,
@@ -2353,6 +2354,8 @@ export async function entregarDirecto(input: {
   evidenciaUrls: string[]
   /** Bodega de la que sale el material (el satélite del supervisor). */
   bodegaId?: string
+  /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
+  engraso?: boolean
   items: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
 }): Promise<{ solicitudId: string; insumos: Insumo[] }> {
   const ahora = new Date().toISOString()
@@ -2371,6 +2374,7 @@ export async function entregarDirecto(input: {
       equipo_codigo: input.equipoCodigo,
       bodega_id: input.bodegaId ?? null,
       evidencia_urls: input.evidenciaUrls,
+      engraso: input.engraso ?? null,
     })
     .select('id')
     .single()
@@ -2558,7 +2562,14 @@ export async function entregarSolicitud(input: {
   evidenciaUrls: string[]
   /** Bodega de la que sale el material (el satélite del supervisor). */
   bodegaId?: string
-  items: { itemId?: string; insumoId?: string; cantidadDespachada: number }[]
+  /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
+  engraso?: boolean
+  /**
+   * Lo que se entrega. Un ítem SIN `itemId` es adicional: el operario no lo
+   * pidió pero el supervisor se lo lleva de una — pasa todo el tiempo, y antes
+   * tocaba hacer una entrega directa aparte para lo mismo.
+   */
+  items: { itemId?: string; insumoId?: string; insumoNombre?: string; unidad?: string; cantidadDespachada: number }[]
 }): Promise<Insumo[]> {
   const actualizados: Insumo[] = []
   for (const it of input.items) {
@@ -2580,6 +2591,18 @@ export async function entregarSolicitud(input: {
         .from('insumos_solicitud_items')
         .update({ cantidad_despachada: it.cantidadDespachada })
         .eq('id', it.itemId)
+    } else if (it.insumoId && it.cantidadDespachada > 0) {
+      // Adicional: entra a la solicitud con `cantidad = 0` porque no se pidió,
+      // y `cantidad_despachada` con lo que se llevó. Así el operario lo ve en
+      // su tarjeta de aval y queda claro que fue de más, no que pidió eso.
+      await supabase.from('insumos_solicitud_items').insert({
+        solicitud_id: input.solicitudId,
+        insumo_id: it.insumoId,
+        insumo_nombre: it.insumoNombre ?? '',
+        unidad: it.unidad ?? '',
+        cantidad: 0,
+        cantidad_despachada: it.cantidadDespachada,
+      })
     }
   }
 
@@ -2594,6 +2617,7 @@ export async function entregarSolicitud(input: {
       equipo_codigo: input.equipoCodigo ?? null,
       bodega_id: input.bodegaId ?? null,
       evidencia_urls: input.evidenciaUrls,
+      engraso: input.engraso ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.solicitudId)

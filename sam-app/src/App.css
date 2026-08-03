@@ -8066,3 +8066,15 @@ td.planilla-vacio:hover { background: #fde047; }
 .sem-evento__datos { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.84rem; }
 .sem-evento__datos strong { font-variant-numeric: tabular-nums; }
 .sem-evento__aviso { font-size: 0.78rem; color: #b3261e; margin-top: 4px; }
+
+/* "¿Engrasó la máquina?" — dos botones grandes, sin estado por defecto. */
+.engraso { margin-top: 12px; }
+.engraso__lbl { display: block; font-size: 0.86rem; margin-bottom: 6px; }
+.engraso__btns { display: flex; gap: 8px; }
+.engraso__btn {
+  flex: 1; padding: 10px; border-radius: 11px; cursor: pointer;
+  border: 1px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-ink-mid); font: inherit; font-weight: 700; font-size: 0.86rem;
+}
+.engraso__btn.is-si { background: var(--color-brand); border-color: var(--color-brand); color: #fff; }
+.engraso__btn.is-no { background: #b3261e; border-color: #b3261e; color: #fff; }

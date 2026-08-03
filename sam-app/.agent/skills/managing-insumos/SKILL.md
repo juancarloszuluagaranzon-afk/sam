@@ -324,3 +324,24 @@ quede claro que lo que se ve es de la última conexión.
 
 **Regla para lo que venga:** una pantalla que se use en campo necesita las dos
 mitades — cola de salida Y respaldo de lectura. Tener solo una es no tenerlo.
+
+## ⚠️ El AJUSTE fija el saldo, no lo suma
+
+Al reconstruir stock desde el kardex, **`AJUSTE` no se suma**: pone el saldo en
+lo que se contó físicamente. Sumar `SALIDA/ENTRADA` a ciegas sobre un insumo que
+tiene ajustes da un número que no corresponde — GANCHOS en la principal suma
+1480 en el kardex y su saldo real es 1200, y las dos cifras son correctas.
+
+Dos formas de rehacer un saldo, y hay que elegir a conciencia:
+
+1. **Sin ajustes** → sumar el kardex funciona (`recalcularStockBodega`, que sí
+   trata el AJUSTE como "fija el saldo").
+2. **Con ajustes** → tomar el último AJUSTE como base y sumar solo lo posterior.
+   Si se salta el insumo del recálculo "por seguridad", el saldo **no se
+   corrige** — y eso es justo lo que pasó al limpiar una entrega de prueba
+   (3-ago-2026): se borraron las filas del kardex, el recálculo saltó el par
+   insumo/bodega por tener ajustes, y el stock quedó 1 gancho abajo hasta que se
+   repuso a mano.
+
+**Regla:** después de borrar movimientos, verificar el saldo contra lo que había
+ANTES. No dar por hecho que el recálculo lo dejó bien.

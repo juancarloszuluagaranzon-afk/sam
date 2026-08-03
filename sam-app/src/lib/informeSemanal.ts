@@ -33,6 +33,8 @@ export interface EventoMaquina {
   insumos: { nombre: string; unidad: string; cantidad: number }[]
   operario: string
   responsable: string
+  /** ¿Se engrasó en esta entrega? `undefined` = no se preguntó. */
+  engraso?: boolean
   /** Horas desde el evento anterior. `null` en el primero de la semana. */
   horasDesdeAnterior: number | null
   /** La lectura no cuadra con las demás de esta máquina: no se usó. */
@@ -53,6 +55,12 @@ export interface FilaSemanal {
   galonesPorHora: number | null
   insumos: Map<string, { unidad: string; cantidad: number }>
   eventos: EventoMaquina[]
+  /**
+   * Cuántas veces se engrasó en la semana, sobre cuántas entregas lo
+   * preguntaron. "2 de 3" dice más que un sí/no: en una semana hay varias
+   * entregas y el engrase no se hace en todas.
+   */
+  engrases: { si: number; preguntadas: number }
   /** Lecturas que se descartaron por no cuadrar. */
   sospechosos: number
 }
@@ -130,6 +138,7 @@ export function armarInformeSemanal(input: {
       })),
       operario: e.operarioNombre ?? nombreUsuario(e.operarioId),
       responsable: nombreUsuario(e.despachadoPor),
+      engraso: e.engraso,
     })
   }
 
@@ -186,9 +195,12 @@ export function armarInformeSemanal(input: {
       }
     }
 
+    const preguntadas = eventos.filter((e) => e.engraso != null).length
+
     filas.push({
       equipo,
       semana: Number(semanaTxt),
+      engrases: { si: eventos.filter((e) => e.engraso === true).length, preguntadas },
       // El de la mayoría de los eventos: si cambió de operario a mitad de
       // semana, en el detalle se ve evento por evento.
       operario: eventos.find((e) => e.operario)?.operario ?? '',

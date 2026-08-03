@@ -51,6 +51,7 @@ import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
+import { BotonManual } from '../components/BotonManual'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller'
 
@@ -1246,6 +1247,8 @@ export function SupervisorView({
         >
           Diagnóstico
         </button>
+        <BotonManual className="primary-button outline" onAbrir={() => setIsSideMenuOpen(false)} />
+        <div style={{ height: 8 }} />
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>

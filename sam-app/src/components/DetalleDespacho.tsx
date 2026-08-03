@@ -170,6 +170,21 @@ export function DetalleDespacho({
               )}
             </>
           )}
+          {/* El tanqueo a una máquina también lo confirma el operario. */}
+          {tq?.operarioNombre && (
+            <>
+              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del operario</p>
+              <Dato k="Recibió" v={tq.operarioNombre} />
+              {tq.confirmadoEn ? (
+                <>
+                  <Dato k={tq.conforme === false ? '⚠️ Reportó un problema' : '✔ Confirmado'} v={fmtFecha(tq.confirmadoEn)} />
+                  {tq.confirmacionNota && <p className="subtle-copy" style={{ margin: 0 }}>{tq.confirmacionNota}</p>}
+                </>
+              ) : (
+                <p className="subtle-copy" style={{ margin: 0 }}>⏳ Todavía no lo ha confirmado.</p>
+              )}
+            </>
+          )}
           {tq && (
             <>
               <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del analista</p>

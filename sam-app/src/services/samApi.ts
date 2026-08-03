@@ -2012,6 +2012,12 @@ function mapCombustible(row: Record<string, unknown>): CombustibleExterno {
     registradoPor: s(row.registrado_por),
     registradoNombre: s(row.registrado_nombre),
     nota: s(row.nota),
+    operarioId: s(row.operario_id),
+    operarioNombre: s(row.operario_nombre),
+    confirmadoEn: s(row.confirmado_en),
+    confirmadoPor: s(row.confirmado_por),
+    conforme: row.conforme == null ? null : Boolean(row.conforme),
+    confirmacionNota: s(row.confirmacion_nota),
   }
 }
 
@@ -2113,6 +2119,9 @@ export async function registrarCombustibleExterno(input: {
   registradoPor?: string
   registradoNombre?: string
   nota?: string
+  /** Operario que recibe. Solo se guarda en destino=MAQUINA. */
+  operarioId?: string
+  operarioNombre?: string
 }): Promise<void> {
   const origen: CombustibleOrigen = input.origen ?? 'ESTACION'
   const galones = redondear2(Number(input.galones))
@@ -2149,6 +2158,10 @@ export async function registrarCombustibleExterno(input: {
       registrado_por: input.registradoPor ?? null,
       registrado_nombre: input.registradoNombre ?? null,
       nota: input.nota ?? null,
+      // Solo la máquina tiene operario que confirme. El vehículo todavía no
+      // (decisión del cliente): guardarlo ahí crearía un aval que nadie espera.
+      operario_id: input.destino === 'MAQUINA' ? (input.operarioId ?? null) : null,
+      operario_nombre: input.destino === 'MAQUINA' ? (input.operarioNombre ?? null) : null,
     })
     .select('id')
     .single()
@@ -3702,4 +3715,53 @@ export async function loadCombustiblePorId(id: string): Promise<CombustibleExter
     .maybeSingle()
   if (error || !data) return null
   return mapCombustible(data as Record<string, unknown>)
+}
+
+/**
+ * Tanqueos a la máquina de este operario que esperan SU confirmación.
+ *
+ * Los materiales le llegan por `insumos_solicitudes`; el combustible que le
+ * tanquearon la máquina vive en otra tabla y hasta ahora nadie lo confirmaba.
+ * Es la misma pregunta —"¿esto llegó?"— desde otro lado.
+ */
+export async function loadTanqueosPorConfirmar(operarioId: string): Promise<CombustibleExterno[]> {
+  const { data, error } = await supabase
+    .from('combustible_externo')
+    .select('*')
+    .eq('operario_id', operarioId)
+    .is('confirmado_en', null)
+    .neq('estado', 'RECHAZADO')
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapCombustible)
+}
+
+/**
+ * El operario confirma —o reporta problema con— un tanqueo a su máquina.
+ *
+ * A diferencia del material, aquí NO se reversa inventario cuando dice que no:
+ * el combustible ya se quemó o ya salió de la bodega, y lo que hay que corregir
+ * es el registro, no el stock. Por eso queda marcado y lo revisa quien avala.
+ */
+export async function confirmarTanqueo(input: {
+  id: string
+  conforme: boolean
+  nota?: string
+  operarioId?: string
+}): Promise<void> {
+  const { data, error } = await supabase
+    .from('combustible_externo')
+    .update({
+      confirmado_en: new Date().toISOString(),
+      confirmado_por: input.operarioId ?? null,
+      conforme: input.conforme,
+      confirmacion_nota: input.nota?.trim() || null,
+    })
+    .eq('id', input.id)
+    // Sin esto, dos toques seguidos pisan la primera respuesta.
+    .is('confirmado_en', null)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!data || data.length === 0) throw new Error('Este tanqueo ya fue confirmado')
 }

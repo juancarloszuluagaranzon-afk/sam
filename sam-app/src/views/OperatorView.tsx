@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 
 // Visor de mapas offline. Import ESTÁTICO a propósito: el intento con
 // React.lazy (chunk aparte) hizo que el build de Vercel partiera el bundle
@@ -11,6 +11,7 @@ import { useFreeFieldForm } from '../hooks/useFreeFieldForm'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
+import { BotonManual } from '../components/BotonManual'
 import { DictateButton } from '../components/DictateButton'
 import { DictateInlineButton } from '../components/DictateInlineButton'
 import { dictationErrorMessage } from '../hooks/useDictation'
@@ -26,8 +27,8 @@ import type { Assignment, UserProfile } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { AvisoPendientes } from '../components/AvisoPendientes'
 import { enviarOEncolar } from '../lib/outboxInsumos'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
-import type { SolicitudInsumo } from '../domain/sam'
+import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, loadTanqueosPorConfirmar, confirmarTanqueo, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
+import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
 
 type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
 
@@ -364,6 +365,31 @@ export function OperatorView({
     [misSolicitudes],
   )
   const [confirmandoSol, setConfirmandoSol] = useState(false)
+
+  /**
+   * Tanqueos a MI máquina que espero confirmar.
+   *
+   * El material me llega por `insumos_solicitudes`; el combustible que alguien
+   * le echó a mi máquina vive en otra tabla y hasta ahora nadie lo confirmaba.
+   * Es la misma pregunta —"¿esto llegó?"— desde otro lado, así que se ve igual.
+   */
+  const [tanqueosPorConfirmar, setTanqueosPorConfirmar] = useState<CombustibleExterno[]>([])
+  const refrescarTanqueos = useCallback(async () => {
+    if (!session?.id) return
+    setTanqueosPorConfirmar(await loadTanqueosPorConfirmar(session.id))
+  }, [session?.id])
+  useEffect(() => { void refrescarTanqueos() }, [refrescarTanqueos])
+
+  async function confirmarTq(t: CombustibleExterno, conforme: boolean, nota?: string) {
+    setConfirmandoSol(true)
+    try {
+      await confirmarTanqueo({ id: t.id, conforme, nota, operarioId: session?.id })
+      setInfo(conforme ? 'Confirmado. Gracias.' : 'Reportado. Lo revisa quien avala.')
+      await refrescarTanqueos()
+    } catch (err) {
+      setError((err as { message?: string })?.message ?? 'No se pudo confirmar')
+    } finally { setConfirmandoSol(false) }
+  }
   // Solicitud para la que se está reportando un problema (abre mini-modal).
   const [problemaSol, setProblemaSol] = useState<SolicitudInsumo | null>(null)
   const [problemaMotivo, setProblemaMotivo] = useState('')
@@ -935,6 +961,8 @@ export function OperatorView({
         >
           Diagnóstico
         </button>
+        <BotonManual className="primary-button outline" onAbrir={() => setIsSideMenuOpen(false)} />
+        <div style={{ height: 8 }} />
         <button className="primary-button" onClick={() => onSaveSession(null)}>
           Salir
         </button>
@@ -1356,6 +1384,39 @@ export function OperatorView({
                     type="button"
                     className="confirm-entrega-btn confirm-entrega-btn--no"
                     onClick={() => { setProblemaSol(s); setProblemaMotivo(''); setError('') }}
+                    disabled={confirmandoSol}
+                  >
+                    ⚠ HUBO UN PROBLEMA
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Combustible que le echaron a MI máquina. Mismo trato que el
+                material: un toque para confirmar, cero tipeo. */}
+            {tanqueosPorConfirmar.map((t) => (
+              <div key={`tq-${t.id}`} className="confirm-entrega-card">
+                <p className="confirm-entrega-card__title">
+                  ⛽ ¿Recibiste este combustible?
+                </p>
+                <p className="confirm-entrega-card__items">
+                  {fmtCantidad(t.galones, 'galón')} galón
+                  {t.equipoCodigo ? ` · Máquina ${t.equipoCodigo}` : ''}
+                  {t.registradoNombre ? ` · lo registró ${t.registradoNombre}` : ''}
+                </p>
+                <div className="confirm-entrega-card__actions">
+                  <button
+                    type="button"
+                    className="confirm-entrega-btn confirm-entrega-btn--si"
+                    onClick={() => void confirmarTq(t, true)}
+                    disabled={confirmandoSol}
+                  >
+                    ✔ SÍ, RECIBÍ TODO
+                  </button>
+                  <button
+                    type="button"
+                    className="confirm-entrega-btn confirm-entrega-btn--no"
+                    onClick={() => void confirmarTq(t, false, 'El operario reportó un problema')}
                     disabled={confirmandoSol}
                   >
                     ⚠ HUBO UN PROBLEMA

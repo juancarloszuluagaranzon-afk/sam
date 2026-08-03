@@ -50,7 +50,7 @@ export function TanqueoModal({
   /** Máquina del operario: cuando viene, no se pregunta cuál es. */
   equipoFijo?: string
 }) {
-  const { session, insumos, equipment, busy, setBusy, setError, setInfo } = useAppData()
+  const { session, insumos, equipment, users, busy, setBusy, setError, setInfo } = useAppData()
 
   const [origen, setOrigen] = useState<CombustibleOrigen>('ESTACION')
   const [destino, setDestino] = useState<CombustibleDestino>(destinos[0] ?? 'MAQUINA')
@@ -60,6 +60,7 @@ export function TanqueoModal({
   const [horometro, setHorometro] = useState('')
   const [equipoCodigo, setEquipoCodigo] = useState(equipoFijo ?? '')
   const [placa, setPlaca] = useState('')
+  const [operarioId, setOperarioId] = useState('')
   const [pimpCant, setPimpCant] = useState('')
   const [pimpCap, setPimpCap] = useState('5')
   const [valor, setValor] = useState('')
@@ -72,6 +73,22 @@ export function TanqueoModal({
   // El propio analista también tanquea: decirle que "lo avala el analista"
   // sería decirle que se avala a sí mismo, y no puede.
   const soyElAnalista = session?.role === 'analista_insumos'
+
+  /**
+   * Cuando alguien le tanquea la máquina a OTRO, hay que decir a quién.
+   *
+   * Ese operario recibe la tarjeta "¿Recibiste?" igual que con los materiales:
+   * sin eso, el combustible que se le carga a su máquina no lo reconoce nadie.
+   * Si el que registra es el propio operario, no se pregunta — él es el que
+   * recibe.
+   *
+   * Solo para MÁQUINA. El vehículo todavía no pide operario (3-ago-2026).
+   */
+  const pideOperario = destino === 'MAQUINA' && session?.role !== 'operador'
+  const operarios = useMemo(
+    () => users.filter((u) => u.active !== false && u.role === 'operador'),
+    [users],
+  )
   const quienAvala = soyElAnalista ? 'del dueño o administración' : 'del analista de insumos y materiales'
 
   const combustibles = useMemo(
@@ -93,6 +110,7 @@ export function TanqueoModal({
     setEstacion(''); setFactura(''); setTirilla('')
     setPimpCant(''); setPimpCap('5')
     setEquipoCodigo(equipoFijo ?? '')
+    setOperarioId('')
     setPlaca(localStorage.getItem(`${PLACA_KEY}:${session?.id ?? ''}`) ?? '')
     setError('')
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
@@ -133,6 +151,7 @@ export function TanqueoModal({
     if (destino === 'MAQUINA') {
       if (!equipoCodigo) { setError('Elige la máquina que se tanqueó.'); return }
       if (!horometro.trim() || Number(horometro) < 0) { setError('El horómetro de la máquina es obligatorio.'); return }
+      if (pideOperario && !operarioId) { setError('Elige a qué operario se lo entregaste: él lo confirma.'); return }
     }
     if (destino === 'VEHICULO' && !placa) { setError('Escribe la placa del vehículo.'); return }
     if ((destino === 'CARRO' || destino === 'PIMPINAS') && !bodegaId) {
@@ -158,6 +177,11 @@ export function TanqueoModal({
         tirillaUrl: tirilla || undefined,
         registradoPor: session?.id,
         registradoNombre: session?.name,
+        // El propio operario es quien recibe cuando él mismo lo registra.
+        operarioId: destino === 'MAQUINA' ? (pideOperario ? operarioId : session?.id) : undefined,
+        operarioNombre: destino === 'MAQUINA'
+          ? (pideOperario ? operarios.find((o) => o.id === operarioId)?.name : session?.name)
+          : undefined,
       }
       const { enviado } = await enviarOEncolar('TANQUEO', payload, () => registrarCombustibleExterno(payload))
       if (destino === 'VEHICULO' && placa) {
@@ -282,6 +306,21 @@ export function TanqueoModal({
             </label>
           )}
 
+          {/* A quién se le entregó: él es quien lo confirma después. */}
+          {pideOperario && (
+            <label>Entregado a <span style={{ color: '#b3261e' }}>*</span>
+              <SearchableSelect
+                value={operarioId}
+                onChange={setOperarioId}
+                options={operarios.map((o) => ({
+                  value: o.id, label: o.name, rightLabel: o.equipmentCode || undefined,
+                }))}
+                placeholder="Buscar operario…"
+                disabled={busy}
+              />
+            </label>
+          )}
+
           {origen === 'ESTACION' && (
             <>
               <label>Estación
@@ -312,6 +351,7 @@ export function TanqueoModal({
 
         <p className="subtle-copy" style={{ marginTop: 10, marginBottom: 0 }}>
           Queda <strong>pendiente del aval</strong> {quienAvala}.
+          {pideOperario && <> Y el operario tiene que <strong>confirmar que lo recibió</strong>.</>}
         </p>
 
         <div className="modal-footer">

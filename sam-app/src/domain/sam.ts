@@ -387,6 +387,21 @@ export interface CombustibleExterno {
   revisadoNombre?: string
   revisadoEn?: string
   revisionNota?: string
+  /**
+   * Operario que RECIBIÓ el combustible en su máquina, y su confirmación.
+   *
+   * Solo aplica a `destino = MAQUINA`. Los vehículos todavía no piden operario
+   * — decisión del cliente (3-ago-2026): primero las máquinas.
+   *
+   * `conforme`: true recibió todo · false reportó un problema · null todavía
+   * no responde. Es el mismo trato que la entrega de materiales.
+   */
+  operarioId?: string
+  operarioNombre?: string
+  confirmadoEn?: string
+  confirmadoPor?: string
+  conforme?: boolean | null
+  confirmacionNota?: string
 }
 
 export type InsumoCategoria = 'COMBUSTIBLE' | 'MATERIAL'

@@ -12,6 +12,7 @@ import { BodegasTab } from './BodegasTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
+import { BotonManual } from '../components/BotonManual'
 
 /**
  * Vista del rol "Analista de insumos y materiales".
@@ -65,6 +66,7 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
         <div className="topbar-actions">
           <MapButton onClick={() => setTab('mapa')} />
           <ThemeToggle />
+          <BotonManual className="inline-button" />
           <button type="button" className="inline-button" onClick={onLogout}>Salir</button>
         </div>
       </header>

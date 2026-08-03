@@ -2,6 +2,7 @@ import { useAppData } from '../context/AppDataContext'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { FlotaTab } from './FlotaTab'
+import { BotonManual } from '../components/BotonManual'
 
 /**
  * Vista del rol "Conductor" (módulo Flota / Escolta). El conductor registra sus
@@ -25,6 +26,7 @@ export function FlotaView({ onLogout }: { onLogout: () => void }) {
         </div>
         <div className="topbar-actions">
           <ThemeToggle />
+          <BotonManual className="inline-button" />
           <button type="button" className="inline-button" onClick={onLogout}>Salir</button>
         </div>
       </header>

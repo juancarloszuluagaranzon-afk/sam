@@ -68,6 +68,12 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
 6. **Área ejecutada**: el fallback `executedArea>0?executedArea:area` aplica **SOLO** a
    estados `COMPLETADA`/`PARCIAL`. Una labor no cerrada muestra 0.00. Es dinero real.
 7. **Al terminar un deploy, reportar la versión** (`git rev-parse --short HEAD`).
+7c. **🔴 Todo lo que recibe un operario, él lo confirma.** Material y combustible. El
+   material va por `insumos_solicitudes`; el **tanqueo a MÁQUINA** guarda `operario_id`
+   en `combustible_externo` y le muestra la misma tarjeta de un toque. El campo
+   "Entregado a" es obligatorio salvo que el que registra sea el propio operario — él
+   es quien recibe. ⚠️ **Los VEHÍCULOS todavía no piden operario** (decisión del
+   cliente, 3-ago-2026). `operario_id`/`confirmado_por` son TEXT, no uuid.
 7b. **🔴 Nadie avala lo que él mismo registró.** El analista ahora también entrega y
    tanquea; el aval es el segundo par de ojos y si firma lo suyo el control desaparece.
    `AvalesCombustibleTab` esconde los botones cuando `registradoPor === session.id` y
@@ -122,6 +128,11 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   introductorio va plegado, no suelto. Lo que va dentro de un MODAL se queda suelto —
   ahí el texto es la instrucción del momento, no un letrero permanente.
   Ver `.agent/skills/writing-ui-copy/`.
+- **📖 Los manuales están DENTRO de la app**: `<BotonManual>` (`src/components/`) en el
+  menú lateral (dueño/admin/supervisor/operario) y en la barra superior de los roles que
+  no tienen menú (analista, insumos, flota). Elige el manual por rol; a quien le sirven
+  varios le abre un selector. Se abre en pestaña aparte para no perder lo que estaba
+  haciendo. Al agregar un rol nuevo: sumarlo a `manualesDe()`.
 - **📖 Los manuales** viven en `sam/manuales/` (cuerpos `_cuerpo_*.html` + `_estilo.css`)
   y se publican con la app en `public/manuales/`, para compartirlos por WhatsApp con un
   enlace: `/manuales/manual-{operario,supervisor-insumos,analista-diego,taller}.html`.

@@ -4,6 +4,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { MapButton } from '../components/MapButton'
 import { InsumosModule, type InsumosTab } from './InsumosModule'
+import { BotonManual } from '../components/BotonManual'
 
 /**
  * Vista del rol "Supervisor de insumos" (módulo Insumos y Combustible).
@@ -31,6 +32,7 @@ export function InsumosView({ onLogout }: { onLogout: () => void }) {
         <div className="topbar-actions">
           <MapButton onClick={() => setTab('mapa')} />
           <ThemeToggle />
+          <BotonManual className="inline-button" />
           <button type="button" className="inline-button" onClick={onLogout}>Salir</button>
         </div>
       </header>

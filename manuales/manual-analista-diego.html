@@ -355,7 +355,8 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
           <div class="r-fila"><span class="r-tab on">Máquina</span><span class="r-tab">Vehículo</span></div>
           <div class="r-sub">Galones *</div><div class="r-card">40</div>
           <div class="r-sub">Horómetro *</div><div class="r-card">8353.1</div>
-          <div class="r-card r-card--rojo">Queda pendiente del aval del dueño o administración.</div>
+          <div class="r-sub">Entregado a *</div><div class="r-card">Buscar operario…</div>
+          <div class="r-card r-card--rojo">Queda pendiente del aval del dueño o administración. Y el operario tiene que confirmar que lo recibió.</div>
           <div class="r-btn r-btn--ancho">Registrar tanqueo</div>
         </div>
       </div>
@@ -363,6 +364,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
         <li><span class="marca">1</span><div><strong>Solo máquina o vehículo</strong><span>Son destinos de consumo. Sumarle a un carro es del supervisor de ese carro — si no, no se sabría de quién es el material.</span></div></li>
         <li><span class="marca">2</span><div><strong>En sede descuenta la principal</strong><span>Sale del inventario y se le carga a la máquina. Aparece como “Abastecimiento en sede”. <em>El tanqueo solo saca de la principal; para meterle, ve a Inventario → + Entrada.</em></span></div></li>
         <li><span class="marca">3</span><div><strong>Lo firma el dueño</strong><span>El formulario te lo dice antes de guardar, para que no te quedes esperando.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Si es a una máquina, di a quién</strong><span>Es obligatorio. A ese operario le llega la tarjeta “¿Recibiste este combustible?”: son <em>dos</em> avales, el suyo y el del dueño. Los vehículos todavía no lo piden.</span></div></li>
       </ul>
     </div>
   </section>
@@ -522,6 +524,10 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
         <tr>
           <td><strong>Nadie avala lo que él mismo registró</strong></td>
           <td>El aval es el segundo par de ojos. Si firmas lo tuyo, no hay control.</td>
+        </tr>
+        <tr>
+          <td><strong>Todo lo que recibe un operario, él lo confirma</strong></td>
+          <td>Material y combustible. Es la prueba de que llegó a la máquina, y es lo que sostiene el cobro.</td>
         </tr>
         <tr>
           <td><strong>Solo tú puedes sumar inventario</strong></td>

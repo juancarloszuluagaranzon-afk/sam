@@ -1,0 +1,385 @@
+<div class="hoja">
+
+  <div class="portada">
+    <p class="portada__marca">AgroMorales · Manual</p>
+    <h1>Guía del analista de insumos</h1>
+    <p class="portada__para">Para Diego · Administrador del proceso</p>
+    <p class="portada__nota">
+      Eres el que responde por el inventario: avalas lo que registran los demás, entregas
+      desde la bodega principal, surtes los carros y mantienes las listas que alimentan
+      todos los formularios.
+    </p>
+  </div>
+
+  <nav class="indice">
+    <h2>Qué vas a encontrar</h2>
+    <ol>
+      <li><a href="#pantallas">Tus ocho pantallas</a></li>
+      <li><a href="#resumen">Resumen: cuánto hay y dónde está</a></li>
+      <li><a href="#avales">Avales: lo que firmas cada día</a></li>
+      <li><a href="#bandeja">Bandeja: entregar y despachar</a></li>
+      <li><a href="#tanqueo">Registrar un tanqueo</a></li>
+      <li><a href="#inventario">Inventario y kardex</a></li>
+      <li><a href="#bodegas">Bodegas: surtir los carros</a></li>
+      <li><a href="#catalogos">Catálogos: las listas de los formularios</a></li>
+      <li><a href="#reportes">Reportes y Excel</a></li>
+      <li><a href="#reglas">Las reglas que sostienen el control</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section class="paso" id="pantallas">
+    <h2><span class="paso__num">1</span> Tus ocho pantallas</h2>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">AgroMorales <small>INSUMOS Y MATERIALES</small></div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs">
+            <span class="r-tab on">📊 Resumen</span>
+            <span class="r-tab">📥 Bandeja</span>
+            <span class="r-tab">✅ Avales</span>
+            <span class="r-tab">📦 Inventario</span>
+          </div>
+          <div class="r-tabs">
+            <span class="r-tab">🏢 Bodegas</span>
+            <span class="r-tab">📚 Catálogos</span>
+            <span class="r-tab">📊 Reportes</span>
+            <span class="r-tab">🗺️ Mapa</span>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>📊 Resumen</strong><span>Cuánto hay, en qué bodega y qué se está gastando. Tu pantalla de arranque.</span></div></li>
+        <li><span class="marca">2</span><div><strong>📥 Bandeja</strong><span>Entregar a operarios y despachar solicitudes.</span></div></li>
+        <li><span class="marca">3</span><div><strong>✅ Avales</strong><span>Lo que registraron los demás y espera tu firma.</span></div></li>
+        <li><span class="marca">4</span><div><strong>📦 Inventario</strong><span>Stock total, entradas de compra, ajustes y el kardex de cada insumo.</span></div></li>
+        <li><span class="marca">5</span><div><strong>🏢 Bodegas</strong><span>La principal y los carros. Desde aquí surtes a Genaro y Eduvin.</span></div></li>
+        <li><span class="marca">6</span><div><strong>📚 Catálogos</strong><span>Estaciones, placas, motivos. Lo que se sugiere en los formularios.</span></div></li>
+        <li><span class="marca">7</span><div><strong>📊 Reportes</strong><span>Consumo por máquina, por insumo y despacho por despacho, con Excel.</span></div></li>
+        <li><span class="marca">8</span><div><strong>🗺️ Mapa</strong><span>El plano de las haciendas, offline.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section class="paso" id="resumen">
+    <h2><span class="paso__num">2</span> Resumen: cuánto hay y dónde está</h2>
+    <p class="paso__intro">Responde de un vistazo la pregunta de todos los días: <em>¿cuánto combustible me queda y en qué carro está?</em></p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">📊 Resumen de inventario</div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs">
+            <span class="r-tab on">🏢 Toda la empresa</span>
+            <span class="r-tab">🏢 PRINCIPAL</span>
+            <span class="r-tab">🚚 CARRO GENARO</span>
+          </div>
+          <div class="r-sub">EXISTENCIAS HOY</div>
+          <div class="r-fila">
+            <div class="r-card" style="flex:1"><div class="r-sub">⛽ COMBUSTIBLE</div><div class="r-titulo">1.914,62 galón</div><div class="r-sub">en 3 bodegas</div></div>
+            <div class="r-card" style="flex:1"><div class="r-sub">🔩 GANCHOS</div><div class="r-titulo">920 unidad</div><div class="r-sub">en 3 bodegas</div></div>
+          </div>
+          <div class="r-sub">DÓNDE ESTÁ</div>
+          <div class="r-card">
+            <div class="r-fila"><span>🏢 PRINCIPAL</span><span>1614 · 680</span></div>
+            <div class="r-fila"><span>🚚 CARRO EDUVIN</span><span>158 · 160</span></div>
+            <div class="r-fila"><span>🚚 CARRO GENARO</span><span>142,62 · 80</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>El filtro de arriba manda</strong><span>Si eliges un carro, todo lo de abajo se recalcula solo para ese carro.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Tarjetas de destacados</strong><span>Hoy: combustible y ganchos. El resto se resume en “Otros” para que no sean 16 renglones con 14 en cero.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Dónde está</strong><span>La tabla que responde “¿en qué carro?”. Lo que está en los carros ya salió de la principal: no se cuenta dos veces.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Lo que más se gasta</strong><span>Abajo, por periodo. Es lo cargado a máquinas — surtir un carro no es gastar.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>¿Quieres destacar otro material?</strong> Al final de esta misma pantalla,
+      <strong>⭐ Elegir materiales destacados</strong>. Lo que marques ahí sale con tarjeta
+      propia aquí y de primeras cuando alguien busca un insumo en el celular. Dos o tres es
+      lo sano.
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section class="paso" id="avales">
+    <h2><span class="paso__num">3</span> Avales: lo que firmas cada día</h2>
+    <p class="paso__intro">
+      Aquí caen los tanqueos y el material que los supervisores tomaron por su cuenta.
+      El inventario ya se movió cuando lo registraron —porque físicamente ya se lo
+      llevaron—; lo que tú haces es validar que lo registrado corresponde.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">✅ Avales</div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs"><span class="r-tab on">Por avalar</span><span class="r-tab">Avalados</span><span class="r-tab">Rechazados</span></div>
+          <div class="r-sub">4 REGISTRO(S) · 136,72 GALONES</div>
+          <div class="r-card r-card--verde">
+            <div class="r-fila"><span class="r-titulo">61,59 gal · Tanque de distribución</span><span class="r-sub">🏭 Sede</span></div>
+            <div class="r-sub">2 ago · ACEVEDO CASTAÑEDA EDUVIN · registrado 05:21</div>
+            <div style="height:8px"></div>
+            <div class="r-fila">
+              <span class="r-btn r-btn--gris" style="flex:1">Rechazar</span>
+              <span class="r-btn" style="flex:1">✔ Avalar</span>
+            </div>
+          </div>
+          <div class="r-card">
+            <div class="r-fila"><span class="r-titulo">3 gal · Máquina</span><span class="r-sub">⛽ Estación</span></div>
+            <div class="r-sub">2 ago · URDINOLA VELEZ DIEGO · registrado 16:31</div>
+            <div class="r-card r-card--rojo" style="margin-top:8px">🔒 Lo registraste tú: lo avala el dueño o administración.</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Revisa contra la tirilla</strong><span>La foto está en la tarjeta. Compara galones, estación y fecha.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Avalar</strong><span>Confirmas que corresponde. El movimiento queda firme.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Rechazar reversa todo</strong><span>El stock vuelve solo a la bodega de donde salió. No tienes que corregir nada a mano.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Lo tuyo no lo firmas tú</strong><span>Tus propios registros aparecen bloqueados. Los firma el dueño o administración.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>Por qué no puedes avalar lo tuyo.</strong> El aval es el segundo par de ojos.
+      Desde que también entregas y tanqueas, firmar tus propios registros sería quedarte sin
+      control. Le avisas al dueño y él los revisa desde <em>Más → ✅ Avales</em>.
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <section class="paso" id="bandeja">
+    <h2><span class="paso__num">4</span> Bandeja: entregar y despachar</h2>
+    <p class="paso__intro">Igual que un supervisor, pero tú despachas desde la <strong>bodega principal</strong>.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Bandeja de solicitudes</div>
+        <div class="recorte__cuerpo">
+          <div class="r-fila" style="flex-wrap:wrap">
+            <span class="r-btn">⚡ Entrega directa</span>
+            <span class="r-btn">⛽ Registrar tanqueo</span>
+            <span class="r-btn r-btn--gris">↻ Actualizar</span>
+          </div>
+          <div class="r-tabs">
+            <span class="r-tab on">🕐 Pendientes</span>
+            <span class="r-tab">📅 Programadas</span>
+            <span class="r-tab">✅ Entregadas</span>
+          </div>
+          <div class="r-card"><div class="r-sub">No hay solicitudes pendientes.</div></div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Entrega directa</strong><span>Le entregas a un operario sin que lo haya pedido. Se descuenta de la principal.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Al operario le llega el aval</strong><span>Igual que con los supervisores: la tarjeta “¿Recibiste esto?”. No se salta ningún control.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Despachar solicitudes</strong><span>Si un operario pide algo y te toca a ti atenderlo, lo programas y lo entregas desde aquí.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <section class="paso" id="tanqueo">
+    <h2><span class="paso__num">5</span> Registrar un tanqueo</h2>
+    <p class="paso__intro">Tu botón está en la Bandeja, porque no tienes carro satélite: despachas de la principal.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">⛽ Registrar tanqueo</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">¿DÓNDE TANQUEASTE?</div>
+          <div class="r-fila">
+            <div class="r-card r-card--verde" style="flex:1"><strong>⛽ En estación</strong></div>
+            <div class="r-card" style="flex:1"><strong>🏭 En sede</strong></div>
+          </div>
+          <div class="r-sub">¿A QUÉ SE LO ECHASTE?</div>
+          <div class="r-fila"><span class="r-tab on">Máquina</span><span class="r-tab">Vehículo</span></div>
+          <div class="r-sub">Galones *</div><div class="r-card">40</div>
+          <div class="r-sub">Horómetro *</div><div class="r-card">8353.1</div>
+          <div class="r-card r-card--rojo">Queda pendiente del aval del dueño o administración.</div>
+          <div class="r-btn r-btn--ancho">Registrar tanqueo</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Solo máquina o vehículo</strong><span>Son destinos de consumo. Sumarle a un carro es del supervisor de ese carro — si no, no se sabría de quién es el material.</span></div></li>
+        <li><span class="marca">2</span><div><strong>En sede descuenta la principal</strong><span>Sale del inventario y se le carga a la máquina. Aparece como “Abastecimiento en sede”.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Lo firma el dueño</strong><span>El formulario te lo dice antes de guardar, para que no te quedes esperando.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────────── -->
+  <section class="paso" id="inventario">
+    <h2><span class="paso__num">6</span> Inventario y kardex</h2>
+    <p class="paso__intro">El total de la empresa por insumo, y el detalle de cada movimiento.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Inventario de insumos</div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs"><span class="r-tab on">📋 Todos</span><span class="r-tab">⛽ Combustibles</span><span class="r-tab">🔩 Materiales</span></div>
+          <div class="r-card">
+            <div class="r-fila"><span class="r-titulo">COMBUSTIBLE ⭐</span><strong>1.914,62 galón</strong></div>
+            <div class="r-fila"><span class="r-btn r-btn--gris">+ Entrada</span><span class="r-btn r-btn--gris">⋯</span></div>
+          </div>
+          <div class="r-card">
+            <div class="r-sub">Menú ⋯</div>
+            <div class="r-sub">📒 Kardex · ⭐ Destacar · ⚖ Ajuste por conteo · ✏️ Editar</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>+ Entrada</strong><span>Una compra que suma al inventario. <strong>Nunca para combustible</strong>: ese entra por tanqueo.</span></div></li>
+        <li><span class="marca">2</span><div><strong>📒 Kardex</strong><span>Todos los movimientos del insumo, con saldo, motivo y quién lo hizo. Es tu herramienta para cuadrar.</span></div></li>
+        <li><span class="marca">3</span><div><strong>⚖ Ajuste por conteo</strong><span>Cuando cuentas físicamente y no cuadra. Escribes lo que contaste y queda registrado el motivo.</span></div></li>
+        <li><span class="marca">4</span><div><strong>La cantidad es de toda la empresa</strong><span>Principal + carros. Para ver el reparto, entra a Bodegas o al Resumen.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>El combustible nunca se mete a mano.</strong> Si pudiera aparecer escribiéndolo,
+      se acabó la trazabilidad. Entra por tanqueo y sale por entrega. Siempre.
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────────── -->
+  <section class="paso" id="bodegas">
+    <h2><span class="paso__num">7</span> Bodegas: surtir los carros</h2>
+    <p class="paso__intro">La principal compra y almacena. Cada satélite es el vehículo de un supervisor.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Bodegas</div>
+        <div class="recorte__cuerpo">
+          <div class="r-btn r-btn--ancho">+ Nueva bodega satélite</div>
+          <div class="r-card">
+            <div class="r-fila"><span class="r-titulo">🏢 BODEGA PRINCIPAL</span><span class="r-sub">2 ítems</span></div>
+          </div>
+          <div class="r-card">
+            <div class="r-fila"><span class="r-titulo">🚚 CARRO GENARO</span><span class="r-sub">2 ítems</span></div>
+            <div class="r-sub">RIVERA HERREÑO GENARO</div>
+            <div class="r-fila"><span class="r-btn">📦 Surtir</span><span class="r-btn r-btn--gris">Desactivar</span></div>
+          </div>
+          <div class="r-card">
+            <div class="r-sub">En tránsito (esperando confirmación del satélite)</div>
+            <div class="r-fila"><span>CARRO EDUVIN · 160 unidad GANCHOS</span><span class="r-btn r-btn--gris">Eliminar</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>📦 Surtir</strong><span>Le envías material a un carro. Sale de la principal y queda <em>en tránsito</em> hasta que el supervisor confirme.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Si te equivocaste</strong><span><strong>Eliminar</strong> lo borra como si nunca hubiera salido: no queda ninguna salida en el kardex.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El supervisor también puede rechazarlo</strong><span>Si no era para él. El resultado es el mismo: vuelve a la principal, sin movimiento.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Cada bodega muestra lo suyo</strong><span>Lo que está en los carros ya salió de la principal. El total de la empresa está en Inventario.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────────── -->
+  <section class="paso" id="catalogos">
+    <h2><span class="paso__num">8</span> Catálogos: las listas de los formularios</h2>
+    <p class="paso__intro">
+      Cargar una lista aquí hace que en el celular sea un toque — y que el mismo dato no
+      entre escrito de cinco formas distintas.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">📚 Catálogos</div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs" style="flex-direction:column;align-items:flex-start">
+            <span class="r-tab on">⛽ Estaciones de servicio</span>
+            <span class="r-tab">🚗 Placas de vehículos</span>
+            <span class="r-tab">🎯 Para qué / dónde</span>
+            <span class="r-tab">🚫 Motivos de rechazo</span>
+          </div>
+          <div class="r-sub">Se ve en: Registrar tanqueo → Estación</div>
+          <div class="r-fila"><div class="r-card" style="flex:1">ej. TEXACO SAN PEDRO</div><span class="r-btn">+ Agregar</span></div>
+          <div class="r-btn r-btn--gris">📋 Pegar una lista completa</div>
+          <div class="r-card">
+            <div class="r-fila"><span>ZEUSS ROLDANILLO</span><span class="r-sub">✏️ 🚫 🗑</span></div>
+            <div class="r-fila"><span>TEXACO SAN PEDRO</span><span class="r-sub">✏️ 🚫 🗑</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Cada lista dice dónde se ve</strong><span>Así sabes qué formulario estás alimentando antes de tocar nada.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Pegar una lista completa</strong><span>Pegas treinta de un tirón, una por línea. Acepta viñetas y guiones, pone todo en mayúscula y salta las repetidas.</span></div></li>
+        <li><span class="marca">3</span><div><strong>🚫 Desactivar vs 🗑 Eliminar</strong><span>Desactivar deja de ofrecerlo pero conserva el histórico. Eliminar lo saca para siempre.</span></div></li>
+        <li><span class="marca">4</span><div><strong>La lista sugiere, no obliga</strong><span>Si aparece una bomba nueva a las 6 a.m., el supervisor la escribe y sigue. Tú la agregas después con calma.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 ─────────────────────────────────────────────── -->
+  <section class="paso" id="reportes">
+    <h2><span class="paso__num">9</span> Reportes y Excel</h2>
+    <p class="paso__intro">Lo mismo visto de tres formas, y todo exportable.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Reportes de consumo</div>
+        <div class="recorte__cuerpo">
+          <div class="r-fila"><div class="r-card" style="flex:1">Desde</div><div class="r-card" style="flex:1">Hasta</div></div>
+          <div class="r-btn r-btn--ancho">⬇ Descargar Excel</div>
+          <div class="r-tabs">
+            <span class="r-tab">🚜 Por máquina</span>
+            <span class="r-tab">🛢️ Por insumo</span>
+            <span class="r-tab on">📋 Despacho por despacho</span>
+          </div>
+          <div class="r-card">
+            <div class="r-fila"><span class="r-titulo">CASE 1301</span><span class="r-sub">Entrega directa</span></div>
+            <div class="r-sub">COMBUSTIBLE 19,3 galón · GANCHOS 40 unidad</div>
+            <div class="r-sub">🙋 Recibió ESCOBAR DAVALOS LUIS ALBERTO</div>
+            <div class="r-sub">2 ago 12:33 · entregó ACEVEDO CASTAÑEDA EDUVIN · ver detalle →</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Despacho por despacho</strong><span>El libro corrido. Cada entrega con su hora, quién recibió y quién entregó.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Todo se abre</strong><span>Cualquier línea abre el formulario completo: evidencia, horómetro, nota y el aval del operario.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El Excel trae cuatro hojas</strong><span>Movimientos con detalle, resumen por máquina, resumen por insumo, y los tanqueos de bomba.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10 ────────────────────────────────────────────── -->
+  <section class="paso" id="reglas">
+    <h2><span class="paso__num">10</span> Las reglas que sostienen el control</h2>
+    <p class="paso__intro">No son caprichos de la app: cada una viene de un problema real.</p>
+
+    <div class="cierre" style="margin-top:0">
+      <table>
+        <tr><th>Regla</th><th>De dónde sale</th></tr>
+        <tr>
+          <td><strong>Nadie avala lo que él mismo registró</strong></td>
+          <td>El aval es el segundo par de ojos. Si firmas lo tuyo, no hay control.</td>
+        </tr>
+        <tr>
+          <td><strong>El combustible no se mete a mano</strong></td>
+          <td>Si pudiera aparecer escribiéndolo, se acabó la trazabilidad. Entra por tanqueo.</td>
+        </tr>
+        <tr>
+          <td><strong>Rechazar reversa el movimiento</strong></td>
+          <td>El stock vuelve solo. No corrijas a mano: se desordena el kardex.</td>
+        </tr>
+        <tr>
+          <td><strong>Surtir un carro no es gastar</strong></td>
+          <td>El material sigue siendo de la empresa, está en el carro. Se gasta cuando va a una máquina.</td>
+        </tr>
+        <tr>
+          <td><strong>Cada bodega muestra lo suyo</strong></td>
+          <td>Lo que está en los carros ya salió de la principal. Sumarlo sería contarlo dos veces.</td>
+        </tr>
+        <tr>
+          <td><strong>Un traslado mal hecho se elimina, no se corrige</strong></td>
+          <td>Nunca ocurrió: no debe dejar salida ni devolución en el kardex.</td>
+        </tr>
+      </table>
+    </div>
+  </section>
+
+</div>

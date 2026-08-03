@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Manual del operario — AgroMorales</title>
+<style>
+/* Estilo común de los tres manuales.
+   Pensado para leerse en el celular y para imprimirse sin quedar en blanco. */
+
+:root {
+  --verde: #155b30;
+  --verde-claro: #e9f3ed;
+  --tinta: #161a14;
+  --tinta-media: #4a5040;
+  --borde: #e3e2dc;
+  --papel: #ffffff;
+  --suave: #fafaf7;
+  --alerta: #b3261e;
+  --alerta-suave: #fdecea;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--tinta);
+  background: var(--suave);
+  line-height: 1.55;
+}
+
+.hoja { max-width: 820px; margin: 0 auto; padding: 24px 18px 60px; }
+
+/* ── Portada ── */
+.portada {
+  background: var(--verde); color: #fff;
+  border-radius: 18px; padding: 26px 22px; margin-bottom: 26px;
+}
+.portada__marca { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; }
+.portada h1 { margin: 6px 0 4px; font-size: 1.7rem; line-height: 1.2; }
+.portada__para { font-size: 1rem; opacity: 0.92; }
+.portada__nota { margin-top: 14px; font-size: 0.85rem; opacity: 0.85; }
+
+/* ── Índice ── */
+.indice { background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; padding: 16px 18px; margin-bottom: 30px; }
+.indice h2 { margin: 0 0 8px; font-size: 1rem; }
+.indice ol { margin: 0; padding-left: 20px; }
+.indice a { color: var(--verde); text-decoration: none; }
+.indice a:hover { text-decoration: underline; }
+
+/* ── Secciones ── */
+.paso { margin-bottom: 34px; scroll-margin-top: 12px; }
+.paso__num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--verde); color: #fff; font-weight: 700; font-size: 0.9rem;
+  margin-right: 8px; flex: 0 0 auto;
+}
+.paso h2 { display: flex; align-items: center; font-size: 1.2rem; margin: 0 0 6px; }
+.paso__intro { margin: 0 0 14px; color: var(--tinta-media); }
+
+/* ── Bloque de pantalla + explicación ── */
+.pantalla {
+  display: grid; gap: 16px; align-items: start;
+  grid-template-columns: 1fr;
+  background: var(--papel); border: 1px solid var(--borde);
+  border-radius: 14px; padding: 16px;
+}
+@media (min-width: 700px) { .pantalla { grid-template-columns: 300px 1fr; } }
+
+/* El "recorte": una réplica de la pantalla real de la app. */
+.recorte {
+  border: 1px solid var(--borde); border-radius: 14px; overflow: hidden;
+  background: var(--papel); font-size: 0.8rem;
+}
+.recorte__barra {
+  background: var(--verde); color: #fff; padding: 9px 12px;
+  display: flex; align-items: center; gap: 8px; font-weight: 600;
+}
+.recorte__barra small { font-weight: 400; opacity: 0.8; display: block; font-size: 0.68rem; letter-spacing: 0.06em; }
+.recorte__cuerpo { padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+
+.r-tabs { display: flex; gap: 5px; flex-wrap: wrap; }
+.r-tab {
+  border: 1px solid var(--borde); border-radius: 999px;
+  padding: 3px 9px; font-size: 0.68rem; background: var(--suave);
+}
+.r-tab.on { background: var(--verde); color: #fff; border-color: var(--verde); }
+
+.r-card { border: 1px solid var(--borde); border-radius: 11px; padding: 10px; background: var(--papel); }
+.r-card--verde { border-left: 4px solid var(--verde); }
+.r-card--rojo { border-left: 4px solid var(--alerta); background: var(--alerta-suave); }
+.r-titulo { font-weight: 700; }
+.r-sub { color: var(--tinta-media); font-size: 0.72rem; }
+.r-pill {
+  display: inline-block; background: rgba(31,138,71,.12); color: #166534;
+  font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+}
+.r-btn {
+  display: inline-block; background: var(--verde); color: #fff;
+  padding: 6px 12px; border-radius: 9px; font-weight: 600; font-size: 0.74rem; text-align: center;
+}
+.r-btn--gris { background: var(--suave); color: var(--tinta); border: 1px solid var(--borde); }
+.r-btn--rojo { background: var(--alerta); }
+.r-btn--ancho { display: block; }
+.r-fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+
+/* Marca sobre el recorte para señalar dónde tocar. */
+.marca {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--alerta); color: #fff; font-size: 0.7rem; font-weight: 700;
+  margin-right: 6px; flex: 0 0 auto;
+}
+
+/* ── Explicación numerada al lado del recorte ── */
+.explica { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; }
+.explica li { display: flex; gap: 9px; align-items: flex-start; }
+/* Va después de .explica span a propósito: si no, el gris de la lista le gana
+   por especificidad y el número del círculo rojo sale ilegible. */
+.explica .marca { color: #fff; }
+.explica strong { display: block; }
+.explica span { color: var(--tinta-media); font-size: 0.92rem; }
+
+/* ── Avisos ── */
+.ojo {
+  border-left: 4px solid var(--alerta); background: var(--alerta-suave);
+  padding: 12px 14px; border-radius: 0 11px 11px 0; margin: 14px 0 0;
+}
+.ojo strong { color: var(--alerta); }
+.tip {
+  border-left: 4px solid var(--verde); background: var(--verde-claro);
+  padding: 12px 14px; border-radius: 0 11px 11px 0; margin: 14px 0 0;
+}
+
+.cierre {
+  margin-top: 40px; padding: 18px; border-radius: 14px;
+  background: var(--papel); border: 1px solid var(--borde);
+}
+.cierre h2 { margin-top: 0; font-size: 1.05rem; }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin-top: 8px; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--borde); }
+th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
+
+@media print {
+  body { background: #fff; }
+  .hoja { max-width: none; padding: 0; }
+  .paso { break-inside: avoid; }
+  .pantalla { break-inside: avoid; }
+}
+
+</style>
+</head>
+<body>
+<div class="hoja">
+
+  <div class="portada">
+    <p class="portada__marca">AgroMorales · Manual</p>
+    <h1>Guía del operario</h1>
+    <p class="portada__para">Para los que manejan las máquinas en campo</p>
+    <p class="portada__nota">
+      Todo lo que aparece aquí lo haces desde el celular, y funciona sin señal.
+      Lo que registres se envía solo cuando vuelva la cobertura.
+    </p>
+  </div>
+
+  <nav class="indice">
+    <h2>Qué vas a encontrar</h2>
+    <ol>
+      <li><a href="#entrar">Entrar a la app</a></li>
+      <li><a href="#jornada">Tu jornada: las labores del día</a></li>
+      <li><a href="#tomar">Tomar una suerte en campo</a></li>
+      <li><a href="#cerrar">Cerrar una labor</a></li>
+      <li><a href="#recibir">Confirmar lo que te entregan ← lo más importante</a></li>
+      <li><a href="#pedir">Pedir insumos</a></li>
+      <li><a href="#tanqueo">Registrar un tanqueo</a></li>
+      <li><a href="#novedad">Registrar una novedad</a></li>
+      <li><a href="#quincena">Ver tu quincena</a></li>
+      <li><a href="#sinsenal">Cuando no hay señal</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section class="paso" id="entrar">
+    <h2><span class="paso__num">1</span> Entrar a la app</h2>
+    <p class="paso__intro">Buscas tu nombre en la lista y escribes tu PIN de 4 números. No hay usuario ni contraseña que aprenderse.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">AgroMorales</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">¿Quién eres?</div>
+          <div class="r-card">
+            <div class="r-titulo">Buscar tu nombre…</div>
+          </div>
+          <div class="r-card r-card--verde">
+            <div class="r-titulo">ESCOBAR DAVALOS LUIS ALBERTO</div>
+            <div class="r-sub">Operador · CASE 1301</div>
+          </div>
+          <div class="r-sub">PIN</div>
+          <div class="r-fila">
+            <div class="r-card" style="flex:1;text-align:center">●</div>
+            <div class="r-card" style="flex:1;text-align:center">●</div>
+            <div class="r-card" style="flex:1;text-align:center">●</div>
+            <div class="r-card" style="flex:1;text-align:center">●</div>
+          </div>
+          <div class="r-btn r-btn--ancho">Entrar</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Escribe tu nombre</strong><span>No hace falta bajar toda la lista: escribes dos o tres letras y aparece.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Tu PIN</strong><span>Cuatro números. Si se te olvidó, pídele a administración que te lo cambie.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>Instálala en el celular.</strong> Abre la página en Chrome y elige
+      <em>“Agregar a pantalla de inicio”</em>. Queda como una app más y abre más rápido.
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section class="paso" id="jornada">
+    <h2><span class="paso__num">2</span> Tu jornada: las labores del día</h2>
+    <p class="paso__intro">Al entrar ves lo que tienes asignado hoy. Cada tarjeta es una labor en una suerte.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">AgroMorales <small>OPERADOR</small></div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs"><span class="r-tab on">Activas</span><span class="r-tab">Historial</span><span class="r-tab">Tu quincena</span></div>
+          <div class="r-fila">
+            <span class="r-btn r-btn--gris">📋 Registrar novedad</span>
+            <span class="r-btn r-btn--gris">🛢️ Solicitar insumos</span>
+            <span class="r-btn r-btn--gris">⛽ Tanqueo</span>
+          </div>
+          <div class="r-card r-card--verde">
+            <div class="r-titulo">LA FLORESTA TASCON - 12A</div>
+            <div class="r-sub">REENCALLE · 8.50 ha</div>
+            <div class="r-sub">En curso · CASE 1301</div>
+          </div>
+          <div class="r-card">
+            <div class="r-titulo">CAMPOALEGRE - 3B</div>
+            <div class="r-sub">DESPEJE · 6.20 ha</div>
+            <div class="r-sub">Pendiente</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Activas</strong><span>Lo que tienes que hacer hoy. Tocas una tarjeta para abrirla y cerrarla cuando termines.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Los tres botones</strong><span>Están siempre arriba, sin importar en qué labor estés: novedad, pedir insumos y tanqueo.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Historial</strong><span>Lo que ya cerraste, por si necesitas revisar algo de días pasados.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section class="paso" id="tomar">
+    <h2><span class="paso__num">3</span> Tomar una suerte en campo</h2>
+    <p class="paso__intro">Si llegaste a una suerte que nadie te asignó, la tomas tú mismo desde el celular. No tienes que esperar a que el supervisor la cargue.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Tomar suerte en campo</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Ingenio</div><div class="r-card">RIOPAILA 🎤</div>
+          <div class="r-sub">Hacienda</div><div class="r-card">Buscar hacienda… 🎤</div>
+          <div class="r-sub">Suerte</div><div class="r-card">12A 🎤</div>
+          <div class="r-sub">Labor</div><div class="r-card">Buscar labor… 🎤</div>
+          <div class="r-sub">Supervisor que aprueba</div><div class="r-card">Buscar supervisor…</div>
+          <div class="r-btn r-btn--ancho">Tomar la suerte</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Puedes dictar</strong><span>El micrófono 🎤 al lado de cada campo escribe por ti. Sirve con las manos sucias o con guantes.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Si la suerte no está en la lista</strong><span>La creas ahí mismo. Queda marcada como “creada en campo” para que administración la revise después.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Elige quién la aprueba</strong><span>Es el supervisor que va a revisar tu trabajo. Sin eso la labor no le llega a nadie.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <section class="paso" id="cerrar">
+    <h2><span class="paso__num">4</span> Cerrar una labor</h2>
+    <p class="paso__intro">Cuando terminas, abres la tarjeta y registras lo que hiciste. <strong>De aquí sale lo que te pagan</strong>, así que vale la pena tomarse el minuto.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">LA FLORESTA TASCON - 12A</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Hectáreas ejecutadas</div><div class="r-card">8.50 🎤</div>
+          <div class="r-sub">Horómetro inicial</div><div class="r-card">Ej: 4523.5 🎤</div>
+          <div class="r-sub">Horómetro final</div><div class="r-card">Ej: 4541.2 🎤</div>
+          <div class="r-sub">Notas de cierre <em>(opcional)</em></div><div class="r-card">Observaciones de campo 🎤</div>
+          <div class="r-btn r-btn--ancho">Cerrar labor</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Hectáreas ejecutadas</strong><span>Lo que <em>de verdad</em> hiciste, no lo que decía la asignación. Si hiciste menos, pones menos: es lo correcto y así queda.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Los dos horómetros</strong><span>El de cuando arrancaste y el de cuando terminaste. Con eso se sabe cuánto trabajó la máquina y cuándo le toca mantenimiento.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Notas</strong><span>Si pasó algo —se dañó algo, llovió, el terreno estaba imposible— déjalo escrito. Después nadie se acuerda.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>Ojo con el horómetro.</strong> Míralo bien antes de escribirlo. Un número mal
+      copiado desordena el plan de mantenimiento de tu propia máquina.
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <section class="paso" id="recibir">
+    <h2><span class="paso__num">5</span> Confirmar lo que te entregan</h2>
+    <p class="paso__intro">
+      Cuando Genaro, Eduvin o Diego te entregan combustible o material, te aparece esta
+      tarjeta apenas abres la app. <strong>Es lo más importante de todo el manual.</strong>
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">AgroMorales <small>OPERADOR</small></div>
+        <div class="recorte__cuerpo">
+          <div class="r-card r-card--verde">
+            <div class="r-titulo">🛢️ ¿Recibiste estos insumos?</div>
+            <div class="r-sub">19,3 galón COMBUSTIBLE, 40 unidad GANCHOS · Máquina CASE 1301</div>
+            <div style="height:8px"></div>
+            <div class="r-btn r-btn--ancho">✔ SÍ, RECIBÍ TODO</div>
+            <div style="height:6px"></div>
+            <div class="r-btn r-btn--ancho r-btn--gris">⚠ HUBO UN PROBLEMA</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Si recibiste todo</strong><span>Un solo toque en el botón verde. Listo, no hay que escribir nada.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Si algo no cuadra</strong><span>Tocas el gris y eliges: <em>llegó menos cantidad</em> o <em>no recibí nada</em>. Escribes qué pasó.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Lo que sobra vuelve solo</strong><span>Si dices que llegó menos, la diferencia regresa al inventario sola. No tienes que avisarle a nadie.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>Por qué importa tanto.</strong> Esa confirmación es la prueba de que el
+      combustible y el material llegaron a tu máquina. Es lo que sostiene el cobro. Si no
+      confirmas, la entrega queda en el aire y alguien va a tener que ir a preguntarte.
+      <br><br>
+      <strong>Y al revés: si no recibiste algo, dilo.</strong> Marcar “recibí todo” cuando
+      no llegó todo te deja a ti cargando con material que nunca viste.
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────────── -->
+  <section class="paso" id="pedir">
+    <h2><span class="paso__num">6</span> Pedir insumos</h2>
+    <p class="paso__intro">Si necesitas combustible, ganchos o cualquier material, lo pides desde la app en vez de llamar. Queda registrado con la hora.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🛢️ Solicitar insumos</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Insumo</div>
+          <div class="r-card">COMBUSTIBLE (galón)</div>
+          <div class="r-fila">
+            <div class="r-card" style="flex:1">Cantidad: 20</div>
+            <span class="r-btn r-btn--gris">+ Otro</span>
+          </div>
+          <div class="r-sub">Nota <em>(opcional)</em></div>
+          <div class="r-card">Para qué / dónde…</div>
+          <div class="r-btn r-btn--ancho">Enviar solicitud</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Escribe para buscar</strong><span>Los que más se usan salen de primeras. El resto queda tras “⋯ Otros”.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Puedes pedir varias cosas</strong><span>Con “+ Otro” agregas más renglones a la misma solicitud.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Di para qué es</strong><span>“Cambio de punteras”, “se acabó en la 12A”. Al supervisor le ahorra una llamada.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      Queda guardada con la hora exacta. Así se sabe cuánto se demoró en llegarte, y eso es
+      lo que permite mejorar la ruta de los que reparten.
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────────── -->
+  <section class="paso" id="tanqueo">
+    <h2><span class="paso__num">7</span> Registrar un tanqueo</h2>
+    <p class="paso__intro">Cuando le echas combustible a tu máquina y no vino de un despacho —por ejemplo, tanqueaste en una bomba— lo registras aquí.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">⛽ Registrar tanqueo</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">¿DÓNDE TANQUEASTE?</div>
+          <div class="r-fila">
+            <div class="r-card r-card--verde" style="flex:1"><div class="r-titulo">⛽ En estación</div><div class="r-sub">Bomba de servicio</div></div>
+            <div class="r-card" style="flex:1"><div class="r-titulo">🏭 En sede</div><div class="r-sub">Bodega principal</div></div>
+          </div>
+          <div class="r-sub">Galones *</div><div class="r-card">18.5</div>
+          <div class="r-sub">Horómetro *</div><div class="r-card">4541.2</div>
+          <div class="r-sub">Estación</div><div class="r-card">TEXACO SAN PEDRO</div>
+          <div class="r-card r-card--gris">📷 Foto de la tirilla</div>
+          <div class="r-btn r-btn--ancho">Registrar tanqueo</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Dónde tanqueaste</strong><span>En la bomba o en la sede. Son cosas distintas: la de la sede sale del inventario de la empresa.</span></div></li>
+        <li><span class="marca">2</span><div><strong>El horómetro es obligatorio</strong><span>Sin él no se puede calcular cuánto rinde la máquina por galón.</span></div></li>
+        <li><span class="marca">3</span><div><strong>La estación se sugiere sola</strong><span>Empiezas a escribir y salen las bombas ya cargadas. Si es una nueva, la escribes y ya.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Tómale foto a la tirilla</strong><span>Es el respaldo del gasto. La foto se guarda liviana, no te llena el celular.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      Después de registrarlo queda <strong>pendiente del aval</strong> de Diego. Es normal:
+      él revisa que lo registrado corresponda con la tirilla.
+    </div>
+  </section>
+
+  <!-- 8 ─────────────────────────────────────────────── -->
+  <section class="paso" id="novedad">
+    <h2><span class="paso__num">8</span> Registrar una novedad</h2>
+    <p class="paso__intro">Los días que no trabajaste, o que trabajaste distinto, se registran aquí para que la planilla quede bien.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">📋 Registrar novedad</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">Tipo</div>
+          <div class="r-fila" style="flex-wrap:wrap">
+            <span class="r-tab">V · Vacaciones</span>
+            <span class="r-tab">I · Incapacidad</span>
+            <span class="r-tab on">LL · Lluvia</span>
+            <span class="r-tab">MT · Mantenimiento</span>
+          </div>
+          <div class="r-sub">Fecha</div><div class="r-card">02/08/2026</div>
+          <div class="r-sub">Observación</div><div class="r-card">Llovió toda la tarde</div>
+          <div class="r-btn r-btn--ancho">Guardar novedad</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Elige el tipo</strong><span>Vacaciones, incapacidad, lluvia, mantenimiento, permiso… cada uno tiene su letra en la planilla.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Registra el mismo día</strong><span>Dejarlo para después es como se pierden los días en la planilla.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 9 ─────────────────────────────────────────────── -->
+  <section class="paso" id="quincena">
+    <h2><span class="paso__num">9</span> Ver tu quincena</h2>
+    <p class="paso__intro">Cuántas hectáreas llevas, cuántas jornadas cumpliste y cómo vas contra la meta. Sin tener que preguntarle a nadie.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Tu quincena</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card r-card--verde">
+            <div class="r-fila"><span class="r-titulo">Hectáreas</span><span class="r-titulo">85.64</span></div>
+            <div class="r-fila"><span class="r-sub">Jornadas cumplidas</span><span class="r-sub">8 de 11</span></div>
+          </div>
+          <div class="r-card">
+            <div class="r-sub">Meta de la quincena</div>
+            <div class="r-fila"><span class="r-sub">85.64 de 95.50 ha</span><span class="r-pill">90%</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Se actualiza sola</strong><span>Cada vez que cierras una labor, el número sube.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Si llegas a la meta</strong><span>Te aparece un mensaje de felicitación. No es adorno: es que cumpliste.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 10 ────────────────────────────────────────────── -->
+  <section class="paso" id="sinsenal">
+    <h2><span class="paso__num">10</span> Cuando no hay señal</h2>
+    <p class="paso__intro">En el campo la cobertura va y viene. La app está hecha para eso: <strong>sigue trabajando normal</strong>.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">AgroMorales</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card r-card--verde">
+            <div class="r-titulo">⏸ Sin señal</div>
+            <div class="r-sub">Puedes seguir trabajando: lo que registres se envía solo cuando vuelva.</div>
+          </div>
+          <div class="r-card">
+            <div class="r-titulo">↑ 3 registros sin enviar</div>
+            <div class="r-sub">Se envían solos cuando haya señal · toca para ver</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Nada se pierde</strong><span>Lo que registras queda guardado en tu celular hasta que suba.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Puedes ver qué falta</strong><span>Tocas el aviso y ves la lista de lo que está esperando.</span></div></li>
+        <li><span class="marca">3</span><div><strong>No cierres sesión sin señal</strong><span>Espera a que el aviso desaparezca. Ahí ya subió todo.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="cierre">
+    <h2>Lo que no se puede olvidar</h2>
+    <table>
+      <tr><th>Qué</th><th>Por qué</th></tr>
+      <tr><td><strong>Confirmar lo que te entregan</strong></td><td>Es la prueba de que llegó a tu máquina. Sostiene el cobro.</td></tr>
+      <tr><td><strong>Poner las hectáreas reales</strong></td><td>De ahí sale lo que te pagan.</td></tr>
+      <tr><td><strong>El horómetro bien copiado</strong></td><td>Es el plan de mantenimiento de tu propia máquina.</td></tr>
+      <tr><td><strong>Registrar la novedad el mismo día</strong></td><td>Después no aparece en la planilla.</td></tr>
+      <tr><td><strong>Esperar a que suba lo pendiente</strong></td><td>Antes de cerrar sesión, que no quede el aviso.</td></tr>
+    </table>
+  </div>
+
+</div>
+
+</body>
+</html>

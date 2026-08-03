@@ -97,7 +97,7 @@ function VerTodo({
 }
 
 export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
-  const { assignments, users, insumos, todayKey, operatorStatusMap } = useAppData()
+  const { assignments, users, insumos, sortedEquipment, todayKey, operatorStatusMap } = useAppData()
 
   const [periodo, setPeriodo] = useState<Periodo>('HOY')
   const [desde, setDesde] = useState(() => rangoDe('HOY', todayKey).desde)
@@ -210,6 +210,12 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     insumos.forEach((i) => m.set(i.id, { nombre: i.nombre, unidad: i.unidad }))
     return m
   }, [insumos])
+  /** El código crudo (CASE1301) no es como la gente llama la máquina. */
+  const equipoNombre = useMemo(() => {
+    const m = new Map<string, string>()
+    sortedEquipment.forEach((e) => m.set(e.code, e.name))
+    return m
+  }, [sortedEquipment])
   const bodegaNombre = useMemo(() => {
     const m = new Map<string, string>()
     bodegas.forEach((b) => m.set(b.id, b.nombre))
@@ -454,40 +460,49 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
               {' · '}{detIns.items.length} ítem{detIns.items.length === 1 ? '' : 's'}
             </p>
             <div className="dash-detalle">
-              {detIns.items.length === 0 ? (
+              {/* El catálogo llega por el contexto compartido; sin esperarlo
+                  la lista muestra el UUID crudo del insumo. */}
+              {insumos.length === 0 ? (
+                <p className="muted-text">Cargando insumos…</p>
+              ) : detIns.items.length === 0 ? (
                 <p className="muted-text">Nada que mostrar.</p>
               ) : (
-                agruparDespachos(detIns.items).map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    className="dash-detalle__row dash-detalle__row--tocable"
-                    onClick={() => setVerDespacho(g.cabeza)}
-                    aria-label={`Ver el detalle de la entrega a ${g.cabeza.equipoCodigo ?? ''}`}
-                  >
-                    <div className="dash-detalle__main">
-                      <strong>
-                        {g.movs.map((m) => insumoNombre.get(m.insumoId)?.nombre ?? m.insumoId).join(' · ')}
-                      </strong>
-                      <span>
-                        {g.cabeza.motivo ?? 'Entrega'}
-                        {g.cabeza.equipoCodigo ? ` · 🚜 ${g.cabeza.equipoCodigo}` : ''}
-                        {g.cabeza.bodegaId && bodegaNombre.get(g.cabeza.bodegaId) ? ` · ${bodegaNombre.get(g.cabeza.bodegaId)}` : ''}
-                        {' · '}<span className="consumo-maq__ver">ver detalle →</span>
+                agruparDespachos(detIns.items).map((g) => {
+                  const maq = g.cabeza.equipoCodigo ?? ''
+                  const bod = g.cabeza.bodegaId ? bodegaNombre.get(g.cabeza.bodegaId) : ''
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      className="ent-row"
+                      onClick={() => setVerDespacho(g.cabeza)}
+                      aria-label={`Ver el detalle de la entrega a ${equipoNombre.get(maq) ?? maq}`}
+                    >
+                      <div className="ent-row__cab">
+                        <strong>🚜 {equipoNombre.get(maq) ?? maq}</strong>
+                        <span className="ent-row__hora">{fmtFechaHora(g.cuando)}</span>
+                      </div>
+                      <ul className="ent-row__items">
+                        {g.movs.map((m) => {
+                          const info = insumoNombre.get(m.insumoId)
+                          return (
+                            <li key={m.id}>
+                              {/* Cada insumo con SU unidad: no se suman entre sí. */}
+                              <span className="sol-card__qty">
+                                {fmtCantidad(m.cantidad, info?.unidad)} {info?.unidad ?? ''}
+                              </span>
+                              <span className="ent-row__ins">{info?.nombre ?? m.insumoId}</span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                      <span className="ent-row__pie">
+                        {g.cabeza.motivo ?? 'Entrega'}{bod ? ` · ${bod}` : ''}
+                        <span className="ent-row__ver" aria-hidden>ver detalle ›</span>
                       </span>
-                    </div>
-                    <div className="dash-detalle__side">
-                      {/* Cada insumo con su unidad: no se suman entre sí. */}
-                      {g.movs.map((m) => {
-                        const info = insumoNombre.get(m.insumoId)
-                        return (
-                          <strong key={m.id}>{fmtCantidad(m.cantidad, info?.unidad)} {info?.unidad ?? ''}</strong>
-                        )
-                      })}
-                      <small>{fmtFechaHora(g.cuando)}</small>
-                    </div>
-                  </button>
-                ))
+                    </button>
+                  )
+                })
               )}
             </div>
           </div>

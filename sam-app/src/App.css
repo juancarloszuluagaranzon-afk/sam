@@ -8002,9 +8002,37 @@ td.planilla-vacio:hover { background: #fde047; }
   background: var(--color-bg-muted); font-size: 0.8rem;
 }
 
-/* Fila del detalle de entregas: toda tocable, abre el formulario completo. */
-.dash-detalle__row--tocable {
+/* Entrega en el detalle del tablero.
+   Habla el mismo idioma que las tarjetas de la Bandeja —la píldora verde con
+   la cantidad— porque es el mismo hecho visto desde otra pantalla. La máquina
+   manda, que es de lo que se acuerda la gente; la hora se va al margen. */
+.ent-row {
+  display: flex; flex-direction: column; gap: 7px;
   width: 100%; text-align: left; cursor: pointer;
-  color: inherit; font: inherit; background: transparent;
+  padding: 12px 14px; margin-bottom: 8px;
+  border: 1px solid var(--color-border); border-radius: 14px;
+  background: var(--color-surface); color: inherit; font: inherit;
 }
-.dash-detalle__row--tocable:active { background: var(--color-bg-muted); }
+.ent-row:last-child { margin-bottom: 0; }
+.ent-row:active { background: var(--color-bg-soft); }
+.ent-row:hover { border-color: var(--color-brand); }
+
+.ent-row__cab { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.ent-row__cab strong { font-size: 0.95rem; overflow-wrap: anywhere; }
+.ent-row__hora {
+  flex: 0 0 auto; font-size: 0.74rem; color: var(--color-ink-mid);
+  font-variant-numeric: tabular-nums;
+}
+
+.ent-row__items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.ent-row__items li { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ent-row__ins { font-size: 0.86rem; overflow-wrap: anywhere; }
+
+.ent-row__pie {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  font-size: 0.76rem; color: var(--color-ink-mid);
+}
+.ent-row__ver { flex: 0 0 auto; font-weight: 600; }
+
+/* El listado ya no necesita separadores: cada entrega es su propia tarjeta. */
+.dash-detalle { padding-right: 2px; }

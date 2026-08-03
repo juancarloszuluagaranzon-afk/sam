@@ -3675,3 +3675,31 @@ export async function cargarListaCatalogo(tipo: string, texto: string): Promise<
   if (error) throw new Error(error.message)
   return { nuevos: nuevos.length, repetidos: 0 }
 }
+
+/**
+ * Una sola entrega, por su id.
+ *
+ * El detalle de un despacho se abre desde varias pantallas, y no todas cargan
+ * la lista completa de solicitudes. Traer solo la que se va a mirar es más
+ * barato que obligar a cada pantalla a cargarlas todas por si acaso.
+ */
+export async function loadSolicitudPorId(id: string): Promise<SolicitudInsumo | null> {
+  const { data, error } = await supabase
+    .from('insumos_solicitudes')
+    .select('*,items:insumos_solicitud_items(*)')
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return mapSolicitud(data as Record<string, unknown>)
+}
+
+/** Un tanqueo por su id: el kardex del abastecimiento en sede apunta acá. */
+export async function loadCombustiblePorId(id: string): Promise<CombustibleExterno | null> {
+  const { data, error } = await supabase
+    .from('combustible_externo')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error || !data) return null
+  return mapCombustible(data as Record<string, unknown>)
+}

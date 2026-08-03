@@ -6,6 +6,7 @@ import { fmtFechaHora } from '../lib/fechas'
 import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../components/Charts'
 import type { Assignment, InsumoKardex, Bodega } from '../domain/sam'
 import { agruparDespachos } from '../lib/despachos'
+import { DetalleDespacho } from '../components/DetalleDespacho'
 
 /**
  * Inicio del propietario — el tablero de la operación.
@@ -105,6 +106,8 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
   const [movs, setMovs] = useState<InsumoKardex[]>([])
   const [bodegas, setBodegas] = useState<Bodega[]>([])
   // Detalle de insumos (entregas) en ventana emergente.
+  /** Despacho abierto desde el detalle de entregas. */
+  const [verDespacho, setVerDespacho] = useState<InsumoKardex | null>(null)
   const [detIns, setDetIns] = useState<{ titulo: string; items: InsumoKardex[] } | null>(null)
   // Los rankings muestran los primeros y ocultan la cola tras "Mostrar todos",
   // para que el dueño pueda cuadrar contra el total de arriba.
@@ -455,7 +458,13 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
                 <p className="muted-text">Nada que mostrar.</p>
               ) : (
                 agruparDespachos(detIns.items).map((g) => (
-                  <div key={g.id} className="dash-detalle__row">
+                  <button
+                    key={g.id}
+                    type="button"
+                    className="dash-detalle__row dash-detalle__row--tocable"
+                    onClick={() => setVerDespacho(g.cabeza)}
+                    aria-label={`Ver el detalle de la entrega a ${g.cabeza.equipoCodigo ?? ''}`}
+                  >
                     <div className="dash-detalle__main">
                       <strong>
                         {g.movs.map((m) => insumoNombre.get(m.insumoId)?.nombre ?? m.insumoId).join(' · ')}
@@ -464,6 +473,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
                         {g.cabeza.motivo ?? 'Entrega'}
                         {g.cabeza.equipoCodigo ? ` · 🚜 ${g.cabeza.equipoCodigo}` : ''}
                         {g.cabeza.bodegaId && bodegaNombre.get(g.cabeza.bodegaId) ? ` · ${bodegaNombre.get(g.cabeza.bodegaId)}` : ''}
+                        {' · '}<span className="consumo-maq__ver">ver detalle →</span>
                       </span>
                     </div>
                     <div className="dash-detalle__side">
@@ -476,12 +486,19 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
                       })}
                       <small>{fmtFechaHora(g.cuando)}</small>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
           </div>
         </div>
+      )}
+
+      {/* La entrega completa: el mismo detalle que en Reportes, para que no
+          haya dos versiones de la misma verdad. Va después del listado, así
+          se pinta encima y al cerrarlo se vuelve a la lista. */}
+      {verDespacho && (
+        <DetalleDespacho mov={verDespacho} onClose={() => setVerDespacho(null)} />
       )}
 
       {/* Ventana emergente con el detalle */}

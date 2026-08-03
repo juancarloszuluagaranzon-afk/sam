@@ -100,6 +100,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 ## Detalles que muerden
 
+- **🔴 El detalle de una entrega va con `<DetalleDespacho>`** (`src/components/`): quién
+  recibió, quién entregó, horómetro, nota, evidencia y el aval del operario. Se abre
+  desde Reportes (lista, detalle de máquina, detalle de insumo) e Inicio, así que vive
+  en un componente y no dentro de una pantalla. Se le pasa el movimiento de kardex; si
+  quien lo abre ya tiene la entrega cargada se la pasa en `entrega`, y si no, la busca
+  sola por `referencia` (`loadSolicitudPorId` / `loadCombustiblePorId`). Al agregar un
+  listado de movimientos nuevo: hacer la fila tocable y colgar este componente.
 - **🔴 Un despacho es UN hecho, no una fila por insumo.** El kardex guarda una fila
   por insumo, así que una entrega de ganchos + combustible sale duplicada —misma
   máquina, misma hora, mismo operario— y en celular llena la lista sin decir nada.

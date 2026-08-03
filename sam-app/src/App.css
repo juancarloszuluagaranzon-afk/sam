@@ -8001,3 +8001,10 @@ td.planilla-vacio:hover { background: #fde047; }
   border-left: 3px solid var(--color-border); border-radius: 0 8px 8px 0;
   background: var(--color-bg-muted); font-size: 0.8rem;
 }
+
+/* Fila del detalle de entregas: toda tocable, abre el formulario completo. */
+.dash-detalle__row--tocable {
+  width: 100%; text-align: left; cursor: pointer;
+  color: inherit; font: inherit; background: transparent;
+}
+.dash-detalle__row--tocable:active { background: var(--color-bg-muted); }

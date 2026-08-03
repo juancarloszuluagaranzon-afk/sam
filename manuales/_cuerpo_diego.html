@@ -205,7 +205,7 @@
       </div>
       <ul class="explica">
         <li><span class="marca">1</span><div><strong>Solo máquina o vehículo</strong><span>Son destinos de consumo. Sumarle a un carro es del supervisor de ese carro — si no, no se sabría de quién es el material.</span></div></li>
-        <li><span class="marca">2</span><div><strong>En sede descuenta la principal</strong><span>Sale del inventario y se le carga a la máquina. Aparece como “Abastecimiento en sede”.</span></div></li>
+        <li><span class="marca">2</span><div><strong>En sede descuenta la principal</strong><span>Sale del inventario y se le carga a la máquina. Aparece como “Abastecimiento en sede”. <em>El tanqueo solo saca de la principal; para meterle, ve a Inventario → + Entrada.</em></span></div></li>
         <li><span class="marca">3</span><div><strong>Lo firma el dueño</strong><span>El formulario te lo dice antes de guardar, para que no te quedes esperando.</span></div></li>
       </ul>
     </div>
@@ -232,7 +232,7 @@
         </div>
       </div>
       <ul class="explica">
-        <li><span class="marca">1</span><div><strong>+ Entrada</strong><span>Una compra que suma al inventario. <strong>Nunca para combustible</strong>: ese entra por tanqueo.</span></div></li>
+        <li><span class="marca">1</span><div><strong>+ Entrada</strong><span>Una compra que suma a la <strong>bodega principal</strong>. Es el único camino para cargar lo que llega comprado: materiales <em>y también el combustible del carrotanque</em>.</span></div></li>
         <li><span class="marca">2</span><div><strong>📒 Kardex</strong><span>Todos los movimientos del insumo, con saldo, motivo y quién lo hizo. Es tu herramienta para cuadrar.</span></div></li>
         <li><span class="marca">3</span><div><strong>⚖ Ajuste por conteo</strong><span>Cuando cuentas físicamente y no cuadra. Escribes lo que contaste y queda registrado el motivo.</span></div></li>
         <li><span class="marca">4</span><div><strong>La cantidad es de toda la empresa</strong><span>Principal + carros. Para ver el reparto, entra a Bodegas o al Resumen.</span></div></li>
@@ -240,8 +240,17 @@
     </div>
 
     <div class="ojo">
-      <strong>El combustible nunca se mete a mano.</strong> Si pudiera aparecer escribiéndolo,
-      se acabó la trazabilidad. Entra por tanqueo y sale por entrega. Siempre.
+      <strong>Surtir la bodega principal.</strong> Cuando llega el carrotanque o la compra de
+      materiales, entra por aquí: <strong>Inventario → + Entrada</strong>, sobre el insumo que
+      corresponda. Escribes la cantidad y el motivo (“Compra factura 4471”, por ejemplo) y
+      suma a la principal.
+      <br><br>
+      Es la <strong>única</strong> pantalla donde se puede sumar inventario escribiéndolo, y
+      por eso solo la tienes tú: los supervisores no la ven. Ellos no pueden crear
+      combustible de la nada — el suyo entra por un traslado tuyo o por un tanqueo avalado.
+      <br><br>
+      <strong>Pon siempre el número de la factura en el motivo.</strong> Es lo único que
+      después permite cuadrar el kardex contra la contabilidad.
     </div>
   </section>
 
@@ -359,8 +368,8 @@
           <td>El aval es el segundo par de ojos. Si firmas lo tuyo, no hay control.</td>
         </tr>
         <tr>
-          <td><strong>El combustible no se mete a mano</strong></td>
-          <td>Si pudiera aparecer escribiéndolo, se acabó la trazabilidad. Entra por tanqueo.</td>
+          <td><strong>Solo tú puedes sumar inventario</strong></td>
+          <td>“+ Entrada” es la única forma de crear existencias escribiéndolas, y solo tú la ves. Los supervisores no pueden: lo suyo entra por traslado o por tanqueo avalado.</td>
         </tr>
         <tr>
           <td><strong>Rechazar reversa el movimiento</strong></td>

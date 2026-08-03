@@ -102,6 +102,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Mapas offline | `views/MapaView`, `MapasTab` | Visor tipo Avenza (capas, medir, marcadores) + tiles de FieldMaps |
 | Flota / Escolta | `views/Flota*` | Formato CDA-F-68, rol `conductor`, firma táctil + foto |
 | Taller de maquinaria | `views/TallerModule`, `views/taller/*` | Hoja de vida, preventivo por horómetro, órdenes de trabajo, repuestos, compras e indicadores ($/hora, disponibilidad, TMEF, TMR) |
+| Informe semanal | `views/InformeSemanalTab`, `lib/informeSemanal.ts` | Una fila por máquina y semana: horómetro inicial/final, **horas trabajadas**, combustible y **gal/hora**. Reemplaza la hoja de Excel manual. ⚠️ Descarta las lecturas de horómetro con magnitud distinta a la dominante de esa máquina y las marca — no las esconde |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
 
 ## Detalles que muerden

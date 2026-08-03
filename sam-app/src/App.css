@@ -8036,3 +8036,33 @@ td.planilla-vacio:hover { background: #fde047; }
 
 /* El listado ya no necesita separadores: cada entrega es su propia tarjeta. */
 .dash-detalle { padding-right: 2px; }
+
+/* Informe semanal por máquina. */
+.sem-fila { border: 1px solid var(--color-border); border-radius: 14px; background: var(--color-surface); overflow: hidden; }
+.sem-fila__cab {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  width: 100%; text-align: left; cursor: pointer;
+  padding: 12px 14px; background: transparent; border: none; color: inherit; font: inherit;
+}
+.sem-fila__cab:active { background: var(--color-bg-soft); }
+.sem-fila__id { flex: 1 1 160px; display: flex; flex-direction: column; min-width: 0; }
+.sem-fila__id small { color: var(--color-ink-mid); font-size: 0.74rem; }
+.sem-fila__kpis { display: flex; gap: 14px; flex: 0 0 auto; }
+.sem-fila__kpis span { display: flex; flex-direction: column; text-align: right; }
+.sem-fila__kpis small { font-size: 0.66rem; text-transform: uppercase; color: var(--color-ink-mid); }
+.sem-fila__kpis strong { font-variant-numeric: tabular-nums; }
+.sem-fila__kpis em { font-size: 0.7rem; font-style: normal; }
+/* Rendimiento fuera de lo normal para esa máquina: se marca, no se esconde. */
+.sem-alerta strong { color: var(--color-alerta, #b3261e); }
+
+.sem-fila__detalle { padding: 0 14px 14px; display: flex; flex-direction: column; gap: 8px; }
+.sem-evento {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; border-radius: 11px; background: var(--color-bg-soft);
+  border-left: 3px solid var(--color-brand);
+}
+.sem-evento--dudoso { border-left-color: #b3261e; background: #fdecea; }
+.sem-evento__top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.sem-evento__datos { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.84rem; }
+.sem-evento__datos strong { font-variant-numeric: tabular-nums; }
+.sem-evento__aviso { font-size: 0.78rem; color: #b3261e; margin-top: 4px; }

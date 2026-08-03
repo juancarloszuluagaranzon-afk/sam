@@ -8,6 +8,7 @@ import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { InsumosInventarioTab } from './InsumosInventarioTab'
 import { InventarioResumenTab } from './InventarioResumenTab'
 import { BandejaInsumosTab } from './BandejaInsumosTab'
+import { InformeSemanalTab } from './InformeSemanalTab'
 import { BodegasTab } from './BodegasTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
@@ -33,7 +34,7 @@ import { BotonManual } from '../components/BotonManual'
  * administración. El aval es el segundo par de ojos; si firma lo suyo, no hay
  * control.
  */
-type AnalistaTab = 'resumen' | 'bandeja' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'reportes' | 'mapa'
+type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'reportes' | 'mapa'
 
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
   { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
@@ -42,6 +43,7 @@ const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = 
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
   { key: 'bodegas', icon: '🏢', label: 'Bodegas', desc: 'Principal y carros' },
   { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },
+  { key: 'semanal', icon: '📅', label: 'Semanal', desc: 'Horas y gal/hora' },
   { key: 'reportes', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
@@ -107,6 +109,7 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
           : tab === 'inventario' ? <InsumosInventarioTab />
           : tab === 'bodegas' ? <BodegasTab />
           : tab === 'catalogos' ? <CatalogosInsumosTab />
+          : tab === 'semanal' ? <InformeSemanalTab />
           : tab === 'reportes' ? <ConsumoEquiposTab />
           : <MapaView onBack={() => setTab('avales')} />}
       </div>

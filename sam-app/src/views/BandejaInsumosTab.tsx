@@ -492,7 +492,7 @@ export function BandejaInsumosTab() {
                   {PUEDEN_CORREGIR.includes(session?.role ?? '') && (
                     <button type="button" className="inline-button" style={{ marginTop: 8 }}
                             onClick={() => setCorrigiendo(s)}>
-                      ✏️ Corregir fecha, máquina o cantidad
+                      ✏️ Corregir o eliminar este despacho
                     </button>
                   )}
                 </>

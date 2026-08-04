@@ -8078,3 +8078,37 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .engraso__btn.is-si { background: var(--color-brand); border-color: var(--color-brand); color: #fff; }
 .engraso__btn.is-no { background: #b3261e; border-color: #b3261e; color: #fff; }
+
+/* ── Eliminar un despacho ──────────────────────────────────────────────────
+   Separado del bloque de guardar por una línea: corregir y deshacer no son la
+   misma acción, y el que entra a cambiar una cantidad no debe encontrarse el
+   botón de borrar al lado del de guardar. Usa los tokens de "cancelado", que
+   ya están resueltos en claro y en oscuro. */
+.desp-borrar {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-divider);
+}
+.link-danger {
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--color-status-cancel);
+  cursor: pointer;
+  text-align: left;
+}
+.link-danger:hover { text-decoration: underline; }
+.link-danger:disabled { opacity: 0.5; cursor: default; text-decoration: none; }
+.desp-borrar__aviso {
+  background: var(--color-status-cancel-bg);
+  border-left: 3px solid var(--color-status-cancel);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 12px;
+  margin: 0 0 10px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--color-ink-mid);
+}

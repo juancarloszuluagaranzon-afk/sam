@@ -256,7 +256,7 @@ export function DetalleDespacho({
           {e && e.estado === 'ENTREGADA' && PUEDEN_CORREGIR.includes(session?.role ?? '') && (
             <button type="button" className="secondary-button" style={{ marginTop: 14, width: '100%' }}
                     onClick={() => setEditando(true)}>
-              ✏️ Corregir fecha, máquina o cantidad
+              ✏️ Corregir o eliminar este despacho
             </button>
           )}
         </div>

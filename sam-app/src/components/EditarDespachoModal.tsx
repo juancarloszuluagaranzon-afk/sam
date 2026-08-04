@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { editarDespacho } from '../services/samApi'
+import { editarDespacho, eliminarDespacho } from '../services/samApi'
 import type { SolicitudInsumo } from '../domain/sam'
 import { SearchableSelect } from './SearchableSelect'
 import { fmtFechaHoraLarga } from '../lib/fechas'
@@ -58,6 +58,10 @@ export function EditarDespachoModal({
     return m
   })
   const [guardando, setGuardando] = useState(false)
+  // Eliminar va en dos pasos a propósito: borra movimientos de inventario y
+  // devuelve stock, así que no puede colgar de un solo toque descuidado.
+  const [borrando, setBorrando] = useState(false)
+  const [motivoBorrado, setMotivoBorrado] = useState('')
 
   const opcionesEquipo = useMemo(
     () => sortedEquipment.map((e) => ({ value: e.code, label: e.name })),
@@ -107,6 +111,31 @@ export function EditarDespachoModal({
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo guardar la corrección')
+    } finally {
+      setGuardando(false)
+    }
+  }
+
+  async function eliminar() {
+    if (!motivoBorrado.trim()) { setError('Escribe por qué se elimina.'); return }
+    setGuardando(true)
+    setError('')
+    try {
+      const actualizados = await eliminarDespacho({
+        solicitudId: entrega.id,
+        motivo: motivoBorrado.trim(),
+        eliminadoPor: session?.id,
+      })
+      if (actualizados.length) {
+        setInsumos(insumos.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
+      }
+      setInfo(entrega.origen === 'DIRECTA'
+        ? 'Despacho eliminado. El material volvió al inventario.'
+        : 'Despacho eliminado. El material volvió al inventario y la solicitud quedó pendiente de despachar.')
+      onGuardado()
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el despacho')
     } finally {
       setGuardando(false)
     }
@@ -182,6 +211,42 @@ export function EditarDespachoModal({
                   disabled={guardando || !hayCambios}>
             {guardando ? 'Guardando…' : 'Guardar corrección'}
           </button>
+        </div>
+
+        {/* Eliminar vive abajo y detrás de un paso más: no es una corrección,
+            es deshacer un hecho. Devuelve material al inventario. */}
+        <div className="desp-borrar">
+          {!borrando ? (
+            <button type="button" className="link-danger" onClick={() => setBorrando(true)} disabled={guardando}>
+              🗑 Este despacho no debió existir — eliminarlo
+            </button>
+          ) : (
+            <>
+              <p className="desp-borrar__aviso">
+                Se borran los movimientos de inventario y <strong>el material vuelve
+                a tu bodega</strong>. {entrega.origen === 'DIRECTA'
+                  ? 'La entrega queda cancelada.'
+                  : 'La solicitud vuelve a quedar pendiente de despachar, porque el operario sigue necesitando el material.'}
+                {' '}Queda guardado quién lo eliminó y por qué.
+              </p>
+              <label className="field">
+                <span>¿Por qué se elimina?</span>
+                <input type="text" value={motivoBorrado} autoFocus
+                       placeholder="Ej: se registró en la máquina equivocada"
+                       onChange={(e) => setMotivoBorrado(e.target.value)} />
+              </label>
+              <div className="modal-actions">
+                <button type="button" className="secondary-button"
+                        onClick={() => { setBorrando(false); setMotivoBorrado('') }} disabled={guardando}>
+                  Mejor no
+                </button>
+                <button type="button" className="danger-button" onClick={() => void eliminar()}
+                        disabled={guardando || !motivoBorrado.trim()}>
+                  {guardando ? 'Eliminando…' : 'Sí, eliminar'}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

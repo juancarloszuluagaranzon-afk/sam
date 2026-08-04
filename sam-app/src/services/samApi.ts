@@ -2780,6 +2780,103 @@ export async function editarDespacho(input: {
   return actualizados
 }
 
+/**
+ * Elimina un despacho que nunca debió existir: se entregó a la máquina
+ * equivocada, se registró dos veces, o simplemente no pasó.
+ *
+ * **Borra, no compensa** — la misma decisión que en `anularTraslado`, y por el
+ * mismo motivo que el cliente ya explicó una vez: registrar una devolución deja
+ * el saldo cuadrado pero mete en el libro dos movimientos físicos que nadie
+ * hizo, y la salida original sigue contando como consumo de la máquina en todos
+ * los reportes. Un despacho que no ocurrió no ocurrió.
+ *
+ * **Nada se pierde.** El despacho completo —con sus ítems, su evidencia y su
+ * aval— queda guardado en `insumos_despachos_auditoria` antes de borrarse. El
+ * rastro de la equivocación vive ahí, no en el inventario.
+ *
+ * **A dónde vuelve la solicitud.** Si la pidió un operario, vuelve a
+ * `PROGRAMADA`: él sigue necesitando ese material y borrar la entrega mal hecha
+ * no borra su necesidad — reaparece en la bandeja para despacharla bien. Una
+ * entrega DIRECTA no tiene pedido detrás, así que queda `CANCELADA`.
+ */
+export async function eliminarDespacho(input: {
+  solicitudId: string
+  motivo: string
+  eliminadoPor?: string
+}): Promise<Insumo[]> {
+  const { data: row, error: eLeer } = await supabase
+    .from('insumos_solicitudes')
+    .select('*,items:insumos_solicitud_items(*)')
+    .eq('id', input.solicitudId)
+    .maybeSingle()
+  if (eLeer) throw new Error(eLeer.message)
+  if (!row) throw new Error('No se encontró el despacho')
+
+  const desp = mapSolicitud(row as Record<string, unknown>)
+  if (desp.estado !== 'ENTREGADA') {
+    throw new Error('Solo se puede eliminar un despacho ya entregado')
+  }
+
+  // 1. La copia ANTES de tocar nada. Si algo falla después, esta fila es lo
+  //    único que permitiría reconstruir lo que había.
+  await supabase.from('insumos_despachos_auditoria').insert({
+    solicitud_id: input.solicitudId,
+    accion: 'ELIMINAR',
+    cambios: { motivo: input.motivo, despacho: row },
+    editado_por: input.eliminadoPor ?? null,
+  })
+
+  // 2. Fuera del libro de inventario — TODAS las filas, no solo las SALIDA.
+  //    Aquí sí entra la ENTRADA del aval: si el despacho no ocurrió, la
+  //    devolución por diferencia tampoco tiene de qué ser devolución.
+  const { error: eBorrar } = await supabase
+    .from('insumos_kardex').delete().eq('referencia', input.solicitudId)
+  if (eBorrar) throw new Error(eBorrar.message || 'No se pudo limpiar el movimiento')
+
+  // 3. Rehacer el saldo de cada material que tocaba.
+  const actualizados: Insumo[] = []
+  if (desp.bodegaId) {
+    const insumosTocados = [...new Set(desp.items.map((it) => it.insumoId).filter(Boolean))] as string[]
+    for (const insumoId of insumosTocados) {
+      await recalcularStockBodega(insumoId, desp.bodegaId)
+      const { data } = await supabase.from('insumos').select('*').eq('id', insumoId).maybeSingle()
+      if (data) actualizados.push(mapInsumo(data as Record<string, unknown>))
+    }
+  }
+
+  // 4. La solicitud vuelve a donde estaba antes de la entrega. Se limpia el
+  //    aval además de la entrega: si no, al re-despacharla el operario vería su
+  //    confirmación vieja sobre material que no ha recibido.
+  const directa = desp.origen === 'DIRECTA'
+  const { error: eEstado } = await supabase
+    .from('insumos_solicitudes')
+    .update({
+      estado: directa ? 'CANCELADA' : 'PROGRAMADA',
+      motivo_rechazo: directa ? input.motivo : null,
+      entregado_en: null,
+      despachado_por: null,
+      horometro: null,
+      evidencia_urls: [],
+      engraso: null,
+      confirmado_en: null,
+      confirmado_por: null,
+      conforme: null,
+      confirmacion_nota: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', input.solicitudId)
+  if (eEstado) throw new Error(eEstado.message || 'No se pudo actualizar la solicitud')
+
+  // Lo despachado se limpia; lo PEDIDO no se toca — es lo que el operario sigue
+  // necesitando y es lo que precarga el próximo despacho.
+  await supabase
+    .from('insumos_solicitud_items')
+    .update({ cantidad_despachada: null, cantidad_recibida: null })
+    .eq('solicitud_id', input.solicitudId)
+
+  return actualizados
+}
+
 /** Las ediciones de un despacho, la más reciente primero. */
 export async function loadEdicionesDespacho(solicitudId: string): Promise<EdicionDespacho[]> {
   const { data, error } = await supabase

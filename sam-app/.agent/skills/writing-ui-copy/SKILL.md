@@ -90,3 +90,14 @@ agroserviciosmorales.vercel.app/manuales/manual-taller.html
 - **Al cambiar una pantalla, revisar si el manual quedó mintiendo.** Ya pasó: el
   manual decía que el combustible entraba por tanqueo, y el tanqueo no tiene
   ningún destino que le sume a la principal.
+
+### Los manuales están DENTRO de la app
+
+`<BotonManual>` (`src/components/`) va en el menú lateral (dueño, administración,
+supervisor, operario) y en la barra superior de los roles que no tienen menú
+(analista, supervisor de insumos, conductor). `manualesDe(rol)` decide cuál abrir;
+a quien le sirven varios le muestra un selector.
+
+Se abre en pestaña aparte (`window.open(..., '_blank', 'noopener')`) para no
+perder lo que estaba haciendo. **Al agregar un rol nuevo: sumarlo a `manualesDe()`**,
+o ese rol se queda sin manual y nadie se entera.

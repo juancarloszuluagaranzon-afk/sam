@@ -7,7 +7,8 @@ description: >
   insumos", o el consumo por equipo. También si el usuario menciona "insumos",
   "combustible", "diésel", "inventario", "kardex", "solicitud", "despacho",
   "entrega", "bodega", "bodega satelite", "traslado", "estacion de servicio",
-  "tanqueo", "tirilla" o "cargar al tractor".
+  "tanqueo", "tirilla", "cargar al tractor", "catalogos", "placa", "engrase",
+  "informe semanal", "galones por hora" o "horas trabajadas".
 ---
 
 # Módulo Insumos y Combustible — SAM
@@ -198,9 +199,11 @@ Todo nace `PENDIENTE`. Lo revisa el rol `analista_insumos` (Diego) en
 
 ### Placas
 
-`vehiculos` (tabla) + `VehiculosTab`. Las marcadas `frecuente` salen de entrada
-en el selector; el resto tras "Otros". Además se recuerda la última placa que usó
-cada persona en `localStorage` (`sam:ultima-placa:<userId>`) y sale preseleccionada.
+⚠️ **Desmontado el 1-ago-2026.** Antes había una tabla `vehiculos` con su
+`VehiculosTab` y un selector: para tanquear un carro nuevo tocaba primero darlo de
+alta. En la bomba a las 6 de la mañana eso es un muro, y lo que pasa entonces es
+que el registro no se hace. Ahora la placa se **escribe** con `<CampoPlaca>` y el
+catálogo solo sugiere. Ver la sección de catálogos de listas más abajo.
 
 ### Quién ve qué
 
@@ -345,3 +348,194 @@ Dos formas de rehacer un saldo, y hay que elegir a conciencia:
 
 **Regla:** después de borrar movimientos, verificar el saldo contra lo que había
 ANTES. No dar por hecho que el recálculo lo dejó bien.
+
+## Catálogos de listas: sugieren, no obligan (1-ago-2026)
+
+Una sola tabla, `catalogos_valores`, para TODAS las listas de los formularios,
+separadas por `tipo`. No una tabla por lista: son todas lo mismo —un texto que se
+repite— y una tabla nueva por cada una obliga a migración, API y pantalla para
+guardar cinco palabras.
+
+| Tipo | Dónde se usa |
+|---|---|
+| `ESTACION` | bomba donde se compró el combustible |
+| `PLACA` | vehículos (reemplazó a la tabla `vehiculos`) |
+| `USO` | para qué / dónde se usó |
+| `MOTIVO_RECHAZO` | por qué se rechaza una solicitud |
+
+**Agregar una lista nueva NO necesita migración**: se suma un `tipo` al arreglo
+`LISTAS` de `CatalogosInsumosTab` y ya existe la pantalla para llenarla.
+
+### El campo
+
+`<CampoLista tipo="ESTACION">` (en `components/CampoPlaca.tsx`) es un input de
+texto con `datalist`. Tres fuentes de sugerencias, en ese orden:
+
+1. `catalogos_valores` del servidor,
+2. su espejo en `localStorage` — así sigue sugiriendo **sin señal**,
+3. lo que ya se escribió antes en ESE equipo (`recordarValor(tipo, v)` al guardar).
+
+Lo importante es lo que **no** hace: no bloquea. Si el valor no está en la lista,
+se escribe y se guarda igual. Un catálogo que obliga a dar de alta el valor antes
+de registrar no produce datos limpios — produce registros que no se hacen.
+
+`<CampoPlaca>` es el mismo campo con `normalizarPlaca()`: quita espacios y
+guiones, así que `abc 123`, `ABC-123` y `ABC123` son el mismo vehículo.
+
+### Todo en MAYÚSCULA
+
+`lib/texto.ts` (`aMayus`, `normalizarPlaca`) + `autoCapitalize="characters"`. Los
+mismos datos los escriben cinco personas y "campoalegre" / "CampoAlegre" terminan
+siendo dos filas distintas en un reporte. **No tocar fechas, horas ni números.**
+
+## Un despacho es UN hecho, no una fila por insumo (2-ago-2026)
+
+El kardex guarda una fila por insumo, así que una entrega de ganchos +
+combustible sale **duplicada** en cualquier listado: misma máquina, misma hora,
+mismo operario, dos renglones que no dicen nada distinto. En celular eso llena la
+pantalla.
+
+`agruparDespachos(movs)` en `lib/despachos.ts` agrupa por `referencia`. **El TIPO
+entra en la llave** (`` `${referencia}|${tipo}` ``): la devolución que hace el
+operario comparte la referencia con la salida original, y mezclarlas mostraría una
+entrega que nunca fue así.
+
+Aplicado en Reportes (lista y detalle de máquina) y en el modal de Inicio. **Al
+listar movimientos de kardex en una pantalla nueva: agrupar.**
+
+### El detalle vive en un componente, no en una pantalla
+
+`<DetalleDespacho>` (`components/`) muestra quién recibió, quién entregó,
+horómetro, nota, evidencia y el aval del operario. Se abre desde cuatro sitios
+distintos, así que no puede vivir dentro de ninguno.
+
+Se le pasa el movimiento de kardex. Si quien lo abre ya tiene la entrega cargada
+se la pasa en `entrega`; si no, el componente la busca solo por `referencia`
+(`loadSolicitudPorId` / `loadCombustiblePorId`). Esa segunda vía es la que permite
+hacer tocable cualquier lista de movimientos sin cargar antes las solicitudes.
+
+## Anular un traslado lo BORRA, no lo compensa (1-ago-2026)
+
+`anularTraslado()` **elimina** las filas de `insumos_kardex` con esa `referencia`
+y recalcula el saldo con `recalcularStockBodega()`.
+
+La primera versión hacía lo contrario —registraba una entrada de devolución— y el
+cliente lo reclamó: *"lo que necesitamos es eliminarla, no no hacerla efectiva…
+veo que se hizo el consumo de la bodega principal y yo quería era evitar que eso
+pasara."* Tenía razón. Compensar cuadra el saldo pero deja **dos movimientos
+físicos que nadie hizo**, y la salida original sigue contando como consumo de la
+principal en todos los reportes.
+
+Un traslado en tránsito que se anula **nunca ocurrió**. El rastro de la
+equivocación vive en el traslado (`estado=ANULADO` + quién, cuándo y por qué), que
+es donde debe estar: en el registro del hecho, no en el libro de inventario.
+
+Dos caminos, uno por cada punta:
+- **ENVIA** → "Eliminar" en Bodegas (administración se dio cuenta).
+- **RECIBE** → "No es para mí" en Mi bodega (el supervisor se dio cuenta).
+
+⚠️ El guard `.eq('estado','EN_TRANSITO').select()` impide anular dos veces — la
+misma trampa del doble aval. **NO confundir con "faltó algo"** (recepción
+parcial): eso es un traslado válido con menos cantidad.
+
+## CONSUMO ≠ todo lo que salió de la bodega (1-ago-2026)
+
+Surtir un carro es un **movimiento entre bodegas**: el material sigue siendo de la
+empresa, solo cambió de sitio. Consumo es lo que se gastó en una máquina.
+
+```ts
+if (!k.equipoCodigo) continue      // surtir un carro NO es gastar
+if (k.tipo === 'SALIDA') consumo += k.cantidad
+else if (k.tipo === 'ENTRADA') consumo -= k.cantidad   // devolución del operario
+```
+
+Es el criterio de `ConsumoEquiposTab` y del Resumen de inventario, para que los
+dos den el MISMO número. Contarlo mal —sumando los traslados— inflaba el consumo
+de la principal en 330 galones y 320 ganchos.
+
+## Resumen de inventario y materiales destacados (1-ago-2026)
+
+`InventarioResumenTab` (Insumos → 📊 Resumen): existencias por material, tabla
+bodega × material, y qué es lo que más se gasta.
+
+**⭐ Destacados = la columna `insumos.frecuente`.** Una sola marca con dos
+efectos: salen de primeras en los selectores Y llevan tarjeta y columna propias en
+el Resumen; todo lo demás se pliega en "Otros". Se eligen desde el propio Resumen
+(⭐ Elegir materiales destacados). Hoy: COMBUSTIBLE y GANCHOS. Dos o tres es lo
+sano — con diez no destaca ninguno.
+
+⚠️ **"Otros" cuenta MATERIALES, no cantidades.** Sumar galones con unidades da un
+número que no significa nada; ya pasó en el Inicio ("Entrega directa 63,95" era 40
+ganchos + 23,95 galones). Cuando una serie mezcla unidades: o se cuentan
+MOVIMIENTOS, o cada punto lleva su unidad al lado (`Punto.sufijo`).
+
+## El engrase y los materiales adicionales (3-ago-2026)
+
+### ¿Engrasó la máquina?
+
+Columna `insumos_solicitudes.engraso` (`boolean`, **nullable**) + `<SwitchEngraso>`
+en el modal de entrega.
+
+Se pregunta en la ENTREGA porque el engrase se hace justo cuando el supervisor
+llega a la máquina. Preguntarlo después es garantizar que nadie se acuerde.
+
+**Tres estados, no dos.** `true` engrasó · `false` no engrasó · `null` no se
+preguntó. Un `boolean NOT NULL DEFAULT false` diría que ninguna máquina se ha
+engrasado nunca, que es una afirmación distinta de "no sabemos" — y todas las
+entregas anteriores a la migración caerían ahí. Por lo mismo el switch arranca sin
+elegir: un descuido no debe quedar grabado como "no engrasó".
+
+En el informe semanal sale como **"2 de 3"** y no como un sí/no: en una semana hay
+varias entregas y el engrase no se hace en todas.
+
+### Entregar material que no se pidió
+
+El supervisor llega a la máquina y ve que además necesita otra cosa. Antes tenía
+que rechazar la solicitud o crear una nueva; ahora `entregarSolicitud` acepta
+ítems **sin `itemId`** y los inserta en `insumos_solicitud_items` con
+`cantidad: 0` y `cantidad_despachada` = lo que entregó.
+
+Ese `cantidad 0` es deliberado y hay que respetarlo: **lo pedido sigue siendo
+cero**, porque el operario no lo pidió. Lo entregado es lo que se ve. Si se
+igualaran las dos cifras se perdería la diferencia entre lo que se solicita y lo
+que de verdad hace falta en campo, que es justamente el dato interesante.
+
+## Informe semanal por máquina (3-ago-2026)
+
+`InformeSemanalTab` + `lib/informeSemanal.ts`. Reemplaza una hoja de Excel que se
+llenaba a mano —una fila por entrega con el horómetro anotado— y agrega lo que ahí
+no se podía calcular: horas entre eventos, horas de la semana y **galones/hora**.
+
+Cruza dos fuentes que ya existían y nunca se habían juntado: las entregas de
+material (`insumos_solicitudes`) y los tanqueos (`combustible_externo`). Las dos
+piden horómetro, así que las dos sirven para medir horas.
+
+Decisiones que no son obvias:
+
+- **Los eventos se ordenan por HORÓMETRO, no por fecha.** Dos entregas del mismo
+  día pueden quedar registradas al revés, y lo que manda para calcular horas es
+  cuánto había andado la máquina.
+- **Semana ISO-8601** (`semanaDe()`), que es la numeración de la hoja que ya
+  llevan. No inventar una propia.
+- **La desviación se compara contra el propio promedio de esa máquina**, no contra
+  el de la flota: un tractor grande y uno chico no son comparables. ±25% se
+  resalta — puede ser una fuga, un filtro tapado o combustible que no llegó donde
+  dice.
+
+### ⚠️ Los horómetros vienen sucios y el informe lo DICE
+
+`marcarSospechosos()` descarta las lecturas cuyo **orden de magnitud** no coincide
+con el dominante de esa máquina. El criterio es la magnitud y no la distancia
+porque los errores reales son un dígito de más o de menos, no un 5%.
+
+Medido en producción (3-ago-2026): la VALTRA 9901 tiene en la misma semana
+`10288.2`, `294.9` y `10298.6`. Restar a ciegas daría −9.993 horas y luego +10.003.
+
+**La lectura descartada NO se borra: se devuelve marcada** y sale contada en la
+pantalla ("⚠ N lectura(s) no cuadran") y en el Excel. Ignorarla en silencio dejaría
+la pantalla más limpia, pero entonces nadie va a corregir el dato de origen y el
+problema sigue creciendo. Es el mismo criterio de `equipo_horometro_v` — ver
+`managing-taller`, que tiene la medición de toda la flota.
+
+Si una máquina no llega a **dos** lecturas confiables en la semana, las horas
+quedan vacías. Una casilla en blanco es mejor que un número inventado.

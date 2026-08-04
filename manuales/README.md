@@ -11,6 +11,13 @@ Cuatro guías, una por rol. Se comparten **por enlace**, no como archivo adjunto
 
 Base: `https://agroserviciosmorales.vercel.app`
 
+**También se abren desde adentro de la app**: `<BotonManual>` (`src/components/`)
+va en el menú lateral (dueño, administración, supervisor, operario) y en la barra
+superior de los roles que no tienen menú (analista, supervisor de insumos,
+conductor). `manualesDe(rol)` decide cuál mostrar; a quien le sirven varios le abre
+un selector. **Al agregar un rol nuevo hay que sumarlo ahí**, o ese rol se queda sin
+manual y nadie se entera. El enlace suelto sigue existiendo para WhatsApp.
+
 ## Cómo se arman
 
 ```

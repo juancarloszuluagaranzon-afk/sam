@@ -4,7 +4,8 @@ description: >
   Patrones de formularios React en SAM. Úsala cuando crees o modifiques
   formularios, estados de formulario, validaciones, o cuando el usuario mencione
   "form", "formulario", "input", "select", "estado del form", "draft",
-  "AssignmentFormState" o "handleSubmit".
+  "AssignmentFormState", "handleSubmit", "selector", "lista", "sugerencia",
+  "placa", "mayúscula" o "campo obligatorio".
 ---
 
 # Building React Forms — SAM
@@ -169,3 +170,56 @@ setError('Mensaje de error.')
 - **[2026-04-09]** Al resetear `haciendaCode`, siempre resetear también `suerte` en la misma operación — de lo contrario queda una suerte huérfana de la hacienda anterior seleccionada
 - **[2026-04-09]** El campo `equipmentCode` del operador tiene fallback en cascada: `freeFieldForm.equipmentCode || session.equipmentCode` — mantener ese fallback en el `value` del select para que el equipo asignado al operador aparezca pre-seleccionado
 - **[2026-04-09]** `startTransition` se usa en `hydrate()` para actualizaciones de estado no urgentes (maestro, asignaciones, usuarios, equipos) — mantenerlo para no bloquear el render de la UI de carga
+
+## 🔴 Los tres campos que hay que revisar antes de dar un formulario por terminado
+
+Las tres reglas nacieron de reclamos del cliente, no de teoría. Se revisan **campo
+por campo** antes de cerrar cualquier formulario nuevo.
+
+### 1. Lista larga → `<SearchableSelect>`, nunca un `<select>` plano
+
+Operarios, insumos, máquinas, suertes, usuarios. Un desplegable con 40 nombres es
+inusable en celular. Soporta `frecuente: true` en las opciones de uso diario: solo
+esas se ven al abrir, el resto queda tras "⋯ Otros (N)", y al escribir busca en
+todas.
+
+### 2. Lista de texto que se repite → `<CampoLista tipo="…">`, que SUGIERE
+
+`components/CampoPlaca.tsx`. Input escribible + `datalist`, con tres fuentes:
+`catalogos_valores` del servidor, su espejo en `localStorage` (sigue sugiriendo
+**sin señal**) y lo que ya se escribió en ese equipo. Al guardar,
+`recordarValor(tipo, v)`.
+
+Lo importante es lo que **no** hace: no bloquea. Antes las placas salían de una
+tabla `vehiculos` con su pantalla de alta, y para tanquear un carro nuevo tocaba
+darlo de alta primero — en la bomba a las 6 de la mañana eso no es un control, es
+un registro que no se hace. Un catálogo que obliga no produce datos limpios.
+
+Tipos vivos: `ESTACION`, `PLACA`, `USO`, `MOTIVO_RECHAZO`. Para placas va
+`<CampoPlaca>`, que además normaliza (`abc 123` = `ABC-123` = `ABC123`).
+**Agregar una lista nueva NO necesita migración**: basta un `tipo` nuevo en
+`LISTAS` de `CatalogosInsumosTab`.
+
+### 3. Lo que se digita va en MAYÚSCULA
+
+`lib/texto.ts` (`aMayus`) + `autoCapitalize="characters"` en el input. Los mismos
+datos los escriben cinco personas y "campoalegre" / "CampoAlegre" terminan siendo
+dos filas distintas en un reporte. **No tocar fechas, horas ni números.**
+
+### Y además: fecha Y hora en todo registro de entrega
+
+Nunca solo el día. Con la hora se mide el tiempo de respuesta al operario y se
+reconstruye la ruta del supervisor. `lib/fechas.ts` (`fmtFechaHora`, `fmtLapso`),
+zona fija `America/Bogota` y 24 h — así la hora no depende del reloj de quien mira.
+Aplica a pantallas Y a los Excel.
+
+## Un booleano que puede no saberse va NULLABLE
+
+`insumos_solicitudes.engraso` (¿engrasó la máquina?) tiene tres estados: `true`,
+`false` y `null` = **no se preguntó**. Un `boolean NOT NULL DEFAULT false` afirma
+que ninguna máquina se ha engrasado nunca, que es distinto de no saber — y ahí
+caerían todas las filas anteriores a la migración.
+
+Del lado del formulario, el control arranca **sin elegir** (`<SwitchEngraso>`, dos
+botones SÍ/NO que se pueden desmarcar). Si viniera en NO por defecto, un descuido
+quedaría registrado como un hecho negativo, que es peor que un dato vacío.

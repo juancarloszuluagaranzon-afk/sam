@@ -43,11 +43,35 @@ Y **la lectura manual manda siempre** (`equipos.horometro_manual`): es una
 corrección humana explícita, ningún criterio automático la pisa. Es la salida
 cuando el algoritmo no acierta.
 
-Las lecturas descartadas no se esconden: salen en `equipo_horometro_dudoso_v` y
-se muestran en la hoja de vida para que alguien las corrija en la labor origen.
+Las lecturas descartadas no se esconden: salen en `equipo_horometro_dudoso_v`,
+en el banner de `MaquinasTab` y en un badge por máquina (**"⚠ N lectura(s)
+dudosa(s)"**). Es una decisión, no un descuido: ignorarlas en silencio dejaría la
+pantalla más limpia, pero entonces nadie va a corregir el dato de origen y el
+problema sigue creciendo. El botón **⏱ Corregir horómetro** de la tarjeta escribe
+`horometro_manual`, que manda sobre todo — pero arregla el número de HOY, no las
+lecturas malas del historial.
 
-> Al momento de implementar había **71 lecturas descartadas** en 21 máquinas.
-> Es un problema de captura en campo, no del app.
+### Qué son en realidad esas lecturas (medido 3-ago-2026)
+
+**85 lecturas descartadas en 16 máquinas** (eran 71 en 21 al implementar). La
+CASE1303, que anda por 3.534 h, tiene estas seis:
+
+| Lo que quedó escrito | Qué era |
+|---|---|
+| `34051` | un dígito de más (iba ~3.405) |
+| `15`, `11`, `2`, `9` | **no son horómetros: son las horas del día** |
+| `350.3` | un dígito de menos |
+
+El patrón dominante no es el dedazo sino el **campo equivocado**: el operario
+escribe las horas que trabajó ese día donde va la lectura del horómetro. Eso es
+diseño de formulario, no torpeza — si alguna vez se rediseña la captura de labores,
+ahí está la causa raíz.
+
+Mientras no se limpien, dos cosas quedan cojas: el preventivo no se dispara cuando
+debe, y el **informe semanal** (`lib/informeSemanal.ts`, módulo de insumos) deja las
+horas en blanco en esas máquinas. Ese informe reusa el MISMO criterio de magnitud
+dominante, calculado en TypeScript en vez de SQL porque trabaja sobre entregas y
+tanqueos, no sobre labores. **Si cambias el criterio, cámbialo en los dos sitios.**
 
 ## La orden de trabajo es la pieza central
 

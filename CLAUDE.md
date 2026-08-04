@@ -121,6 +121,18 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   TIPO entra en la llave para que la devolución del operario NO se mezcle con la
   salida. Ya aplicado en Reportes (lista y detalle de máquina) y en el modal de
   Inicio. Al listar movimientos de kardex en una pantalla nueva: agrupar.
+- **El dato que puede faltar va NULLABLE, no con default.** `insumos_solicitudes.engraso`
+  (¿engrasó la máquina?) tiene **tres** estados: `true`, `false` y `null` = no se
+  preguntó. Un `boolean NOT NULL DEFAULT false` diría que ninguna máquina se ha
+  engrasado nunca — que es una afirmación distinta de "no sabemos", y ahí caerían todas
+  las entregas anteriores a la migración. Por lo mismo `<SwitchEngraso>` arranca sin
+  elegir: un descuido no debe quedar grabado como "no engrasó". En el informe semanal
+  sale como "2 de 3", no como un sí/no.
+- **En la entrega se puede despachar lo que NO se pidió.** `entregarSolicitud` acepta
+  ítems sin `itemId` y los inserta con **`cantidad: 0`** y `cantidad_despachada` = lo
+  entregado. Ese cero es deliberado: lo pedido sigue siendo cero porque el operario no
+  lo pidió, y la diferencia entre lo que se solicita y lo que de verdad hace falta en
+  campo es justamente el dato interesante. **No igualar las dos cifras.**
 - **🔴 El texto que explica una pantalla va dentro de `<Ayuda>`** (`src/components/`):
   un botoncito "ⓘ Info", cerrado por defecto. Sirve la primera vez, pero al que entra
   quince veces al día le come media pantalla del celular — en Bodegas eran **231 px**,

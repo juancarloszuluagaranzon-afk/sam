@@ -186,6 +186,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   compensa, igual que anular un traslado) y deja el rastro en
   `insumos_despachos_auditoria`. ⚠️ Solo toca las filas **SALIDA**: la ENTRADA del aval
   es el reclamo del operario y pisarla lo borraría.
+- **🔴 Eliminar un despacho SÍ borra la ENTRADA del aval** — al revés que editarlo. La
+  diferencia es si el hecho existió: al corregir, el despacho ocurrió y el reclamo del
+  operario sigue siendo suyo; al eliminar, el despacho nunca ocurrió y una devolución
+  por diferencia no tiene de qué ser devolución. `eliminarDespacho()` guarda el despacho
+  completo en la auditoría **antes** de borrar, y devuelve la solicitud a **PROGRAMADA**
+  si la pidió un operario (sigue necesitando el material) o a **CANCELADA** si era
+  DIRECTA. Limpia el aval y lo despachado; lo **pedido** no se toca.
 - **🔴 El AJUSTE FIJA el saldo, no lo suma.** Al rehacer stock desde el kardex, sumar
   `SALIDA/ENTRADA` a ciegas sobre un insumo con ajustes da un número que no corresponde
   (GANCHOS suma 1480 en el kardex y su saldo real es 1200; las dos cifras son correctas).

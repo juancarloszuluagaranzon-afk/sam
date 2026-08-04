@@ -598,3 +598,42 @@ probados contra produccion antes de desplegar.
 
 ⚠️ Despues de editar cantidades, **verificar el saldo**: `recalcularStockBodega`
 salta los pares insumo/bodega que tienen AJUSTE. Ver la seccion del AJUSTE.
+
+### Eliminar un despacho (4-ago-2026)
+
+`eliminarDespacho()`, detras de un paso mas dentro del mismo modal y **pidiendo
+motivo**: no es una correccion, es deshacer un hecho y devolver material al
+inventario.
+
+**Borra, no compensa** — misma decision que `anularTraslado`. Y borra **TODAS**
+las filas de esa referencia, no solo las SALIDA: aqui si entra la ENTRADA del
+aval, porque si el despacho no ocurrio la devolucion por diferencia tampoco
+tiene de que ser devolucion. (Es justo lo contrario de `editarDespacho`, que solo
+toca las SALIDA. La diferencia esta en si el hecho existio o no.)
+
+**Nada se pierde:** el despacho completo —items, evidencia y aval— se guarda en
+`insumos_despachos_auditoria` con `accion='ELIMINAR'` **antes** de borrar nada.
+
+**A donde vuelve la solicitud:**
+
+| Origen | Queda en | Por que |
+|---|---|---|
+| operario | `PROGRAMADA` | el sigue necesitando el material; borrar la entrega mal hecha no borra su necesidad, y reaparece en la bandeja para despacharla bien |
+| `DIRECTA` | `CANCELADA` | no hay pedido detras: el registro ERA la entrega |
+
+Se limpia tambien el **aval** (`confirmado_en`, `conforme`, la nota) y las
+`cantidad_despachada`/`cantidad_recibida` de los items. Sin eso, al re-despachar
+el operario veria su confirmacion vieja sobre material que no ha recibido. Lo
+**pedido** (`cantidad`) NO se toca: es lo que precarga el proximo despacho.
+
+**Verificado en produccion** (transaccion + rollback, 4-ago): GANCHOS 40 -> 80,
+COMBUSTIBLE 71,48 -> 83,48, cero movimientos restantes, copia guardada, y todo
+restaurado al deshacer.
+
+### ⚠️ El `datetime-local` corta los segundos
+
+Al corregir una fecha y volverla a dejar "como estaba", `fecha_efectiva` queda
+distinta de `created_at` por segundos (el input solo tiene precision de minuto).
+No afecta ningun reporte, pero **no sirve comparar las dos fechas para saber si
+algo fue editado** — para eso esta la tabla de auditoria, que es lo que usa
+`<DetalleDespacho>`.

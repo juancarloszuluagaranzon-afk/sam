@@ -27,6 +27,7 @@ import type {
   Insumo,
   InsumoCategoria,
   InsumoKardex,
+  EdicionDespacho,
   KardexTipo,
   SolicitudEstado,
   SolicitudInsumo,
@@ -1486,7 +1487,13 @@ function mapKardex(row: Record<string, unknown>): InsumoKardex {
     motivo: row.motivo ? String(row.motivo) : undefined,
     referencia: row.referencia ? String(row.referencia) : undefined,
     creadoPor: row.creado_por ? String(row.creado_por) : undefined,
-    createdAt: String(row.created_at ?? ''),
+    // `createdAt` = la fecha EFECTIVA, no la de registro. Los reportes ya leen
+    // este campo, así que editar la fecha de un despacho se propaga sola a
+    // Reportes, al Excel, al consumo por máquina y al informe semanal.
+    // `created_at` es el respaldo para las filas viejas (todas se rellenaron en
+    // la migración, pero una inserción sin la columna no debe quedar sin fecha).
+    createdAt: String(row.fecha_efectiva ?? row.created_at ?? ''),
+    registradoEn: row.created_at ? String(row.created_at) : undefined,
     equipoCodigo: row.equipo_codigo ? String(row.equipo_codigo) : undefined,
     bodegaId: row.bodega_id ? String(row.bodega_id) : undefined,
   }
@@ -1496,8 +1503,8 @@ function mapKardex(row: Record<string, unknown>): InsumoKardex {
 export async function loadKardex(insumoId?: string, limit = 200): Promise<InsumoKardex[]> {
   let query = supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
-    .order('created_at', { ascending: false })
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,fecha_efectiva,equipo_codigo,bodega_id')
+    .order('fecha_efectiva', { ascending: false })
     .limit(limit)
   if (insumoId) query = query.eq('insumo_id', insumoId)
   const { data, error } = await query
@@ -1509,9 +1516,9 @@ export async function loadKardex(insumoId?: string, limit = 200): Promise<Insumo
 export async function loadKardexDeEquipo(equipoCodigo: string, limit = 500): Promise<InsumoKardex[]> {
   const { data, error } = await supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,fecha_efectiva,equipo_codigo,bodega_id')
     .eq('equipo_codigo', equipoCodigo)
-    .order('created_at', { ascending: false })
+    .order('fecha_efectiva', { ascending: false })
     .limit(limit)
   if (error || !data) return []
   return data.map(mapKardex)
@@ -1524,10 +1531,10 @@ export async function loadKardexDeEquipo(equipoCodigo: string, limit = 500): Pro
 export async function loadKardexSalidasEquipo(limit = 1000): Promise<InsumoKardex[]> {
   const { data, error } = await supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,fecha_efectiva,equipo_codigo,bodega_id')
     .in('tipo', ['SALIDA', 'ENTRADA'])
     .not('equipo_codigo', 'is', null)
-    .order('created_at', { ascending: false })
+    .order('fecha_efectiva', { ascending: false })
     .limit(limit)
   if (error || !data) return []
   return data.map(mapKardex)
@@ -1950,9 +1957,10 @@ export async function anularTraslado(input: {
 export async function recalcularStockBodega(insumoId: string, bodegaId: string): Promise<void> {
   const { data, error } = await supabase
     .from('insumos_kardex')
-    .select('tipo,cantidad,saldo,created_at')
+    .select('tipo,cantidad,saldo,created_at,fecha_efectiva')
     .eq('insumo_id', insumoId)
     .eq('bodega_id', bodegaId)
+    .order('fecha_efectiva', { ascending: true })
     .order('created_at', { ascending: true })
   if (error) throw new Error(error.message)
 
@@ -2420,11 +2428,13 @@ export async function entregarDirecto(input: {
 export async function loadKardexReporte(opts?: { desde?: string; hasta?: string; limit?: number }): Promise<InsumoKardex[]> {
   let query = supabase
     .from('insumos_kardex')
-    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,equipo_codigo,bodega_id')
-    .order('created_at', { ascending: false })
+    .select('id,insumo_id,tipo,cantidad,saldo,motivo,referencia,creado_por,created_at,fecha_efectiva,equipo_codigo,bodega_id')
+    .order('fecha_efectiva', { ascending: false })
     .limit(opts?.limit ?? 5000)
-  if (opts?.desde) query = query.gte('created_at', opts.desde)
-  if (opts?.hasta) query = query.lte('created_at', opts.hasta)
+  // Por fecha EFECTIVA: si el supervisor corrigió la fecha de un despacho, el
+  // movimiento tiene que caer en el mes en que de verdad ocurrió.
+  if (opts?.desde) query = query.gte('fecha_efectiva', opts.desde)
+  if (opts?.hasta) query = query.lte('fecha_efectiva', opts.hasta)
   const { data, error } = await query
   if (error || !data) return []
   return data.map(mapKardex)
@@ -2624,6 +2634,168 @@ export async function entregarSolicitud(input: {
   if (error) throw new Error(error.message || 'No se pudo registrar la entrega')
 
   return actualizados
+}
+
+/**
+ * Corrige un despacho YA entregado: fecha, máquina y cantidades.
+ *
+ * Existe porque el registro y el hecho no ocurren al mismo tiempo. El supervisor
+ * entrega a las 6 de la mañana en el lote y registra a las 4 de la tarde cuando
+ * vuelve a tener señal; se equivoca de máquina entre dos que están juntas; anota
+ * 20 galones donde eran 25. Sin esto, el reporte queda mal para siempre.
+ *
+ * **Las dos fechas.** `created_at` no se toca nunca: es cuándo se tecleó, y es la
+ * evidencia que permite detectar a alguien retrofechando movimientos.
+ * `fecha_efectiva` es cuándo ocurrió de verdad, y es la que usan todos los
+ * reportes. Editar cambia la segunda y deja intacta la primera.
+ *
+ * **Se corrige en su sitio, no se compensa.** Igual que al anular un traslado: un
+ * despacho que fue de 25 galones siempre fue de 25, y dejar una salida de 20 más
+ * un ajuste de 5 mete en el libro un movimiento físico que nadie hizo. El rastro
+ * de la corrección vive en `insumos_despachos_auditoria`, no en el inventario.
+ *
+ * ⚠️ Solo toca las filas **SALIDA** de este despacho. La ENTRADA que genera el
+ * aval del operario cuando reclama una diferencia es un hecho suyo, aparte, y
+ * pisarla borraría su reclamo.
+ */
+export async function editarDespacho(input: {
+  solicitudId: string
+  /** Nueva fecha efectiva (ISO). Si no viene, la fecha no cambia. */
+  entregadoEn?: string
+  equipoCodigo?: string
+  /** Bodega de la que salió: se necesita para rehacer el saldo. */
+  bodegaId?: string
+  items: { itemId: string; insumoId: string; cantidadDespachada: number }[]
+  editadoPor?: string
+}): Promise<Insumo[]> {
+  // El estado ANTERIOR, para la auditoría. Sin esto solo quedaría el valor
+  // nuevo, que no responde la pregunta que se le hace a una auditoría.
+  const { data: antesRow, error: eLeer } = await supabase
+    .from('insumos_solicitudes')
+    .select('*,items:insumos_solicitud_items(*)')
+    .eq('id', input.solicitudId)
+    .maybeSingle()
+  if (eLeer) throw new Error(eLeer.message)
+  if (!antesRow) throw new Error('No se encontró el despacho')
+
+  const antes = mapSolicitud(antesRow as Record<string, unknown>)
+  if (antes.estado !== 'ENTREGADA') {
+    throw new Error('Solo se puede editar un despacho ya entregado')
+  }
+
+  const cambios: Record<string, { antes: unknown; despues: unknown }> = {}
+  const bodegaId = input.bodegaId ?? antes.bodegaId
+  const actualizados: Insumo[] = []
+
+  // ── 1. La cabecera ────────────────────────────────────────────────────────
+  const parche: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+  if (input.entregadoEn && input.entregadoEn !== antes.entregadoEn) {
+    parche.entregado_en = input.entregadoEn
+    cambios.fecha = { antes: antes.entregadoEn, despues: input.entregadoEn }
+  }
+  if (input.equipoCodigo && input.equipoCodigo !== antes.equipoCodigo) {
+    parche.equipo_codigo = input.equipoCodigo
+    cambios.maquina = { antes: antes.equipoCodigo, despues: input.equipoCodigo }
+  }
+  if (Object.keys(parche).length > 1) {
+    const { error } = await supabase
+      .from('insumos_solicitudes').update(parche).eq('id', input.solicitudId)
+    if (error) throw new Error(error.message || 'No se pudo guardar el cambio')
+  }
+
+  // ── 2. Las cantidades, ítem por ítem ──────────────────────────────────────
+  const insumosTocados = new Set<string>()
+
+  for (const it of input.items) {
+    const previo = antes.items.find((x) => x.id === it.itemId)
+    const cantAntes = previo?.cantidadDespachada ?? 0
+    const cantNueva = redondear2(it.cantidadDespachada)
+    if (previo && cantAntes === cantNueva) continue
+
+    await supabase
+      .from('insumos_solicitud_items')
+      .update({ cantidad_despachada: cantNueva })
+      .eq('id', it.itemId)
+
+    cambios[`cantidad:${previo?.insumoNombre ?? it.insumoId}`] = { antes: cantAntes, despues: cantNueva }
+    insumosTocados.add(it.insumoId)
+
+    // La fila del kardex se corrige, no se compensa. En cero se borra: un
+    // movimiento de cero unidades no es un hecho, es ruido en el libro.
+    const filtro = supabase
+      .from('insumos_kardex')
+      .select('id')
+      .eq('referencia', input.solicitudId)
+      .eq('insumo_id', it.insumoId)
+      .eq('tipo', 'SALIDA')
+    const { data: filas } = await filtro
+    const ids = (filas ?? []).map((f) => String((f as { id: unknown }).id))
+
+    if (ids.length) {
+      if (cantNueva > 0) {
+        await supabase.from('insumos_kardex').update({ cantidad: cantNueva }).in('id', ids)
+      } else {
+        await supabase.from('insumos_kardex').delete().in('id', ids)
+      }
+    }
+  }
+
+  // ── 3. Fecha y máquina en el kardex ───────────────────────────────────────
+  // Sin esto la corrección se queda en la solicitud y los reportes —que leen el
+  // kardex— seguirían mostrando lo viejo. Es el error que hace que dos pantallas
+  // de la misma app den números distintos.
+  const parcheKardex: Record<string, unknown> = {}
+  if (cambios.fecha) parcheKardex.fecha_efectiva = input.entregadoEn
+  if (cambios.maquina) parcheKardex.equipo_codigo = input.equipoCodigo
+  if (Object.keys(parcheKardex).length) {
+    await supabase
+      .from('insumos_kardex')
+      .update(parcheKardex)
+      .eq('referencia', input.solicitudId)
+      .eq('tipo', 'SALIDA')
+  }
+
+  // ── 4. Rehacer el saldo ───────────────────────────────────────────────────
+  // ⚠️ `recalcularStockBodega` trata el AJUSTE como "fija el saldo". Si el par
+  // insumo/bodega tiene ajustes, verificar el resultado: ya mordió una vez.
+  if (bodegaId) {
+    for (const insumoId of insumosTocados) {
+      await recalcularStockBodega(insumoId, bodegaId)
+      const { data } = await supabase.from('insumos').select('*').eq('id', insumoId).maybeSingle()
+      if (data) actualizados.push(mapInsumo(data as Record<string, unknown>))
+    }
+  }
+
+  // ── 5. La auditoría ───────────────────────────────────────────────────────
+  if (Object.keys(cambios).length) {
+    await supabase.from('insumos_despachos_auditoria').insert({
+      solicitud_id: input.solicitudId,
+      accion: 'EDITAR',
+      cambios,
+      editado_por: input.editadoPor ?? null,
+    })
+  }
+
+  return actualizados
+}
+
+/** Las ediciones de un despacho, la más reciente primero. */
+export async function loadEdicionesDespacho(solicitudId: string): Promise<EdicionDespacho[]> {
+  const { data, error } = await supabase
+    .from('insumos_despachos_auditoria')
+    .select('*')
+    .eq('solicitud_id', solicitudId)
+    .order('editado_en', { ascending: false })
+  if (error || !data) return []
+  return data.map((r) => ({
+    id: Number((r as { id: unknown }).id),
+    solicitudId: String((r as { solicitud_id: unknown }).solicitud_id),
+    cambios: ((r as { cambios: unknown }).cambios ?? {}) as EdicionDespacho['cambios'],
+    editadoPor: (r as { editado_por?: unknown }).editado_por
+      ? String((r as { editado_por: unknown }).editado_por) : undefined,
+    editadoEn: String((r as { editado_en: unknown }).editado_en ?? ''),
+  }))
 }
 
 // ──────────────────── Marcas de "revisado" de la Planilla ────────────────────

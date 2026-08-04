@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadSolicitudPorId, loadCombustiblePorId } from '../services/samApi'
-import type { InsumoKardex, CombustibleExterno, SolicitudInsumo } from '../domain/sam'
+import { loadSolicitudPorId, loadCombustiblePorId, loadEdicionesDespacho } from '../services/samApi'
+import type { InsumoKardex, CombustibleExterno, SolicitudInsumo, EdicionDespacho } from '../domain/sam'
 import { fmtFechaHoraLarga as fmtFecha, fmtLapso } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
+import { EditarDespachoModal } from './EditarDespachoModal'
+
+/** Quién puede corregir un despacho: el que despacha y el que administra. */
+const PUEDEN_CORREGIR = ['supervisor_insumos', 'analista_insumos', 'owner', 'administracion']
 
 /**
  * El formulario de una entrega, tal como se llenó.
@@ -33,10 +37,20 @@ export function DetalleDespacho({
   entrega?: SolicitudInsumo
   onClose: () => void
 }) {
-  const { insumos, sortedEquipment, users } = useAppData()
+  const { insumos, sortedEquipment, users, session } = useAppData()
   const [entrega, setEntrega] = useState<SolicitudInsumo | undefined>(entregaDada)
   const [tq, setTq] = useState<CombustibleExterno | undefined>(tqDado)
   const [buscando, setBuscando] = useState(false)
+  const [editando, setEditando] = useState(false)
+  const [ediciones, setEdiciones] = useState<EdicionDespacho[]>([])
+
+  // Tras corregir hay que releer: el modal cambió la fecha y las cantidades, y
+  // si no se recarga el detalle sigue mostrando lo de antes.
+  const recargar = useCallback(async (id: string) => {
+    const [e, eds] = await Promise.all([loadSolicitudPorId(id), loadEdicionesDespacho(id)])
+    if (e) setEntrega(e)
+    setEdiciones(eds)
+  }, [])
 
   // Un movimiento de kardex apunta con `referencia` a una entrega O a un
   // tanqueo (el abastecimiento en sede sale de la principal, así que sí deja
@@ -57,6 +71,16 @@ export function DetalleDespacho({
     })()
     return () => { vivo = false }
   }, [mov?.referencia, entregaDada, tqDado])
+
+  // Las correcciones previas, para poder decir "editado por X" en vez de dejar
+  // una fecha cambiada sin explicación.
+  useEffect(() => {
+    const id = entrega?.id
+    if (!id) return
+    let vivo = true
+    void loadEdicionesDespacho(id).then((eds) => { if (vivo) setEdiciones(eds) })
+    return () => { vivo = false }
+  }, [entrega?.id])
 
   const insumoInfo = useMemo(() => {
     const m = new Map<string, { nombre: string; unidad: string }>()
@@ -210,8 +234,41 @@ export function DetalleDespacho({
               </div>
             </>
           )}
+
+          {/* Si se corrigió, decirlo. Una fecha distinta a la de registro sin
+              explicación se lee como un error del sistema. */}
+          {ediciones.length > 0 && (
+            <>
+              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Correcciones</p>
+              {ediciones.map((ed) => (
+                <p key={ed.id} className="subtle-copy" style={{ margin: '0 0 4px' }}>
+                  ✏️ {fmtFecha(ed.editadoEn)}
+                  {ed.editadoPor && ` · ${userName.get(ed.editadoPor) ?? ed.editadoPor}`}
+                  {' — '}
+                  {Object.keys(ed.cambios).map((k) => k.replace('cantidad:', '')).join(', ')}
+                </p>
+              ))}
+            </>
+          )}
+
+          {/* Corregir el hecho, no agregarle un movimiento encima. Solo sobre
+              entregas: un tanqueo se corrige rechazándolo, que ya reversa. */}
+          {e && e.estado === 'ENTREGADA' && PUEDEN_CORREGIR.includes(session?.role ?? '') && (
+            <button type="button" className="secondary-button" style={{ marginTop: 14, width: '100%' }}
+                    onClick={() => setEditando(true)}>
+              ✏️ Corregir fecha, máquina o cantidad
+            </button>
+          )}
         </div>
       </div>
+
+      {editando && e && (
+        <EditarDespachoModal
+          entrega={e}
+          onClose={() => setEditando(false)}
+          onGuardado={() => void recargar(e.id)}
+        />
+      )}
     </div>
   )
 }

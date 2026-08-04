@@ -453,11 +453,30 @@ export interface InsumoKardex {
   motivo?: string
   referencia?: string
   creadoPor?: string
+  /**
+   * Cuándo ocurrió el movimiento **de verdad** (`fecha_efectiva` en la BD).
+   *
+   * Es la que usan TODOS los reportes, y es editable: el supervisor entrega a
+   * las 6 de la mañana y registra a las 4 de la tarde cuando vuelve a tener
+   * señal. Se llama `createdAt` para no reescribir los veinte sitios que ya la
+   * leen — lo que cambió es de dónde sale.
+   */
   createdAt: string
+  /** Cuándo se tecleó. Inmutable, solo para auditoría. Nunca para reportes. */
+  registradoEn?: string
   // Máquina/tractor a la que se cargó el movimiento (acumulador de costos).
   equipoCodigo?: string
   // Bodega en la que ocurrió el movimiento (principal o satélite).
   bodegaId?: string
+}
+
+/** Una edición de un despacho ya entregado. */
+export interface EdicionDespacho {
+  id: number
+  solicitudId: string
+  cambios: Record<string, { antes: unknown; despues: unknown }>
+  editadoPor?: string
+  editadoEn: string
 }
 
 // Solicitud de insumos del operario (fase 2). PENDIENTE→PROGRAMADA/RECHAZADA;

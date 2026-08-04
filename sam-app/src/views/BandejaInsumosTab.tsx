@@ -11,6 +11,10 @@ import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { SwitchEngraso } from '../components/SwitchEngraso'
+import { EditarDespachoModal } from '../components/EditarDespachoModal'
+
+/** Quién puede corregir un despacho entregado: el que despacha y el que administra. */
+const PUEDEN_CORREGIR = ['supervisor_insumos', 'analista_insumos', 'owner', 'administracion']
 
 /**
  * Bandeja de entrada de solicitudes de insumos (módulo Insumos — fase 2).
@@ -99,6 +103,7 @@ export function BandejaInsumosTab() {
   const [entregaEngraso, setEntregaEngraso] = useState<boolean | undefined>(undefined)
   const [dirEngraso, setDirEngraso] = useState<boolean | undefined>(undefined)
   const [rechazoTarget, setRechazoTarget] = useState<SolicitudInsumo | null>(null)
+  const [corrigiendo, setCorrigiendo] = useState<SolicitudInsumo | null>(null)
   const [motivo, setMotivo] = useState('')
 
   // Entrega (despacho) — fase 3
@@ -481,6 +486,15 @@ export function BandejaInsumosTab() {
                       ))}
                     </div>
                   )}
+                  {/* La corrección se ofrece AQUÍ porque es donde el supervisor
+                      mira sus entregas. Ponerla solo en Reportes era tenerla
+                      escondida de quien la necesita. */}
+                  {PUEDEN_CORREGIR.includes(session?.role ?? '') && (
+                    <button type="button" className="inline-button" style={{ marginTop: 8 }}
+                            onClick={() => setCorrigiendo(s)}>
+                      ✏️ Corregir fecha, máquina o cantidad
+                    </button>
+                  )}
                 </>
               )}
 
@@ -755,6 +769,16 @@ export function BandejaInsumosTab() {
           onSaved={() => void refresh()}
           bodegaId={miBodega?.id}
           destinos={['MAQUINA', 'VEHICULO']}
+        />
+      )}
+
+      {/* Corregir un despacho ya entregado. La fecha de registro queda intacta;
+          lo que cambia es la fecha en que ocurrió, que es la de los reportes. */}
+      {corrigiendo && (
+        <EditarDespachoModal
+          entrega={corrigiendo}
+          onClose={() => setCorrigiendo(null)}
+          onGuardado={() => { void refresh(); void refrescarStockBodega() }}
         />
       )}
     </section>

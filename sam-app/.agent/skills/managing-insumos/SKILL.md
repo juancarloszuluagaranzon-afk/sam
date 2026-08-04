@@ -539,3 +539,62 @@ problema sigue creciendo. Es el mismo criterio de `equipo_horometro_v` — ver
 
 Si una máquina no llega a **dos** lecturas confiables en la semana, las horas
 quedan vacías. Una casilla en blanco es mejor que un número inventado.
+
+## Corregir un despacho entregado (4-ago-2026)
+
+`editarDespacho()` + `<EditarDespachoModal>`. Cambia **fecha, maquina y
+cantidades** de un despacho ya ENTREGADO. Lo pueden hacer `supervisor_insumos`,
+`analista_insumos`, `owner` y `administracion`, desde la bandeja (tarjeta
+entregada) y desde `<DetalleDespacho>`.
+
+Existe porque **el registro y el hecho no ocurren al mismo tiempo**: el supervisor
+entrega a las 6 de la manana en el lote y registra a las 4 de la tarde cuando
+vuelve a tener senal. Antes eso quedaba mal para siempre y la unica salida era
+tocar la BD a mano.
+
+### 🔴 Las DOS fechas, y por que son dos
+
+| Columna | Que es | Quien la usa |
+|---|---|---|
+| `created_at` | cuando se **tecleo**. Inmutable | solo auditoria |
+| `fecha_efectiva` | cuando **ocurrio** de verdad. Editable | **todos los reportes** |
+
+Pisar `created_at` habria sido mas simple y es exactamente lo que no se puede
+hacer: se perderia la evidencia de cuando se registro, que es lo unico que
+permite detectar a alguien retrofechando movimientos.
+
+**El truco que evito tocar veinte archivos:** `mapKardex` devuelve
+`createdAt = fecha_efectiva`. Como Reportes, el Excel, el consumo por maquina y
+el informe semanal ya leian `.createdAt`, la correccion se propaga sola. El valor
+real de registro sale aparte, en `registradoEn`.
+
+⚠️ `fecha_efectiva` es **NOT NULL con default**, a proposito: PostgREST no filtra
+sobre expresiones, y un `null` suelto dejaria el movimiento fuera de todo rango
+de fecha — invisible en los reportes, que es el peor modo de fallar.
+
+### Se corrige en su sitio, no se compensa
+
+Igual que al anular un traslado: un despacho de 25 galones **siempre fue** de 25,
+y dejar una salida de 20 mas un ajuste de 5 mete en el libro un movimiento fisico
+que nadie hizo. El rastro de la correccion vive en
+**`insumos_despachos_auditoria`** (`{campo: {antes, despues}}`, mismo patron que
+`asignaciones_auditoria`), no en el inventario.
+
+En cantidad **0 la fila del kardex se borra**: un movimiento de cero unidades no
+es un hecho, es ruido.
+
+### ⚠️ Solo se tocan las filas SALIDA
+
+La ENTRADA que genera el aval cuando el operario reclama una diferencia es un
+hecho **suyo**, aparte. Pisarla borraria su reclamo. El filtro
+`.eq('tipo','SALIDA')` no es una optimizacion: es la regla.
+
+### Lo verificado en produccion (4-ago-2026)
+
+Movida una salida real de agosto a julio: el conteo del reporte de julio paso de
+0 a 1, `created_at` siguio en 4-ago, y al restaurar volvio a 0. Los cinco
+permisos del rol `anon` (leer/escribir kardex, insertar/leer/borrar auditoria)
+probados contra produccion antes de desplegar.
+
+⚠️ Despues de editar cantidades, **verificar el saldo**: `recalcularStockBodega`
+salta los pares insumo/bodega que tienen AJUSTE. Ver la seccion del AJUSTE.

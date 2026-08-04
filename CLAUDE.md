@@ -172,6 +172,20 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   inventario; el resto se pliega en "Otros". Se eligen en **Insumos → 📊 Resumen →
   ⭐ Elegir materiales destacados** (y también desde Inventario → ⋯). Hoy: COMBUSTIBLE
   y GANCHOS. Dos o tres es lo sano.
+- **🔴 En el kardex hay DOS fechas y no son intercambiables.** `created_at` = cuándo se
+  tecleó (inmutable, auditoría); **`fecha_efectiva` = cuándo ocurrió (la que usan TODOS
+  los reportes)**. El registro y el hecho no pasan al mismo tiempo: el supervisor entrega
+  a las 6 a.m. en el lote y registra a las 4 p.m. cuando vuelve a tener señal. Pisar
+  `created_at` al corregir habría sido más simple y es justo lo que no se puede hacer:
+  se perdería la evidencia que permite detectar a alguien retrofechando. **`mapKardex`
+  devuelve `createdAt = fecha_efectiva`**, así que corregir un despacho se propaga sola
+  a Reportes, Excel, consumo por máquina e informe semanal — el valor de registro sale
+  aparte en `registradoEn`. La columna es NOT NULL con default a propósito: PostgREST no
+  filtra sobre expresiones y un `null` dejaría el movimiento fuera de todo rango de
+  fecha, invisible en los reportes. `editarDespacho()` corrige **en su sitio** (no
+  compensa, igual que anular un traslado) y deja el rastro en
+  `insumos_despachos_auditoria`. ⚠️ Solo toca las filas **SALIDA**: la ENTRADA del aval
+  es el reclamo del operario y pisarla lo borraría.
 - **🔴 El AJUSTE FIJA el saldo, no lo suma.** Al rehacer stock desde el kardex, sumar
   `SALIDA/ENTRADA` a ciegas sobre un insumo con ajustes da un número que no corresponde
   (GANCHOS suma 1480 en el kardex y su saldo real es 1200; las dos cifras son correctas).

@@ -18,7 +18,7 @@ import { db } from './lib/db'
 
 export type ReportPeriod = 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'
 
-type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
+type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo'
 
 // Guarda la sesión real del usuario de SOPORTE mientras impersona a otro rol,
 // para poder volver. Separado de SESSION_KEY (que es la sesión EFECTIVA).

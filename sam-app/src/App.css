@@ -8112,3 +8112,146 @@ td.planilla-vacio:hover { background: #fde047; }
   line-height: 1.5;
   color: var(--color-ink-mid);
 }
+
+/* ── Chequeo diario del operario ───────────────────────────────────────────
+   Un ítem por pantalla. Los botones ocupan la franja baja porque es donde
+   llega el pulgar sosteniendo el celular con una mano: el operario está de
+   pie, con guantes o con las manos con grasa, a las 5:30 de la mañana. */
+.chq {
+  display: flex; flex-direction: column; gap: 12px;
+  min-height: calc(100vh - 120px); padding: 4px 0 8px;
+}
+.chq__top {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 0.86rem; color: var(--color-ink-mid);
+}
+.chq__maq { font-weight: 700; color: var(--color-ink); }
+.chq__paso { font-variant-numeric: tabular-nums; }
+
+/* Tres metas cortas en vez de una barra de 30: se ve el final de la vuelta. */
+.chq__vueltas { display: flex; gap: 6px; }
+.chq__vpill {
+  flex: 1; text-align: center; font-size: 0.68rem; padding: 5px 4px;
+  border-radius: 7px; background: var(--color-bg-muted); color: var(--color-ink-light);
+  border: 1px solid transparent; line-height: 1.2;
+}
+.chq__vpill.is-listo { background: var(--color-status-done-bg); color: var(--color-status-done); }
+.chq__vpill.is-aqui {
+  background: var(--color-brand); color: var(--color-ink-on-brand); font-weight: 700;
+}
+
+.chq__card {
+  flex: 1; display: flex; flex-direction: column; justify-content: center;
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border);
+  border-radius: 16px; padding: 22px 18px; text-align: center;
+}
+.chq__vuelta {
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--color-ink-light); margin: 0 0 10px;
+}
+.chq__critico {
+  display: inline-block; margin-left: 8px; padding: 1px 7px; border-radius: 999px;
+  background: var(--color-status-progress-bg); color: var(--color-status-progress);
+  font-weight: 700; letter-spacing: 0;
+}
+/* Grande de verdad: se lee de un vistazo, sin acercarse el teléfono. */
+.chq__texto {
+  font-size: 1.5rem; line-height: 1.25; margin: 0 0 12px; font-weight: 700;
+  color: var(--color-ink); letter-spacing: -0.01em;
+}
+.chq__pista { font-size: 0.9rem; color: var(--color-ink-mid); margin: 0; }
+.chq__aviso {
+  margin: 10px 0 0; padding: 10px 12px; border-radius: 10px;
+  background: var(--color-status-progress-bg); color: var(--color-status-progress);
+  font-size: 0.88rem; font-weight: 600; line-height: 1.4;
+}
+.chq__horometro {
+  width: 100%; margin-top: 14px; padding: 14px; text-align: center;
+  font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums;
+  border: 2px solid var(--color-border); border-radius: 12px;
+  background: var(--color-bg-input); color: var(--color-ink);
+}
+.chq__resumen {
+  margin-top: 16px; padding: 12px; border-radius: 10px; text-align: left;
+  background: var(--color-bg-soft); border: 1px solid var(--color-border);
+  font-size: 0.84rem; color: var(--color-ink-mid);
+  display: flex; flex-direction: column; gap: 3px;
+}
+
+/* Franja baja: dos objetivos grandes, sin nada que se pueda tocar por error. */
+.chq__botones { display: flex; gap: 10px; }
+.chq__btn {
+  flex: 1; padding: 20px 12px; border: 0; border-radius: 14px;
+  font-size: 1.06rem; font-weight: 700; cursor: pointer;
+  transition: transform 0.08s ease;
+}
+.chq__btn:active { transform: scale(0.97); }
+.chq__btn:disabled { opacity: 0.55; }
+.chq__btn--ok   { background: var(--color-brand); color: var(--color-ink-on-brand); }
+.chq__btn--mal  { background: var(--color-status-cancel-bg); color: var(--color-status-cancel); }
+.chq__btn--gris { background: var(--color-bg-muted); color: var(--color-ink); }
+
+/* La novedad se abre EN la misma pantalla: un modal habría que cerrarlo dos
+   veces y con guantes eso son dos oportunidades de tocar mal. */
+.chq__novedad { margin-top: 16px; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.chq__nlbl {
+  margin: 0; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.07em;
+  color: var(--color-ink-light);
+}
+.chq__sev {
+  display: flex; flex-direction: column; gap: 2px; width: 100%;
+  padding: 13px 14px; border-radius: 11px; cursor: pointer; text-align: left;
+  border: 1px solid var(--color-border); background: var(--color-bg-soft);
+}
+.chq__sev strong { font-size: 0.98rem; color: var(--color-ink); }
+.chq__sev small { font-size: 0.79rem; color: var(--color-ink-mid); }
+.chq__sev:active { background: var(--color-bg-muted); }
+.chq__nota { display: flex; gap: 6px; align-items: center; }
+.chq__nota input {
+  flex: 1; padding: 12px; border-radius: 10px; font-size: 0.94rem;
+  border: 1px solid var(--color-border); background: var(--color-bg-input);
+  color: var(--color-ink);
+}
+.chq__cancelar {
+  background: none; border: 0; padding: 6px; font-size: 0.86rem; cursor: pointer;
+  color: var(--color-ink-mid); text-decoration: underline;
+}
+
+.chq__pie {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 0.82rem; color: var(--color-ink-light);
+}
+.chq__link {
+  background: none; border: 0; padding: 8px 4px; cursor: pointer;
+  font-size: 0.82rem; color: var(--color-ink-mid);
+}
+.chq__link:disabled { opacity: 0.35; }
+.chq__ya { font-size: 0.74rem; }
+.chq__salir {
+  background: none; border: 0; padding: 4px; cursor: pointer;
+  font-size: 0.78rem; color: var(--color-ink-light); text-decoration: underline;
+}
+
+/* Entrada al chequeo, arriba de las labores activas. Desaparece al hacerlo:
+   un aviso permanente que no se puede quitar se vuelve parte del paisaje. */
+.chq-aviso {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  padding: 14px 16px; border-radius: 14px; cursor: pointer; text-align: left;
+  background: var(--color-status-progress-bg);
+  border: 1px solid var(--color-status-progress);
+  color: var(--color-ink);
+}
+.chq-aviso:active { transform: scale(0.99); }
+.chq-aviso__ico { font-size: 1.5rem; flex: 0 0 auto; }
+.chq-aviso__txt { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.chq-aviso__txt strong { font-size: 0.98rem; }
+.chq-aviso__txt small { font-size: 0.82rem; color: var(--color-ink-mid); }
+.chq-aviso__ir {
+  flex: 0 0 auto; font-size: 0.84rem; font-weight: 700;
+  color: var(--color-status-progress);
+}
+.chq-listo {
+  margin: 0; padding: 8px 12px; border-radius: 10px; font-size: 0.84rem;
+  background: var(--color-status-done-bg); color: var(--color-status-done);
+  font-weight: 600;
+}

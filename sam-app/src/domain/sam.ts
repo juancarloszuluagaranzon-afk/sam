@@ -627,6 +627,80 @@ export interface HorometroDudoso {
   magnitudEsperada: number
 }
 
+// ── Chequeo diario del operario ─────────────────────────────────────────────
+//
+// Sale del Excel de maquinaria del cliente, que traía tres hojas. Dos de ellas
+// (108 y 135) tienen la MISMA lista diaria — 30 ítems idénticos, mismo orden;
+// solo la de los PUMA difiere. Se guardan las tres por separado igual, para
+// poder diferenciarlas después sin tocar código.
+
+/**
+ * Cómo se responde un ítem.
+ *
+ * `ESTADO` es una verificación (Bien / Mal). `ACCION` es una tarea —engrasar,
+ * drenar la trampa, desairear— y responder "bien" a eso no significa nada: se
+ * responde HECHO. `DATO` pide un número, y es lo que ancla la vuelta a la
+ * realidad: un dato que hay que mirar no se inventa cómodo.
+ */
+export type ChequeoItemTipo = 'ESTADO' | 'ACCION' | 'DATO'
+export type ChequeoValor = 'BIEN' | 'MAL' | 'HECHO' | 'NA'
+
+/** En palabras del operario, no en jerga de mantenimiento. */
+export type ChequeoSeveridad = 'TRABAJA' | 'HOY' | 'NO_ARRANCA'
+export type ChequeoResultado = 'OK' | 'CON_NOVEDAD' | 'NO_APTO'
+
+export interface ChequeoLista {
+  id: number
+  codigo: string
+  nombre: string
+  modelo?: string
+  activa: boolean
+}
+
+export interface ChequeoItem {
+  id: number
+  listaId: number
+  /** El recorrido físico: 1 capó arriba · 2 alrededor · 3 encendido y mandos. */
+  vuelta: number
+  orden: number
+  texto: string
+  tipo: ChequeoItemTipo
+  /** Si falla, la máquina no debería salir. Solo avisa — decide una persona. */
+  critico: boolean
+  unidad?: string
+}
+
+export interface ChequeoRespuesta {
+  itemId: number
+  /** Congelado: reordenar el catálogo no debe reescribir el histórico. */
+  itemTexto: string
+  valor?: ChequeoValor
+  severidad?: ChequeoSeveridad
+  medida?: number
+  nota?: string
+  fotoUrl?: string
+  respondidoEn?: string
+}
+
+export interface Chequeo {
+  /** Lo genera el CLIENTE: reintentar desde la cola offline debe ser idempotente. */
+  id: string
+  equipoCodigo: string
+  listaId: number
+  operarioId: string
+  operarioNombre?: string
+  fecha: string
+  horometro?: number
+  iniciadoEn?: string
+  finalizadoEn?: string
+  duracionSeg?: number
+  /** Se cerró demasiado rápido. NO bloquea: sale en el tablero del taller. */
+  sospechoso: boolean
+  resultado?: ChequeoResultado
+  nota?: string
+  respuestas: ChequeoRespuesta[]
+}
+
 export type ProveedorTipo = 'REPUESTOS' | 'AGROINSUMOS' | 'SERVICIOS' | 'OTRO'
 
 export interface Proveedor {

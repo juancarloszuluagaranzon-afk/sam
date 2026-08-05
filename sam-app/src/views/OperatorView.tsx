@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react
 // distinto al local y rompió el arranque en producción (pantalla blanca,
 // 17-jul-2026). +46KB gzip de costo una vez > riesgo de tumbar la app.
 import { MapaView } from './MapaView'
+import { ChequeoDiarioView } from './ChequeoDiarioView'
+import { chequeoDelDia, listaDeEquipo } from '../services/chequeoApi'
 import { useAppData } from '../context/AppDataContext'
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useFreeFieldForm } from '../hooks/useFreeFieldForm'
@@ -30,7 +32,7 @@ import { enviarOEncolar } from '../lib/outboxInsumos'
 import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, loadTanqueosPorConfirmar, confirmarTanqueo, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
 
-type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa'
+type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo'
 
 // Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Para reportar
 // novedades (vacaciones/taller) por rango. Guard de 400 días por seguridad.
@@ -269,6 +271,29 @@ export function OperatorView({
   const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos, ingenios, labores, motivacion } = useAppData()
   // Ingenios activos para los selectores (toma en campo).
   const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
+  // Chequeo diario: qué lista le toca a su máquina y si ya lo hizo hoy. `null`
+  // en la lista significa que a esa máquina NO se le pide chequeo (la FIAT es de
+  // oficios varios del taller, TRC-1 es de pruebas) — no es un error.
+  const [chqLista, setChqLista] = useState<number | null>(null)
+  const [chqHecho, setChqHecho] = useState(false)
+  const chqEquipo = session?.equipmentCode ?? ''
+
+  useEffect(() => {
+    if (!chqEquipo) { setChqLista(null); return }
+    let vivo = true
+    void (async () => {
+      const lista = await listaDeEquipo(chqEquipo)
+      if (!vivo) return
+      setChqLista(lista)
+      if (lista == null) return
+      const h = new Date()
+      const dia = `${h.getFullYear()}-${String(h.getMonth() + 1).padStart(2, '0')}-${String(h.getDate()).padStart(2, '0')}`
+      const hecho = await chequeoDelDia(chqEquipo, dia)
+      if (vivo) setChqHecho(hecho != null)
+    })()
+    return () => { vivo = false }
+  }, [chqEquipo, operatorTab])
+
   const [isNewSuerteOpen, setIsNewSuerteOpen] = useState(false)
   const [isDiagOpen, setIsDiagOpen] = useState(false)
 
@@ -1278,6 +1303,24 @@ export function OperatorView({
 
         {operatorTab === 'activas' ? (
           <section className="operator-stack operator-mobile-stack">
+            {/* Arriba de todo y solo si falta: el chequeo se hace ANTES de
+                arrancar, así que competir con las labores por la atención sería
+                perder. Cuando ya está hecho desaparece — un aviso permanente que
+                no se puede quitar se vuelve parte del paisaje y deja de verse. */}
+            {chqLista != null && !chqHecho && (
+              <button type="button" className="chq-aviso" onClick={() => setOperatorTab('chequeo')}>
+                <span className="chq-aviso__ico">🔧</span>
+                <span className="chq-aviso__txt">
+                  <strong>Revisa la máquina antes de arrancar</strong>
+                  <small>Son 3 vueltas cortas. Toma unos 4 minutos.</small>
+                </span>
+                <span className="chq-aviso__ir">Empezar →</span>
+              </button>
+            )}
+            {chqLista != null && chqHecho && (
+              <p className="chq-listo">✅ Chequeo de hoy hecho</p>
+            )}
+
             {/* Rendimiento del operario: % quincenal + Hoy (ejec/plan) + indicador
                 diario. Reemplaza los KPIs sueltos de arriba (todo en un bloque). */}
             {(rendimiento.mostrarQuincena || tieneIndicadorDiario || operatorMetrics.todayPlanned > 0 || operatorMetrics.todayExecuted > 0) && (
@@ -1768,6 +1811,14 @@ export function OperatorView({
               </div>
             </article>
           </section>
+        ) : null}
+
+        {operatorTab === 'chequeo' && chqLista != null ? (
+          <ChequeoDiarioView
+            equipoCodigo={chqEquipo}
+            listaId={chqLista}
+            onSalir={() => { setChqHecho(true); setOperatorTab('activas') }}
+          />
         ) : null}
 
         {operatorTab === 'mapa' ? <MapaView onBack={() => setOperatorTab('activas')} /> : null}

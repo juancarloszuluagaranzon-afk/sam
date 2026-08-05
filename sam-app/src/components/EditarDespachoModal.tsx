@@ -91,28 +91,31 @@ export function EditarDespachoModal({
   }, [insumos])
 
   /**
-   * Avisa cuando el número no puede ser cierto PARA UN REGISTRO PASADO.
+   * Avisa solo por CANTIDAD DE DÍGITOS, que es el único error verificable aquí.
    *
-   * ⚠️ La regla NO es la misma que en el chequeo diario, y confundirlas produce
-   * avisos en falso. En el chequeo se teclea la lectura de HOY, así que un valor
-   * menor al último es sospechoso. Aquí se corrige una entrega VIEJA, y que su
-   * horómetro sea menor al de hoy es lo normal — la máquina siguió andando.
+   * Costó dos intentos llegar a esto, y las dos veces el error fue comparar
+   * contra un número que no es una cota:
    *
-   * Lo que sí es imposible en un registro pasado: que supere la lectura actual
-   * de la máquina. Y sigue valiendo el dedazo de magnitud (un dígito de más),
-   * que es el otro patrón real. No bloquea: avisa.
+   * 1. "el horómetro no baja" — copiado del chequeo diario. Falso: allá se
+   *    teclea la lectura de HOY, aquí se corrige una entrega VIEJA, y que sea
+   *    menor a la de hoy es lo normal.
+   * 2. "no puede superar la lectura actual" — también falso. `equipo_horometro_v`
+   *    NO lee de las entregas (solo de `asignaciones` y `combustible_externo`),
+   *    así que su valor puede ser MÁS VIEJO que el de una entrega de hoy.
+   *
+   * Lo que sí es siempre cierto: los dos errores reales cambian la cantidad de
+   * dígitos. Las horas del día (`9` en una máquina de 7.254) tienen menos; el
+   * dedazo de la PUMA (`145609` por `14560.9`) tiene más. La referencia se sigue
+   * mostrando al lado como contexto, pero no como límite.
    */
   const avisoHorometro = useMemo(() => {
     const h = Number(horometro)
-    if (!horometro || !Number.isFinite(h) || ultimoH == null) return ''
-    if (h > ultimoH) {
-      return `Esta máquina va hoy en ${ultimoH.toLocaleString('es-CO')}. Una entrega pasada no puede tener una lectura mayor.`
-    }
-    // Un orden de magnitud distinto es el dedazo clásico: sobra o falta un dígito.
-    if (h > 0 && Math.floor(Math.log10(h)) !== Math.floor(Math.log10(ultimoH))) {
-      return `La máquina va en ${ultimoH.toLocaleString('es-CO')}. ${h.toLocaleString('es-CO')} tiene otra cantidad de dígitos — ¿anotaste las horas trabajadas?`
-    }
-    return ''
+    if (!horometro || !Number.isFinite(h) || h <= 0 || ultimoH == null || ultimoH <= 0) return ''
+    const digitos = (n: number) => Math.floor(Math.log10(n))
+    if (digitos(h) === digitos(ultimoH)) return ''
+    return digitos(h) < digitos(ultimoH)
+      ? `Esta máquina va por ${ultimoH.toLocaleString('es-CO')}. ¿Anotaste las horas que trabajaste en vez de la lectura?`
+      : `Esta máquina va por ${ultimoH.toLocaleString('es-CO')}. ${h.toLocaleString('es-CO')} tiene un dígito de más — revisa el punto decimal.`
   }, [horometro, ultimoH])
 
   // Solo se guarda si de verdad cambió algo: una edición vacía dejaría una fila

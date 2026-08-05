@@ -2663,6 +2663,17 @@ export async function editarDespacho(input: {
   /** Nueva fecha efectiva (ISO). Si no viene, la fecha no cambia. */
   entregadoEn?: string
   equipoCodigo?: string
+  /**
+   * Lectura del horómetro al entregar.
+   *
+   * ⚠️ OJO con dónde pesa: `equipo_horometro_v` NO lee de aquí (solo de
+   * `asignaciones` y `combustible_externo`), así que corregirlo no mueve el
+   * horómetro oficial de la máquina ni el preventivo. Donde sí manda es en el
+   * **informe semanal**, que calcula las horas trabajadas restando el horómetro
+   * de una entrega contra el de la siguiente — un dedazo ahí deja la semana
+   * entera sin horas.
+   */
+  horometro?: number | null
   /** Bodega de la que salió: se necesita para rehacer el saldo. */
   bodegaId?: string
   items: { itemId: string; insumoId: string; cantidadDespachada: number }[]
@@ -2697,6 +2708,12 @@ export async function editarDespacho(input: {
   if (input.equipoCodigo && input.equipoCodigo !== antes.equipoCodigo) {
     parche.equipo_codigo = input.equipoCodigo
     cambios.maquina = { antes: antes.equipoCodigo, despues: input.equipoCodigo }
+  }
+  // `undefined` = no se tocó · `null` = se borró a propósito. Son distintos: un
+  // horómetro que nadie anotó no es lo mismo que uno que se borró por errado.
+  if (input.horometro !== undefined && input.horometro !== antes.horometro) {
+    parche.horometro = input.horometro
+    cambios.horometro = { antes: antes.horometro ?? null, despues: input.horometro }
   }
   if (Object.keys(parche).length > 1) {
     const { error } = await supabase

@@ -50,10 +50,11 @@ import { EmpresasTab } from './EmpresasTab'
 import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
+import { ConsumoDashboardTab } from './ConsumoDashboardTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'consumo' | 'avales' | 'taller'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1118,6 +1119,20 @@ export function SupervisorView({
                   <div>
                     <div className="more-sheet__label">Insumos</div>
                     <div className="more-sheet__desc">Inventario de insumos y combustible (kardex)</div>
+                  </div>
+                </button>
+                {/* Entrada propia: el tablero vivía dentro de las pestañas de
+                    Insumos, y el dueño entra por "🛢️ INSUMOS" de su barra, que
+                    es OTRA pantalla con el mismo nombre y el mismo ícono. Con
+                    dos caminos llamados igual, el que busca no lo encuentra. */}
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'consumo' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('consumo'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">⛽</span>
+                  <div>
+                    <div className="more-sheet__label">Consumo por máquina</div>
+                    <div className="more-sheet__desc">Historia mes a mes y galones por hora</div>
                   </div>
                 </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
@@ -2207,6 +2222,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'zonas' ? (
           <ZonasTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'consumo' ? (
+          <ConsumoDashboardTab />
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumos' ? (

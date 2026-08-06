@@ -8255,3 +8255,71 @@ td.planilla-vacio:hover { background: #fde047; }
   background: var(--color-status-done-bg); color: var(--color-status-done);
   font-weight: 600;
 }
+
+/* ── Tablero de consumo ────────────────────────────────────────────────────
+   La serie mensual va como barras tocables: elegir el mes es la interacción
+   principal, así que la barra ES el botón, no un selector aparte. */
+.cons-serie {
+  display: flex; gap: 6px; align-items: flex-end; margin: 10px 0 4px;
+  overflow-x: auto; padding-bottom: 4px;
+}
+.cons-mes {
+  flex: 1 0 62px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  background: none; border: 0; padding: 6px 2px; border-radius: 10px; cursor: pointer;
+}
+.cons-mes.is-sel { background: var(--color-bg-muted); }
+.cons-mes__barra {
+  width: 100%; height: 84px; display: flex; align-items: flex-end;
+  background: var(--color-bg-muted); border-radius: 6px; overflow: hidden;
+}
+.cons-mes.is-sel .cons-mes__barra { background: var(--color-bg-chip); }
+.cons-mes__fill {
+  width: 100%; background: linear-gradient(180deg, var(--color-brand-mid), var(--color-brand));
+  border-radius: 6px 6px 0 0; min-height: 3px;
+}
+.cons-mes strong { font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.cons-mes small { font-size: 0.7rem; color: var(--color-ink-light); }
+.cons-f {
+  font-size: 0.6rem; font-style: normal; padding: 1px 5px; border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+.cons-f--papel { background: var(--color-bg-chip); color: var(--color-ink-mid); }
+.cons-f--app   { background: var(--color-status-done-bg); color: var(--color-status-done); }
+
+.mural-kpi { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+.kpi {
+  border: 1px solid var(--color-border); border-radius: 12px; padding: 12px 10px;
+  background: var(--color-bg-elevated); text-align: center;
+}
+.kpi__n {
+  display: block; font-size: 1.5rem; font-weight: 800; line-height: 1.1;
+  color: var(--color-brand-dark); font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.kpi__l { display: block; font-size: 0.72rem; color: var(--color-ink-mid); margin-top: 4px; }
+.kpi--vacio .kpi__n { color: var(--color-ink-light); }
+
+.cons-tabla { display: flex; flex-direction: column; margin-top: 8px; }
+.cons-fila {
+  display: grid; grid-template-columns: 1.6fr 0.8fr 0.7fr 0.8fr 1.1fr;
+  gap: 6px; align-items: center; padding: 10px 8px; font-size: 0.86rem;
+  border-bottom: 1px solid var(--color-divider); font-variant-numeric: tabular-nums;
+}
+.cons-fila > span:not(:first-child) { text-align: right; }
+.cons-fila--cab {
+  font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--color-ink-light); border-bottom: 1px solid var(--color-border);
+}
+.cons-fila__maq { display: flex; flex-direction: column; font-weight: 600; }
+.cons-fila__maq small { font-weight: 400; font-size: 0.72rem; color: var(--color-ink-light); }
+.cons-fila small { font-size: 0.7rem; color: var(--color-ink-light); }
+/* Sin teñir la letra de verde: sobre el panel oscuro el verde de marca da
+   3,58:1 y no se lee. El estado se marca con el fondo. */
+.cons-bien { color: var(--color-ink-mid); }
+.cons-mal {
+  color: var(--color-status-cancel); font-weight: 700;
+  background: var(--color-status-cancel-bg); border-radius: 6px; padding: 2px 6px;
+}
+@media (max-width: 620px) {
+  .mural-kpi { grid-template-columns: repeat(2, 1fr); }
+  .cons-fila { grid-template-columns: 1.4fr 0.7fr 0.6fr 0.7fr 1fr; font-size: 0.78rem; }
+}

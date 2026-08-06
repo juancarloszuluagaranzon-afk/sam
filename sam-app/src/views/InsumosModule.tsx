@@ -8,6 +8,7 @@ import { MiBodegaTab } from './MiBodegaTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { InventarioResumenTab } from './InventarioResumenTab'
 import { InformeSemanalTab } from './InformeSemanalTab'
+import { ConsumoDashboardTab } from './ConsumoDashboardTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
 
@@ -22,7 +23,7 @@ import { MapaView } from './MapaView'
  * y se acabó la trazabilidad. Lo que entra a su carro entra por un traslado
  * avalado o por un tanqueo avalado — nunca a dedo.
  */
-export type InsumosTab = 'resumen' | 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'semanal' | 'catalogos' | 'mapa'
+export type InsumosTab = 'resumen' | 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'consumo' | 'semanal' | 'catalogos' | 'mapa'
 
 const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
@@ -30,6 +31,7 @@ const TABS: { key: InsumosTab; icon: string; label: string; desc: string }[] = [
   { key: 'mibodega', icon: '🚚', label: 'Mi bodega', desc: 'Mi carro · recibir · tanquear' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
   { key: 'equipos', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
+  { key: 'consumo', icon: '⛽', label: 'Consumo', desc: 'Historia y gal/hora' },
   { key: 'semanal', icon: '📅', label: 'Semanal', desc: 'Horas y gal/hora' },
   { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
@@ -49,7 +51,7 @@ export function InsumosModule({
     // Los catálogos los maneja administración, igual que Inventario: si cada
     // supervisor pudiera editarlos, cada carro tendría su propia lista.
     () => (session?.role === 'supervisor_insumos'
-      ? TABS.filter((t) => !['inventario', 'catalogos', 'resumen', 'semanal'].includes(t.key))
+      ? TABS.filter((t) => !['inventario', 'catalogos', 'resumen', 'semanal', 'consumo'].includes(t.key))
       : TABS),
     [session?.role],
   )
@@ -85,6 +87,7 @@ export function InsumosModule({
         : tab === 'mibodega' ? <MiBodegaTab />
         : tab === 'inventario' ? <InsumosInventarioTab />
         : tab === 'equipos' ? <ConsumoEquiposTab />
+        : tab === 'consumo' ? <ConsumoDashboardTab />
         : tab === 'semanal' ? <InformeSemanalTab />
         : tab === 'catalogos' ? <CatalogosInsumosTab />
         : <MapaView onBack={() => setTab('bandeja')} />}

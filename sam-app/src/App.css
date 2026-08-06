@@ -8323,3 +8323,16 @@ td.planilla-vacio:hover { background: #fde047; }
   .mural-kpi { grid-template-columns: repeat(2, 1fr); }
   .cons-fila { grid-template-columns: 1.4fr 0.7fr 0.6fr 0.7fr 1fr; font-size: 0.78rem; }
 }
+
+/* Selector combustible / ganchos. Píldoras, no un <select>: son dos opciones
+   y un desplegable para dos cosas es un toque de más. */
+.cons-toggle { display: flex; gap: 4px; }
+.cons-toggle button {
+  border: 1px solid var(--color-border); background: var(--color-bg-soft);
+  color: var(--color-ink-mid); padding: 6px 11px; font-size: 0.8rem;
+  font-weight: 600; cursor: pointer; border-radius: 999px;
+}
+.cons-toggle button.is-sel {
+  background: var(--color-brand); color: var(--color-ink-on-brand);
+  border-color: var(--color-brand);
+}

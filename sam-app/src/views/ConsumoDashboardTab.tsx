@@ -41,6 +41,9 @@ export function ConsumoDashboardTab() {
   const [horas, setHoras] = useState<Map<string, number>>(new Map())
   const [cargando, setCargando] = useState(true)
   const [mesSel, setMesSel] = useState<string>('')
+  // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
+  // cinco y en celular no cabe una sexta sin volverse ilegible.
+  const [medida, setMedida] = useState<'COMBUSTIBLE' | 'GANCHOS'>('COMBUSTIBLE')
 
   const equipoNombre = useMemo(() => {
     const m = new Map<string, string>()
@@ -126,6 +129,13 @@ export function ConsumoDashboardTab() {
       const horasIncompletas = horasImplicitas != null && h > 0 && h < horasImplicitas * 0.6
       const desv = galHora != null && ref != null && ref > 0 && !horasIncompletas
         ? Math.round(((galHora - ref) / ref) * 100) : null
+
+      // Ganchos. `refGan` en null NO es dato faltante: los PUMA no usan ganchos.
+      const refGan = refDe.get(codigo)?.ganchosHora ?? null
+      const ganHora = h > 0 && v.gan > 0 ? Math.round((v.gan / h) * 100) / 100 : null
+      const desvGan = ganHora != null && refGan != null && refGan > 0 && !horasIncompletas
+        ? Math.round(((ganHora - refGan) / refGan) * 100) : null
+
       return {
         codigo,
         nombre: equipoNombre.get(codigo) ?? codigo,
@@ -135,9 +145,21 @@ export function ConsumoDashboardTab() {
         horasEsperadas: horasImplicitas == null ? null : Math.round(horasImplicitas),
         horasIncompletas,
         galHora, ref, desv,
+        ganHora, refGan, desvGan,
+        usaGanchos: refGan != null,
       }
     }).sort((a, b) => b.gal - a.gal)
   }, [delMes, horas, refDe, equipoNombre])
+
+  // En ganchos solo se listan las que los usan: mostrar un PUMA con "—" en todo
+  // hace pensar que falta un dato, cuando lo que pasa es que no lleva ganchos.
+  const visibles = useMemo(
+    () => (medida === 'COMBUSTIBLE'
+      ? porMaquina
+      : porMaquina.filter((m) => m.usaGanchos && m.gan > 0).sort((a, b) => b.gan - a.gan)),
+    [porMaquina, medida],
+  )
+  const esGan = medida === 'GANCHOS'
 
   const totalGal = porMaquina.reduce((t, m) => t + m.gal, 0)
   const totalGan = porMaquina.reduce((t, m) => t + m.gan, 0)
@@ -145,7 +167,9 @@ export function ConsumoDashboardTab() {
   const galHoraFlota = totalHoras > 0 ? Math.round((totalGal / totalHoras) * 100) / 100 : null
   const maxGal = Math.max(1, ...meses.map((m) => m.gal))
   const fuenteMes = meses.find((m) => m.mes === mesSel)?.fuente
-  const desviadas = porMaquina.filter((m) => m.desv != null && Math.abs(m.desv) >= 20)
+  const desviadas = esGan
+    ? visibles.filter((m) => m.desvGan != null && Math.abs(m.desvGan) >= 20)
+    : porMaquina.filter((m) => m.desv != null && Math.abs(m.desv) >= 20)
   const sinHoras = porMaquina.filter((m) => m.horasIncompletas)
 
   async function exportar() {
@@ -159,8 +183,10 @@ export function ConsumoDashboardTab() {
       }))), 'Por mes')
       utils.book_append_sheet(wb, utils.json_to_sheet(porMaquina.map((m) => ({
         'Máquina': m.nombre, 'Combustible(gal)': m.gal, 'Ganchos': m.gan,
-        'Horas': m.horas || '', 'Gal/hora': m.galHora ?? '',
-        'Referencia 2025': m.ref ?? '', 'Desviación %': m.desv ?? '',
+        'Horas': m.horas || '',
+        'Gal/hora': m.galHora ?? '', 'Ref. gal/h 2025': m.ref ?? '', 'Desv. gal %': m.desv ?? '',
+        'Gan/hora': m.ganHora ?? '', 'Ref. gan/h 2025': m.refGan ?? '',
+        'Desv. ganchos %': m.desvGan ?? '',
       }))), `Máquinas ${etiquetaMes(mesSel)}`)
       writeFile(wb, `consumo-${mesSel}.xlsx`)
       setInfo('Tablero descargado.')
@@ -253,29 +279,52 @@ export function ConsumoDashboardTab() {
           )}
 
           {/* ── Máquina por máquina ────────────────────────────────────────── */}
-          <p className="ins-res__lbl" style={{ marginTop: 16 }}>Máquina por máquina</p>
+          <div className="panel-title split" style={{ marginTop: 16, marginBottom: 0 }}>
+            <p className="ins-res__lbl" style={{ margin: 0 }}>Máquina por máquina</p>
+            <div className="cons-toggle">
+              <button type="button" className={!esGan ? 'is-sel' : ''}
+                      onClick={() => setMedida('COMBUSTIBLE')}>⛽ Combustible</button>
+              <button type="button" className={esGan ? 'is-sel' : ''}
+                      onClick={() => setMedida('GANCHOS')}>🪝 Ganchos</button>
+            </div>
+          </div>
+
+          {esGan && (
+            <p className="subtle-copy" style={{ marginTop: 6 }}>
+              Solo las {visibles.length} máquinas que usan ganchos — los PUMA no llevan.
+              Ojo: los ganchos se entregan por paquetes de 40, así que en pocos días el
+              promedio salta; en un mes completo se estabiliza.
+            </p>
+          )}
+
           <div className="cons-tabla">
             <div className="cons-fila cons-fila--cab">
-              <span>Máquina</span><span>Galones</span><span>Horas</span>
-              <span>Gal/hora</span><span>vs 2025</span>
+              <span>Máquina</span><span>{esGan ? 'Ganchos' : 'Galones'}</span><span>Horas</span>
+              <span>{esGan ? 'Gan/hora' : 'Gal/hora'}</span><span>vs 2025</span>
             </div>
-            {porMaquina.map((m) => (
-              <div key={m.codigo} className="cons-fila">
-                <span className="cons-fila__maq">
-                  🚜 {m.nombre}
-                  {m.gan > 0 && <small>{fmtCantidad(m.gan, 'unidad')} ganchos</small>}
-                </span>
-                <span>{m.gal.toLocaleString('es-CO')}</span>
-                <span>{m.horas || '—'}</span>
-                <span><strong>{m.galHora ?? '—'}</strong></span>
-                <span className={m.desv == null ? '' : Math.abs(m.desv) >= 20 ? 'cons-mal' : 'cons-bien'}>
-                  {m.ref == null ? <small>sin referencia</small>
-                    : m.horasIncompletas ? <small>⏱ faltan horas (≈{m.horasEsperadas})</small>
-                    : m.desv == null ? <small>ref. {m.ref}</small>
-                    : <>{m.desv > 0 ? '▲' : '▼'}{Math.abs(m.desv)}% <small>de {m.ref}</small></>}
-                </span>
-              </div>
-            ))}
+            {visibles.map((m) => {
+              const porHora = esGan ? m.ganHora : m.galHora
+              const referencia = esGan ? m.refGan : m.ref
+              const desviacion = esGan ? m.desvGan : m.desv
+              return (
+                <div key={m.codigo} className="cons-fila">
+                  <span className="cons-fila__maq">
+                    🚜 {m.nombre}
+                    {!esGan && m.gan > 0 && <small>{fmtCantidad(m.gan, 'unidad')} ganchos</small>}
+                    {esGan && m.gal > 0 && <small>{fmtCantidad(m.gal, 'galón')} gal</small>}
+                  </span>
+                  <span>{(esGan ? m.gan : m.gal).toLocaleString('es-CO')}</span>
+                  <span>{m.horas || '—'}</span>
+                  <span><strong>{porHora ?? '—'}</strong></span>
+                  <span className={desviacion == null ? '' : Math.abs(desviacion) >= 20 ? 'cons-mal' : 'cons-bien'}>
+                    {referencia == null ? <small>{esGan ? 'no usa ganchos' : 'sin referencia'}</small>
+                      : m.horasIncompletas ? <small>⏱ faltan horas (≈{m.horasEsperadas})</small>
+                      : desviacion == null ? <small>ref. {referencia}</small>
+                      : <>{desviacion > 0 ? '▲' : '▼'}{Math.abs(desviacion)}% <small>de {referencia}</small></>}
+                  </span>
+                </div>
+              )
+            })}
           </div>
         </>
       )}

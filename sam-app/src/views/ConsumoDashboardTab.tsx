@@ -167,10 +167,9 @@ export function ConsumoDashboardTab() {
   const galHoraFlota = totalHoras > 0 ? Math.round((totalGal / totalHoras) * 100) / 100 : null
   const maxGal = Math.max(1, ...meses.map((m) => m.gal))
   const fuenteMes = meses.find((m) => m.mes === mesSel)?.fuente
-  const desviadas = esGan
-    ? visibles.filter((m) => m.desvGan != null && Math.abs(m.desvGan) >= 20)
-    : porMaquina.filter((m) => m.desv != null && Math.abs(m.desv) >= 20)
-  const sinHoras = porMaquina.filter((m) => m.horasIncompletas)
+  // Sin banners de alerta: saturaban la pantalla. La señal sigue estando donde
+  // sirve —en la fila de cada máquina, junto a su número— que es donde el dueño
+  // ya está mirando cuando le interesa el detalle.
 
   async function exportar() {
     setBusy(true); setError('')
@@ -259,23 +258,6 @@ export function ConsumoDashboardTab() {
               📄 Este mes viene del formato en papel. Las horas trabajadas salen de las
               labores del sistema, así que el galones/hora puede quedar incompleto.
             </p>
-          )}
-
-          {/* Primero el problema de dato, después el de consumo. Al revés, el
-              dueño sale a buscar fugas que no existen. */}
-          {sinHoras.length > 0 && (
-            <div className="taller-aviso taller-aviso--warn" style={{ marginTop: 12 }}>
-              ⏱ <strong>{sinHoras.length} máquina(s) tienen horas sin registrar.</strong> Gastaron
-              combustible para mucho más de lo que aparece trabajado, así que su galones/hora
-              no es confiable todavía. No es consumo: son labores sin cerrar o sin horómetro.
-            </div>
-          )}
-          {desviadas.length > 0 && (
-            <div className="taller-aviso taller-aviso--warn" style={{ marginTop: 8 }}>
-              ⚠ {desviadas.length} máquina(s) con horas completas se salen más de 20% de su
-              referencia 2025. Estas sí valen la pena revisar: fuga, filtro tapado, o
-              combustible que no llegó donde dice.
-            </div>
           )}
 
           {/* ── Máquina por máquina ────────────────────────────────────────── */}

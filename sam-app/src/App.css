@@ -8336,3 +8336,33 @@ td.planilla-vacio:hover { background: #fde047; }
   background: var(--color-brand); color: var(--color-ink-on-brand);
   border-color: var(--color-brand);
 }
+
+/* Las dos caras del tablero del dueño. Ocupan el ancho porque son la primera
+   decisión de la pantalla, no un filtro secundario. */
+.tablero-caras { display: flex; gap: 6px; margin: 0 0 12px; }
+.tablero-caras button {
+  flex: 1; padding: 11px 8px; border-radius: 11px; cursor: pointer;
+  font-size: 0.86rem; font-weight: 650; line-height: 1.2;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-soft); color: var(--color-ink-mid);
+}
+.tablero-caras button.is-sel {
+  background: var(--color-brand); color: var(--color-ink-on-brand);
+  border-color: var(--color-brand);
+}
+@media (max-width: 420px) { .tablero-caras button { font-size: 0.78rem; padding: 10px 4px; } }
+
+/* Las dos caras del tablero del dueño. Ocupan el ancho porque son la primera
+   decisión de la pantalla, no un filtro secundario. */
+.tablero-caras { display: flex; gap: 6px; margin: 0 0 12px; }
+.tablero-caras button {
+  flex: 1; padding: 11px 8px; border-radius: 11px; cursor: pointer;
+  font-size: 0.86rem; font-weight: 650; line-height: 1.2;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-soft); color: var(--color-ink-mid);
+}
+.tablero-caras button.is-sel {
+  background: var(--color-brand); color: var(--color-ink-on-brand);
+  border-color: var(--color-brand);
+}
+@media (max-width: 420px) { .tablero-caras button { font-size: 0.78rem; padding: 10px 4px; } }

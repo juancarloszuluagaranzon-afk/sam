@@ -278,6 +278,10 @@ export function SupervisorView({
   const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
 
   // Consumo de insumos cargado a un equipo (modal al tocar una tarjeta de equipo).
+  // Las dos caras del tablero del dueño. Un selector y no dos entradas de menú:
+  // son la misma pregunta ("¿cómo va la operación?") mirada desde dos ángulos, y
+  // separarlas obliga a acordarse de que existen dos sitios.
+  const [caraTablero, setCaraTablero] = useState<'operacion' | 'maquinaria'>('operacion')
   const [equipoConsumo, setEquipoConsumo] = useState<Equipment | null>(null)
   const [equipoConsumoRows, setEquipoConsumoRows] = useState<InsumoKardex[]>([])
   const [equipoConsumoLoading, setEquipoConsumoLoading] = useState(false)
@@ -2191,7 +2195,21 @@ export function SupervisorView({
         ) : null}
 
         {supervisorTab === 'inicio' ? (
-          <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+          <>
+            <div className="tablero-caras">
+              <button type="button" className={caraTablero === 'operacion' ? 'is-sel' : ''}
+                      onClick={() => setCaraTablero('operacion')}>
+                📋 Operación general
+              </button>
+              <button type="button" className={caraTablero === 'maquinaria' ? 'is-sel' : ''}
+                      onClick={() => setCaraTablero('maquinaria')}>
+                ⛽ Eficiencia maquinaria
+              </button>
+            </div>
+            {caraTablero === 'operacion'
+              ? <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+              : <ConsumoDashboardTab />}
+          </>
         ) : null}
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}

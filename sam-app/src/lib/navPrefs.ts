@@ -22,7 +22,6 @@ export const NAV_OPCIONES: NavOpcion[] = [
   { id: 'realizadas', label: 'Realizadas', icon: '☑', desc: 'Labores ejecutadas' },
   { id: 'equipos', label: 'Máquinas', icon: '▣', desc: 'Estado de los equipos' },
   { id: 'insumosresumen', label: 'Insumos', icon: '🛢️', desc: 'Entregas por supervisor' },
-  { id: 'consumo', label: 'Consumo', icon: '⛽', desc: 'Historia y galones por hora' },
   { id: 'aprobaciones', label: 'A facturar', icon: '✔', desc: 'Pendientes de aprobar' },
   { id: 'avales', label: 'Avales', icon: '✅', desc: 'Tanqueos por aprobar' },
   { id: 'taller', label: 'Taller', icon: '🔧', desc: 'Mantenimiento de maquinas' },

@@ -60,6 +60,22 @@ import {
 // asi una labor que cruza de dia NO se cuenta dos veces. Antes sumaba el area
 // PLANIFICADA al abrir, lo que duplicaba los cruces de dia (13.3+13.3=26.7).
 
+/**
+ * Área que cuenta de una labor CERRADA.
+ *
+ * 🔴 El fallback importa y es la regla del proyecto: cerrar una labor sin
+ * escribir el área significa "hice lo planificado", no "hice cero". Sin esto la
+ * Planilla le restaba hectáreas a quien cerró así — medido el 7-ago-2026: **9
+ * labores de 7 operarios, 89,91 ha** desde el 29 de mayo, y el Resumen mostraba
+ * un número distinto para la misma quincena. Es dinero: con esta planilla se paga.
+ *
+ * Aplica SOLO a COMPLETADA/PARCIAL. Una labor abierta muestra 0.
+ */
+function areaCerrada(a: Assignment): number {
+  const ejec = a.executedArea ?? 0
+  return ejec > 0 ? ejec : (a.area ?? 0)
+}
+
 const WEEKDAY = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
 
 function fmt(value: number) {
@@ -343,7 +359,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       if (a.status !== 'COMPLETADA' && a.status !== 'PARCIAL') continue
       const k = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
       const arr = cerradoBySuerte.get(k) ?? []
-      arr.push({ date: executionDateKey(a), exec: a.executedArea ?? 0 })
+      arr.push({ date: executionDateKey(a), exec: areaCerrada(a) })
       cerradoBySuerte.set(k, arr)
     }
     // 2) Sumar el área REAL por día (executedArea de lo cerrado; restante estimado
@@ -371,7 +387,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         val = Math.max(0, a.area - yaCerrado)
         row.perDayProceso[dk] = true
       } else {
-        val = a.executedArea ?? 0
+        val = areaCerrada(a)
       }
       row.perDay[dk] = (row.perDay[dk] ?? 0) + val
       row.total += val

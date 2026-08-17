@@ -8437,3 +8437,24 @@ td.planilla-vacio:hover { background: #fde047; }
   .tar-acciones { grid-column: 1 / -1; justify-content: flex-start; }
   .tar-precio { text-align: left; }
 }
+
+/* ── Foto de evidencia ─────────────────────────────────────────────────────
+   La local se ve igual que la subida, con un reloj encima. Antes salía un
+   cuadrito gris que decía "sin subir": el supervisor no podía comprobar lo que
+   acababa de tomar, y una foto que no se puede mirar no sirve de evidencia. */
+.foto-evid { position: relative; display: inline-flex; line-height: 0; }
+.foto-evid__img {
+  object-fit: cover; border-radius: 8px;
+  border: 1px solid var(--color-border); background: var(--color-bg-muted);
+}
+.foto-evid--local .foto-evid__img { border-color: var(--color-status-progress); }
+.foto-evid__chip {
+  position: absolute; right: -4px; bottom: -4px;
+  background: var(--color-status-progress-bg); color: var(--color-status-progress);
+  border-radius: 999px; font-size: 0.62rem; line-height: 1;
+  padding: 3px 4px; border: 1px solid var(--color-status-progress);
+}
+.foto-evid--cargando {
+  display: inline-block; border-radius: 8px;
+  background: var(--color-bg-muted); border: 1px solid var(--color-border);
+}

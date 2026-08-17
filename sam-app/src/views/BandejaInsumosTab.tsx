@@ -5,7 +5,8 @@ import type { Bodega, StockBodega } from '../domain/sam'
 import { SearchableSelect } from '../components/SearchableSelect'
 import { CampoLista, recordarValor } from '../components/CampoPlaca'
 import { fmtFechaHora as fmtFecha, fmtLapso } from '../lib/fechas'
-import { enviarOEncolar, subirOGuardarFoto, esFotoLocal } from '../lib/outboxInsumos'
+import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
+import { FotoEvidencia } from '../components/FotoEvidencia'
 import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
@@ -627,10 +628,11 @@ export function BandejaInsumosTab() {
             <div style={{ marginTop: 10 }}>
               <span className="subtle-copy" style={{ display: 'block', marginBottom: 6 }}>Evidencia (fotos)</span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                {/* Se ve la foto aunque no haya señal: sale del blob guardado
+                    en el equipo. Antes salía un cuadrito gris y el supervisor no
+                    podía comprobar lo que acababa de tomar. */}
                 {evidencias.map((u, i) => (
-                  esFotoLocal(u)
-                  ? <span key={i} className="foto-pendiente" title="Guardada en el equipo; se sube cuando haya senal">&#128247; sin subir</span>
-                  : <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
+                  <FotoEvidencia key={i} url={u} alt={`evidencia ${i + 1}`} />
                 ))}
                 <button type="button" className="inline-button" onClick={() => fotoInputRef.current?.click()} disabled={busy || subiendoFoto}>
                   {subiendoFoto ? 'Subiendo…' : '📷 Agregar foto'}
@@ -739,9 +741,7 @@ export function BandejaInsumosTab() {
               <span className="subtle-copy" style={{ display: 'block', marginBottom: 6 }}>Evidencia (fotos)</span>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
                 {dirFotos.map((u, i) => (
-                  esFotoLocal(u)
-                  ? <span key={i} className="foto-pendiente" title="Guardada en el equipo; se sube cuando haya senal">&#128247; sin subir</span>
-                  : <img key={i} src={u} alt={`evidencia ${i + 1}`} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }} />
+                  <FotoEvidencia key={i} url={u} alt={`evidencia ${i + 1}`} />
                 ))}
                 <button type="button" className="inline-button" onClick={() => dirFotoRef.current?.click()} disabled={busy || dirSubiendo}>
                   {dirSubiendo ? 'Subiendo…' : '📷 Agregar foto'}

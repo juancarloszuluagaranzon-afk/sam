@@ -3,7 +3,8 @@ import { useAppData } from '../context/AppDataContext'
 import { Ayuda } from '../components/Ayuda'
 import { SearchableSelect } from '../components/SearchableSelect'
 import {
-  cambiarPrecio, crearTarifa, eliminarTarifa, loadTarifas, type Tarifa,
+  aplicarAjuste, calcularAjuste, cambiarPrecio, crearTarifa, eliminarTarifa,
+  loadTarifas, type LineaAjuste, type Tarifa,
 } from '../services/tarifasApi'
 
 /**
@@ -47,6 +48,16 @@ export function TarifasTab() {
   const [nPrecio, setNPrecio] = useState('')
   const [nDesde, setNDesde] = useState(HOY())
   const [nNota, setNNota] = useState('')
+
+  // Ajuste anual. Se calcula primero y se aplica después, a propósito: un
+  // cambio de precios que se aplica a ciegas es el que toca deshacer factura
+  // por factura.
+  const [ajusteOpen, setAjusteOpen] = useState(false)
+  const [aDesde, setADesde] = useState(`${new Date().getFullYear() + 1}-01-01`)
+  const [aPct, setAPct] = useState('8')
+  const [aRedondeo, setARedondeo] = useState('1000')
+  const [aNota, setANota] = useState('')
+  const [aLineas, setALineas] = useState<LineaAjuste[] | null>(null)
 
   const [cambiando, setCambiando] = useState<Tarifa | null>(null)
   const [cPrecio, setCPrecio] = useState('')
@@ -122,6 +133,30 @@ export function TarifasTab() {
     } finally { setBusy(false) }
   }
 
+  function previsualizar() {
+    const pct = Number(aPct)
+    if (!Number.isFinite(pct)) { setError('El porcentaje no es un número.'); return }
+    const lineas = calcularAjuste(tarifas, pct, aDesde, Number(aRedondeo) || 0)
+    if (lineas.length === 0) {
+      setError('No hay tarifas vigentes anteriores a esa fecha para ajustar.')
+      return
+    }
+    setALineas(lineas)
+  }
+
+  async function confirmarAjuste() {
+    if (!aLineas) return
+    setBusy(true); setError('')
+    try {
+      const n = await aplicarAjuste(aLineas, aDesde, aNota || `Ajuste anual ${aPct}%`, session?.id)
+      setInfo(`${n} tarifa(s) actualizadas. Rigen desde el ${fmtDia(aDesde)}; lo ejecutado antes se cobra al precio viejo.`)
+      setAjusteOpen(false); setALineas(null); setANota('')
+      void cargar()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo aplicar el ajuste')
+    } finally { setBusy(false) }
+  }
+
   async function borrar(t: Tarifa) {
     setBusy(true); setError('')
     try {
@@ -137,9 +172,15 @@ export function TarifasTab() {
     <section className="panel">
       <div className="panel-title split">
         <h2>💲 Tarifas por labor</h2>
-        <button type="button" className="primary-button" onClick={() => setNuevaOpen(true)}>
-          ＋ Nueva tarifa
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" className="inline-button"
+                  onClick={() => { setAjusteOpen(true); setALineas(null) }}>
+            🗓 Ajuste anual
+          </button>
+          <button type="button" className="primary-button" onClick={() => setNuevaOpen(true)}>
+            ＋ Nueva tarifa
+          </button>
+        </div>
       </div>
 
       <Ayuda>
@@ -272,6 +313,112 @@ export function TarifasTab() {
               <button type="button" className="primary-button" disabled={busy}
                       onClick={() => void guardarNueva()}>Crear tarifa</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ajuste anual ────────────────────────────────────────────────── */}
+      {ajusteOpen && (
+        <div className="modal-overlay open" onClick={() => setAjusteOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}
+               style={{ maxWidth: 'min(680px, calc(100vw - 24px))' }}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Tarifas</p>
+                <h3>🗓 Ajuste anual de precios</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setAjusteOpen(false)}>✕</button>
+            </div>
+
+            <p className="subtle-copy" style={{ marginTop: 0 }}>
+              Sube todas las tarifas vigentes de una vez. <strong>Primero se calcula y
+              se revisa</strong>; nada se guarda hasta que confirmes, y puedes corregir
+              cualquier línea o dejarla por fuera.
+            </p>
+
+            <div className="form-grid">
+              <label className="field">
+                <span>Rigen desde</span>
+                <input type="date" value={aDesde}
+                       onChange={(e) => { setADesde(e.target.value); setALineas(null) }} />
+              </label>
+              <label className="field">
+                <span>Aumento %</span>
+                <input type="number" step="0.1" inputMode="decimal" value={aPct}
+                       onChange={(e) => { setAPct(e.target.value); setALineas(null) }} />
+              </label>
+              <label className="field">
+                <span>Redondear a</span>
+                <select value={aRedondeo}
+                        onChange={(e) => { setARedondeo(e.target.value); setALineas(null) }}>
+                  <option value="1000">Mil más cercano</option>
+                  <option value="100">Cien más cercano</option>
+                  <option value="0">Sin redondear</option>
+                </select>
+              </label>
+            </div>
+
+            {!aLineas ? (
+              <div className="modal-actions">
+                <button type="button" className="secondary-button" onClick={() => setAjusteOpen(false)}>
+                  Cancelar
+                </button>
+                <button type="button" className="primary-button" onClick={previsualizar}>
+                  Ver cómo quedarían
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="ins-res__lbl" style={{ marginTop: 14 }}>
+                  {aLineas.filter((l) => l.incluir).length} de {aLineas.length} tarifas se van a actualizar
+                </p>
+
+                <div className="aj-tabla">
+                  <div className="aj-fila aj-fila--cab">
+                    <span></span><span>Cliente · Labor</span><span>Hoy</span><span>Queda en</span>
+                  </div>
+                  {aLineas.map((l, i) => (
+                    <div key={l.tarifaId} className={`aj-fila${l.incluir ? '' : ' aj-fila--fuera'}`}>
+                      <input type="checkbox" checked={l.incluir}
+                             onChange={(e) => setALineas(aLineas.map((x, j) =>
+                               j === i ? { ...x, incluir: e.target.checked } : x))} />
+                      <span className="aj-labor">
+                        {l.laborNombre}
+                        <small>{l.terceroNombre ?? '⭐ General'}</small>
+                      </span>
+                      <span className="aj-antes">{pesos(l.precioActual)}</span>
+                      {/* Editable: el aumento casi nunca es parejo en todas las labores. */}
+                      <input className="aj-nuevo" type="number" step={1000} inputMode="numeric"
+                             value={l.precioNuevo} disabled={!l.incluir}
+                             onChange={(e) => setALineas(aLineas.map((x, j) =>
+                               j === i ? { ...x, precioNuevo: Number(e.target.value) } : x))} />
+                    </div>
+                  ))}
+                </div>
+
+                <label className="field" style={{ marginTop: 10 }}>
+                  <span>¿Por qué sube? <span className="field-optional">(queda en cada tarifa)</span></span>
+                  <input type="text" value={aNota} onChange={(e) => setANota(e.target.value)}
+                         placeholder={`Ej: ajuste ${new Date(aDesde).getFullYear()}, acta de renegociación`} />
+                </label>
+
+                <p className="subtle-copy" style={{ fontSize: '.82rem' }}>
+                  Los precios de hoy <strong>no se borran</strong>: se cierran el{' '}
+                  {fmtDia(new Date(new Date(aDesde).getTime() - 86400000).toISOString().slice(0, 10))}.
+                  Todo lo ejecutado antes se sigue cobrando a esos valores.
+                </p>
+
+                <div className="modal-actions">
+                  <button type="button" className="secondary-button" onClick={() => setALineas(null)}>
+                    ← Cambiar el cálculo
+                  </button>
+                  <button type="button" className="primary-button" disabled={busy}
+                          onClick={() => void confirmarAjuste()}>
+                    Aplicar a {aLineas.filter((l) => l.incluir).length} tarifa(s)
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

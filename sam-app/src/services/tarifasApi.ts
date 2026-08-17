@@ -144,3 +144,86 @@ export async function precioDe(
   if (error || data == null) return null
   return Number(data)
 }
+
+/** Una línea del ajuste anual, ya calculada y lista para revisar. */
+export interface LineaAjuste {
+  tarifaId: string
+  terceroId?: string
+  terceroNombre?: string
+  laborNombre: string
+  precioActual: number
+  precioNuevo: number
+  incluir: boolean
+}
+
+/**
+ * Redondeo comercial: nadie cotiza $104.312,40 por hectárea.
+ *
+ * Al múltiplo de mil más cercano, que es como se manejan estos precios. Sin
+ * esto, un ajuste del 8,3% deja cifras que el cliente pide "redondear" en la
+ * primera llamada, y tocaría corregirlas a mano una por una.
+ */
+export function redondearComercial(n: number, alMultiplo = 1000): number {
+  return Math.round(n / alMultiplo) * alMultiplo
+}
+
+/**
+ * Arma la propuesta del ajuste anual SIN guardar nada.
+ *
+ * Se calcula aparte de aplicarse para que se pueda revisar y corregir línea por
+ * línea antes de tocar la base. Un ajuste de precios que se aplica a ciegas es
+ * el que después toca deshacer factura por factura.
+ */
+export function calcularAjuste(
+  tarifas: Tarifa[],
+  pct: number,
+  desde: string,
+  redondeo = 1000,
+): LineaAjuste[] {
+  return tarifas
+    // Solo las que están rigiendo: una vigencia ya cerrada es historia, y una
+    // que empieza después de la fecha nueva ya es un ajuste de alguien más.
+    .filter((t) => (!t.vigenteHasta || t.vigenteHasta >= desde) && t.vigenteDesde < desde)
+    .map((t) => ({
+      tarifaId: t.id,
+      terceroId: t.terceroId,
+      terceroNombre: t.terceroNombre,
+      laborNombre: t.laborNombre,
+      precioActual: t.precioHa,
+      precioNuevo: redondeo > 0
+        ? redondearComercial(t.precioHa * (1 + pct / 100), redondeo)
+        : Math.round(t.precioHa * (1 + pct / 100)),
+      incluir: true,
+    }))
+    .sort((a, b) =>
+      Number(Boolean(a.terceroId)) - Number(Boolean(b.terceroId)) ||
+      (a.terceroNombre ?? '').localeCompare(b.terceroNombre ?? '', 'es') ||
+      a.laborNombre.localeCompare(b.laborNombre, 'es'))
+}
+
+/**
+ * Aplica el ajuste: cierra las vigencias viejas y abre las nuevas.
+ *
+ * ⚠️ Va contra una función de la BD y no como una ristra de updates desde el
+ * navegador, por una razón concreta: si se cae la señal a mitad, la mitad de las
+ * labores quedaría con precio nuevo y la otra mitad con el viejo, y nadie se
+ * entera hasta que alguien arma una factura rara. En la BD es todo o nada.
+ */
+export async function aplicarAjuste(
+  lineas: LineaAjuste[],
+  desde: string,
+  nota: string,
+  creadoPor?: string,
+): Promise<number> {
+  const incluidas = lineas.filter((l) => l.incluir && l.precioNuevo > 0)
+  if (incluidas.length === 0) return 0
+
+  const { data, error } = await supabase.rpc('aplicar_ajuste_tarifas', {
+    p_desde: desde,
+    p_nota: nota || null,
+    p_creado_por: creadoPor ?? null,
+    p_lineas: incluidas.map((l) => ({ tarifa_id: l.tarifaId, precio_nuevo: l.precioNuevo })),
+  })
+  if (error) throw new Error(error.message || 'No se pudo aplicar el ajuste')
+  return Number(data ?? incluidas.length)
+}

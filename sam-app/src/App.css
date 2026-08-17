@@ -8458,3 +8458,36 @@ td.planilla-vacio:hover { background: #fde047; }
   display: inline-block; border-radius: 8px;
   background: var(--color-bg-muted); border: 1px solid var(--color-border);
 }
+
+/* ── Ajuste anual de tarifas ───────────────────────────────────────────────
+   La tabla de vista previa. El precio nuevo es un input y no un texto: el
+   aumento casi nunca es parejo en todas las labores, y obligar a aplicar el
+   porcentaje tal cual llevaría a corregir catorce líneas después. */
+.aj-tabla { display: flex; flex-direction: column; max-height: 46vh; overflow-y: auto; }
+.aj-fila {
+  display: grid; grid-template-columns: 26px 1fr 96px 112px;
+  gap: 8px; align-items: center; padding: 8px 4px;
+  border-bottom: 1px solid var(--color-divider); font-size: 0.86rem;
+}
+.aj-fila--cab {
+  position: sticky; top: 0; background: var(--color-bg-elevated); z-index: 1;
+  font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--color-ink-light);
+}
+.aj-fila--fuera { opacity: 0.45; }
+.aj-labor { display: flex; flex-direction: column; font-weight: 600; }
+.aj-labor small { font-weight: 400; font-size: 0.72rem; color: var(--color-ink-light); }
+.aj-antes {
+  text-align: right; font-variant-numeric: tabular-nums;
+  color: var(--color-ink-light); text-decoration: line-through;
+}
+.aj-nuevo {
+  padding: 7px 8px; text-align: right; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--color-border); border-radius: 8px;
+  background: var(--color-bg-input); color: var(--color-brand-dark);
+}
+.aj-nuevo:disabled { opacity: 0.5; }
+@media (max-width: 560px) {
+  .aj-fila { grid-template-columns: 24px 1fr 76px 92px; gap: 5px; font-size: 0.78rem; }
+}

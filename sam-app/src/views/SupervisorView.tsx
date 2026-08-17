@@ -51,10 +51,11 @@ import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
+import { TarifasTab } from './TarifasTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1130,6 +1131,18 @@ export function SupervisorView({
                     barra —arranca en Labores— así que sin esta entrada nunca
                     llegaba al tablero del dueño. Y una entrada suelta solo para
                     Consumo dejaba las dos caras en sitios distintos. */}
+                {/* Las tarifas viven al lado de Facturación porque es lo que
+                    las usa: sin precio no se puede armar ninguna factura. */}
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'tarifas' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('tarifas'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">💲</span>
+                  <div>
+                    <div className="more-sheet__label">Tarifas</div>
+                    <div className="more-sheet__desc">Precio por hectárea de cada labor</div>
+                  </div>
+                </button>
                 <button
                   className={`more-sheet__item ${supervisorTab === 'inicio' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('inicio'); setMoreMenuOpen(false) }}
@@ -2193,6 +2206,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
           <MapasTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'tarifas' ? (
+          <TarifasTab />
         ) : null}
 
         {supervisorTab === 'inicio' ? (

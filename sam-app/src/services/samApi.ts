@@ -1754,6 +1754,8 @@ function mapTraslado(row: Record<string, unknown>): Traslado {
       unidad: String(it.unidad ?? ''),
       cantidad: Number(it.cantidad ?? 0),
       cantidadRecibida: it.cantidad_recibida == null ? undefined : Number(it.cantidad_recibida),
+      agregadoEn: it.agregado_en ? String(it.agregado_en) : undefined,
+      agregadoPor: it.agregado_por ? String(it.agregado_por) : undefined,
     })),
   }
 }
@@ -2677,6 +2679,14 @@ export async function editarDespacho(input: {
   /** Bodega de la que salió: se necesita para rehacer el saldo. */
   bodegaId?: string
   items: { itemId: string; insumoId: string; cantidadDespachada: number }[]
+  /**
+   * Materiales que se SUMAN al despacho ahora, no los que ya estaban.
+   *
+   * Quedan marcados con `agregado_en` = el momento exacto, y con `cantidad: 0`
+   * porque el operario no los pidió — igual que los adicionales de la entrega.
+   * Descuentan stock de verdad: es material que sale de la bodega.
+   */
+  nuevos?: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
   editadoPor?: string
 }): Promise<Insumo[]> {
   // El estado ANTERIOR, para la auditoría. Sin esto solo quedaría el valor
@@ -2782,6 +2792,42 @@ export async function editarDespacho(input: {
       const { data } = await supabase.from('insumos').select('*').eq('id', insumoId).maybeSingle()
       if (data) actualizados.push(mapInsumo(data as Record<string, unknown>))
     }
+  }
+
+  // ── 4b. Materiales que se suman AHORA ─────────────────────────────────────
+  // Van con la hora exacta en que se agregaron: es lo que permite distinguir
+  // "salió con el despacho" de "se sumó tres horas después", que para el cliente
+  // son dos hechos distintos.
+  for (const nu of input.nuevos ?? []) {
+    const cant = redondear2(nu.cantidad)
+    if (!nu.insumoId || cant <= 0) continue
+    const cuando = new Date().toISOString()
+
+    await supabase.from('insumos_solicitud_items').insert({
+      solicitud_id: input.solicitudId,
+      insumo_id: nu.insumoId,
+      insumo_nombre: nu.insumoNombre,
+      unidad: nu.unidad,
+      // Pedido = 0: el operario no lo pidió. Lo entregado es lo que se ve.
+      cantidad: 0,
+      cantidad_despachada: cant,
+      agregado_en: cuando,
+      agregado_por: input.editadoPor ?? null,
+    })
+
+    // Sale de la bodega de verdad, así que mueve inventario.
+    const upd = await registrarMovimientoInsumo({
+      insumoId: nu.insumoId,
+      tipo: 'SALIDA',
+      cantidad: cant,
+      motivo: 'Material agregado al despacho',
+      referencia: input.solicitudId,
+      creadoPor: input.editadoPor,
+      equipoCodigo: input.equipoCodigo ?? antes.equipoCodigo,
+      bodegaId,
+    })
+    actualizados.push(upd)
+    cambios[`agregado:${nu.insumoNombre}`] = { antes: null, despues: `${cant} ${nu.unidad}` }
   }
 
   // ── 5. La auditoría ───────────────────────────────────────────────────────

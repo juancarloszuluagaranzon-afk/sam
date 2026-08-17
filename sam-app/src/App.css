@@ -8366,3 +8366,39 @@ td.planilla-vacio:hover { background: #fde047; }
   border-color: var(--color-brand);
 }
 @media (max-width: 420px) { .tablero-caras button { font-size: 0.78rem; padding: 10px 4px; } }
+
+/* Material agregado después de la entrega. Va en su propia línea y en tono
+   apagado: es una aclaración del ítem, no un dato que compita con la cantidad. */
+.desp-agregado {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--color-status-progress);
+  margin-top: 2px;
+}
+/* Fila para sumar un material: selector ancho, cantidad angosta, quitar al final. */
+.desp-nuevo {
+  display: grid;
+  grid-template-columns: 1fr 92px 34px;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.desp-nuevo input {
+  padding: 11px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  background: var(--color-bg-input);
+  color: var(--color-ink);
+  font-size: 0.94rem;
+  text-align: right;
+}
+.desp-nuevo__quitar {
+  background: none;
+  border: 0;
+  padding: 8px 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--color-ink-light);
+}
+.desp-nuevo__quitar:hover { color: var(--color-status-cancel); }

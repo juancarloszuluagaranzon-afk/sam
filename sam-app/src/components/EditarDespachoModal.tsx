@@ -65,6 +65,8 @@ export function EditarDespachoModal({
     })
     return m
   })
+  // Materiales que se suman AHORA. Cada uno guarda su hora exacta al guardar.
+  const [nuevos, setNuevos] = useState<{ insumoId: string; cantidad: string }[]>([])
   const [guardando, setGuardando] = useState(false)
   // Eliminar va en dos pasos a propósito: borra movimientos de inventario y
   // devuelve stock, así que no puede colgar de un solo toque descuidado.
@@ -84,6 +86,15 @@ export function EditarDespachoModal({
     () => sortedEquipment.map((e) => ({ value: e.code, label: e.name })),
     [sortedEquipment],
   )
+  // Frecuentes primero: el resto queda tras "⋯ Otros". Es la regla del proyecto
+  // para toda lista larga — un desplegable de 16 materiales en celular es inusable.
+  const opcionesInsumo = useMemo(
+    () => insumos.filter((i) => i.activo)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+      .map((i) => ({ value: i.id, label: i.nombre, frecuente: i.frecuente === true })),
+    [insumos],
+  )
+
   const unidadDe = useMemo(() => {
     const m = new Map<string, string>()
     insumos.forEach((i) => m.set(i.id, i.unidad))
@@ -124,11 +135,12 @@ export function EditarDespachoModal({
     if (equipo !== (entrega.equipoCodigo ?? '')) return true
     if (fecha !== aInputLocal(entrega.entregadoEn ?? entrega.createdAt)) return true
     if (horometro !== (entrega.horometro == null ? '' : String(entrega.horometro))) return true
+    if (nuevos.some((n) => n.insumoId && Number(n.cantidad) > 0)) return true
     return editables.some((it) => {
       const antes = Number(it.cantidadDespachada ?? it.cantidad ?? 0)
       return normalizarCantidad(Number(cantidades[it.id] ?? 0)) !== antes
     })
-  }, [equipo, fecha, horometro, cantidades, entrega, editables])
+  }, [equipo, fecha, horometro, cantidades, nuevos, entrega, editables])
 
   async function guardar() {
     if (!fecha) { setError('La fecha no puede quedar vacía.'); return }
@@ -147,13 +159,27 @@ export function EditarDespachoModal({
           insumoId: it.insumoId,
           cantidadDespachada: normalizarCantidad(Number(cantidades[it.id] ?? 0)),
         })),
+        nuevos: nuevos
+          .filter((n) => n.insumoId && Number(n.cantidad) > 0)
+          .map((n) => {
+            const ins = insumos.find((i) => i.id === n.insumoId)
+            return {
+              insumoId: n.insumoId,
+              insumoNombre: ins?.nombre ?? '',
+              unidad: ins?.unidad ?? '',
+              cantidad: normalizarCantidad(Number(n.cantidad), ins?.unidad),
+            }
+          }),
       })
       // El stock cambió: refrescar el catálogo en memoria o los selectores
       // seguirían validando contra un número viejo.
       if (actualizados.length) {
         setInsumos(insumos.map((i) => actualizados.find((a) => a.id === i.id) ?? i))
       }
-      setInfo('Despacho corregido. Los reportes ya usan la fecha nueva.')
+      const agregados = nuevos.filter((n) => n.insumoId && Number(n.cantidad) > 0).length
+      setInfo(agregados > 0
+        ? `Despacho corregido y ${agregados} material(es) agregado(s), con su hora.`
+        : 'Despacho corregido. Los reportes ya usan la fecha nueva.')
       onGuardado()
       onClose()
     } catch (err) {
@@ -246,6 +272,11 @@ export function EditarDespachoModal({
             <label key={it.id} className="field" style={{ marginBottom: 8 }}>
               <span>
                 {it.insumoNombre || 'Insumo'}
+                {it.agregadoEn && (
+                  <small className="desp-agregado">
+                    ＋ agregado el {fmtFechaHoraLarga(it.agregadoEn)}
+                  </small>
+                )}
                 {ahora !== antes && (
                   <small style={{ marginLeft: 6, opacity: .75 }}>
                     antes {fmtCantidad(antes, unidad)} {unidad}
@@ -260,6 +291,43 @@ export function EditarDespachoModal({
             </label>
           )
         })}
+
+        {/* Sumar material al MISMO despacho. Antes tocaba hacer una entrega
+            directa aparte, y en el reporte aparecían dos despachos donde hubo
+            uno solo. Lo que se agrega queda marcado con su hora exacta. */}
+        <p className="ins-res__lbl" style={{ marginTop: 16 }}>Agregar material a este despacho</p>
+        {nuevos.map((n, i) => {
+          const ins = insumos.find((x) => x.id === n.insumoId)
+          return (
+            <div key={i} className="desp-nuevo">
+              <SearchableSelect
+                value={n.insumoId}
+                onChange={(v) => setNuevos(nuevos.map((x, j) => (j === i ? { ...x, insumoId: v } : x)))}
+                options={opcionesInsumo}
+                placeholder="¿Qué material?"
+              />
+              <input
+                type="number" min={0} inputMode="decimal"
+                step={stepDe(ins?.unidad)}
+                value={n.cantidad}
+                placeholder={ins?.unidad ?? 'Cantidad'}
+                onChange={(e) => setNuevos(nuevos.map((x, j) => (j === i ? { ...x, cantidad: e.target.value } : x)))}
+              />
+              <button type="button" className="desp-nuevo__quitar" aria-label="Quitar"
+                      onClick={() => setNuevos(nuevos.filter((_, j) => j !== i))}>✕</button>
+            </div>
+          )
+        })}
+        <button type="button" className="inline-button" style={{ marginTop: 6 }}
+                onClick={() => setNuevos([...nuevos, { insumoId: '', cantidad: '' }])}>
+          ＋ Agregar material
+        </button>
+        {nuevos.some((n) => n.insumoId && Number(n.cantidad) > 0) && (
+          <p className="subtle-copy" style={{ fontSize: '.82rem', marginTop: 6 }}>
+            Quedará marcado como <strong>agregado después</strong>, con la fecha y hora
+            de ahora. Sale de tu bodega igual que el resto del despacho.
+          </p>
+        )}
 
         <p className="subtle-copy" style={{ fontSize: '.82rem' }}>
           Se registró el {fmtFechaHoraLarga(entrega.createdAt)}. Toda corrección queda

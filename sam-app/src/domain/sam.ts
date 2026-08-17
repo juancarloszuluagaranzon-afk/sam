@@ -498,6 +498,15 @@ export interface SolicitudItem {
   // Cantidad que el operario CONFIRMÓ haber recibido (fase 4). Si es menor a la
   // despachada, la diferencia vuelve al inventario como devolución (kardex).
   cantidadRecibida?: number
+  /**
+   * Cuándo se SUMÓ este material al despacho, si no salió con la entrega
+   * original. `undefined` = venía en el despacho.
+   *
+   * Son dos hechos distintos: lo que se entregó de una y lo que se agregó
+   * después. Mezclarlos borraría justo lo que interesa poder ver.
+   */
+  agregadoEn?: string
+  agregadoPor?: string
 }
 
 export interface SolicitudInsumo {

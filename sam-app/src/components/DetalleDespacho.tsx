@@ -105,7 +105,7 @@ export function DetalleDespacho({
   const fotos = e?.evidenciaUrls ?? (tq?.tirillaUrl ? [tq.tirillaUrl] : [])
   const espera = e?.entregadoEn ? fmtLapso(e.createdAt, e.entregadoEn) : ''
 
-  const Dato = ({ k, v }: { k: string; v: ReactNode }) => (
+  const Dato = ({ k, v }: { k: ReactNode; v: ReactNode }) => (
     <div className="desp-det__fila"><span>{k}</span><strong>{v}</strong></div>
   )
 
@@ -129,7 +129,19 @@ export function DetalleDespacho({
           {e && e.items.length > 0 ? (
             e.items.map((it, idx) => (
               <Dato key={idx}
-                k={it.insumoNombre ?? insumoInfo.get(it.insumoId ?? '')?.nombre ?? 'Insumo'}
+                k={
+                  <>
+                    {it.insumoNombre ?? insumoInfo.get(it.insumoId ?? '')?.nombre ?? 'Insumo'}
+                    {/* Lo agregado después NO se mezcla con lo que salió en la
+                        entrega: son dos hechos distintos y el que revisa necesita
+                        poder verlos separados. */}
+                    {it.agregadoEn && (
+                      <small className="desp-agregado">
+                        ＋ agregado el {fmtFecha(it.agregadoEn)}
+                      </small>
+                    )}
+                  </>
+                }
                 v={`${fmtCantidad(it.cantidadDespachada ?? it.cantidad, it.unidad)} ${it.unidad ?? ''}`} />
             ))
           ) : (

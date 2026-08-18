@@ -83,7 +83,30 @@ function fmt(value: number) {
 }
 
 export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => void } = {}) {
-  const { assignments, setAssignments, operators, todayKey, session, setError, setInfo } = useAppData()
+  const { assignments, setAssignments, operators, todayKey, session, setError, setInfo , novedadTipos } = useAppData()
+
+  /**
+   * Los códigos de novedad, del catálogo que maneja administración.
+   *
+   * ⚠️ Cae a la lista fija de `samApi` si el catálogo no cargó. La planilla es
+   * la base de la nómina: una tabla nueva que no responda no puede dejar a
+   * nadie sin poder marcar un día.
+   */
+  const novCat = useMemo(() => {
+    if (novedadTipos.length) return novedadTipos.filter((n) => n.activo)
+    return NOVEDAD_TIPOS.map((c) => ({
+      codigo: c as string, nombre: NOVEDAD_LABEL[c], color: '#4a5040',
+      orden: 0, activo: true, delSistema: true,
+    }))
+  }, [novedadTipos])
+
+  /** Todos, incluidos los inactivos: el histórico necesita poder nombrarlos. */
+  const novPorCodigo = useMemo(() => {
+    const m2 = new Map<string, { nombre: string; color: string }>()
+    for (const c of NOVEDAD_TIPOS) m2.set(c, { nombre: NOVEDAD_LABEL[c], color: '#4a5040' })
+    for (const n of novedadTipos) m2.set(n.codigo, { nombre: n.nombre, color: n.color })
+    return m2
+  }, [novedadTipos])
 
   const [planillaMonth, setPlanillaMonth] = useState(() => todayKey.slice(0, 7))
   const [planillaQuincena, setPlanillaQuincena] = useState<SummaryQuincena>(() =>
@@ -181,7 +204,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
           for (const f of fechas) next.set(`${novTarget.key}|${f}`, novTipo)
           return next
         })
-        setInfo(`${NOVEDAD_LABEL[novTipo]} registrado a ${novTarget.name}.`)
+        setInfo(`${novPorCodigo.get(novTipo)?.nombre ?? novTipo} registrado a ${novTarget.name}.`)
       }
       setNovTarget(null)
     } catch {
@@ -571,21 +594,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-num--proceso" />En proceso</span>
         <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-num--terminada" />Terminada</span>
         <span className="planilla-legend__sep" />
-        <span className="planilla-legend__item"><b className="planilla-nov--v">V</b> Vacaciones</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--t">T</b> Taller</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--np">NP</b> No programado</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--d">D</b> Descanso</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--p">P</b> Permiso</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--e">E</b> Enfermedad</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--in">IN</b> Incapacidad</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--f">F</b> Falta sin justa causa</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--ov">OV</b> Oficios varios</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--mv">MV</b> Máquina varada</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--mt">MT</b> Máquina en traslado</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--sp">SP</b> Supervisor</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--ll">LL</b> Lluvia</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--cd">CD</b> Camioneta día</span>
-        <span className="planilla-legend__item"><b className="planilla-nov--cn">CN</b> Camioneta noche</span>
+        {/* Desde el catálogo: administración agrega códigos sin tocar el repo. */}
+        {novCat.map((n) => (
+          <span key={n.codigo} className="planilla-legend__item">
+            <b style={{ color: n.color }}>{n.codigo}</b> {n.nombre}
+          </span>
+        ))}
         <span className="planilla-legend__sep" />
         <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-vacio-dot" />Sin registro (hasta hoy)</span>
       </div>
@@ -696,7 +710,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                           }
                           title={
                             nov
-                              ? NOVEDAD_LABEL[nov]
+                              ? (novPorCodigo.get(nov)?.nombre ?? nov)
                               : canDetail
                                 ? `Ver labores (${proceso ? 'en proceso' : 'terminada'})`
                                 : vacio
@@ -704,7 +718,9 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                                   : markMode ? 'Resaltar / quitar' : undefined
                           }
                         >
-                          {nov ? novLetter(nov) : fmt(v)}
+                          {nov
+                            ? <b style={{ color: novPorCodigo.get(nov)?.color }}>{novLetter(nov)}</b>
+                            : fmt(v)}
                         </td>
                       )
                     })}
@@ -868,16 +884,17 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
               <button type="button" className="modal-close-btn" onClick={() => setNovTarget(null)} disabled={savingNov} aria-label="Cerrar">&#x2715;</button>
             </div>
             <div className="realizadas-seg planilla-nov-seg" role="group" aria-label="Tipo de novedad" style={{ marginBottom: 10 }}>
-              {NOVEDAD_TIPOS.map((t) => (
+              {novCat.map((n) => (
                 <button
-                  key={t}
+                  key={n.codigo}
                   type="button"
-                  className={`realizadas-seg__btn ${novTipo === t ? 'is-active' : ''}`}
-                  onClick={() => setNovTipo(t)}
+                  className={`realizadas-seg__btn ${novTipo === n.codigo ? 'is-active' : ''}`}
+                  onClick={() => setNovTipo(n.codigo as NovedadTipo)}
                   disabled={savingNov}
-                  title={NOVEDAD_LABEL[t]}
+                  style={novTipo === n.codigo ? undefined : { color: n.color }}
+                  title={n.nombre}
                 >
-                  {novLetter(t)} · {NOVEDAD_LABEL[t]}
+                  {n.codigo} · {n.nombre}
                 </button>
               ))}
               <button

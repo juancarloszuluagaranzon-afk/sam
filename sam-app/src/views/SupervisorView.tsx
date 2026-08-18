@@ -51,10 +51,11 @@ import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
+import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'novedadtipos'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1130,6 +1131,17 @@ export function SupervisorView({
                     barra —arranca en Labores— así que sin esta entrada nunca
                     llegaba al tablero del dueño. Y una entrada suelta solo para
                     Consumo dejaba las dos caras en sitios distintos. */}
+                {/* Va al lado de la Planilla, que es donde se usan. */}
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'novedadtipos' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('novedadtipos'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">🏷️</span>
+                  <div>
+                    <div className="more-sheet__label">Novedades de la planilla</div>
+                    <div className="more-sheet__desc">Crear los códigos que se marcan (V, T, NP…)</div>
+                  </div>
+                </button>
                 <button
                   className={`more-sheet__item ${supervisorTab === 'inicio' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('inicio'); setMoreMenuOpen(false) }}
@@ -2193,6 +2205,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
           <MapasTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'novedadtipos' ? (
+          <NovedadTiposTab />
         ) : null}
 
         {supervisorTab === 'inicio' ? (

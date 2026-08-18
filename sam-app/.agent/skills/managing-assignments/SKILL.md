@@ -410,7 +410,11 @@ Administración asigna un **N° de factura** a las labores YA realizadas. Column
 
 Tipo de novedad `MV` = "Máquina varada" (día no trabajado por daño de la máquina en campo). Agregado a `NovedadTipo`/`NOVEDAD_TIPOS`/`NOVEDAD_LABEL`/`NOV_ICON` (🚜) + color `.planilla-nov--mv` (naranja-rojo) + leyenda. Aparece como botón automático en la Planilla (clic en el nombre del operario) y en "Registrar novedad" del operario. Sin migración (`operario_novedades.tipo` es texto libre).
 
-**Tipos de novedad agregados después:** `F` Falta sin justa causa (❌, `.planilla-nov--f`), `OV` Oficios varios (🧰, violeta), `MT` Máquina en traslado (🚛, azul), `IN` Incapacidad (🩹, rosa-vino), `SP` Supervisor (👔, verde). **Patrón para agregar una novedad** (sin migración): tocar `NovedadTipo` + `NOVEDAD_TIPOS` (botones) + `ALL_NOVEDAD` (normalizeNovedad) + `NOVEDAD_LABEL` en samApi; `NOV_ICON` en OperatorView; leyenda en PlanillaTab; color `.planilla-nov--xx` en App.css.
+**⚠️ OBSOLETO desde el 18-ago-2026 — ya NO se agrega una novedad tocando código.**
+Antes había que tocar seis sitios (`NovedadTipo`, `NOVEDAD_TIPOS`, `ALL_NOVEDAD`,
+`NOVEDAD_LABEL`, `NOV_ICON`, la leyenda y el CSS `.planilla-nov--xx`) y desplegar.
+Hoy **las crea administración** desde Más → 🏷️ Novedades de la planilla. Ver la
+sección "Novedades dinámicas" más abajo.
 
 ## Sesión julio 2026 — ciclo de vida, "Labores a facturar", rendimiento (NO revertir)
 
@@ -557,3 +561,88 @@ compartidos entre haciendas distintas (ver `project_maestro_codigo_compartido`).
 Aplica en los DOS sitios donde se topa el área: `finishAssignment` (cierre en
 campo) y `editAssignment` (corrección desde el Reporte). Si se toca uno, tocar
 el otro — antes ya habían divergido.
+
+
+## Novedades de la planilla: las crea administración (18-ago-2026)
+
+Los códigos que se marcan en la Planilla (V, T, NP, D…) viven en la tabla
+**`novedad_tipos`**, no en el código. Administración crea los que necesite desde
+**Más → 🏷️ Novedades de la planilla**: código de 1 a 3 letras, qué significa y
+color de una paleta fija.
+
+**No es solo un catálogo: son botones que funcionan igual que los de siempre.**
+La leyenda, los botones de marcar y el color de cada celda salen del catálogo.
+Antes eran una lista fija y una clase CSS por tipo (`.planilla-nov--v`).
+
+| Campo | Para qué |
+|---|---|
+| `codigo` | La llave Y lo que se pinta en la celda. Corto: en 15 días no cabe una palabra |
+| `color` | Hex. Se aplica en línea, ya no por clase CSS |
+| `orden` | En qué orden salen los botones. Los de uso diario arriba |
+| `activo` | Deja de ofrecerse como botón, pero el histórico se sigue leyendo |
+| `del_sistema` | Los 16 originales. No se borran ni con el botón |
+
+### 🔴 Un código que ya se usó NO se borra, se desactiva
+
+`eliminarNovedadTipo` cuenta primero en `operario_novedades` y se niega si hay
+uno solo. El botón de eliminar **ni siquiera aparece** si el código tiene
+historia. Borrarlo dejaría las celdas de los meses pasados sin forma de saber
+qué significaban, y esa planilla es la base de la nómina.
+
+El `C` viejo de camioneta quedó **inactivo, no borrado**: no se ofrece, pero los
+registros que lo usan se siguen viendo.
+
+### El catálogo NO puede tumbar la planilla
+
+`AppDataContext` lo carga **aparte y sin `await`**, y si falla las pantallas caen
+a la lista fija de `samApi` (`NOVEDAD_TIPOS`/`NOVEDAD_LABEL`, que se conservan a
+propósito). Una tabla nueva que no responda no puede dejar a nadie sin poder
+marcar un día.
+
+⚠️ Efecto visible: al abrir la Planilla, la leyenda pinta un instante los 15 de
+respaldo en gris y luego los del catálogo con su color. No es un error — es que
+el catálogo llega asíncrono.
+
+⚠️ `operario_novedades.tipo` es **TEXT sin CHECK** (verificado), así que un
+código nuevo entra sin migración. Si algún día se le pone un CHECK, hay que
+ampliarlo a mano por cada tipo — la misma trampa que ya cobró `app_usuarios.rol`.
+
+## 🔴 La Planilla y el Resumen usan el MISMO criterio de área (7-ago-2026)
+
+Daban números distintos para la misma quincena y el cliente lo detectó
+(Marulanda: 111,66 en la Planilla contra 98,72 en el Resumen).
+
+**Dos causas, y solo una era un error:**
+
+1. **La Planilla no aplicaba el respaldo del área.** Cerrar una labor sin
+   escribir el área significa *"hice lo planificado"*, no *"hice cero"*. El
+   Resumen ya lo aplicaba; la Planilla no. Medido antes de corregir: **9 labores
+   de 7 operarios, 89,91 ha** desde el 29 de mayo — y como con la Planilla se
+   paga, a esas siete personas les faltaban esas hectáreas. Corregido con
+   `areaCerrada()` en `PlanillaTab`.
+
+2. **La Planilla cuenta las EN_PROCESO y el Resumen no.** Eso **no es un error**:
+   la Planilla muestra lo que se está trabajando, el Resumen solo lo cerrado.
+   Para pagar manda el Resumen.
+
+```ts
+/** Aplica SOLO a COMPLETADA/PARCIAL. Una labor abierta muestra 0. */
+function areaCerrada(a: Assignment): number {
+  const ejec = a.executedArea ?? 0
+  return ejec > 0 ? ejec : (a.area ?? 0)
+}
+```
+
+⚠️ El mismo criterio va en el **avance acumulado por suerte** (`cerradoBySuerte`),
+o el restante estimado de las EN_PROCESO sale inflado. Cambiar uno sin el otro
+cambia un error por otro.
+
+### Ojo con las labores que quedan abiertas
+
+Al revisar salieron **5 labores con más de 3 semanas abiertas** (una de Valencia
+con 56 días), inflando la Planilla mes tras mes con área que nunca se cerró. Se
+cerraron el 17-ago dejando el parcial ya registrado, y quedaron **47,47 ha por
+reportar** en esas cinco suertes.
+
+⚠️ Al cerrar una labor trabada **con área en cero**, el respaldo le paga el área
+COMPLETA planificada. Cerrar en cero no es lo conservador: es lo caro.

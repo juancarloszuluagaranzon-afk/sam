@@ -242,3 +242,92 @@ en la anterior.
 Cubre el orden de carga, qué significa cada campo y los cinco errores. **Al
 cambiar un campo o una regla de este módulo, revisar si el manual quedó
 mintiendo** — ya pasó una vez con el manual de insumos.
+
+
+## Chequeo diario del operario (5-ago-2026)
+
+Sale del Excel del cliente `02 Maquinaria 2026.xlsx`, que traía tres hojas
+mezclando dos cosas: las filas **Diario/OPERADOR** son la lista de chequeo y las
+de frecuencia numérica/**TÉCNICO** son el plan preventivo.
+
+**Hallazgo que cambió el encargo: las hojas 108 y 135 traen la MISMA lista
+diaria** — 30 ítems idénticos, mismo orden. Listas diarias reales hay **2**, no
+3; solo la de los PUMA difiere (32 ítems, 30 puntos de engrase, silla y aire
+acondicionado). Se guardan las tres por separado igual, para poder
+diferenciarlas después sin tocar código.
+
+### Lo que se reescribió del Excel, y por qué
+
+**Polaridad.** El Excel mezclaba *"Estado de frenos"* (bien = bueno) con
+*"¿Ruidos extraños en motor?"* (sí = malo). En una lista de 30 que se llena todos
+los días, eso garantiza respuestas invertidas. Todo quedó como **estado deseado**
+("Motor sin ruidos extraños") y se responde **Bien / Mal**.
+
+**Tareas vs verificaciones.** Engrasar, drenar la trampa, desairear y calentar el
+motor **no son preguntas**: responder "bien" a *lubricar 13 puntos* no significa
+nada. Son `tipo='ACCION'` y se responden **Hecho**.
+
+### El diseño de la interacción es lo que decide si el dato sirve
+
+**Un ítem por pantalla, no una lista de 30 filas.** Con una lista, el pulgar
+barre la columna "Bien" en cuatro segundos y el dato nace muerto.
+
+**Tres vueltas que siguen el recorrido físico** (capó arriba · alrededor ·
+encendido y mandos), no el orden del Excel. Agrupar por dónde está parado el
+operario corta el tiempo a la mitad y hace imposible contestar sin moverse.
+
+**El orden rota cada día** (`ordenarDelDia`, semilla = fecha + máquina). Es lo
+más barato contra el "todo bien" sin mirar y lo único que no castiga al que sí
+revisa. La semilla es estable dentro del día: no se puede reordenar cerrando y
+abriendo.
+
+**Se mide el tiempo, no se bloquea.** Bajo 90 segundos el chequeo se marca
+`sospechoso` y sale en el tablero del taller, no en la cara del operario.
+Bloquear produce que lo llenen en el parqueadero. *(Verificado: unos clics
+automáticos de 42 s quedaron marcados.)*
+
+**El horómetro va al final, con la última lectura al lado y validación en el
+acto.** Aquí está la causa raíz de los datos sucios. Probado: `9` y `15` (las
+horas del día) y `123440` (un dígito de más) se atrapan; `12350` pasa.
+
+Lo que **NO** hace a propósito: no pide foto en cada ítem (serían 30), no exige
+GPS (falla bajo la caña), y no bloquea la máquina — un semáforo automático a las
+5:30 a.m. en un lote produce que al día siguiente contesten "bien" a todo.
+
+### Ficha técnica y plan preventivo cargados del mismo Excel
+
+- **22 máquinas** con marca, modelo, HP, línea y procedencia. Antes estaban
+  **las 23 en blanco**, que era lo que impedía que cualquier plan por modelo
+  aplicara a alguna.
+- **`equipo_metas`**: galones/hora y ganchos/hora **de 2025**. ⚠️ Son consumo
+  REAL del año, no una meta negociada. Los PUMA tienen `ganchos_hora` en null
+  porque **no usan ganchos** — no es dato faltante.
+- **88 tareas de plan preventivo**, solo de 300 a 2.100 h.
+
+### 🔴 Por qué NO se cargaron los servicios de 6.000 h en adelante
+
+Sin `ultima_horas`, `vencimientosDe()` hace `floor(h/cada)*cada + cada` y **los
+da por hechos**. Medido: la CASE951 con 12.765 h mostraría su próximo overhaul de
+12.000 h en las 24.000 — o sea, afirmando en silencio que ya se hizo. Lo mismo en
+media flota para el de 6.000. **Un plan que miente es peor que no tener plan.**
+
+Cárguense cuando exista, por máquina, el horómetro de la última intervención
+mayor — dato que hoy no está en ninguna parte.
+
+### Los dos horómetros que estaban rotos
+
+**PUMA 2101** marcaba 145.609. La prueba definitiva: con la lectura cruda habría
+trabajado **132.068 horas en 2026** (el año tiene 8.760); dividida por 10 da
+1.020, unas 146 al mes. **Se teclea sin el punto decimal.** Corregida a
+`horometro_manual = 14.560,9`.
+
+**VALTRA 9902** marca 6 h y **no se tocó a propósito**: su horómetro está
+físicamente dañado y lo que se teclea son las HORAS DEL DÍA (5, 10, 15, 22…).
+La máquina sí trabaja — 161 labores y 1.100 ha desde mayo. Inventarle un número
+dispararía el preventivo contra una cifra que nadie midió. **Necesita lectura
+física o cambio de horómetro.**
+
+**CASE 1001** nunca ha tenido lectura. El Excel la cerró en 12.118 h.
+
+Tras corregir la PUMA, **19 de 21 máquinas calculan bien su próximo servicio de
+300 h**.

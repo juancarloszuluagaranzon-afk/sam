@@ -104,6 +104,9 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Taller de maquinaria | `views/TallerModule`, `views/taller/*` | Hoja de vida, preventivo por horómetro, órdenes de trabajo, repuestos, compras e indicadores ($/hora, disponibilidad, TMEF, TMR) |
 | Informe semanal | `views/InformeSemanalTab`, `lib/informeSemanal.ts` | Una fila por máquina y semana: horómetro inicial/final, **horas trabajadas**, combustible y **gal/hora**. Reemplaza la hoja de Excel manual. ⚠️ Descarta las lecturas de horómetro con magnitud distinta a la dominante de esa máquina y las marca — no las esconde |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
+| Chequeo diario | `views/ChequeoDiarioView`, `services/chequeoApi.ts` | 30+ ítems por máquina, **un ítem por pantalla** en 3 vueltas físicas, orden rotado cada día. ⚠️ Hoy **solo activo en TRC-1** (banco de pruebas): las 21 máquinas reales tienen `chequeo_lista_id` en null hasta que el cliente lo valide — la asignación original quedó guardada en `chequeo_listas.nota` |
+| Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina |
+| Tarifas | `views/TarifasTab`, `tarifasApi.ts` | ⚠️ **Solo en la rama `pruebas`.** Precio por hectárea con vigencia + ajuste anual en bloque. Ver `.agent/skills/managing-facturacion/` |
 
 ## Detalles que muerden
 
@@ -193,6 +196,25 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   completo en la auditoría **antes** de borrar, y devuelve la solicitud a **PROGRAMADA**
   si la pidió un operario (sigue necesitando el material) o a **CANCELADA** si era
   DIRECTA. Limpia el aval y lo despachado; lo **pedido** no se toca.
+- **🔴 La Planilla y el Resumen usan el MISMO criterio de área.** Daban números
+  distintos para la misma quincena y el cliente lo detectó. Cerrar una labor sin
+  escribir el área significa "hice lo planificado", no "hice cero": `areaCerrada()`
+  en `PlanillaTab` aplica el mismo respaldo que el Resumen. Antes de corregirlo
+  faltaban **89,91 ha de 7 operarios** en la planilla con la que se paga. ⚠️ El
+  mismo criterio va en el avance acumulado por suerte, o el restante de las
+  EN_PROCESO sale inflado. Lo que SÍ difiere y está bien: la Planilla cuenta las
+  EN_PROCESO (lo que se está trabajando) y el Resumen no (solo lo cerrado).
+- **🔴 Las novedades de la planilla las crea ADMINISTRACIÓN, ya no el código.**
+  Tabla `novedad_tipos` + Más → 🏷️ Novedades de la planilla. La leyenda, los
+  botones y el color de cada celda salen del catálogo. Un código que ya tiene días
+  marcados **no se borra, se desactiva** — borrarlo dejaría las celdas de meses
+  pasados sin significado, y esa planilla es la nómina. Si el catálogo no carga,
+  las pantallas caen a la lista fija de `samApi`, que se conserva a propósito.
+- **🔴 Una foto sin señal hay que PODERLA VER.** `<FotoEvidencia url>` la arma
+  desde el blob de Dexie con `createObjectURL` (y **revoca la URL al desmontar**).
+  Antes salía un cuadrito gris que decía "sin subir" y el supervisor no podía
+  comprobar lo que acababa de tomar. Al listar fotos: usar el componente, no un
+  `<img src>` pelado.
 - **🔴 El AJUSTE FIJA el saldo, no lo suma.** Al rehacer stock desde el kardex, sumar
   `SALIDA/ENTRADA` a ciegas sobre un insumo con ajustes da un número que no corresponde
   (GANCHOS suma 1480 en el kardex y su saldo real es 1200; las dos cifras son correctas).
@@ -250,7 +272,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   Igual con las compras: nacen en BORRADOR y solo **recibirlas** mueve el inventario.
 - **Skills del repo**: `sam-app/.agent/skills/` — leerlas antes de tocar su área
   (`managing-assignments`, `managing-insumos`, `managing-mapas`, `managing-supabase`,
-  `managing-maestro`, `managing-taller`, `writing-ui-copy`, `capturing-gotchas`).
+  `managing-maestro`, `managing-taller`, `managing-facturacion`, `writing-ui-copy`,
+  `capturing-gotchas`).
 
 ## Cómo trabaja el usuario
 

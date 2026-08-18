@@ -637,3 +637,94 @@ distinta de `created_at` por segundos (el input solo tiene precision de minuto).
 No afecta ningun reporte, pero **no sirve comparar las dos fechas para saber si
 algo fue editado** — para eso esta la tabla de auditoria, que es lo que usa
 `<DetalleDespacho>`.
+
+
+## Agregar material a un despacho ya entregado (17-ago-2026)
+
+Genaro o Eduvin entregan, y más tarde el operario pide algo más para la misma
+máquina. Antes la única salida era una entrega directa aparte, y en el reporte
+aparecían **dos despachos donde hubo uno**.
+
+`editarDespacho` acepta `nuevos[]`. Cada material entra con:
+
+- **`agregado_en`** = el momento exacto, puesto por el sistema. **La hora no se
+  digita**, así que nadie la puede acomodar. Y `agregado_por`, que puede ser
+  distinto de quien hizo la entrega.
+- `cantidad = 0` (el operario no lo pidió) y `cantidad_despachada` = lo que se
+  llevó — igual que los adicionales de la entrega.
+- Un **movimiento de kardex real**: sale de la bodega, no es una anotación.
+
+🔴 **`agregado_en` en null significa "venía en el despacho original".** Con fecha
+significa "se sumó después". Son dos hechos distintos y mezclarlos borraría justo
+lo que el cliente quiere poder ver. Se muestra etiquetado tanto al corregir como
+en `<DetalleDespacho>`, que es donde mira el que revisa.
+
+## 🔴 La foto sin señal hay que PODERLA VER (17-ago-2026)
+
+De las tres partes, dos ya funcionaban: la foto se guardaba en Dexie y se subía
+sola al reconectar. Pero en pantalla salía **un cuadrito gris que decía "sin
+subir"**.
+
+Eso la hacía inútil como evidencia: el supervisor no podía comprobar lo que
+acababa de tomar, y si salió movida, tapada o de la máquina equivocada se
+enteraba al día siguiente, cuando ya no se puede repetir.
+
+**`<FotoEvidencia url>`** (`src/components/`) muestra la foto salga de donde
+salga: si ya está en el servidor la carga por URL y se abre en grande al tocarla;
+si está en el equipo la arma desde el blob con `URL.createObjectURL` y le pone un
+reloj encima.
+
+⚠️ **Revocar la URL al desmontar** (`URL.revokeObjectURL`) o el navegador retiene
+el blob completo por cada foto abierta.
+
+Verificado simulando sin señal: la foto se ve, queda comprimida a ~7 KB, y al
+volver la señal sube y se borra de la caché. **Al listar fotos en una pantalla
+nueva: usar este componente, no un `<img src>` pelado.**
+
+## Tablero de consumo: el papel y la app en una sola serie (5-ago-2026)
+
+`ConsumoDashboardTab`, en el tablero del dueño (Inicio → ⛽ Eficiencia
+maquinaria).
+
+Se cargaron **2.891 registros del formato de control diario en papel**
+(mar–jul 2026) en `consumo_historico`. Sin eso el tablero arranca en agosto y no
+hay contra qué comparar: 1.376 galones no dicen nada si no se sabe que julio
+fueron 9.252.
+
+🔴 **Tabla APARTE, no `insumos_kardex`.** La tentación es meterlo todo al kardex
+para no tener dos fuentes, y sería un error: el kardex mueve el stock, y cargarle
+cuatro meses de salidas históricas dejaría el inventario en negativos absurdos.
+Es un registro de lo que pasó, no un movimiento de inventario.
+
+🔴 **El corte es el 31 de julio.** El Excel llegaba hasta el 4 de agosto y la app
+también tiene agosto: cargar el traslape contaría dos veces los mismos galones.
+
+**El cruce del traslape validó la app**: del 1 al 4 de agosto, 1.080,8 gal en
+papel contra 1.072,1 en la app — **0,8%**. En ganchos faltaron 80 (dos entregas
+de 40) — eso sí hay que mirarlo.
+
+`consumo_unificado_v` resuelve las **TRES** fuentes. ⚠️ Olvidar la tercera es el
+error clásico: el **tanqueo en estación NUNCA pasó por bodega**, así que no está
+en ningún kardex pero sí es consumo de la máquina. Solo en agosto son 76 galones
+que no aparecerían.
+
+### 🔴 Antes de acusar a una máquina, revisar el denominador
+
+La primera versión marcaba **12 de 21 máquinas en rojo**. Mirando los números, el
+problema no era el combustible: la PUMA 2301 mostraba 210 galones en 19,5 horas.
+Pero con su referencia de 5,27 gal/h, esos galones implican **~40 horas** — o sea
+faltan horas por registrar, no sobra consumo.
+
+```ts
+const horasImplicitas = ref > 0 ? gal / ref : null
+const horasIncompletas = horasImplicitas != null && h > 0 && h < horasImplicitas * 0.6
+```
+
+Ahora separa **"faltan horas (≈40)"** de una desviación real. Una alerta que suena
+doce veces no la lee nadie.
+
+⚠️ **Los ganchos se entregan por paquetes de 40**, no gota a gota. En pocos días
+el promedio salta (una máquina marcó +103% con una sola entrega) y solo se
+estabiliza en un mes completo. La pantalla lo advierte. Y los **PUMA no usan
+ganchos**: su referencia en null no es dato faltante, por eso se filtran de esa
+vista en vez de mostrarlos con guiones.

@@ -2,6 +2,7 @@ import { createContext, startTransition, useCallback, useContext, useEffect, use
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
 import type { Assignment, Empresa, Ingenio, Equipment, Insumo, Labor, MaestroRow, Motivacion, Tercero, UserProfile, Zona } from '../domain/sam'
+import { loadNovedadTipos, type NovedadTipoCat } from '../services/novedadTiposApi'
 import { WORKFLOW } from '../data/constants'
 import { INGENIOS as INGENIOS_SEED, setIngenioNamesRuntime } from '../data/ingenios'
 import {
@@ -39,6 +40,15 @@ interface AppDataContextValue {
   // Catálogo de labores (CRUD). `labores` = todas; `activeLabores` = nombres
   // de las activas, ordenados alfabéticamente, para alimentar los selectores.
   labores: Labor[]
+  /**
+   * Los códigos que se pueden marcar en la Planilla (V, T, NP…). Los crea
+   * administración, ya no viven en el código.
+   *
+   * ⚠️ Si la carga falla, queda VACÍO y las pantallas caen a la lista fija de
+   * `samApi`. La planilla es la base de la nómina: una tabla nueva que no
+   * responde no puede dejar a nadie sin poder marcar un día.
+   */
+  novedadTipos: NovedadTipoCat[]
   setLabores: React.Dispatch<React.SetStateAction<Labor[]>>
   activeLabores: string[]
   // Solo labores activas Y mecanizadas — para el picker del operario (tractor)
@@ -96,6 +106,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [users, setUsers] = useState<UserProfile[]>([])
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [labores, setLabores] = useState<Labor[]>([])
+  const [novedadTipos, setNovedadTipos] = useState<NovedadTipoCat[]>([])
   const [ingenios, setIngenios] = useState<Ingenio[]>(INGENIOS_FALLBACK)
   const [motivacion, setMotivacion] = useState<Motivacion>({ mensaje: '¡Vas muy bien! Sigue así 💪', imagenUrl: null, umbral: 100, activo: true, metaDiaRef: 15 })
   const [empresas, setEmpresas] = useState<Empresa[]>([])
@@ -232,6 +243,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           loadInsumos(),
         ])
       void loadMotivacion().then((m) => setMotivacion(m))
+      // Aparte y sin await: la planilla es la base de la nómina y no puede
+      // quedarse esperando por un catálogo. Si falla, cae a la lista fija.
+      void loadNovedadTipos().then((n) => { if (n.length) setNovedadTipos(n) })
       startTransition(() => {
         setMaestro(maestroResult.data)
         setAssignments(assignmentResult.data)
@@ -351,6 +365,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         users, setUsers,
         equipment, setEquipment,
         labores, setLabores, activeLabores, fieldLabores,
+        novedadTipos,
         ingenios, setIngenios,
         motivacion, setMotivacion,
         empresas, setEmpresas, terceros, setTerceros,

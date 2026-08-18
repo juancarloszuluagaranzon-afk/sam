@@ -52,10 +52,11 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
 import { TarifasTab } from './TarifasTab'
+import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1133,6 +1134,17 @@ export function SupervisorView({
                     Consumo dejaba las dos caras en sitios distintos. */}
                 {/* Las tarifas viven al lado de Facturación porque es lo que
                     las usa: sin precio no se puede armar ninguna factura. */}
+                {/* Va al lado de la Planilla, que es donde se usan. */}
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'novedadtipos' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('novedadtipos'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">🏷️</span>
+                  <div>
+                    <div className="more-sheet__label">Novedades de la planilla</div>
+                    <div className="more-sheet__desc">Crear los códigos que se marcan (V, T, NP…)</div>
+                  </div>
+                </button>
                 <button
                   className={`more-sheet__item ${supervisorTab === 'tarifas' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('tarifas'); setMoreMenuOpen(false) }}
@@ -2206,6 +2218,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
           <MapasTab />
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'novedadtipos' ? (
+          <NovedadTiposTab />
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'tarifas' ? (

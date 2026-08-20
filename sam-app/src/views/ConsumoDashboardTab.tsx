@@ -3,7 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { Ayuda } from '../components/Ayuda'
 import { fmtCantidad } from '../lib/cantidad'
 import {
-  loadConsumo, loadHorasPorEquipo, loadReferencias,
+  loadConsumo, loadHorasDelMes, loadHorasPorEquipo, loadReferencias,
   type ConsumoFila, type ReferenciaEquipo,
 } from '../services/consumoApi'
 
@@ -39,6 +39,8 @@ export function ConsumoDashboardTab() {
   const [filas, setFilas] = useState<ConsumoFila[]>([])
   const [refs, setRefs] = useState<ReferenciaEquipo[]>([])
   const [horas, setHoras] = useState<Map<string, number>>(new Map())
+  /** De dónde salieron las horas: el cierre del mes o la suma de sesiones. */
+  const [fuenteHoras, setFuenteHoras] = useState<'cierre' | 'sesiones'>('sesiones')
   const [cargando, setCargando] = useState(true)
   const [mesSel, setMesSel] = useState<string>('')
   // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
@@ -95,8 +97,16 @@ export function ConsumoDashboardTab() {
     const desde = `${mesSel}-01`
     const hasta = new Date(a, m, 0).toISOString().slice(0, 10)
     let vivo = true
-    void loadHorasPorEquipo(desde, hasta > hoyISO() ? hoyISO() : hasta)
-      .then((h) => { if (vivo) setHoras(h) })
+    // El cierre mensual manda; las sesiones son el respaldo. Sumar tramos de
+    // `labor_sesiones` mete las horas sucias (445 de 2.212 son absurdas) y con
+    // el denominador malo el galones/hora sale en cualquier cosa.
+    void (async () => {
+      const cierre = await loadHorasDelMes(mesSel)
+      if (!vivo) return
+      if (cierre.size > 0) { setHoras(cierre); setFuenteHoras('cierre'); return }
+      const ses = await loadHorasPorEquipo(desde, hasta > hoyISO() ? hoyISO() : hasta)
+      if (vivo) { setHoras(ses); setFuenteHoras('sesiones') }
+    })()
     return () => { vivo = false }
   }, [mesSel])
 
@@ -253,6 +263,11 @@ export function ConsumoDashboardTab() {
               <span className="kpi__l">galones por hora</span></div>
           </div>
 
+          <p className="subtle-copy" style={{ marginTop: 4 }}>
+            {fuenteHoras === 'cierre'
+              ? '⏱ Las horas salen del cierre mensual de horómetros — el dato bueno.'
+              : '⏱ Las horas salen de sumar las labores cerradas. Si el mes ya tiene cierre de horómetros, cárgalo: es más confiable.'}
+          </p>
           {fuenteMes?.has('papel') && (
             <p className="subtle-copy" style={{ marginTop: 4 }}>
               📄 Este mes viene del formato en papel. Las horas trabajadas salen de las

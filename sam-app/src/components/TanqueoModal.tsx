@@ -7,6 +7,7 @@ import { CampoPlaca, CampoLista, recordarPlaca, recordarValor } from './CampoPla
 import { aMayus } from '../lib/texto'
 import { fmtCantidad, redondear2 } from '../lib/cantidad'
 import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
+import { FotoEvidencia } from './FotoEvidencia'
 
 /**
  * Por encima de esto la cifra no cabe fisicamente y se pide un segundo toque.
@@ -370,7 +371,10 @@ export function TanqueoModal({
         <div className="flota-comprobante" style={{ marginTop: 10 }}>
           <span className="flota-comprobante__lbl">📷 Foto {origen === 'ESTACION' ? 'de la tirilla' : 'del soporte'}</span>
           <div className="flota-foto-row">
-            {tirilla && <img src={tirilla} alt="soporte" className="flota-foto-thumb" />}
+            {/* Este es EL caso de la foto sin señal: la tirilla se toma en la
+                bomba a las 6 a.m., donde no hay cobertura. Con un <img> pelado
+                salía rota justo en el momento de comprobarla. */}
+            {tirilla && <FotoEvidencia url={tirilla} alt="soporte de la carga" />}
             <button type="button" className="inline-button" onClick={() => fotoRef.current?.click()} disabled={busy || subiendo}>
               {subiendo ? 'Subiendo…' : tirilla ? 'Cambiar foto' : '📷 Tomar foto'}
             </button>

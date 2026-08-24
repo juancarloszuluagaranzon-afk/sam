@@ -708,6 +708,23 @@ error clásico: el **tanqueo en estación NUNCA pasó por bodega**, así que no 
 en ningún kardex pero sí es consumo de la máquina. Solo en agosto son 76 galones
 que no aparecerían.
 
+🔴 **Y la tercera rama tiene que filtrar `origen = 'ESTACION'`.** Un tanqueo con
+`origen='SEDE'` y `destino='MAQUINA'` **ya generó una SALIDA de kardex con su
+`equipo_codigo`**, que la segunda rama suma. Sin la guarda entra por las dos y se cuenta
+doble. Las otras dos implementaciones del mismo cálculo sí la tenían —
+`galonesDeMaquina()` en `lib/indicadores.ts` y `ConsumoEquiposTab` hacen
+`if (t.origen !== 'ESTACION') continue`— y la vista era la única sin ella, justo la que
+alimenta el tablero del dueño.
+
+Medido antes de corregir (24-ago-2026): 6 tanqueos, **215,13 galones de más, todos de la
+PUMA 2301**. Su agosto salía en 922,07 gal cuando son 706,94 — **30% inflado en una sola
+máquina**. Corregido en `20260824100000_consumo_unificado_v_sin_doble_conteo.sql`.
+
+⚠️ **La lección general:** cuando la misma regla de negocio vive en SQL y en TypeScript,
+la copia de SQL es la que se queda atrás — nadie la lee al cambiar la de TS. Si vuelve a
+aparecer una regla duplicada así, escribirla en los dos sitios **con el mismo comentario**,
+que es lo único que hace que alguien busque la otra.
+
 ### 🔴 Antes de acusar a una máquina, revisar el denominador
 
 La primera versión marcaba **12 de 21 máquinas en rojo**. Mirando los números, el

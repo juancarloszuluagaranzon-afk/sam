@@ -214,7 +214,10 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   desde el blob de Dexie con `createObjectURL` (y **revoca la URL al desmontar**).
   Antes salía un cuadrito gris que decía "sin subir" y el supervisor no podía
   comprobar lo que acababa de tomar. Al listar fotos: usar el componente, no un
-  `<img src>` pelado.
+  `<img src>` pelado. ⚠️ **Solo DOS pantallas producen marcadores `local://`** — las
+  que llaman a `subirOGuardarFoto`: `BandejaInsumosTab` y `TanqueoModal`. En el resto,
+  las URL vienen del servidor y un `<img>` pelado está bien. El tanqueo es el caso
+  más agudo: la tirilla se toma **en la bomba a las 6 a.m.**, donde no hay señal.
 - **🔴 El AJUSTE FIJA el saldo, no lo suma.** Al rehacer stock desde el kardex, sumar
   `SALIDA/ENTRADA` a ciegas sobre un insumo con ajustes da un número que no corresponde
   (GANCHOS suma 1480 en el kardex y su saldo real es 1200; las dos cifras son correctas).

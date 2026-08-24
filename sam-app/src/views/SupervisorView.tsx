@@ -51,12 +51,13 @@ import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
+import { MaderaTab } from './MaderaTab'
 import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1225,6 +1226,18 @@ export function SupervisorView({
                 )}
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
+                    className={`more-sheet__item ${supervisorTab === 'madera' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('madera'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">🪵</span>
+                    <div>
+                      <div className="more-sheet__label">Viajes de trozas</div>
+                      <div className="more-sheet__desc">Transporte de madera · salvoconducto que vence · despachado vs recibido</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
                     className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
                   >
@@ -1528,7 +1541,7 @@ export function SupervisorView({
                   )
                 })}
                 <button
-                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' || supervisorTab === 'madera' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -2247,6 +2260,7 @@ export function SupervisorView({
         ) : null}
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}
+        {supervisorTab === 'madera' ? <MaderaTab /> : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
           <InsumosResumenTab />

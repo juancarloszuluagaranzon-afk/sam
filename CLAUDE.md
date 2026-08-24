@@ -105,7 +105,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Informe semanal | `views/InformeSemanalTab`, `lib/informeSemanal.ts` | Una fila por máquina y semana: horómetro inicial/final, **horas trabajadas**, combustible y **gal/hora**. Reemplaza la hoja de Excel manual. ⚠️ Descarta las lecturas de horómetro con magnitud distinta a la dominante de esa máquina y las marca — no las esconde |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
 | Chequeo diario | `views/ChequeoDiarioView`, `services/chequeoApi.ts` | 30+ ítems por máquina, **un ítem por pantalla** en 3 vueltas físicas, orden rotado cada día. ⚠️ Hoy **solo activo en TRC-1** (banco de pruebas): las 21 máquinas reales tienen `chequeo_lista_id` en null hasta que el cliente lo valide — la asignación original quedó guardada en `chequeo_listas.nota` |
-| Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina |
+| Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina. Las **horas** salen de `equipo_horas_mes` (cierre mensual de horómetros) y caen a `labor_sesiones` si el mes no tiene cierre |
 | Tarifas | `views/TarifasTab`, `tarifasApi.ts` | ⚠️ **Solo en la rama `pruebas`.** Precio por hectárea con vigencia + ajuste anual en bloque. Ver `.agent/skills/managing-facturacion/` |
 
 ## Detalles que muerden
@@ -214,13 +214,40 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   desde el blob de Dexie con `createObjectURL` (y **revoca la URL al desmontar**).
   Antes salía un cuadrito gris que decía "sin subir" y el supervisor no podía
   comprobar lo que acababa de tomar. Al listar fotos: usar el componente, no un
-  `<img src>` pelado.
+  `<img src>` pelado. ⚠️ **Solo DOS pantallas producen marcadores `local://`** — las
+  que llaman a `subirOGuardarFoto`: `BandejaInsumosTab` y `TanqueoModal`. En el resto,
+  las URL vienen del servidor y un `<img>` pelado está bien. El tanqueo es el caso
+  más agudo: la tirilla se toma **en la bomba a las 6 a.m.**, donde no hay señal.
 - **🔴 El AJUSTE FIJA el saldo, no lo suma.** Al rehacer stock desde el kardex, sumar
   `SALIDA/ENTRADA` a ciegas sobre un insumo con ajustes da un número que no corresponde
   (GANCHOS suma 1480 en el kardex y su saldo real es 1200; las dos cifras son correctas).
   Y si el recálculo SALTA esos pares "por seguridad", el saldo no se corrige: ya mordió
   al limpiar una entrega de prueba (3-ago-2026) y quedó 1 gancho abajo. **Después de
   borrar movimientos, verificar el saldo contra lo que había antes.**
+- **🔴 Un tanqueo NO se puede editar desde ninguna pantalla.** Los despachos sí
+  (`editarDespacho`/`eliminarDespacho`); el tanqueo solo se puede **rechazar** en
+  `AvalesCombustibleTab` —que reversa— y volver a teclear. Cuando toque corregir uno
+  por SQL: **corregir el HECHO, no el saldo.** Dejar el stock bueno y el kardex malo
+  parece resuelto y reaparece solo en el consumo por máquina, el informe semanal y el
+  tablero. Y corregir **todos los saldos posteriores** de esa bodega: el `saldo` es una
+  foto del stock en ese instante, no una fórmula. Rastro en
+  `insumos_despachos_auditoria` (⚠️ `solicitud_id` es NOT NULL — va el id del
+  `combustible_externo`) y **no** avalar desde SQL, que salta el segundo par de ojos.
+- **🔴 En las tirillas de ZEUSS el punto es DECIMAL.** Imprimen `62.255 GL` = sesenta y
+  dos galones; en Colombia eso se lee como sesenta y dos mil, y un supervisor tecleó
+  62255 dejando el carro en 62.329,54 gal (22-ago-2026). `TanqueoModal` pide un segundo
+  toque por encima de `GALONES_SOSPECHOSO = 200` y nombra la trampa — **no bloquea**,
+  porque un límite duro obliga a inventar un número a las 6 a.m. en la bomba.
+  ⚠️ **La primera corrección de ese caso estuvo MAL**: se dedujo 75,46 de un reporte
+  verbal teniendo la foto de la tirilla adjunta desde el principio. **Cuando hay
+  evidencia adjunta, se mira ANTES de calcular** — un número deducido que "encaja" es
+  justo el que nadie vuelve a cuestionar. Ver `managing-insumos`.
+- **⚠️ El kardex de la BODEGA PRINCIPAL no es un libro de compras.** El combustible que
+  llega no se está registrando como ENTRADA: se deja correr hasta que el saldo queda en
+  negativo y se cuadra con un **AJUSTE por conteo físico** (−23,06 gal el 22-ago, tapado
+  con +992,06). Cuadra el número y borra la historia — sin fecha, proveedor ni precio no
+  hay costo del combustible. Es problema de operación, no de código, pero hay que saberlo
+  al leer cualquier cifra de la principal. Los saldos de los **carros** sí son fiables.
 - **Cantidades de insumos**: `lib/cantidad.ts`. Redondear **al calcular saldos**
   (sin eso el punto flotante guarda `1020.4100000000001`), y mostrar con
   `fmtCantidad(n, unidad)` — las unidades enteras (ganchos, tornillos) van **sin

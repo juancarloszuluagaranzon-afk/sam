@@ -66,6 +66,27 @@ export async function loadReferencias(anio = 2025): Promise<ReferenciaEquipo[]> 
 }
 
 /**
+ * Horas del CIERRE MENSUAL, que es la fuente buena.
+ *
+ * Una lectura de horómetro por máquina y mes, no cientos de tramos: un dedazo
+ * suelto no la contamina. `equipo_horas_mes` se llena con el cierre que
+ * administración ya llevaba en Excel.
+ *
+ * Devuelve vacío si ese mes no tiene cierre — ahí manda `loadHorasPorEquipo`.
+ */
+export async function loadHorasDelMes(mes: string): Promise<Map<string, number>> {
+  const { data, error } = await supabase
+    .from('equipo_horas_mes').select('equipo_codigo,horas').eq('mes', `${mes}-01`)
+  if (error || !data) return new Map()
+  const m = new Map<string, number>()
+  for (const r of data as { equipo_codigo?: string; horas?: number }[]) {
+    const h = Number(r.horas ?? 0)
+    if (r.equipo_codigo && h > 0) m.set(r.equipo_codigo, h)
+  }
+  return m
+}
+
+/**
  * Horas trabajadas por máquina en el periodo, de las labores cerradas.
  *
  * ⚠️ Se descartan los tramos absurdos (≤0 o ≥24 h en una jornada). Sin ese

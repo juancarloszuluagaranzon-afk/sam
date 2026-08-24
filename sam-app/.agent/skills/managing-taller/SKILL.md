@@ -321,13 +321,48 @@ trabajado **132.068 horas en 2026** (el año tiene 8.760); dividida por 10 da
 1.020, unas 146 al mes. **Se teclea sin el punto decimal.** Corregida a
 `horometro_manual = 14.560,9`.
 
-**VALTRA 9902** marca 6 h y **no se tocó a propósito**: su horómetro está
-físicamente dañado y lo que se teclea son las HORAS DEL DÍA (5, 10, 15, 22…).
-La máquina sí trabaja — 161 labores y 1.100 ha desde mayo. Inventarle un número
-dispararía el preventivo contra una cifra que nadie midió. **Necesita lectura
-física o cambio de horómetro.**
+**VALTRA 9902** marcaba 6 h. El diagnóstico de agosto fue "horómetro dañado, se
+teclean las HORAS DEL DÍA (5, 10, 15, 22…), necesita lectura física" — y estaba
+**equivocado**. El cierre de julio lo desmintió: la máquina fue de **795,4 a
+1.076,8** en el mes, y la app tiene lecturas de 940, 1.104, 1.162 y 1.184, una
+escala ascendente coherente.
+
+🔴 **Le CAMBIARON el horómetro.** La unidad nueva arrancó cerca de cero, así que
+las lecturas pequeñas no eran las horas del día: eran la escala nueva empezando.
+Corregida a `horometro_manual = 1184` (20-ago-2026).
+
+⚠️ La lección para la próxima máquina "rara": **una escala que arranca de cero y
+sube sola es un horómetro reemplazado, no uno dañado.** El dañado no sube — repite
+o salta sin orden. Distinguirlos mirando UN día es imposible; hace falta la serie,
+y el cierre mensual es el que la muestra.
 
 **CASE 1001** nunca ha tenido lectura. El Excel la cerró en 12.118 h.
 
 Tras corregir la PUMA, **19 de 21 máquinas calculan bien su próximo servicio de
 300 h**.
+
+## El cierre mensual de horómetros (`equipo_horas_mes`, 20-ago-2026)
+
+Una fila por **máquina y mes**: `horometro_inicial`, `horometro_final`, `horas`,
+`galones`, `ganchos`, `fuente`, `nota`. Migración
+`20260820100000_equipo_horas_mes.sql`.
+
+Nació para el tablero de eficiencia (ver `managing-insumos`), pero es **la fuente
+más limpia de horas que tiene el sistema** y sirve para todo lo demás: dos lecturas
+por mes en vez de cientos de tramos de `labor_sesiones`, así que un dedazo no la
+contamina.
+
+🔴 **`horas` NO es una columna calculada, y es deliberado.** Normalmente vale
+`final − inicial`, pero cuando el horómetro se **reemplaza** a mitad de mes la resta
+miente (sale negativa o absurda) y hay que escribirlas a mano. Un `GENERATED ALWAYS`
+habría hecho imposible registrar el mes en que se cambió la unidad — que es
+justamente el mes que hay que poder registrar.
+
+**No reemplaza a `labor_sesiones`, la complementa.** El tablero usa esta cuando el
+mes tiene cierre y cae a las sesiones cuando no.
+
+Se carga del Excel de combustible que administración ya lleva
+(`cargar_julio.py` en el scratchpad es la plantilla: lee el `.json` extraído del
+Excel y genera el SQL con `on conflict do update`). ⚠️ El Excel escribe
+`CASE 1002` y la BD usa `CASE1002` — hay que normalizar el código o el `insert`
+falla contra la FK de `equipos`.

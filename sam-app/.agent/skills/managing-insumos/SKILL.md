@@ -708,6 +708,23 @@ error clásico: el **tanqueo en estación NUNCA pasó por bodega**, así que no 
 en ningún kardex pero sí es consumo de la máquina. Solo en agosto son 76 galones
 que no aparecerían.
 
+🔴 **Y la tercera rama tiene que filtrar `origen = 'ESTACION'`.** Un tanqueo con
+`origen='SEDE'` y `destino='MAQUINA'` **ya generó una SALIDA de kardex con su
+`equipo_codigo`**, que la segunda rama suma. Sin la guarda entra por las dos y se cuenta
+doble. Las otras dos implementaciones del mismo cálculo sí la tenían —
+`galonesDeMaquina()` en `lib/indicadores.ts` y `ConsumoEquiposTab` hacen
+`if (t.origen !== 'ESTACION') continue`— y la vista era la única sin ella, justo la que
+alimenta el tablero del dueño.
+
+Medido antes de corregir (24-ago-2026): 6 tanqueos, **215,13 galones de más, todos de la
+PUMA 2301**. Su agosto salía en 922,07 gal cuando son 706,94 — **30% inflado en una sola
+máquina**. Corregido en `20260824100000_consumo_unificado_v_sin_doble_conteo.sql`.
+
+⚠️ **La lección general:** cuando la misma regla de negocio vive en SQL y en TypeScript,
+la copia de SQL es la que se queda atrás — nadie la lee al cambiar la de TS. Si vuelve a
+aparecer una regla duplicada así, escribirla en los dos sitios **con el mismo comentario**,
+que es lo único que hace que alguien busque la otra.
+
 ### 🔴 Antes de acusar a una máquina, revisar el denominador
 
 La primera versión marcaba **12 de 21 máquinas en rojo**. Mirando los números, el
@@ -728,3 +745,167 @@ el promedio salta (una máquina marcó +103% con una sola entrega) y solo se
 estabiliza en un mes completo. La pantalla lo advierte. Y los **PUMA no usan
 ganchos**: su referencia en null no es dato faltante, por eso se filtran de esa
 vista en vez de mostrarlos con guiones.
+
+### 🔴 Las horas buenas salen del CIERRE MENSUAL, no de las sesiones (20-ago-2026)
+
+El chequeo del denominador tapaba el problema; `equipo_horas_mes` lo resuelve.
+Sumar `labor_sesiones` para saber cuánto trabajó una máquina arrastra la basura de
+los horómetros: **445 de 2.212 sesiones tienen horas absurdas** (≤0 o ≥24), y una
+sola arruina el promedio del mes.
+
+La tabla guarda **una lectura por máquina y mes** —horómetro inicial, final y la
+resta— que es el cierre que administración ya llevaba en Excel. Un dedazo suelto no
+la contamina porque solo hay dos lecturas, no cientos de tramos.
+
+`loadHorasDelMes()` manda; `loadHorasPorEquipo()` (las sesiones) es el respaldo para
+los meses sin cierre — un mes sin cerrar no puede dejar la pantalla en blanco. **La
+pantalla dice de cuál de las dos salieron las horas**, porque eso cambia cómo se lee
+el número.
+
+Cargado julio desde `combustible Julio.xlsx`: **20 máquinas, 4.669,2 h, 9.127,53 gal,
+4.480 ganchos, 1,95 gal/hora de flota.** ⚠️ `horas` se guarda aparte de la resta a
+propósito: si el horómetro se **reemplaza** a mitad de mes la resta miente y hay que
+ponerlas a mano (ya pasó con la VALTRA 9902 — ver `managing-taller`).
+
+## 🔴 Corregir un tanqueo mal registrado (22-ago-2026)
+
+**No hay pantalla para esto, y ese es el hueco.** Un despacho se corrige
+(`editarDespacho`) y se elimina (`eliminarDespacho`); un **tanqueo** solo se puede
+*rechazar* desde `AvalesCombustibleTab` —que reversa el movimiento— y pedirle al que
+lo registró que lo vuelva a teclear. Cuando el dueño llamó pidiendo que le arreglaran
+el inventario de un carro, la única vía fue SQL.
+
+### El caso
+
+`combustible_externo` `30b02f99-a617-4d3c-bf6e-01f7a3c73803`: 22-ago 11:42, ENTRADA
+de **62255 galones** (sesenta y dos mil), "Carga en estación (ZEUSS ROLDANILLO)",
+origen `ESTACION`, destino `CARRO`, registrada por el supervisor del CARRO EDUVIN. El
+carro venía en 74,54 y quedó en **62.329,54 galones**.
+
+Sus cargas normales son de 50 a 75 gal, y el carro-tanque no carga ni 150. La causa
+no fue torpeza — está dos secciones más abajo y es un problema de formato de número.
+
+### 🔴 Cuadrar el saldo NO es corregir el dato
+
+La tentación es poner el stock en 150 y seguir, que es lo que pedía el cliente al pie
+de la letra. Sería un error: el **kardex seguiría diciendo 62255 galones**, y ese
+número reaparece solo en el consumo por máquina, el informe semanal y el tablero del
+dueño. Una semana después alguien lo vuelve a reportar como error nuevo.
+
+Se corrige **el hecho** —la fila de `combustible_externo` y su fila de kardex— y el
+saldo sale de ahí. Mismo principio que `editarDespacho`: se corrige en su sitio, no
+se compensa con un movimiento inventado.
+
+### 🔴 La tirilla decía "62.255 GL" — y ahí el punto es DECIMAL
+
+**Esta es la raíz, y hay que leerla completa porque va a volver a pasar.**
+
+Las tirillas de ZEUSS imprimen la cantidad **al estilo gringo**: `62.255 GL` son
+sesenta y dos galones con 255 milésimas. En Colombia ese punto se lee como separador
+de miles. El supervisor "corrigió" lo que vio y tecleó **62255**.
+
+La aritmética de la propia tirilla no deja duda:
+
+```
+62.255 GL  x  $11.090/gal  =  $690.408   <- subtotal impreso
+                              -$ 18.054   <- descuento
+                               $672.354   <- TOTAL impreso
+```
+
+`62,255 × 11.090 = 690.407,95`. Cuadra al peso. Si de verdad fueran sesenta y dos mil
+galones, el tanqueo habría costado **690 millones de pesos**.
+
+### ⚠️ Lo que enseña la primera corrección, que estuvo MAL
+
+El 22-ago se corrigió a **75,46 gal**, deducidos así: el dueño reportó que el carro
+"lleva 150", el saldo anterior era 74,54, luego la carga fue `150 − 74,54`. El número
+era coherente — encajaba con sus cargas históricas (70 · 73,37 · 65,58)— **y era
+falso**. La carga real fueron 62,255 y el carro debía quedar en 136,80, no en 150.
+
+🔴 **Deducir de un reporte verbal no es verificar.** El registro tenía foto de la
+tirilla desde el primer momento; bastaba abrirla. La regla: **cuando hay evidencia
+adjunta, se mira ANTES de calcular.** Un número deducido que "encaja" es justo el que
+nadie vuelve a cuestionar.
+
+Se corrigió dos veces y las dos quedaron en auditoría, a propósito: el rastro de la
+corrección equivocada es parte de lo que pasó.
+
+### La corrección, en una transacción
+
+```sql
+begin;
+-- 1. auditoría ANTES de tocar nada
+insert into insumos_despachos_auditoria (solicitud_id, accion, cambios, editado_por, editado_en)
+  values ('<id del combustible_externo>', 'CORREGIR_TANQUEO', jsonb_build_object(
+    'motivo', 'Se leyo la tirilla: la carga real fue 62,255 GL',
+    'evidencia', '<url de la tirilla>',
+    'galones', jsonb_build_object('antes', 75.46, 'despues', 62.255),
+    'valor',   jsonb_build_object('antes', 0, 'despues', 672354)), 'correccion-tirilla', now());
+-- 2. el hecho: combustible_externo (galones, valor, factura)
+-- 3. su fila de kardex: cantidad Y saldo
+-- 4. TODOS los saldos posteriores de esa bodega+insumo: saldo = round(saldo - dif, 2)
+-- 5. insumos_stock  ·  6. el consolidado insumos.stock
+commit;
+```
+
+⚠️ **`insumos_despachos_auditoria.solicitud_id` es NOT NULL** (no tiene FK, pero no
+admite null): al auditar un tanqueo va el **id del `combustible_externo`**. Sin eso la
+transacción entera aborta.
+
+⚠️ **El paso 4 es el que se olvida.** El `saldo` de cada fila es una foto del stock
+en ese instante, no una fórmula: si solo se corrige la fila del tanqueo, las
+siguientes siguen mostrando la cadena vieja y el kardex se lee como si no cuadrara.
+
+**Se dejó `PENDIENTE` a propósito.** El tanqueo todavía no estaba avalado, así que el
+analista lo verá con la cifra buena y el control sigue funcionando. Avalarlo desde SQL
+habría saltado el segundo par de ojos, que es justo lo que no se puede hacer.
+
+**De paso se llenó el `valor` ($672.354).** Era el único tanqueo de estación de ese
+supervisor con precio: los otros 10 están en 0 y sin ellos no hay costo del
+combustible por galón.
+
+### El guardarraíl que quedó (`GALONES_SOSPECHOSO = 200`)
+
+`TanqueoModal` pide un **segundo toque** cuando la cifra pasa de 200 gal, y el aviso
+nombra la trampa: *"ahí el punto es DECIMAL — 62.255 GL son 62 galones, no 62 mil"*.
+El botón cambia a "Sí, son 62255 galones".
+
+🔴 **No bloquea.** Un límite duro obliga a inventar un número para poder seguir, y
+a las 6 a.m. en la bomba eso es peor que el dedazo. Y `fmtCantidad` usa
+`useGrouping: false`, así que el aviso muestra `62255` y no `62.255` — justo la
+ambigüedad que causó todo.
+
+### Lo que falta
+
+Una pantalla de corrección de tanqueo con la misma lógica de `EditarDespachoModal`
+(dueño/administración, motivo obligatorio, rastro en auditoría). El guardarraíl evita
+el dedazo grande, pero cualquier otra equivocación —fecha, máquina, 60 en vez de 50—
+sigue necesitando SQL.
+
+## 🔴 El AJUSTE tapa el síntoma: a la principal no le entran compras (22-ago-2026)
+
+Verificando la corrección anterior apareció algo peor: **BODEGA PRINCIPAL estaba en
+−23,06 galones**.
+
+| | |
+|---|---|
+| Última ENTRADA registrada | 18-ago 14:18, **20,86 gal** |
+| Salido desde entonces | **893,92 gal** en 17 movimientos |
+
+No es un error de cálculo: es que **nadie registra el combustible que llega**. Los
+carros se surten de una bodega que en los papeles ya está vacía.
+
+Se le reportó al cliente que hacía falta registrar las entradas reales
+(Insumos → Inventario → + Entrada). Media hora después el saldo estaba en 969: se
+metió un **AJUSTE por conteo físico de +992,06**, no las compras.
+
+🔴 **El ajuste cuadra el número y borra la historia.** Sin las entradas reales no hay
+fecha de compra, ni proveedor, ni precio por galón — y por lo tanto no hay costo del
+combustible ni forma de cruzar con la factura del proveedor. Y como la causa sigue
+ahí, en tres días vuelve a quedar negativo (ya había pasado el 18-ago: +232,94,
+−152,94, −130, todos "Ajuste por conteo físico").
+
+Es un problema de **operación, no de código**, pero al mirar cualquier número de la
+principal hay que saberlo: **su kardex no es un libro de compras, es una serie de
+correcciones**. Los saldos de los CARROS sí son confiables — ahí todo entra por
+tanqueo o traslado.

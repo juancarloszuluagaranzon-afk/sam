@@ -105,7 +105,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Informe semanal | `views/InformeSemanalTab`, `lib/informeSemanal.ts` | Una fila por máquina y semana: horómetro inicial/final, **horas trabajadas**, combustible y **gal/hora**. Reemplaza la hoja de Excel manual. ⚠️ Descarta las lecturas de horómetro con magnitud distinta a la dominante de esa máquina y las marca — no las esconde |
 | Rendimiento | `views/MotivacionTab` | KPI quincenal por operario |
 | Chequeo diario | `views/ChequeoDiarioView`, `services/chequeoApi.ts` | 30+ ítems por máquina, **un ítem por pantalla** en 3 vueltas físicas, orden rotado cada día. ⚠️ Hoy **solo activo en TRC-1** (banco de pruebas): las 21 máquinas reales tienen `chequeo_lista_id` en null hasta que el cliente lo valide — la asignación original quedó guardada en `chequeo_listas.nota` |
-| Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina |
+| Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina. Las **horas** salen de `equipo_horas_mes` (cierre mensual de horómetros) y caen a `labor_sesiones` si el mes no tiene cierre |
 | Tarifas | `views/TarifasTab`, `tarifasApi.ts` | ⚠️ **Solo en la rama `pruebas`.** Precio por hectárea con vigencia + ajuste anual en bloque. Ver `.agent/skills/managing-facturacion/` |
 
 ## Detalles que muerden
@@ -221,6 +221,20 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   Y si el recálculo SALTA esos pares "por seguridad", el saldo no se corrige: ya mordió
   al limpiar una entrega de prueba (3-ago-2026) y quedó 1 gancho abajo. **Después de
   borrar movimientos, verificar el saldo contra lo que había antes.**
+- **🔴 Un tanqueo NO se puede editar desde ninguna pantalla.** Los despachos sí
+  (`editarDespacho`/`eliminarDespacho`); el tanqueo solo se puede **rechazar** en
+  `AvalesCombustibleTab` —que reversa— y volver a teclear. Cuando toque corregir uno
+  por SQL: **corregir el HECHO, no el saldo.** Dejar el stock bueno y el kardex malo
+  parece resuelto y reaparece solo en el consumo por máquina, el informe semanal y el
+  tablero. Ya pasó: 62.255 gal tecleados en una carga de 75,46 (22-ago-2026, ver
+  `managing-insumos`). Dejar rastro en `insumos_despachos_auditoria` y **no** avalar
+  desde SQL: eso salta el segundo par de ojos.
+- **⚠️ El kardex de la BODEGA PRINCIPAL no es un libro de compras.** El combustible que
+  llega no se está registrando como ENTRADA: se deja correr hasta que el saldo queda en
+  negativo y se cuadra con un **AJUSTE por conteo físico** (−23,06 gal el 22-ago, tapado
+  con +992,06). Cuadra el número y borra la historia — sin fecha, proveedor ni precio no
+  hay costo del combustible. Es problema de operación, no de código, pero hay que saberlo
+  al leer cualquier cifra de la principal. Los saldos de los **carros** sí son fiables.
 - **Cantidades de insumos**: `lib/cantidad.ts`. Redondear **al calcular saldos**
   (sin eso el punto flotante guarda `1020.4100000000001`), y mostrar con
   `fmtCantidad(n, unidad)` — las unidades enteras (ganchos, tornillos) van **sin

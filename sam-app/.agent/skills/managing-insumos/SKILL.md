@@ -761,17 +761,17 @@ el inventario de un carro, la única vía fue SQL.
 ### El caso
 
 `combustible_externo` `30b02f99-a617-4d3c-bf6e-01f7a3c73803`: 22-ago 11:42, ENTRADA
-de **62.255 galones**, "Carga en estación (ZEUSS ROLDANILLO)", origen `ESTACION`,
-destino `CARRO`, registrada por el supervisor del CARRO EDUVIN. El carro venía en
-74,54 y quedó en **62.329,54 galones**.
+de **62255 galones** (sesenta y dos mil), "Carga en estación (ZEUSS ROLDANILLO)",
+origen `ESTACION`, destino `CARRO`, registrada por el supervisor del CARRO EDUVIN. El
+carro venía en 74,54 y quedó en **62.329,54 galones**.
 
-Sus cargas normales son de 50 a 75 gal. El `valor` quedó en 0 — muy probablemente se
-tecleó una cifra que no eran galones en el campo de galones.
+Sus cargas normales son de 50 a 75 gal, y el carro-tanque no carga ni 150. La causa
+no fue torpeza — está dos secciones más abajo y es un problema de formato de número.
 
 ### 🔴 Cuadrar el saldo NO es corregir el dato
 
 La tentación es poner el stock en 150 y seguir, que es lo que pedía el cliente al pie
-de la letra. Sería un error: el **kardex seguiría diciendo 62.255 galones**, y ese
+de la letra. Sería un error: el **kardex seguiría diciendo 62255 galones**, y ese
 número reaparece solo en el consumo por máquina, el informe semanal y el tablero del
 dueño. Una semana después alguien lo vuelve a reportar como error nuevo.
 
@@ -779,42 +779,91 @@ Se corrige **el hecho** —la fila de `combustible_externo` y su fila de kardex�
 saldo sale de ahí. Mismo principio que `editarDespacho`: se corrige en su sitio, no
 se compensa con un movimiento inventado.
 
-### De dónde salió el 75,46
+### 🔴 La tirilla decía "62.255 GL" — y ahí el punto es DECIMAL
 
-El dueño reportó que el carro **lleva 150 galones**. El saldo anterior a la carga era
-74,54 (10:46 del mismo día), así que la carga real fue `150 − 74,54 = 75,46`. Encaja
-con el tamaño de sus cargas históricas (70 · 73,37 · 65,58).
+**Esta es la raíz, y hay que leerla completa porque va a volver a pasar.**
 
-⚠️ **Ese número se DEDUJO, no se leyó.** El registro **tiene foto de la tirilla** y
-nadie la ha contrastado. Al corregir así, decirlo: la cifra es consistente, no es
-verificada.
+Las tirillas de ZEUSS imprimen la cantidad **al estilo gringo**: `62.255 GL` son
+sesenta y dos galones con 255 milésimas. En Colombia ese punto se lee como separador
+de miles. El supervisor "corrigió" lo que vio y tecleó **62255**.
+
+La aritmética de la propia tirilla no deja duda:
+
+```
+62.255 GL  x  $11.090/gal  =  $690.408   <- subtotal impreso
+                              -$ 18.054   <- descuento
+                               $672.354   <- TOTAL impreso
+```
+
+`62,255 × 11.090 = 690.407,95`. Cuadra al peso. Si de verdad fueran sesenta y dos mil
+galones, el tanqueo habría costado **690 millones de pesos**.
+
+### ⚠️ Lo que enseña la primera corrección, que estuvo MAL
+
+El 22-ago se corrigió a **75,46 gal**, deducidos así: el dueño reportó que el carro
+"lleva 150", el saldo anterior era 74,54, luego la carga fue `150 − 74,54`. El número
+era coherente — encajaba con sus cargas históricas (70 · 73,37 · 65,58)— **y era
+falso**. La carga real fueron 62,255 y el carro debía quedar en 136,80, no en 150.
+
+🔴 **Deducir de un reporte verbal no es verificar.** El registro tenía foto de la
+tirilla desde el primer momento; bastaba abrirla. La regla: **cuando hay evidencia
+adjunta, se mira ANTES de calcular.** Un número deducido que "encaja" es justo el que
+nadie vuelve a cuestionar.
+
+Se corrigió dos veces y las dos quedaron en auditoría, a propósito: el rastro de la
+corrección equivocada es parte de lo que pasó.
 
 ### La corrección, en una transacción
 
 ```sql
+begin;
 -- 1. auditoría ANTES de tocar nada
-insert into insumos_despachos_auditoria (accion, cambios, editado_por, editado_en)
-  values ('CORREGIR_TANQUEO', jsonb_build_object(
-    'galones', jsonb_build_object('antes', 62255, 'despues', 75.46),
-    'saldo_bodega', jsonb_build_object('antes', 62329.54, 'despues', 150),
-    'motivo', 'Dedazo al registrar la carga en ZEUSS ROLDANILLO',
-    'reportado_por', 'El dueno: el carro lleva 150 galones'), 'correccion', now());
--- 2. el hecho · 3. su fila de kardex (cantidad Y saldo) · 4. insumos_stock
--- 5. recalcular el consolidado insumos.stock
+insert into insumos_despachos_auditoria (solicitud_id, accion, cambios, editado_por, editado_en)
+  values ('<id del combustible_externo>', 'CORREGIR_TANQUEO', jsonb_build_object(
+    'motivo', 'Se leyo la tirilla: la carga real fue 62,255 GL',
+    'evidencia', '<url de la tirilla>',
+    'galones', jsonb_build_object('antes', 75.46, 'despues', 62.255),
+    'valor',   jsonb_build_object('antes', 0, 'despues', 672354)), 'correccion-tirilla', now());
+-- 2. el hecho: combustible_externo (galones, valor, factura)
+-- 3. su fila de kardex: cantidad Y saldo
+-- 4. TODOS los saldos posteriores de esa bodega+insumo: saldo = round(saldo - dif, 2)
+-- 5. insumos_stock  ·  6. el consolidado insumos.stock
+commit;
 ```
 
-`insumos_despachos_auditoria` sirve para esto aunque se llame "despachos": la acción
-va en `accion` y no hay FK obligatoria a la solicitud.
+⚠️ **`insumos_despachos_auditoria.solicitud_id` es NOT NULL** (no tiene FK, pero no
+admite null): al auditar un tanqueo va el **id del `combustible_externo`**. Sin eso la
+transacción entera aborta.
+
+⚠️ **El paso 4 es el que se olvida.** El `saldo` de cada fila es una foto del stock
+en ese instante, no una fórmula: si solo se corrige la fila del tanqueo, las
+siguientes siguen mostrando la cadena vieja y el kardex se lee como si no cuadrara.
 
 **Se dejó `PENDIENTE` a propósito.** El tanqueo todavía no estaba avalado, así que el
-analista lo verá con la cifra buena y el control sigue funcionando. Avalarlo desde
-SQL habría saltado el segundo par de ojos, que es justo lo que no se puede hacer.
+analista lo verá con la cifra buena y el control sigue funcionando. Avalarlo desde SQL
+habría saltado el segundo par de ojos, que es justo lo que no se puede hacer.
+
+**De paso se llenó el `valor` ($672.354).** Era el único tanqueo de estación de ese
+supervisor con precio: los otros 10 están en 0 y sin ellos no hay costo del
+combustible por galón.
+
+### El guardarraíl que quedó (`GALONES_SOSPECHOSO = 200`)
+
+`TanqueoModal` pide un **segundo toque** cuando la cifra pasa de 200 gal, y el aviso
+nombra la trampa: *"ahí el punto es DECIMAL — 62.255 GL son 62 galones, no 62 mil"*.
+El botón cambia a "Sí, son 62255 galones".
+
+🔴 **No bloquea.** Un límite duro obliga a inventar un número para poder seguir, y
+a las 6 a.m. en la bomba eso es peor que el dedazo. Y `fmtCantidad` usa
+`useGrouping: false`, así que el aviso muestra `62255` y no `62.255` — justo la
+ambigüedad que causó todo.
 
 ### Lo que falta
 
 Una pantalla de corrección de tanqueo con la misma lógica de `EditarDespachoModal`
-(dueño/administración, motivo obligatorio, rastro en auditoría). Mientras no exista,
-esto vuelve a pasar y vuelve a necesitar SQL.
+(dueño/administración, motivo obligatorio, rastro en auditoría). El guardarraíl evita
+el dedazo grande, pero cualquier otra equivocación —fecha, máquina, 60 en vez de 50—
+sigue necesitando SQL.
 
 ## 🔴 El AJUSTE tapa el síntoma: a la principal no le entran compras (22-ago-2026)
 

@@ -5,8 +5,15 @@ import { DESTINO_LABEL, type CombustibleDestino, type CombustibleOrigen } from '
 import { SearchableSelect } from './SearchableSelect'
 import { CampoPlaca, CampoLista, recordarPlaca, recordarValor } from './CampoPlaca'
 import { aMayus } from '../lib/texto'
-import { redondear2 } from '../lib/cantidad'
+import { fmtCantidad, redondear2 } from '../lib/cantidad'
 import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
+
+/**
+ * Por encima de esto la cifra no cabe fisicamente y se pide un segundo toque.
+ * El carro-tanque mas grande carga ~150 gal; la carga mas grande registrada en
+ * produccion son 96,22. 200 deja aire de sobra para una carga real.
+ */
+const GALONES_SOSPECHOSO = 200
 
 /**
  * Tanqueo — el único camino por el que entra o sale combustible sin pasar por
@@ -68,6 +75,8 @@ export function TanqueoModal({
   const [factura, setFactura] = useState('')
   const [tirilla, setTirilla] = useState('')
   const [subiendo, setSubiendo] = useState(false)
+  /** Segundo toque cuando la cifra es absurda. Ver GALONES_SOSPECHOSO. */
+  const [confirmaGrande, setConfirmaGrande] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
 
   // El propio analista también tanquea: decirle que "lo avala el analista"
@@ -123,6 +132,9 @@ export function TanqueoModal({
     [pimpCant, pimpCap],
   )
   const galonesFinal = destino === 'PIMPINAS' ? totalPimpinas : redondear2(Number(galones) || 0)
+  // Cualquier cifra por encima de esto no cabe fisicamente: el carro-tanque mas
+  // grande carga ~150 gal y la carga mas grande registrada son 96,22.
+  const grande = galonesFinal > GALONES_SOSPECHOSO
 
   if (!open) return null
 
@@ -146,6 +158,23 @@ export function TanqueoModal({
     if (!insumoId) { setError('Elige el combustible.'); return }
     if (galonesFinal <= 0) {
       setError(destino === 'PIMPINAS' ? 'Escribe cuántas pimpinas y de cuántos galones.' : 'Escribe cuántos galones.')
+      return
+    }
+    // 🔴 El punto de la tirilla es DECIMAL, no de miles.
+    //
+    // Las tirillas de ZEUSS imprimen la cantidad al estilo gringo ("62.255 GL" =
+    // sesenta y dos galones), y en Colombia ese punto se lee como separador de
+    // miles. Un supervisor tecleo 62255 copiando lo que veia y le dejo el carro
+    // en 62.329,54 galones; el dueño tuvo que pedir que se lo corrigieran a mano
+    // porque un tanqueo no se puede editar desde ninguna pantalla (22-ago-2026).
+    //
+    // No se BLOQUEA: se pide un segundo toque. Bloquear obliga a inventar un
+    // numero para poder seguir, y a las 6 a.m. en la bomba eso es peor.
+    if (grande && !confirmaGrande) {
+      setConfirmaGrande(true)
+      setError(`¿${fmtCantidad(galonesFinal, 'GAL')} galones? Es mucho más de lo que carga un carro. `
+        + 'Si lo copiaste de la tirilla, ojo: ahí el punto es DECIMAL — "62.255 GL" son 62 galones, no 62 mil. '
+        + 'Si de verdad son esos, vuelve a tocar Registrar.')
       return
     }
     if (destino === 'MAQUINA') {
@@ -278,7 +307,7 @@ export function TanqueoModal({
             </>
           ) : (
             <label>Galones <span style={{ color: '#b3261e' }}>*</span>
-              <input type="number" min={0} step="any" value={galones} onChange={(e) => setGalones(e.target.value)} disabled={busy} />
+              <input type="number" min={0} step="any" value={galones} onChange={(e) => { setGalones(e.target.value); setConfirmaGrande(false) }} disabled={busy} />
             </label>
           )}
 
@@ -357,7 +386,7 @@ export function TanqueoModal({
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void guardar()} disabled={busy || subiendo}>
-            {busy ? 'Guardando…' : 'Registrar tanqueo'}
+            {busy ? 'Guardando…' : confirmaGrande ? `Sí, son ${fmtCantidad(galonesFinal, 'GAL')} galones` : 'Registrar tanqueo'}
           </button>
         </div>
       </div>

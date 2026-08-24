@@ -226,9 +226,19 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   `AvalesCombustibleTab` —que reversa— y volver a teclear. Cuando toque corregir uno
   por SQL: **corregir el HECHO, no el saldo.** Dejar el stock bueno y el kardex malo
   parece resuelto y reaparece solo en el consumo por máquina, el informe semanal y el
-  tablero. Ya pasó: 62.255 gal tecleados en una carga de 75,46 (22-ago-2026, ver
-  `managing-insumos`). Dejar rastro en `insumos_despachos_auditoria` y **no** avalar
-  desde SQL: eso salta el segundo par de ojos.
+  tablero. Y corregir **todos los saldos posteriores** de esa bodega: el `saldo` es una
+  foto del stock en ese instante, no una fórmula. Rastro en
+  `insumos_despachos_auditoria` (⚠️ `solicitud_id` es NOT NULL — va el id del
+  `combustible_externo`) y **no** avalar desde SQL, que salta el segundo par de ojos.
+- **🔴 En las tirillas de ZEUSS el punto es DECIMAL.** Imprimen `62.255 GL` = sesenta y
+  dos galones; en Colombia eso se lee como sesenta y dos mil, y un supervisor tecleó
+  62255 dejando el carro en 62.329,54 gal (22-ago-2026). `TanqueoModal` pide un segundo
+  toque por encima de `GALONES_SOSPECHOSO = 200` y nombra la trampa — **no bloquea**,
+  porque un límite duro obliga a inventar un número a las 6 a.m. en la bomba.
+  ⚠️ **La primera corrección de ese caso estuvo MAL**: se dedujo 75,46 de un reporte
+  verbal teniendo la foto de la tirilla adjunta desde el principio. **Cuando hay
+  evidencia adjunta, se mira ANTES de calcular** — un número deducido que "encaja" es
+  justo el que nadie vuelve a cuestionar. Ver `managing-insumos`.
 - **⚠️ El kardex de la BODEGA PRINCIPAL no es un libro de compras.** El combustible que
   llega no se está registrando como ENTRADA: se deja correr hasta que el saldo queda en
   negativo y se cuadra con un **AJUSTE por conteo físico** (−23,06 gal el 22-ago, tapado

@@ -31,6 +31,7 @@ export function MaderaForm({
   const [placa, setPlaca] = useState('')
   const [kmInicio, setKmInicio] = useState('')
   const [toneladas, setToneladas] = useState('')
+  const [origen, setOrigen] = useState('')
   const [destino, setDestino] = useState('')
   const [fotoTablero, setFotoTablero] = useState('')
   const [nota, setNota] = useState('')
@@ -72,12 +73,14 @@ export function MaderaForm({
         placa: placa.trim(),
         kmInicio: km,
         toneladas: ton,
+        origen: origen.trim(),
         destino: destino.trim(),
         fotoTableroUrl: fotoTablero,
         nota: nota.trim(),
         registradoPor, registradoNombre,
       })
       recordarPlaca(placa)
+      if (origen) recordarValor('PREDIO', origen)
       if (destino) recordarValor('DESTINO_MADERA', destino)
       setInfo(`Viaje abierto: ${placa.trim()} · ${km} km · ${ton} t.`)
       onGuardado()
@@ -112,6 +115,11 @@ export function MaderaForm({
           <label><span>Toneladas cargadas <span style={{ color: '#b3261e' }}>*</span></span>
             <input type="number" min={0} step="any" inputMode="decimal" value={toneladas}
                    onChange={(e) => setToneladas(e.target.value)} disabled={busy} />
+          </label>
+
+          <label>¿De dónde sale?
+            <CampoLista tipo="PREDIO" value={origen} onChange={setOrigen} disabled={busy}
+                        placeholder="LA ESPERANZA" />
           </label>
 
           <label>¿Para dónde va?

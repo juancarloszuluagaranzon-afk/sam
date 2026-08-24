@@ -56,7 +56,7 @@ export function MaderaTab() {
   const lista = useMemo(() => {
     const q = busca.trim().toLowerCase()
     if (!q) return viajes
-    return viajes.filter((v) => `${v.placa} ${v.destino} ${v.registradoNombre}`.toLowerCase().includes(q))
+    return viajes.filter((v) => `${v.placa} ${v.origen} ${v.destino} ${v.registradoNombre}`.toLowerCase().includes(q))
   }, [viajes, busca])
 
   const vivos = useMemo(() => lista.filter((v) => v.estado !== 'ANULADO'), [lista])
@@ -162,7 +162,7 @@ export function MaderaTab() {
         <label className="rep-fecha">Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
         <label className="rep-fecha">Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
       </div>
-      <input type="search" className="labores-search-input" placeholder="Buscar placa, destino…"
+      <input type="search" className="labores-search-input" placeholder="Buscar placa, origen, destino…"
              value={busca} onChange={(e) => setBusca(e.target.value)} style={{ margin: '12px 0' }} />
 
       {cargando && <p className="muted-text">Cargando viajes…</p>}
@@ -178,6 +178,7 @@ export function MaderaTab() {
               <header className="madera-card__top">
                 <div>
                   <strong>{v.placa || 'sin placa'}</strong>
+                  {v.origen && <><span className="madera-card__flecha">·</span>{v.origen}</>}
                   {v.destino && <><span className="madera-card__flecha">→</span><strong>{v.destino}</strong></>}
                 </div>
                 <span className={`madera-chip madera-chip--${abierto ? 'en_ruta' : v.estado.toLowerCase()}`}>

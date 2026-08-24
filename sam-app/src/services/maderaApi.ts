@@ -25,6 +25,8 @@ export interface MaderaViaje {
   /** Sale de la resta, no se guarda: así no puede contradecir a las dos fotos. */
   kmRecorridos: number | null
   toneladas: number | null
+  /** De donde sale el camion. */
+  origen: string
   destino: string
   fotoTableroUrl: string
   fotoTableroFinUrl: string
@@ -47,6 +49,7 @@ function mapViaje(r: Record<string, unknown>): MaderaViaje {
     kmFin: kmF,
     kmRecorridos: kmI != null && kmF != null && kmF >= kmI ? kmF - kmI : null,
     toneladas: num('toneladas'),
+    origen: txt('predio'),
     destino: txt('destino'),
     fotoTableroUrl: txt('foto_tablero_url'),
     fotoTableroFinUrl: txt('foto_tablero_fin_url'),
@@ -72,6 +75,7 @@ export async function crearViaje(input: {
   placa: string
   kmInicio: number
   toneladas: number
+  origen?: string
   destino?: string
   fotoTableroUrl: string
   nota?: string
@@ -82,6 +86,7 @@ export async function crearViaje(input: {
     placa: input.placa,
     km_inicio: input.kmInicio,
     toneladas: input.toneladas,
+    predio: input.origen || null,
     destino: input.destino || null,
     foto_tablero_url: input.fotoTableroUrl || null,
     nota: input.nota || null,

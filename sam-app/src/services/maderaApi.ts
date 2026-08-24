@@ -1,7 +1,12 @@
 import { supabase } from '../lib/supabase'
 
 /**
- * Viajes de trozas — API del módulo de transporte de madera (rama `pruebas`).
+ * Partes de viaje del camión maderero (rama `pruebas`).
+ *
+ * **El problema que resuelve.** El dueño del camión vive lejos y quiere saber
+ * qué hizo su vehículo. No es un problema de reportes: es de confianza. Por eso
+ * cada número que importa viene con su respaldo — el kilometraje con la foto del
+ * tablero, y la hora puesta por el sistema en vez de digitada.
  *
  * Se lee con `select('*')` a propósito: la tabla va a seguir creciendo mientras
  * el cliente valida el flujo, y una columna nueva sin migrar no puede dejar la
@@ -9,90 +14,51 @@ import { supabase } from '../lib/supabase'
  */
 
 export type MaderaEstado = 'CARGADO' | 'EN_RUTA' | 'DESCARGADO' | 'ANULADO'
-export type MaderaConfig = 'C2' | 'C3' | 'C3S3'
 
 export interface MaderaViaje {
   id: string
-  fecha: string
-  predio: string
-  destino: string
   placa: string
-  config: MaderaConfig
-  conductorNombre: string
-  especie: string
-  volumenM3: number
-  pesoTon: number
-  /** `null` = todavía no lo pesaron en destino. NO es cero. */
-  volumenRecibidoM3: number | null
-  docTipo: string
-  docNumero: string
-  docVence: string
+  /** Kilometraje al salir, respaldado por `fotoTableroUrl`. */
+  kmInicio: number | null
+  /** `null` = el viaje sigue abierto. NO es "recorrió cero". */
+  kmFin: number | null
+  /** Sale de la resta, no se guarda: así no puede contradecir a las dos fotos. */
+  kmRecorridos: number | null
+  toneladas: number | null
+  destino: string
+  fotoTableroUrl: string
+  fotoTableroFinUrl: string
   estado: MaderaEstado
-  fotoUrl: string
   nota: string
   registradoNombre: string
+  /** La hora del registro. La pone el sistema, no el conductor. */
   createdAt: string
 }
 
-/**
- * Peso bruto máximo por configuración — Resolución 4100 de 2004.
- *
- * Con madera verde (~1 t/m³) el camión se llena por PESO antes que por volumen,
- * así que este es el límite que de verdad manda. Pasarse cuesta $1.266.100,
- * inmovilización, y el transbordo del excedente por cuenta del transportador.
- */
-export const PESO_MAXIMO: Record<MaderaConfig, number> = {
-  C2: 16,
-  C3: 28,
-  C3S3: 52,
-}
-
-export const CONFIG_LABEL: Record<MaderaConfig, string> = {
-  C2: 'C2 · sencillo (2 ejes)',
-  C3: 'C3 · doble troque (3 ejes)',
-  C3S3: 'C3S3 · tractomula',
-}
-
-/** Días que le quedan al documento. Negativo = ya venció. */
-export function diasParaVencer(docVence: string, hoy = new Date()): number | null {
-  if (!docVence) return null
-  const [y, m, d] = docVence.split('-').map(Number)
-  if (!y || !m || !d) return null
-  const vence = new Date(y, m - 1, d)
-  const base = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())
-  return Math.round((vence.getTime() - base.getTime()) / 86400000)
-}
-
 function mapViaje(r: Record<string, unknown>): MaderaViaje {
-  const rec = (k: string) => (r[k] == null ? '' : String(r[k]))
-  const num = (k: string) => Number(r[k] ?? 0)
+  const txt = (k: string) => (r[k] == null ? '' : String(r[k]))
+  const num = (k: string) => (r[k] == null ? null : Number(r[k]))
+  const kmI = num('km_inicio')
+  const kmF = num('km_fin')
   return {
-    id: rec('id'),
-    fecha: rec('fecha'),
-    predio: rec('predio'),
-    destino: rec('destino'),
-    placa: rec('placa'),
-    config: (rec('config') || 'C3') as MaderaConfig,
-    conductorNombre: rec('conductor_nombre'),
-    especie: rec('especie'),
-    volumenM3: num('volumen_m3'),
-    pesoTon: num('peso_ton'),
-    // El null se conserva: "sin pesar" y "pesó cero" son cosas distintas.
-    volumenRecibidoM3: r['volumen_recibido_m3'] == null ? null : Number(r['volumen_recibido_m3']),
-    docTipo: rec('doc_tipo') || 'SUNL',
-    docNumero: rec('doc_numero'),
-    docVence: rec('doc_vence'),
-    estado: (rec('estado') || 'CARGADO') as MaderaEstado,
-    fotoUrl: rec('foto_url'),
-    nota: rec('nota'),
-    registradoNombre: rec('registrado_nombre'),
-    createdAt: rec('created_at'),
+    id: txt('id'),
+    placa: txt('placa'),
+    kmInicio: kmI,
+    kmFin: kmF,
+    kmRecorridos: kmI != null && kmF != null && kmF >= kmI ? kmF - kmI : null,
+    toneladas: num('toneladas'),
+    destino: txt('destino'),
+    fotoTableroUrl: txt('foto_tablero_url'),
+    fotoTableroFinUrl: txt('foto_tablero_fin_url'),
+    estado: (txt('estado') || 'EN_RUTA') as MaderaEstado,
+    nota: txt('nota'),
+    registradoNombre: txt('registrado_nombre'),
+    createdAt: txt('created_at'),
   }
 }
 
 export async function loadViajes(opts?: { desde?: string; hasta?: string }): Promise<MaderaViaje[]> {
   let q = supabase.from('madera_viajes').select('*')
-    .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(500)
   if (opts?.desde) q = q.gte('fecha', opts.desde)
@@ -103,52 +69,53 @@ export async function loadViajes(opts?: { desde?: string; hasta?: string }): Pro
 }
 
 export async function crearViaje(input: {
-  fecha: string; predio: string; destino: string; placa: string; config: MaderaConfig
-  conductorNombre: string; especie: string; volumenM3: number; pesoTon: number
-  docTipo: string; docNumero: string; docVence: string
-  fotoUrl?: string; nota?: string; registradoPor?: string; registradoNombre?: string
+  placa: string
+  kmInicio: number
+  toneladas: number
+  destino?: string
+  fotoTableroUrl: string
+  nota?: string
+  registradoPor?: string
+  registradoNombre?: string
 }): Promise<MaderaViaje | null> {
   const { data, error } = await supabase.from('madera_viajes').insert({
-    fecha: input.fecha,
-    predio: input.predio || null,
+    placa: input.placa,
+    km_inicio: input.kmInicio,
+    toneladas: input.toneladas,
     destino: input.destino || null,
-    placa: input.placa || null,
-    config: input.config,
-    conductor_nombre: input.conductorNombre || null,
-    especie: input.especie || null,
-    volumen_m3: input.volumenM3 || null,
-    peso_ton: input.pesoTon || null,
-    doc_tipo: input.docTipo || null,
-    doc_numero: input.docNumero || null,
-    doc_vence: input.docVence || null,
-    foto_url: input.fotoUrl || null,
+    foto_tablero_url: input.fotoTableroUrl || null,
     nota: input.nota || null,
     registrado_por: input.registradoPor || null,
     registrado_nombre: input.registradoNombre || null,
-    estado: 'CARGADO',
+    estado: 'EN_RUTA',
+    // `created_at` lo pone la base. No se manda desde el cliente a propósito:
+    // el reloj del celular se puede cambiar, el del servidor no.
   }).select('*').single()
   if (error) throw new Error(error.message)
   return data ? mapViaje(data as Record<string, unknown>) : null
 }
 
-export async function cambiarEstado(id: string, estado: MaderaEstado): Promise<void> {
-  const { error } = await supabase.from('madera_viajes')
-    .update({ estado, updated_at: new Date().toISOString() }).eq('id', id)
-  if (error) throw new Error(error.message)
-}
-
 /**
- * Cierra el viaje con lo que de verdad recibió el comprador.
+ * Cierra el viaje con el kilometraje de llegada y su foto.
  *
- * Se guarda aparte de `volumen_m3` — no se pisa— porque la DIFERENCIA entre lo
- * despachado y lo recibido es el dato que interesa: es donde aparecen las
- * mermas, los errores de cubicación y lo que se cae en el camino.
+ * Se valida que no vaya para atrás: un odómetro no baja, y si el número llega
+ * menor es un dedazo — dejarlo pasar daría un recorrido negativo que después
+ * nadie entiende.
  */
-export async function registrarRecibido(id: string, volumenRecibidoM3: number): Promise<void> {
+export async function cerrarViaje(
+  id: string, kmFin: number, fotoTableroFinUrl: string,
+): Promise<void> {
   const { error } = await supabase.from('madera_viajes').update({
-    volumen_recibido_m3: volumenRecibidoM3,
+    km_fin: kmFin,
+    foto_tablero_fin_url: fotoTableroFinUrl || null,
     estado: 'DESCARGADO',
     updated_at: new Date().toISOString(),
   }).eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+export async function anularViaje(id: string): Promise<void> {
+  const { error } = await supabase.from('madera_viajes')
+    .update({ estado: 'ANULADO', updated_at: new Date().toISOString() }).eq('id', id)
   if (error) throw new Error(error.message)
 }

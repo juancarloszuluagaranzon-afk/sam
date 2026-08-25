@@ -15,6 +15,7 @@ import { NAV_OPCIONES, MAX_NAV, NAV_DEFECTO, leerNav, guardarNav, restaurarNav }
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
+import { MaquinasInactivas } from '../components/MaquinasInactivas'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
 import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo, loadAuditoria, type AsignacionAuditoria } from '../services/samApi'
@@ -421,7 +422,9 @@ export function SupervisorView({
     session?.role === 'supervisor' || session?.role === 'owner' || session?.role === 'administracion'
 
   const {
-    equipmentForm, updateEquipmentForm, isEquipmentFormOpen, setIsEquipmentFormOpen,
+    equipmentForm, updateEquipmentForm, isEquipmentFormOpen,
+    editando: editandoEquipo, nuevaMaquina, cerrarFormulario: cerrarFormEquipo,
+    editarMaquina, cambiarActivo: cambiarActivoEquipo, borrarMaquina,
     handleCreateEquipment,
   } = useEquipmentForm()
 
@@ -3336,17 +3339,20 @@ export function SupervisorView({
                 <button
                   className="usuarios-form-toggle"
                   type="button"
-                  onClick={() => setIsEquipmentFormOpen((v) => !v)}
+                  onClick={() => (isEquipmentFormOpen ? cerrarFormEquipo() : nuevaMaquina())}
                 >
-                  <span>+ Crear equipo</span>
+                  <span>{isEquipmentFormOpen
+                    ? (editandoEquipo ? `Editando ${editandoEquipo}` : 'Cerrar')
+                    : '+ Crear equipo'}</span>
                   <span className={`chevron ${isEquipmentFormOpen ? 'chevron--up' : ''}`}>▾</span>
                 </button>
               </div>
               {isEquipmentFormOpen && <form className="form-grid-block" style={{ marginTop: '1rem' }} onSubmit={handleCreateEquipment}>
                 <div className="form-grid">
                   <label>
-                    Codigo
+                    Codigo {editandoEquipo && <span className="field-optional">(no se puede cambiar)</span>}
                     <input
+                      disabled={!!editandoEquipo}
                       value={equipmentForm.code}
                       onChange={(event) => updateEquipmentForm('code', event.target.value)}
                       placeholder="TRC-001"
@@ -3479,10 +3485,37 @@ export function SupervisorView({
                             : 'Sin labor activa'}
                         </span>
                       </div>
+                      {/* La tarjeta entera abre el consumo, asi que estos botones
+                          tienen que parar la propagacion o se abre el modal encima. */}
+                      <div className="equipment-card-actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="inline-button"
+                          onClick={() => void editarMaquina(item.code)}
+                          disabled={busy}
+                        >&#9998; Editar</button>
+                        <button
+                          type="button"
+                          className="inline-button"
+                          onClick={() => void cambiarActivoEquipo(item.code, false)}
+                          disabled={busy}
+                          title="Deja de aparecer en los selectores. No se pierde el historial."
+                        >Desactivar</button>
+                        <button
+                          type="button"
+                          className="inline-button maestro-delete-btn"
+                          onClick={() => void borrarMaquina(item.code, item.name)}
+                          disabled={busy}
+                          title="Solo se puede si la maquina nunca se uso"
+                        >Eliminar</button>
+                      </div>
                     </article>
                   )
                 })}
               </div>
+              {/* Las apagadas van aparte y solo si hay: sin esto, desactivar una
+                  maquina la hace desaparecer y no queda desde donde prenderla. */}
+              <MaquinasInactivas recargarKey={sortedEquipment.length} />
             </article>
           </section>
         ) : null}

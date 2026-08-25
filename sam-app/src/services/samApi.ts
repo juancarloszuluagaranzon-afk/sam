@@ -802,6 +802,31 @@ export async function loadAppUsers(): Promise<{
   }
 }
 
+/**
+ * Todas las maquinas, INCLUIDAS las desactivadas.
+ *
+ * `loadEquipment` filtra por `activo = true` porque alimenta los selectores de
+ * toda la app. Pero la pantalla que las administra necesita ver las apagadas o
+ * desactivar seria un viaje sin vuelta: la maquina desaparece de la lista y ya
+ * no hay desde donde volver a prenderla.
+ */
+export async function loadEquipmentTodos(): Promise<Array<Equipment & { active: boolean }>> {
+  const { data, error } = await supabase
+    .from('equipos')
+    .select('codigo,nombre,marca,modelo,numero_serie,placa,activo')
+    .order('codigo')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((row) => ({
+    code: String(row.codigo),
+    name: String(row.nombre),
+    brand: row.marca ? String(row.marca) : undefined,
+    model: row.modelo ? String(row.modelo) : undefined,
+    serial: row.numero_serie ? String(row.numero_serie) : undefined,
+    plate: row.placa ? String(row.placa) : undefined,
+    active: row.activo !== false,
+  }))
+}
+
 export async function loadEquipment(): Promise<{
   data: Equipment[]
   source: Source
@@ -889,6 +914,109 @@ export async function createEquipment(input: CreateEquipmentInput) {
     name: String(data.nombre),
   } as Equipment
 }
+
+/**
+ * La ficha completa de UNA maquina, para editarla.
+ *
+ * `loadEquipment` solo trae codigo, nombre, marca, modelo, serie y placa porque
+ * alimenta selectores en toda la app y se carga en cada arranque. La ficha
+ * entera se pide solo cuando alguien abre a editar.
+ */
+export async function loadEquipoDetalle(codigo: string): Promise<CreateEquipmentInput | null> {
+  const { data, error } = await supabase
+    .from('equipos').select('*').eq('codigo', codigo).maybeSingle()
+  if (error || !data) return null
+  const row = data as Record<string, unknown>
+  const txt = (k: string) => (row[k] == null ? '' : String(row[k]))
+  return {
+    code: txt('codigo'),
+    name: txt('nombre'),
+    type: (txt('tipo') || 'tractor') as CreateEquipmentInput['type'],
+    state: (txt('estado') || 'activo') as CreateEquipmentInput['state'],
+    brand: txt('marca'),
+    model: txt('modelo'),
+    year: row['año'] == null ? null : Number(row['año']),
+    plate: txt('placa'),
+    serialNumber: txt('numero_serie'),
+    notes: txt('observaciones'),
+    active: row['activo'] !== false,
+  }
+}
+
+/**
+ * Actualiza la ficha. El CODIGO no se toca: es la llave con la que la nombran
+ * `asignaciones`, `insumos_kardex`, `equipo_metas` y `equipo_horas_mes`, y
+ * ninguna de esas es una FK con cascada de actualizacion. Cambiarlo dejaria todo
+ * el historial apuntando a una maquina que ya no existe, sin avisar.
+ */
+export async function updateEquipment(codigo: string, input: CreateEquipmentInput): Promise<void> {
+  const payload: Record<string, unknown> = {
+    nombre: input.name,
+    tipo: input.type,
+    estado: input.state,
+    marca: input.brand || null,
+    modelo: input.model || null,
+    ['año']: input.year,
+    placa: input.plate || null,
+    numero_serie: input.serialNumber || null,
+    observaciones: input.notes || null,
+    activo: input.active,
+    updated_at: new Date().toISOString(),
+  }
+  const { error } = await supabase.from('equipos').update(payload).eq('codigo', codigo)
+  if (error) throw new Error(error.message || 'No se pudo actualizar la maquina')
+}
+
+/** Prende o apaga la maquina. Apagada deja de ofrecerse en los selectores. */
+export async function setEquipmentActivo(codigo: string, activo: boolean): Promise<void> {
+  const { error } = await supabase.from('equipos')
+    .update({ activo, updated_at: new Date().toISOString() }).eq('codigo', codigo)
+  if (error) throw new Error(error.message || 'No se pudo cambiar el estado')
+}
+
+/** Cuanto historial cuelga de una maquina: decide si se puede borrar o solo apagar. */
+export async function contarUsoEquipo(codigo: string): Promise<{
+  asignaciones: number; kardex: number; horas: number; combustible: number; total: number
+}> {
+  const cuenta = async (tabla: string) => {
+    const { count } = await supabase.from(tabla)
+      .select('*', { count: 'exact', head: true }).eq('equipo_codigo', codigo)
+    return count ?? 0
+  }
+  const [asignaciones, kardex, horas, combustible] = await Promise.all([
+    cuenta('asignaciones'), cuenta('insumos_kardex'),
+    cuenta('equipo_horas_mes'), cuenta('combustible_externo'),
+  ])
+  return {
+    asignaciones, kardex, horas, combustible,
+    total: asignaciones + kardex + horas + combustible,
+  }
+}
+
+/**
+ * Borra la maquina DE VERDAD, y solo si nunca se uso.
+ *
+ * No es paranoia: `equipo_metas` (la referencia 2025) y `equipo_horas_mes` (el
+ * cierre mensual de horometros) cuelgan con ON DELETE CASCADE, asi que borrar
+ * una maquina con historial se lleva por delante justo los datos que mas
+ * costaron. Y `asignaciones` la nombra SIN FK: quedarian labores apuntando a un
+ * codigo que ya no existe, sin que nada avise.
+ *
+ * Por eso lo normal es DESACTIVAR. Borrar es para la maquina que se creo con un
+ * dedazo hace cinco minutos.
+ */
+export async function deleteEquipment(codigo: string): Promise<void> {
+  const uso = await contarUsoEquipo(codigo)
+  if (uso.total > 0) {
+    throw new Error(
+      `Esta maquina ya tiene historial (${uso.asignaciones} labores, ${uso.kardex} movimientos de inventario). `
+      + 'No se puede borrar sin perderlo: desactivala en vez de borrarla.',
+    )
+  }
+  const { error } = await supabase.from('equipos').delete().eq('codigo', codigo)
+  if (error) throw new Error(error.message || 'No se pudo eliminar la maquina')
+}
+
 
 // ───────────────────────── Catálogo de labores (CRUD) ─────────────────────────
 // La tabla `labores` la crea la migración 20260615_labores_catalogo. El cliente

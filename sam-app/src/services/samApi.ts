@@ -809,7 +809,7 @@ export async function loadEquipment(): Promise<{
   try {
     const { data, error } = await supabase
       .from('equipos')
-      .select('codigo,nombre,marca,modelo,numero_serie')
+      .select('codigo,nombre,marca,modelo,numero_serie,placa')
       .eq('activo', true)
       .order('codigo')
 
@@ -821,6 +821,7 @@ export async function loadEquipment(): Promise<{
       brand: row.marca ? String(row.marca) : undefined,
       model: row.modelo ? String(row.modelo) : undefined,
       serial: row.numero_serie ? String(row.numero_serie) : undefined,
+      plate: row.placa ? String(row.placa) : undefined,
     }))
     void db.equipment.clear().then(() => db.equipment.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }

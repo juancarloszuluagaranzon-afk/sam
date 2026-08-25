@@ -34,11 +34,26 @@ export function FlotaForm({
   conductorId?: string
   conductorNombre?: string
 }) {
-  const { busy, setBusy, setError, setInfo } = useAppData()
+  const { session, equipment, busy, setBusy, setError, setInfo } = useAppData()
+
+  /**
+   * La placa sale sola de la máquina asignada al conductor.
+   *
+   * La camioneta está en el maestro de equipos como cualquier tractor, así que
+   * `equipo_codigo` del usuario ya dice cuál le toca. Se propone, **no se
+   * impone**: el campo sigue siendo editable porque un día le puede tocar otro
+   * carro y no vamos a bloquearle el registro por eso.
+   */
+  const placaPorDefecto = (() => {
+    const codigo = session?.equipmentCode
+    if (!codigo) return ''
+    const eq = equipment.find((e) => e.code === codigo)
+    return eq?.plate || codigo
+  })()
 
   const [f, setF] = useState({
     fecha: hoyISO(),
-    vehiculo: '',
+    vehiculo: placaPorDefecto,
     tipoServicio: 'ESCOLTA',
     centroCosto: '',
     procesoSolicitante: '',

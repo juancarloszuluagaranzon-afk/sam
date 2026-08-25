@@ -37,6 +37,8 @@ export interface Equipment {
   brand?: string
   model?: string
   serial?: string
+  /** Solo la llevan los equipos tipo `vehiculo`; un tractor no tiene placa. */
+  plate?: string
 }
 
 export interface CreateEquipmentInput {

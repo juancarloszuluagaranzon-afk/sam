@@ -72,76 +72,138 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
     if (lista.length === 0) { setError('No hay servicios en el rango elegido.'); return }
     setBusy(true); setError('')
     try {
-      const { utils, writeFile } = await import('xlsx')
+      // Se usa exceljs y no xlsx porque la version comunitaria de xlsx NO
+      // ESCRIBE ESTILOS: probado, el borde y la negrita se descartan al guardar.
+      // Y una planilla que se imprime y se entrega sin la cuadricula se ve a
+      // medio hacer. Va con import() para que no entre al bundle inicial.
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      const ws = wb.addWorksheet('CDA-F-68', {
+        pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
+      })
 
-      // La planilla sale CALCADA del formato en papel: membrete, codigos de
-      // normalizacion y las 16 columnas en el mismo orden. Se arma con
-      // `aoa_to_sheet` y no con `json_to_sheet` porque este ultimo solo sabe
-      // hacer una fila de encabezados — no sabe de celdas combinadas ni de un
-      // bloque de membrete encima.
-      const filas: (string | number)[][] = [
-        [MEMBRETE.empresa, 'FORMATO', '', '', '', '', '', '', '', '', '', '', '', '', `Codigo: ${MEMBRETE.codigo}`, ''],
-        ['', MEMBRETE.titulo, '', '', '', '', '', '', '', '', '', '', '', '', `Version: ${MEMBRETE.version}`, ''],
-        ['', '', '', '', '', '', '', '', '', '', '', '', '', '', `Fecha: ${MEMBRETE.fecha}`, ''],
-        ['', '', '', '', '', '', '', '', '', '', '', '', '', '', `Pag: ${MEMBRETE.pagina}`, ''],
-        [],
-        ['FECHA', 'TIPO SERVICIO', 'CENTRO DE COSTO', 'PROCESO SOLICITANTE', 'NOMBRE DEL PASAJERO',
-         'ORIGEN', 'DESTINO', 'HORA SALIDA ORIGEN', 'HORA LLEGADA DESTINO', 'HORA SALIDA DESTINO',
-         'HORA LLEGADA ORIGEN', 'HORA DE ESPERA', '# PEAJES', 'OTROS GASTOS', 'TOTAL KM', 'OBSERVACION'],
-      ]
-      for (const s of lista) {
-        filas.push([
+      const COLS = [10, 14, 14, 16, 20, 14, 14, 11, 11, 11, 11, 10, 8, 11, 9, 26]
+      ws.columns = COLS.map((w) => ({ width: w }))
+
+      const linea = { style: 'thin' as const, color: { argb: 'FF000000' } }
+      const marco = { top: linea, left: linea, bottom: linea, right: linea }
+      const centro = { vertical: 'middle' as const, horizontal: 'center' as const, wrapText: true }
+
+      // Membrete: nombre a la izquierda, titulo al centro, codigos a la derecha.
+      ws.mergeCells('A1:A4')
+      ws.mergeCells('B1:N1')
+      ws.mergeCells('B2:N4')
+      for (const f of [1, 2, 3, 4]) ws.mergeCells(f, 15, f, 16)
+
+      ws.getCell('A1').value = MEMBRETE.empresa
+      ws.getCell('A1').font = { bold: true, size: 16 }
+      ws.getCell('B1').value = 'FORMATO'
+      ws.getCell('B1').font = { bold: true, size: 11 }
+      ws.getCell('B2').value = MEMBRETE.titulo
+      ws.getCell('B2').font = { bold: true, size: 13 }
+      ws.getCell('O1').value = 'Codigo: ' + MEMBRETE.codigo
+      ws.getCell('O2').value = 'Version: ' + MEMBRETE.version
+      ws.getCell('O3').value = 'Fecha: ' + MEMBRETE.fecha
+      ws.getCell('O4').value = 'Pag: ' + MEMBRETE.pagina
+      for (const f of [1, 2, 3, 4]) {
+        ws.getCell(f, 15).font = { size: 9 }
+        ws.getCell(f, 15).alignment = { vertical: 'middle', horizontal: 'left' }
+      }
+      for (const ref of ['A1', 'B1', 'B2']) ws.getCell(ref).alignment = centro
+      for (let f = 1; f <= 4; f += 1) {
+        for (let c = 1; c <= 16; c += 1) ws.getCell(f, c).border = marco
+      }
+
+      const CAB = ['FECHA', 'TIPO SERVICIO', 'CENTRO DE COSTO', 'PROCESO SOLICITANTE',
+        'NOMBRE DEL PASAJERO', 'ORIGEN', 'DESTINO', 'HORA SALIDA ORIGEN', 'HORA LLEGADA DESTINO',
+        'HORA SALIDA DESTINO', 'HORA LLEGADA ORIGEN', 'HORA DE ESPERA', '# PEAJES',
+        'OTROS GASTOS', 'TOTAL KM', 'OBSERVACION']
+      const filaCab = 6
+      ws.getRow(filaCab).height = 34
+      CAB.forEach((txt, i) => {
+        const cel = ws.getCell(filaCab, i + 1)
+        cel.value = txt
+        cel.font = { bold: true, size: 8 }
+        cel.alignment = centro
+        cel.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9F3ED' } }
+        cel.border = marco
+      })
+
+      lista.forEach((s, i) => {
+        const f = filaCab + 1 + i
+        const valores = [
           fmtFecha(s.fecha), s.tipoServicio ?? '', s.centroCosto ?? '', s.procesoSolicitante ?? '',
           s.nombrePasajero ?? '', s.origen ?? '', s.destino ?? '',
           s.horaSalidaOrigen ?? '', s.horaLlegadaDestino ?? '', s.horaSalidaDestino ?? '',
           s.horaLlegadaOrigen ?? '', s.horaEspera ?? '',
-          // En el papel estas casillas van en BLANCO cuando no hubo peaje ni
-          // gasto. Un 0 se lee como un dato registrado, y no lo es.
+          // Cero peajes es casilla VACIA: un 0 impreso se lee como dato contado.
           s.numPeajes || '', s.otrosGastos || '', s.totalKm ?? 0, s.observacion ?? '',
-        ])
+        ]
+        valores.forEach((v, c) => {
+          const cel = ws.getCell(f, c + 1)
+          cel.value = v as string | number
+          cel.font = { size: 9 }
+          cel.border = marco
+          cel.alignment = {
+            vertical: 'middle',
+            wrapText: c === 15,
+            horizontal: c >= 7 && c <= 14 ? 'center' : 'left',
+          }
+        })
+      })
+
+      // Filas vacias hasta completar el alto del formato, para que la cuadricula
+      // se vea igual aunque el rango tenga pocos viajes.
+      const MINIMO = 18
+      for (let i = lista.length; i < MINIMO; i += 1) {
+        const f = filaCab + 1 + i
+        for (let c = 1; c <= 16; c += 1) ws.getCell(f, c).border = marco
       }
-      // El total de kilometros, como la suma escrita a mano al pie de la columna.
-      const totalKm = lista.reduce((acc, s) => acc + (s.totalKm ?? 0), 0)
-      filas.push([])
-      filas.push(['', '', '', '', '', '', '', '', '', '', '', '', '', 'TOTAL', totalKm, ''])
-      filas.push([])
-      filas.push([`OBSERVACION: ${lista.map((s) => s.observacion).filter(Boolean).join(' · ')}`])
 
-      const ws = utils.aoa_to_sheet(filas)
-      // Combinadas del membrete: el logo a la izquierda, el titulo al centro y
-      // el bloque de codigos a la derecha, igual que el formato impreso.
-      ws['!merges'] = [
-        { s: { r: 0, c: 0 }, e: { r: 3, c: 0 } },    // empresa
-        { s: { r: 0, c: 1 }, e: { r: 0, c: 13 } },   // FORMATO
-        { s: { r: 1, c: 1 }, e: { r: 3, c: 13 } },   // titulo del formato
-        { s: { r: 0, c: 14 }, e: { r: 0, c: 15 } },  // codigo
-        { s: { r: 1, c: 14 }, e: { r: 1, c: 15 } },  // version
-        { s: { r: 2, c: 14 }, e: { r: 2, c: 15 } },  // fecha
-        { s: { r: 3, c: 14 }, e: { r: 3, c: 15 } },  // pagina
-        { s: { r: filas.length - 1, c: 0 }, e: { r: filas.length - 1, c: 15 } },
+      const filaTotal = filaCab + 1 + Math.max(lista.length, MINIMO)
+      ws.getCell(filaTotal, 14).value = 'TOTAL'
+      ws.getCell(filaTotal, 14).font = { bold: true, size: 9 }
+      ws.getCell(filaTotal, 14).alignment = { horizontal: 'right' }
+      ws.getCell(filaTotal, 14).border = marco
+      ws.getCell(filaTotal, 15).value = lista.reduce((a, s) => a + (s.totalKm ?? 0), 0)
+      ws.getCell(filaTotal, 15).font = { bold: true, size: 10 }
+      ws.getCell(filaTotal, 15).alignment = centro
+      ws.getCell(filaTotal, 15).border = marco
+
+      const filaObs = filaTotal + 2
+      ws.mergeCells(filaObs, 1, filaObs + 1, 16)
+      const obs = ws.getCell(filaObs, 1)
+      obs.value = 'OBSERVACION: ' + lista.map((s) => s.observacion).filter(Boolean).join(' - ')
+      obs.font = { size: 9 }
+      obs.alignment = { vertical: 'top', wrapText: true }
+      obs.border = marco
+
+      // Segunda hoja: lo que el papel no tiene pero el sistema si guarda.
+      const ws2 = wb.addWorksheet('Respaldo')
+      ws2.columns = [
+        { header: 'FECHA', key: 'f', width: 12 }, { header: 'ORIGEN', key: 'o', width: 16 },
+        { header: 'DESTINO', key: 'd', width: 16 }, { header: 'VEHICULO', key: 'v', width: 12 },
+        { header: 'CONDUCTOR', key: 'c', width: 26 }, { header: 'FIRMA (quien)', key: 'fq', width: 22 },
+        { header: 'FIRMA (url)', key: 'fu', width: 40 }, { header: 'EVIDENCIA (url)', key: 'eu', width: 40 },
+        { header: 'ESTADO', key: 'e', width: 12 },
       ]
-      // Anchos: los de hora y numero angostos, los de texto libre amplios.
-      ws['!cols'] = [10, 14, 14, 16, 20, 14, 14, 11, 11, 11, 11, 10, 8, 11, 9, 26]
-        .map((w) => ({ wch: w }))
+      ws2.getRow(1).font = { bold: true }
+      lista.forEach((s) => ws2.addRow({
+        f: fmtFecha(s.fecha), o: s.origen ?? '', d: s.destino ?? '', v: s.vehiculo ?? '',
+        c: s.conductorNombre ?? '', fq: s.firmaNombre ?? '', fu: s.firmaUrl ?? '',
+        eu: s.evidenciaUrl ?? '', e: s.estado,
+      }))
 
-      const wb = utils.book_new()
-      utils.book_append_sheet(wb, ws, 'CDA-F-68')
-
-      // Segunda hoja con lo que el papel NO tiene pero el sistema si guarda.
-      // Va aparte para que la planilla imprimible quede calcada del formato.
-      utils.book_append_sheet(wb, utils.json_to_sheet(lista.map((s) => ({
-        'FECHA': fmtFecha(s.fecha),
-        'ORIGEN': s.origen ?? '',
-        'DESTINO': s.destino ?? '',
-        'VEHICULO': s.vehiculo ?? '',
-        'CONDUCTOR': s.conductorNombre ?? '',
-        'FIRMA (quien)': s.firmaNombre ?? '',
-        'FIRMA (url)': s.firmaUrl ?? '',
-        'EVIDENCIA (url)': s.evidenciaUrl ?? '',
-        'ESTADO': s.estado,
-      }))), 'Respaldo')
-
-      writeFile(wb, `CDA-F-68-${desde}-a-${hasta}.xlsx`)
+      const buffer = await wb.xlsx.writeBuffer()
+      const url = URL.createObjectURL(new Blob([buffer], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'CDA-F-68-' + desde + '-a-' + hasta + '.xlsx'
+      a.click()
+      // Sin esto el navegador retiene el archivo completo en memoria.
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
       setInfo(`Exportado: ${lista.length} servicios.`)
     } catch {
       setError('No se pudo generar el Excel.')
@@ -174,11 +236,13 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       <div className="rep-toolbar">
         <label className="rep-fecha">Desde<input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /></label>
         <label className="rep-fecha">Hasta<input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /></label>
-        {esAdmin && (
-          <button type="button" className="primary-button rep-export" onClick={() => void exportarExcel()} disabled={busy || loading || lista.length === 0}>
-            ⬇ Excel (CDA-F-68)
-          </button>
-        )}
+        {/* El conductor tambien descarga: es EL que entrega la planilla, y
+            pedirle que le escriba a administracion para que se la manden es
+            ponerle un intermediario a su propio trabajo. Solo ve los suyos,
+            porque `conductorScope` ya acota la consulta. */}
+        <button type="button" className="primary-button rep-export" onClick={() => void exportarExcel()} disabled={busy || loading || lista.length === 0}>
+          ⬇ Excel (CDA-F-68)
+        </button>
       </div>
       <input type="search" className="labores-search-input" placeholder="Buscar origen, destino, pasajero, placa…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ margin: '12px 0' }} />
 

@@ -16,6 +16,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import { BotonManual } from '../components/BotonManual'
 import { DictateButton } from '../components/DictateButton'
 import { DictateInlineButton } from '../components/DictateInlineButton'
+import { AvisoHorometro } from '../components/AvisoHorometro'
 import { dictationErrorMessage } from '../hooks/useDictation'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
@@ -1713,6 +1714,9 @@ export function OperatorView({
                             />
                           </div>
                         </label>
+                        {/* Solo avisa: no toca el guardado. Cerrar la labor es
+                            por donde la gente cobra y no se puede arriesgar. */}
+                        <AvisoHorometro equipoCodigo={a.equipmentCode} valor={draft?.horometroFinal} />
                         <label className="finish-notes">
                           <div className="dictate-field-header">
                             <span>Observaciones</span>

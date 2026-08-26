@@ -8668,3 +8668,16 @@ td.planilla-vacio:hover { background: #fde047; }
 .maquina-fila__datos { display: flex; flex-direction: column; gap: 2px; }
 .maquina-fila__acts { display: flex; flex-wrap: wrap; gap: 6px; }
 .maquina-fila__acts .inline-button { font-size: 0.78rem; padding: 4px 10px; }
+
+/* Aviso del horometro: amarillo de advertencia, no rojo de error. No impide
+   guardar — el operario decide si el tablero dice eso o si se equivoco. */
+.aviso-horometro {
+  margin: 6px 0 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-left: 3px solid var(--color-status-progress);
+  background: var(--color-status-progress-bg);
+  color: var(--color-status-progress);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}

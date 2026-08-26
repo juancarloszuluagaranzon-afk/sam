@@ -1149,6 +1149,12 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Crear los códigos que se marcan (V, T, NP…)</div>
                   </div>
                 </button>
+                {/* ⚠️ TARIFAS NO SE MUESTRA EN PRODUCCION — decision del cliente.
+                    La pantalla y su API viajaron en el merge y funcionan, pero la
+                    entrada al menu queda comentada hasta que el cliente cargue las
+                    tarifas REALES: hoy la tabla solo tiene 27 filas de ejemplo, y
+                    una tarifa de mentira en una pantalla de precios es peor que no
+                    tener la pantalla. Para habilitarla: descomentar este bloque.
                 <button
                   className={`more-sheet__item ${supervisorTab === 'tarifas' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('tarifas'); setMoreMenuOpen(false) }}
@@ -1159,6 +1165,7 @@ export function SupervisorView({
                     <div className="more-sheet__desc">Precio por hectárea de cada labor</div>
                   </div>
                 </button>
+                */}
                 <button
                   className={`more-sheet__item ${supervisorTab === 'inicio' ? 'more-sheet__item--active' : ''}`}
                   onClick={() => { setSupervisorTab('inicio'); setMoreMenuOpen(false) }}

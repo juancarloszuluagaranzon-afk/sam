@@ -95,7 +95,9 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           s.nombrePasajero ?? '', s.origen ?? '', s.destino ?? '',
           s.horaSalidaOrigen ?? '', s.horaLlegadaDestino ?? '', s.horaSalidaDestino ?? '',
           s.horaLlegadaOrigen ?? '', s.horaEspera ?? '',
-          s.numPeajes ?? 0, s.otrosGastos ?? 0, s.totalKm ?? 0, s.observacion ?? '',
+          // En el papel estas casillas van en BLANCO cuando no hubo peaje ni
+          // gasto. Un 0 se lee como un dato registrado, y no lo es.
+          s.numPeajes || '', s.otrosGastos || '', s.totalKm ?? 0, s.observacion ?? '',
         ])
       }
       // El total de kilometros, como la suma escrita a mano al pie de la columna.

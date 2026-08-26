@@ -922,6 +922,37 @@ export async function createEquipment(input: CreateEquipmentInput) {
  * alimenta selectores en toda la app y se carga en cada arranque. La ficha
  * entera se pide solo cuando alguien abre a editar.
  */
+/**
+ * Corrige los galones de un tanqueo mal registrado.
+ *
+ * Va por RPC y no por varios `update` seguidos porque cambiar la cantidad obliga
+ * a rehacer el `saldo` de todos los movimientos posteriores de esa bodega — el
+ * saldo es una foto del stock en ese instante, no una formula. Si eso se corta a
+ * la mitad, el kardex queda peor que antes. La funcion lo hace todo o nada.
+ *
+ * NO avala: el tanqueo corregido sigue PENDIENTE del segundo par de ojos.
+ */
+export async function corregirTanqueo(input: {
+  id: string
+  galones: number
+  motivo: string
+  editadoPor: string
+}): Promise<{ antes: number; despues: number; filas: number }> {
+  const { data, error } = await supabase.rpc('corregir_tanqueo', {
+    p_id: input.id,
+    p_galones: input.galones,
+    p_motivo: input.motivo,
+    p_editado_por: input.editadoPor,
+  })
+  if (error) throw new Error(error.message || 'No se pudo corregir el tanqueo')
+  const r = (data ?? {}) as Record<string, unknown>
+  return {
+    antes: Number(r.antes ?? 0),
+    despues: Number(r.despues ?? input.galones),
+    filas: Number(r.filas_recalculadas ?? 0),
+  }
+}
+
 export async function loadEquipoDetalle(codigo: string): Promise<CreateEquipmentInput | null> {
   const { data, error } = await supabase
     .from('equipos').select('*').eq('codigo', codigo).maybeSingle()

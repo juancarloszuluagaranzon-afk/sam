@@ -8654,3 +8654,17 @@ td.planilla-vacio:hover { background: #fde047; }
   background: var(--color-bg-muted); border: 1px solid var(--color-border);
   font-size: 0.86rem;
 }
+
+/* Maestro de maquinas: una fila por ficha, sin la info operativa de la pantalla
+   del dueno. Las apagadas se atenuan pero se siguen viendo, o desactivar seria
+   un viaje sin vuelta. */
+.maquina-fila {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap;
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--color-bg-card); border: 1px solid var(--color-border);
+}
+.maquina-fila--apagada { opacity: 0.62; background: var(--color-bg-muted); }
+.maquina-fila__datos { display: flex; flex-direction: column; gap: 2px; }
+.maquina-fila__acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.maquina-fila__acts .inline-button { font-size: 0.78rem; padding: 4px 10px; }

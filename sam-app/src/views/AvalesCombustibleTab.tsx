@@ -6,6 +6,7 @@ import {
 } from '../services/samApi'
 import { DESTINO_LABEL, type CombustibleEstado, type CombustibleExterno, type Traslado, type Bodega } from '../domain/sam'
 import { fmtCantidad } from '../lib/cantidad'
+import { corregirTanqueo } from '../services/samApi'
 import { fmtDia, fmtFechaHora } from '../lib/fechas'
 import { Ayuda } from '../components/Ayuda'
 
@@ -39,6 +40,11 @@ export function AvalesCombustibleTab() {
   const [revAbasto, setRevAbasto] = useState<{ t: Traslado; aprobar: boolean } | null>(null)
   const [cargando, setCargando] = useState(true)
   const [revisar, setRevisar] = useState<{ ev: CombustibleExterno; aprobar: boolean } | null>(null)
+  /** Tanqueo que se esta corrigiendo, con los galones nuevos y el porque. */
+  const [corrigiendo, setCorrigiendo] = useState<CombustibleExterno | null>(null)
+  const [galonesNuevos, setGalonesNuevos] = useState('')
+  const [motivoCorreccion, setMotivoCorreccion] = useState('')
+  const [confirmaGrande, setConfirmaGrande] = useState(false)
   const [nota, setNota] = useState('')
 
   const refresh = useCallback(async () => {
@@ -62,6 +68,38 @@ export function AvalesCombustibleTab() {
    * existir. Lo suyo lo avala el dueño o administración, que ven esta misma
    * pantalla.
    */
+  /** Por encima de esto la cifra no cabe en ningun carro: se pide segundo toque. */
+  const GALONES_SOSPECHOSO = 200
+
+  async function guardarCorreccion() {
+    if (!corrigiendo) return
+    const g = Number(galonesNuevos)
+    if (!Number.isFinite(g) || g <= 0) { setError('Escribe cuantos galones eran de verdad.'); return }
+    if (!motivoCorreccion.trim()) { setError('Escribe por que se corrige: queda en la auditoria.'); return }
+    // La misma trampa del registro original: en las tirillas de ZEUSS el punto
+    // es DECIMAL. Corregir no puede ser la puerta por donde vuelve a entrar.
+    if (g > GALONES_SOSPECHOSO && !confirmaGrande) {
+      setConfirmaGrande(true)
+      setError(`¿${fmtCantidad(g, 'galón')} galones? Es mucho mas de lo que carga un carro. `
+        + 'Si lo copiaste de la tirilla, ojo: ahi el punto es DECIMAL. Si de verdad son esos, vuelve a tocar Corregir.')
+      return
+    }
+    setBusy(true); setError('')
+    try {
+      const r = await corregirTanqueo({
+        id: corrigiendo.id, galones: g,
+        motivo: motivoCorreccion.trim(),
+        editadoPor: session?.name || session?.id || 'desconocido',
+      })
+      setInfo(`Corregido: de ${fmtCantidad(r.antes, 'galón')} a ${fmtCantidad(r.despues, 'galón')} galones. `
+        + 'Sigue pendiente del aval.')
+      setCorrigiendo(null); setGalonesNuevos(''); setMotivoCorreccion(''); setConfirmaGrande(false)
+      await refresh()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo corregir el tanqueo.')
+    } finally { setBusy(false) }
+  }
+
   const esMio = useCallback(
     (registradoPor?: string) => !!registradoPor && registradoPor === session?.id,
     [session?.id],
@@ -245,6 +283,21 @@ export function AvalesCombustibleTab() {
                         🔒 Lo registraste tú: lo avala el dueño o administración.
                       </p>
                     )}
+                    {/* Corregir no es avalar: se puede sobre el propio registro,
+                        porque arreglar un dedazo no es firmarse a si mismo. */}
+                    {e.estado === 'PENDIENTE' && (
+                      <div className="aval-row__acts">
+                        <button type="button" className="inline-button" disabled={busy}
+                          onClick={() => {
+                            setCorrigiendo(e)
+                            setGalonesNuevos(String(e.galones))
+                            setMotivoCorreccion('')
+                            setConfirmaGrande(false)
+                          }}>
+                          &#9998; Corregir galones
+                        </button>
+                      </div>
+                    )}
                     {e.estado === 'PENDIENTE' && !esMio(e.registradoPor) && (
                       <div className="aval-row__acts">
                         <button type="button" className="inline-button" onClick={() => { setRevisar({ ev: e, aprobar: false }); setNota('') }} disabled={busy}>
@@ -317,6 +370,51 @@ export function AvalesCombustibleTab() {
               <button type="button" className="inline-button" onClick={() => setRevisar(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void confirmar()} disabled={busy}>
                 {busy ? 'Guardando…' : revisar.aprobar ? 'Avalar' : 'Rechazar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {corrigiendo && (
+        <div className="modal-overlay open" onClick={() => { if (!busy) setCorrigiendo(null) }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="labor-detail-header">
+              <div><p className="eyebrow">Combustible</p><h3>Corregir los galones</h3></div>
+              <button type="button" className="modal-close-btn" onClick={() => setCorrigiendo(null)}
+                      disabled={busy} aria-label="Cerrar">&#x2715;</button>
+            </div>
+
+            <p className="subtle-copy">
+              Registrado por <strong>{corrigiendo.registradoNombre || corrigiendo.registradoPor}</strong>
+              {corrigiendo.estacion ? ` en ${corrigiendo.estacion}` : ''} ·
+              hoy dice <strong>{fmtCantidad(corrigiendo.galones, 'galón')} galones</strong>.
+            </p>
+
+            <label style={{ display: 'block', marginTop: 10 }}>Galones de verdad
+              <input type="number" min={0} step="any" inputMode="decimal" autoFocus
+                     value={galonesNuevos}
+                     onChange={(e) => { setGalonesNuevos(e.target.value); setConfirmaGrande(false) }}
+                     disabled={busy} />
+            </label>
+
+            <label style={{ display: 'block', marginTop: 10 }}>¿Por qué se corrige?
+              <textarea rows={2} value={motivoCorreccion} disabled={busy}
+                        placeholder="Se leyo la tirilla: eran 62,255 y no 62255"
+                        onChange={(e) => setMotivoCorreccion(e.target.value)} />
+            </label>
+
+            <p className="subtle-copy" style={{ marginTop: 8 }}>
+              Se corrige el registro y se rehacen los saldos de la bodega, todo junto.
+              <strong> No lo avala:</strong> sigue pendiente para que alguien lo revise.
+              Queda en la auditoría quién lo cambió y por qué.
+            </p>
+
+            <div className="modal-footer">
+              <button type="button" className="inline-button" onClick={() => setCorrigiendo(null)} disabled={busy}>
+                Cancelar
+              </button>
+              <button type="button" className="primary-button" onClick={() => void guardarCorreccion()} disabled={busy}>
+                {busy ? 'Guardando…' : confirmaGrande ? `Sí, son ${galonesNuevos} galones` : 'Corregir'}
               </button>
             </div>
           </div>

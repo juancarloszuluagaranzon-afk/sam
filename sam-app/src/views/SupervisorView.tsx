@@ -15,6 +15,7 @@ import { NAV_OPCIONES, MAX_NAV, NAV_DEFECTO, leerNav, guardarNav, restaurarNav }
 import { useAssignmentActions } from '../hooks/useAssignmentActions'
 import { useAssignmentForm } from '../hooks/useAssignmentForm'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
+import { MaquinasInactivas } from '../components/MaquinasInactivas'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
 import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo, loadAuditoria, type AsignacionAuditoria } from '../services/samApi'
@@ -51,11 +52,13 @@ import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
+import { MaderaTab } from './MaderaTab'
+import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'novedadtipos'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -419,7 +422,9 @@ export function SupervisorView({
     session?.role === 'supervisor' || session?.role === 'owner' || session?.role === 'administracion'
 
   const {
-    equipmentForm, updateEquipmentForm, isEquipmentFormOpen, setIsEquipmentFormOpen,
+    equipmentForm, updateEquipmentForm, isEquipmentFormOpen,
+    editando: editandoEquipo, nuevaMaquina, cerrarFormulario: cerrarFormEquipo,
+    editarMaquina, cambiarActivo: cambiarActivoEquipo, borrarMaquina,
     handleCreateEquipment,
   } = useEquipmentForm()
 
@@ -1131,6 +1136,8 @@ export function SupervisorView({
                     barra —arranca en Labores— así que sin esta entrada nunca
                     llegaba al tablero del dueño. Y una entrada suelta solo para
                     Consumo dejaba las dos caras en sitios distintos. */}
+                {/* Las tarifas viven al lado de Facturación porque es lo que
+                    las usa: sin precio no se puede armar ninguna factura. */}
                 {/* Va al lado de la Planilla, que es donde se usan. */}
                 <button
                   className={`more-sheet__item ${supervisorTab === 'novedadtipos' ? 'more-sheet__item--active' : ''}`}
@@ -1140,6 +1147,16 @@ export function SupervisorView({
                   <div>
                     <div className="more-sheet__label">Novedades de la planilla</div>
                     <div className="more-sheet__desc">Crear los códigos que se marcan (V, T, NP…)</div>
+                  </div>
+                </button>
+                <button
+                  className={`more-sheet__item ${supervisorTab === 'tarifas' ? 'more-sheet__item--active' : ''}`}
+                  onClick={() => { setSupervisorTab('tarifas'); setMoreMenuOpen(false) }}
+                >
+                  <span className="more-sheet__icon">💲</span>
+                  <div>
+                    <div className="more-sheet__label">Tarifas</div>
+                    <div className="more-sheet__desc">Precio por hectárea de cada labor</div>
                   </div>
                 </button>
                 <button
@@ -1207,6 +1224,18 @@ export function SupervisorView({
                     <div>
                       <div className="more-sheet__label">Flota / Escolta</div>
                       <div className="more-sheet__desc">Servicios de camionetas (CDA-F-68) · firma y evidencia · Excel</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'madera' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('madera'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">🪵</span>
+                    <div>
+                      <div className="more-sheet__label">Viajes de trozas</div>
+                      <div className="more-sheet__desc">Transporte de madera · salvoconducto que vence · despachado vs recibido</div>
                     </div>
                   </button>
                 )}
@@ -1515,7 +1544,7 @@ export function SupervisorView({
                   )
                 })}
                 <button
-                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' || supervisorTab === 'madera' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -2211,6 +2240,10 @@ export function SupervisorView({
           <NovedadTiposTab />
         ) : null}
 
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'tarifas' ? (
+          <TarifasTab />
+        ) : null}
+
         {supervisorTab === 'inicio' ? (
           <>
             <div className="tablero-caras">
@@ -2230,6 +2263,7 @@ export function SupervisorView({
         ) : null}
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}
+        {supervisorTab === 'madera' ? <MaderaTab /> : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
           <InsumosResumenTab />
@@ -3305,17 +3339,20 @@ export function SupervisorView({
                 <button
                   className="usuarios-form-toggle"
                   type="button"
-                  onClick={() => setIsEquipmentFormOpen((v) => !v)}
+                  onClick={() => (isEquipmentFormOpen ? cerrarFormEquipo() : nuevaMaquina())}
                 >
-                  <span>+ Crear equipo</span>
+                  <span>{isEquipmentFormOpen
+                    ? (editandoEquipo ? `Editando ${editandoEquipo}` : 'Cerrar')
+                    : '+ Crear equipo'}</span>
                   <span className={`chevron ${isEquipmentFormOpen ? 'chevron--up' : ''}`}>▾</span>
                 </button>
               </div>
               {isEquipmentFormOpen && <form className="form-grid-block" style={{ marginTop: '1rem' }} onSubmit={handleCreateEquipment}>
                 <div className="form-grid">
                   <label>
-                    Codigo
+                    Codigo {editandoEquipo && <span className="field-optional">(no se puede cambiar)</span>}
                     <input
+                      disabled={!!editandoEquipo}
                       value={equipmentForm.code}
                       onChange={(event) => updateEquipmentForm('code', event.target.value)}
                       placeholder="TRC-001"
@@ -3448,10 +3485,37 @@ export function SupervisorView({
                             : 'Sin labor activa'}
                         </span>
                       </div>
+                      {/* La tarjeta entera abre el consumo, asi que estos botones
+                          tienen que parar la propagacion o se abre el modal encima. */}
+                      <div className="equipment-card-actions" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className="inline-button"
+                          onClick={() => void editarMaquina(item.code)}
+                          disabled={busy}
+                        >&#9998; Editar</button>
+                        <button
+                          type="button"
+                          className="inline-button"
+                          onClick={() => void cambiarActivoEquipo(item.code, false)}
+                          disabled={busy}
+                          title="Deja de aparecer en los selectores. No se pierde el historial."
+                        >Desactivar</button>
+                        <button
+                          type="button"
+                          className="inline-button maestro-delete-btn"
+                          onClick={() => void borrarMaquina(item.code, item.name)}
+                          disabled={busy}
+                          title="Solo se puede si la maquina nunca se uso"
+                        >Eliminar</button>
+                      </div>
                     </article>
                   )
                 })}
               </div>
+              {/* Las apagadas van aparte y solo si hay: sin esto, desactivar una
+                  maquina la hace desaparecer y no queda desde donde prenderla. */}
+              <MaquinasInactivas recargarKey={sortedEquipment.length} />
             </article>
           </section>
         ) : null}

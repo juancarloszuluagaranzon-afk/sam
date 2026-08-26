@@ -834,7 +834,7 @@ export async function loadEquipment(): Promise<{
   try {
     const { data, error } = await supabase
       .from('equipos')
-      .select('codigo,nombre,marca,modelo,numero_serie,placa')
+      .select('codigo,nombre,marca,modelo,numero_serie,placa,tipo')
       .eq('activo', true)
       .order('codigo')
 
@@ -847,6 +847,7 @@ export async function loadEquipment(): Promise<{
       model: row.modelo ? String(row.modelo) : undefined,
       serial: row.numero_serie ? String(row.numero_serie) : undefined,
       plate: row.placa ? String(row.placa) : undefined,
+      type: row.tipo ? (String(row.tipo) as Equipment['type']) : undefined,
     }))
     void db.equipment.clear().then(() => db.equipment.bulkPut(mapped))
     return { data: mapped, source: 'supabase' }

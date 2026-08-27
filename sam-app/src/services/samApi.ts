@@ -1138,7 +1138,10 @@ export async function loadMapas(): Promise<MapaConfig[]> {
   const { data, error } = await supabase
     .from('mapas')
     .select('*')
+    // El orden lo manda el jefe; el nombre solo desempata y ubica a los que
+    // todavia no tienen posicion (van de ultimos, no de primeros).
     .eq('activo', true)
+    .order('orden', { ascending: true, nullsFirst: false })
     .order('nombre')
   if (error || !data) return []
   return (data as Record<string, unknown>[]).map((row) => {
@@ -1151,6 +1154,7 @@ export async function loadMapas(): Promise<MapaConfig[]> {
       minzoom: Number(row.minzoom ?? 10),
       maxzoom: Number(row.maxzoom ?? 16),
       activo: row.activo == null ? true : Boolean(row.activo),
+      orden: row.orden == null ? null : Number(row.orden),
     }
   })
 }
@@ -1182,6 +1186,9 @@ export async function createMapa(input: {
     id: String(data.id), nombre: String(data.nombre), tilesBase: String(data.tiles_base),
     bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])],
     minzoom: Number(data.minzoom), maxzoom: Number(data.maxzoom), activo: Boolean(data.activo ?? true),
+    // Un mapa recien creado no tiene posicion: se va al final hasta que el jefe
+    // lo ubique. Nace en null a proposito, no en un numero inventado.
+    orden: data.orden == null ? null : Number(data.orden),
   }
 }
 
@@ -1220,7 +1227,8 @@ export async function deleteMapa(id: string): Promise<void> {
 
 // Carga TODOS los mapas (incluidos inactivos) para la pestaña de gestión.
 export async function loadMapasAdmin(): Promise<MapaConfig[]> {
-  const { data, error } = await supabase.from('mapas').select('*').order('nombre')
+  const { data, error } = await supabase.from('mapas').select('*')
+    .order('orden', { ascending: true, nullsFirst: false }).order('nombre')
   if (error || !data) return []
   return (data as Record<string, unknown>[]).map((row) => {
     const b = Array.isArray(row.bounds) ? (row.bounds as number[]) : [0, 0, 0, 0]
@@ -1230,8 +1238,27 @@ export async function loadMapasAdmin(): Promise<MapaConfig[]> {
       bounds: [Number(b[0]), Number(b[1]), Number(b[2]), Number(b[3])] as [number, number, number, number],
       minzoom: Number(row.minzoom ?? 10), maxzoom: Number(row.maxzoom ?? 16),
       activo: row.activo == null ? true : Boolean(row.activo),
+      orden: row.orden == null ? null : Number(row.orden),
     }
   })
+}
+
+/**
+ * Guarda el orden de la lista completa: cada mapa queda en `(posicion+1) * 10`.
+ *
+ * Se renumera TODA la lista y no se intercambian dos valores, porque los mapas
+ * recien agregados llegan con `orden` en null y un intercambio entre un numero y
+ * un null deja la lista a medio ordenar. Solo se escriben las filas que de
+ * verdad cambiaron: son ocho, pero es la diferencia entre un toque y ocho.
+ */
+export async function guardarOrdenMapas(mapas: MapaConfig[]): Promise<void> {
+  const cambios = mapas
+    .map((m, i) => ({ id: m.id, orden: (i + 1) * 10, antes: m.orden }))
+    .filter((c) => c.orden !== c.antes)
+  for (const c of cambios) {
+    const { error } = await supabase.from('mapas').update({ orden: c.orden }).eq('id', c.id)
+    if (error) throw new Error(error.message || 'No se pudo guardar el orden de los mapas')
+  }
 }
 
 // ─────────── Motivación / rendimiento (migración 20260712120000) ───────────

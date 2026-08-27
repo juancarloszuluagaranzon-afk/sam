@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { updateMapa, deleteMapa, loadMapasAdmin, createMapa } from '../services/samApi'
+import { updateMapa, deleteMapa, loadMapasAdmin, createMapa, guardarOrdenMapas } from '../services/samApi'
 import { metaDescarga, formatoBytes } from '../lib/mapaOffline'
 import { listarCartografias, type CartografiaRemota } from '../services/fieldmapsApi'
 import { MapaFormModal } from '../components/MapaFormModal'
@@ -75,6 +75,30 @@ export function MapasTab() {
     } finally { setBusy(false) }
   }
 
+  /**
+   * Sube o baja un mapa en la lista.
+   *
+   * Se mueve en pantalla PRIMERO y se guarda despues: el jefe acomoda ocho mapas
+   * a punta de flechas y esperar el viaje al servidor en cada toque haria que la
+   * lista se sienta trabada. Si el guardado falla se recarga del servidor, que es
+   * la verdad.
+   */
+  async function mover(i: number, hacia: -1 | 1) {
+    const j = i + hacia
+    if (j < 0 || j >= mapas.length) return
+    const nuevo = mapas.slice()
+    ;[nuevo[i], nuevo[j]] = [nuevo[j], nuevo[i]]
+    setMapas(nuevo)
+    setError('')
+    try {
+      await guardarOrdenMapas(nuevo)
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo guardar el orden. (${e?.message ?? 'error'})`)
+      void refresh()
+    }
+  }
+
   async function toggleActivo(m: MapaConfig) {
     setBusy(true); setError('')
     try {
@@ -132,6 +156,9 @@ export function MapasTab() {
         superponen, y cada uno se descarga para uso <strong>sin señal</strong>. Cuando la
         cartografía cambie, usa <strong>🔄 Reemplazar</strong>: el mapa conserva su identidad y
         los equipos verán el aviso de re-descarga.</p>
+        <p>El <strong>orden de esta lista es el que ve todo el mundo</strong> en el visor:
+        acomódalo con <strong>↑ ↓</strong> y deja de primeros los que más se abren. Un mapa
+        recién agregado entra de último hasta que lo ubiques.</p>
       </Ayuda>
 
       {procesados.length > 0 && (
@@ -155,7 +182,7 @@ export function MapasTab() {
         <p className="muted-text">Cargando…</p>
       ) : (
         <div className="inv-list">
-          {mapas.map((m) => {
+          {mapas.map((m, i) => {
             const meta = metaDescarga(m.id)
             return (
               <div key={m.id} className={`inv-row${m.activo ? '' : ' inv-row--off'}`}>
@@ -166,6 +193,10 @@ export function MapasTab() {
                   {meta && <span className="inv-cat inv-cat--comb">⬇ en este equipo ({formatoBytes(meta.bytes)})</span>}
                 </div>
                 <div className="inv-row__actions">
+                  <button type="button" className="inline-button" onClick={() => void mover(i, -1)}
+                          disabled={busy || i === 0} title="Subir en la lista" aria-label={`Subir ${m.nombre}`}>↑</button>
+                  <button type="button" className="inline-button" onClick={() => void mover(i, 1)}
+                          disabled={busy || i === mapas.length - 1} title="Bajar en la lista" aria-label={`Bajar ${m.nombre}`}>↓</button>
                   <button type="button" className="inline-button" onClick={() => { setEditTarget(m); setFormOpen(true) }} disabled={busy} title="La cartografía cambió: apuntar este mapa a la versión nueva">
                     🔄 Reemplazar
                   </button>

@@ -175,6 +175,10 @@ export interface MapaConfig {
   minzoom: number
   maxzoom: number
   activo: boolean
+  // Posicion en la lista, la dicta el jefe. `null` = sin ubicar todavia: va al
+  // final. No se rellena con un numero por defecto porque eso afirmaria que
+  // alguien lo puso ahi.
+  orden: number | null
 }
 
 // Catálogo de ingenios/compradores. El `id` es un slug estable (ej.

@@ -126,7 +126,11 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           }))
           if (b64) {
             const idImg = wb.addImage({ base64: b64, extension: 'png' })
-            ws.addImage(idImg, { tl: { col: 0.15, row: 0.2 }, ext: { width: 110, height: 55 } })
+            // El PNG es CUADRADO (447x447). Ponerlo 110x55 lo aplasta, asi que
+            // va proporcionado y las cuatro filas del membrete se hacen mas
+            // altas para darle sitio.
+            ws.addImage(idImg, { tl: { col: 0.12, row: 0.15 }, ext: { width: 72, height: 72 } })
+            for (const f of [1, 2, 3, 4]) ws.getRow(f).height = 20
             ws.getCell('A1').value = ''
           }
         }

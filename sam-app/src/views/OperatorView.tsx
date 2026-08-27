@@ -22,6 +22,7 @@ import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { MapButton } from '../components/MapButton'
 import { fmtCantidad } from '../lib/cantidad'
+import { unidadDeLabor } from '../lib/texto'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
@@ -104,8 +105,15 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   return 'Operador'
 }
 
-function formatArea(value: number) {
-  return `${value.toFixed(2)} ha`
+/**
+ * El area de UNA labor, con su unidad.
+ *
+ * Las acequias van en hectometros: cavar una acequia es longitud, no area.
+ * Recibe el nombre de la labor porque es lo unico que viaja en todas las
+ * pantallas — `asignaciones` guarda `labor_nombre` como texto suelto.
+ */
+function formatArea(value: number, laborNombre?: string | null) {
+  return `${value.toFixed(2)} ${unidadDeLabor(laborNombre)}`
 }
 
 function normalizeText(value: string) {
@@ -1495,12 +1503,12 @@ export function OperatorView({
                       ) : (
                         <span className="kind-badge libre">Campo</span>
                       )}{' '}
-                      - {formatArea(assignment.area)}
+                      - {formatArea(assignment.area, assignment.labor)}
                       {progress.hasProgress && (
                         <>
                           {' · '}
                           <span className="partial-inline">
-                            {formatArea(progress.executedTotal)} realizadas · Falta {formatArea(progress.remaining)}
+                            {formatArea(progress.executedTotal, assignment.labor)} realizadas · Falta {formatArea(progress.remaining, assignment.labor)}
                           </span>
                         </>
                       )}
@@ -1529,10 +1537,10 @@ export function OperatorView({
                       <div>
                         <strong>{a.haciendaName} - {a.suerte}</strong>
                         <span className="subtle-copy">
-                          {a.labor} - {formatArea(a.area)}
+                          {a.labor} - {formatArea(a.area, a.labor)}
                           {getSuerteProgress(a, assignments).hasProgress && (
                             <> · <strong style={{ color: 'var(--color-status-progress)' }}>
-                              Falta {formatArea(getSuerteProgress(a, assignments).remaining)}
+                              Falta {formatArea(getSuerteProgress(a, assignments).remaining, a.labor)}
                             </strong></>
                           )}
                         </span>
@@ -1564,7 +1572,7 @@ export function OperatorView({
                           <div className="partial-progress-banner">
                             <strong>Retomar labor parcial</strong>
                             <span>
-                              Acumulado previo: {formatArea(a.executedArea)} de {formatArea(a.area)}. Faltan {formatArea(startProgress.remaining)}. Pon el horómetro inicial de esta sesión para retomar; al terminar registras el horómetro final.
+                              Acumulado previo: {formatArea(a.executedArea, a.labor)} de {formatArea(a.area, a.labor)}. Faltan {formatArea(startProgress.remaining, a.labor)}. Pon el horómetro inicial de esta sesión para retomar; al terminar registras el horómetro final.
                             </span>
                           </div>
                         )}
@@ -1626,11 +1634,11 @@ export function OperatorView({
                       const remainingArea = progress.remaining
                       const sessionMax = isPartialContinuation ? remainingArea : a.area
                       const completeRegistraStr = isPartialContinuation
-                        ? `Se registra el faltante (${formatArea(remainingArea)})`
-                        : `Se registran ${formatArea(a.area)}`
+                        ? `Se registra el faltante (${formatArea(remainingArea, a.labor)})`
+                        : `Se registran ${formatArea(a.area, a.labor)}`
                       const bannerText = progress.hasSharedProgress
-                        ? `Otro operario ya realizó ${formatArea(progress.sharedExecuted)}${progress.ownExecuted > 0 ? ` y tú ${formatArea(progress.ownExecuted)}` : ''}. Faltan ${formatArea(remainingArea)} de ${formatArea(a.area)}. Ingresa cuánto hiciste en esta sesión.`
-                        : `Acumulado previo: ${formatArea(a.executedArea)} de ${formatArea(a.area)}. Faltan ${formatArea(remainingArea)}. Ingresa cuánto hiciste en esta sesión.`
+                        ? `Otro operario ya realizó ${formatArea(progress.sharedExecuted, a.labor)}${progress.ownExecuted > 0 ? ` y tú ${formatArea(progress.ownExecuted, a.labor)}` : ''}. Faltan ${formatArea(remainingArea, a.labor)} de ${formatArea(a.area, a.labor)}. Ingresa cuánto hiciste en esta sesión.`
+                        : `Acumulado previo: ${formatArea(a.executedArea, a.labor)} de ${formatArea(a.area, a.labor)}. Faltan ${formatArea(remainingArea, a.labor)}. Ingresa cuánto hiciste en esta sesión.`
                       const bannerTitle = progress.hasSharedProgress
                         ? 'Labor compartida con otro operario'
                         : 'Continuando labor parcial'
@@ -2007,7 +2015,7 @@ export function OperatorView({
                         ) : (
                           <span className="kind-badge libre">Campo</span>
                         )}{' '}
-                        - {assignment.executedArea.toFixed(2)} ha
+                        - {assignment.executedArea.toFixed(2)} {unidadDeLabor(assignment.labor)}
                       </span>
                     </div>
                     <div className="movement-side">

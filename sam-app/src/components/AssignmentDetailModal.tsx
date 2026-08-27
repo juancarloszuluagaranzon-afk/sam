@@ -1,6 +1,7 @@
 import { memo, useEffect, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
 import { formatTime, getIngenioName } from '../services/samApi'
+import { unidadDeLabor } from '../lib/texto'
 
 interface EditPatch {
   executedArea?: number
@@ -184,7 +185,7 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
                 value={executedArea}
                 onChange={(e) => setExecutedArea(e.target.value)}
               />
-              <small>Planificadas: {a.area.toFixed(2)} ha</small>
+              <small>Planificadas: {a.area.toFixed(2)} {unidadDeLabor(a.labor)}</small>
             </label>
           ) : (
             <>

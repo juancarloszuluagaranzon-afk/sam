@@ -1,3 +1,4 @@
+import { unidadDeLabor } from '../lib/texto'
 import { useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import SearchableSelect from '../components/SearchableSelect'
@@ -319,7 +320,7 @@ export function RealizadasTab() {
                 </div>
                 <div className="realizada-item__meta">
                   <span className="realizada-item__area">
-                    {g.executed.toFixed(2)} / {g.asignada.toFixed(2)} ha
+                    {g.executed.toFixed(2)} / {g.asignada.toFixed(2)} {unidadDeLabor(g.labor)}
                   </span>
                   <span className="realizada-item__date">
                     {g.firstDate === g.lastDate
@@ -357,7 +358,7 @@ export function RealizadasTab() {
               {detail.firstDate === detail.lastDate
                 ? fmtDate(detail.lastDate)
                 : `${fmtDate(detail.firstDate)}–${fmtDate(detail.lastDate)}`}{' '}
-              · <strong>{detail.executed.toFixed(2)} / {detail.asignada.toFixed(2)} ha</strong>
+              · <strong>{detail.executed.toFixed(2)} / {detail.asignada.toFixed(2)} {unidadDeLabor(detail.labor)}</strong>
               {detail.rows.length > 1 ? ` · ${detail.rows.length} parciales` : ''}
             </p>
             <ul className="revisadas-list">

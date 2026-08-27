@@ -1062,6 +1062,7 @@ function mapLabor(row: Record<string, unknown>): Labor {
     activa: row.activa == null ? true : Boolean(row.activa),
     tipo: tipo === 'MANUAL' ? 'MANUAL' : 'MECANIZADA',
     metaHaDia: row.meta_ha_dia == null ? null : Number(row.meta_ha_dia),
+    unidad: String(row.unidad ?? 'ha').toLowerCase() === 'hm' ? 'hm' : 'ha',
   }
 }
 

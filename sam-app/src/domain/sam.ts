@@ -144,6 +144,12 @@ export interface Labor {
   // Meta de hectáreas por día (productividad esperada). Alimenta el KPI de
   // rendimiento quincenal del operario. null/0 = sin meta (no se mide).
   metaHaDia?: number | null
+  /**
+   * En qué se mide esta labor. Casi todas van en hectáreas; las ACEQUIAS van en
+   * **hectómetros** (100 m lineales), porque cavar una acequia es un trabajo de
+   * longitud y "3 hectáreas de acequia" no significa nada.
+   */
+  unidad?: 'ha' | 'hm'
 }
 
 // Config del refuerzo motivacional que ve el operario cuando su rendimiento

@@ -1,3 +1,4 @@
+import { unidadDeLabor } from '../lib/texto'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
@@ -764,7 +765,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     <div className="revisadas-item__main">
                       <strong>{a.haciendaName} · {a.suerte}</strong>
                       <span>
-                        {a.labor} · {a.area.toFixed(2)} ha ·{' '}
+                        {a.labor} · {a.area.toFixed(2)} {unidadDeLabor(a.labor)} ·{' '}
                         {a.status === 'EN_PROCESO' ? 'En proceso' : a.status === 'PARCIAL' ? 'Parcial' : 'Completada'}
                         {a.finishedAt ? ` · ${formatTime(a.finishedAt)}` : a.startedAt ? ` · ${formatTime(a.startedAt)}` : ''}
                       </span>

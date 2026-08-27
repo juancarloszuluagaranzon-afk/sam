@@ -218,7 +218,27 @@ La lista se mueve **en pantalla primero** y se guarda después: son ocho mapas a
 punta de flechas y esperar el viaje al servidor en cada toque se siente trabado.
 Si el guardado falla, se recarga del servidor, que es la verdad.
 
-### Orden vigente
+### Orden vigente (27-ago-2026)
 
-RIOPAILA CASTILLA · RIOPAILA — Plano detallado · RISARALDA · SAN CARLOS ·
-MAYAGUEZ NORTE · MAYAGUEZ SUR · PICHICHI · PICHICHI SUR · CASTILLA
+RIOPAILA CASTILLA · RIOPAILA AGRICOLA · RISARALDA · SAN CARLOS · MAYAGUEZ ·
+**PICHICHI SUR · PICHICHI CENTRO · PICHICHI NORTE** · CASTILLA
+
+## Reemplazar cartografia: la fila se conserva, NO se borra y se crea
+
+PICHICHI paso de dos planos a tres sectores. 🔴 **El `id` de la fila es lo que
+amarra la descarga offline de cada equipo**: borrando y creando, a quien ya lo
+tenia bajado se le queda un mapa huerfano en el celular. Actualizando
+`tiles_base`/`bounds` sobre la misma fila, ve el aviso de re-descarga y sigue
+siendo el mismo mapa. Es lo que hace 🔄 **Reemplazar** en la pantalla.
+
+⚠️ **Los bounds identifican un plano mejor que su nombre de archivo.** El
+"PLANO GENERAL SECTOR NORTE" se habia registrado como MAYAGUEZ NORTE, y sus
+coordenadas (lat 3,646–4,346) eran las del PICHICHI viejo (3,625–4,347): era la
+version nueva de esa misma hoja. **Antes de registrar un plano, comparar sus
+bounds con los que ya estan** — un solape casi exacto significa que es un
+reemplazo, no un mapa nuevo. Igual salio que el "MAPA GRAL SUR" traia bounds
+identicos a los de PICHICHI SUR.
+
+⚠️ El conteo de paginas que reporta el lector de archivos **no es el del PDF**:
+anunciaba 137 y 201 paginas para planos que `pypdf` lee como **una sola**. Antes
+de avisar que faltan hojas, contarlas de verdad.

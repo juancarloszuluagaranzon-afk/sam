@@ -199,3 +199,26 @@ y el general.
 
 ⚠️ El de CASTILLA vino de un PDF de **39 páginas** y el worker procesa **una
 sola**. Si el cliente esperaba las 39 hojas, eso sigue pendiente.
+
+## El orden de la lista lo manda el jefe (27-ago-2026)
+
+`mapas.orden` + flechas **↑ ↓** en Mas → Catálogos → Mapas. Antes salía por
+nombre, un orden que no significa nada para quien la usa: el mapa que más se abre
+podía quedar de último por empezar con S.
+
+🔴 **`orden` es NULLABLE y sin default**: `null` = nadie lo ha ubicado y se va al
+final (`.order('orden', { nullsFirst: false })`). Un default (999) afirmaría que
+alguien lo puso ahí.
+
+🔴 **Mover renumera la lista COMPLETA**, no intercambia dos valores: un mapa
+recién agregado llega con `orden` en null y el intercambio entre un número y un
+null deja la lista a medias. Se escriben solo las filas que cambiaron.
+
+La lista se mueve **en pantalla primero** y se guarda después: son ocho mapas a
+punta de flechas y esperar el viaje al servidor en cada toque se siente trabado.
+Si el guardado falla, se recarga del servidor, que es la verdad.
+
+### Orden vigente
+
+RIOPAILA CASTILLA · RIOPAILA — Plano detallado · RISARALDA · SAN CARLOS ·
+MAYAGUEZ NORTE · MAYAGUEZ SUR · PICHICHI · PICHICHI SUR · CASTILLA

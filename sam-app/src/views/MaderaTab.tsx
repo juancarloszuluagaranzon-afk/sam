@@ -146,8 +146,8 @@ export function MaderaTab({ conductorScope }: {
           Los <strong>predios y los destinos</strong> se escriben libremente: la lista solo
           sugiere lo que ya se ha usado, para no frenar a nadie en la montaña. Si quieres
           ordenarla —agregar, corregir o quitar lugares— se administra en{' '}
-          <strong>Insumos → Catálogos</strong>, en “Predios de dónde sale la madera” y
-          “Destinos de la madera”.
+          <strong>Más → Catálogos → Lugares y listas</strong>, en “Predios de dónde sale
+          la madera” y “Destinos de la madera”.
         </p>
       </Ayuda>
 

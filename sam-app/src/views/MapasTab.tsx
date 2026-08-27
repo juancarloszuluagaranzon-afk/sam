@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { updateMapa, deleteMapa, loadMapasAdmin, createMapa, guardarOrdenMapas } from '../services/samApi'
+import { updateMapa, deleteMapa, loadMapasAdmin, createMapa, guardarOrdenMapas,
+         loadCartografiasDescartadas, descartarCartografia } from '../services/samApi'
 import { metaDescarga, formatoBytes } from '../lib/mapaOffline'
 import { listarCartografias, type CartografiaRemota } from '../services/fieldmapsApi'
 import { MapaFormModal } from '../components/MapaFormModal'
@@ -36,11 +37,18 @@ export function MapasTab() {
   // 'ready' y no está registrado aparece en "Listos para agregar".
   async function reconciliar() {
     try {
-      const [ms, remotos] = await Promise.all([loadMapasAdmin(), listarCartografias()])
+      const [ms, remotos, descartadas] = await Promise.all([
+        loadMapasAdmin(), listarCartografias(), loadCartografiasDescartadas(),
+      ])
       setMapas(ms)
       const norm = (u: string) => u.replace(/\/$/, '')
       const existentes = new Set(ms.map((m) => norm(m.tilesBase)))
-      setProcesados(remotos.filter((r) => r.status === 'ready' && r.tilesBase && !existentes.has(norm(r.tilesBase))))
+      // Se descartan tambien los planos que YA fueron reemplazados: siguen
+      // procesados en FieldMaps y sin dueno en ASM, asi que sin este filtro la
+      // pantalla los ofrece de vuelta con su nombre viejo, como si acabaran de
+      // llegar. Paso con los dos de PICHICHI.
+      setProcesados(remotos.filter((r) => r.status === 'ready' && r.tilesBase
+        && !existentes.has(norm(r.tilesBase)) && !descartadas.has(norm(r.tilesBase))))
     } catch { /* FieldMaps no respondió: no bloquea el catálogo */ }
   }
 
@@ -97,6 +105,21 @@ export function MapasTab() {
       setError(`No se pudo guardar el orden. (${e?.message ?? 'error'})`)
       void refresh()
     }
+  }
+
+  /** Saca un plano de "Listos para agregar" sin borrarlo de FieldMaps: la
+   *  version anterior sirve de respaldo si el reemplazo salio mal. */
+  async function ocultarProcesado(r: CartografiaRemota) {
+    if (!r.tilesBase) return
+    setBusy(true); setError('')
+    try {
+      await descartarCartografia(r.tilesBase, r.nombre ?? undefined, 'Ocultado a mano')
+      setInfo(`"${r.nombre}" ya no se va a ofrecer.`)
+      void reconciliar()
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo ocultar. (${e?.message ?? 'error'})`)
+    } finally { setBusy(false) }
   }
 
   async function toggleActivo(m: MapaConfig) {
@@ -170,6 +193,8 @@ export function MapasTab() {
                 <strong>{r.nombre}</strong>
                 <span className="inv-cat inv-cat--comb">✓ procesado · z{r.minzoom}–{r.maxzoom}</span>
               </div>
+              <button type="button" className="inline-button" onClick={() => void ocultarProcesado(r)} disabled={busy}
+                      title="No volver a ofrecerlo (no se borra de FieldMaps)">Ocultar</button>
               <button type="button" className="primary-button" onClick={() => void agregarProcesado(r)} disabled={busy}>
                 + Agregar al visor
               </button>

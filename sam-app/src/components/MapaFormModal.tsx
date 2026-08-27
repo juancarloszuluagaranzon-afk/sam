@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MapaConfig } from '../domain/sam'
-import { updateMapa } from '../services/samApi'
+import { updateMapa, descartarCartografia } from '../services/samApi'
 import { estadoCartografia, subirCartografia } from '../services/fieldmapsApi'
 
 /**
@@ -79,10 +79,18 @@ export function MapaFormModal({
             .catch(() => { /* reintenta */ })
         }, 8000)
       })
+      const anterior = editar.tilesBase
       await updateMapa(editar.id, {
         nombre: nom, tilesBase: cfg.tilesBase!, bounds: cfg.bounds!,
         minzoom: cfg.minzoom ?? 10, maxzoom: cfg.maxzoom ?? 16,
       })
+      // El plano que acaba de quedar reemplazado sigue procesado en FieldMaps y
+      // ya no lo referencia nadie: sin esto, "Listos para agregar" lo ofrece de
+      // vuelta como si fuera nuevo. Va DESPUES del reemplazo y sin tumbarlo si
+      // falla — el mapa ya quedo bien, y un plano ofrecido de mas se ignora.
+      if (anterior && anterior !== cfg.tilesBase) {
+        try { await descartarCartografia(anterior, `${editar.nombre} (version anterior)`, 'Reemplazado') } catch { /* no bloquea */ }
+      }
       onSaved('reemplazado', nom)
       onClose()
     } catch (err) {

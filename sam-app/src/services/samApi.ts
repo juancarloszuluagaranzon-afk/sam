@@ -1220,6 +1220,35 @@ export async function updateMapa(
   }
 }
 
+/**
+ * Cartografias que NO deben volver a ofrecerse en "Listos para agregar".
+ *
+ * Al reemplazar el plano de un mapa, el anterior deja de estar referenciado en
+ * `mapas` y la reconciliacion lo ve como recien llegado: lo ofrece otra vez, con
+ * su nombre viejo. Ya paso con los dos planos de PICHICHI, que volvieron a
+ * agregarse minutos despues de reemplazarlos.
+ *
+ * Si la tabla no responde se devuelve vacio: quedarse sin esta lista solo hace
+ * que se ofrezca un plano de mas, mientras que romper la pantalla deja al jefe
+ * sin poder registrar ninguno.
+ */
+export async function loadCartografiasDescartadas(): Promise<Set<string>> {
+  try {
+    const { data, error } = await supabase.from('mapas_descartados').select('tiles_base')
+    if (error || !data) return new Set()
+    return new Set((data as { tiles_base: string }[]).map((r) => String(r.tiles_base).replace(/\/$/, '')))
+  } catch { return new Set() }
+}
+
+export async function descartarCartografia(
+  tilesBase: string, nombre?: string, motivo?: string,
+): Promise<void> {
+  const { error } = await supabase.from('mapas_descartados')
+    .upsert({ tiles_base: tilesBase.trim().replace(/\/$/, ''), nombre: nombre ?? null, motivo: motivo ?? null },
+            { onConflict: 'tiles_base' })
+  if (error) throw new Error(error.message || 'No se pudo ocultar el plano')
+}
+
 export async function deleteMapa(id: string): Promise<void> {
   const { error } = await supabase.from('mapas').delete().eq('id', id)
   if (error) throw new Error(error.message || 'No se pudo eliminar el mapa')

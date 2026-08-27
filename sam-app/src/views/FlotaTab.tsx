@@ -82,7 +82,9 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
       })
 
-      const COLS = [10, 14, 14, 16, 20, 14, 14, 11, 11, 11, 11, 10, 8, 11, 9, 26]
+      // La primera columna es la del membrete: con 10 de ancho, "IMECOL" se
+      // parte en dos renglones (IMECO / L). 18 le da aire al logo tambien.
+      const COLS = [18, 14, 14, 16, 20, 14, 14, 11, 11, 11, 11, 10, 8, 11, 9, 26]
       ws.columns = COLS.map((w) => ({ width: w }))
 
       const linea = { style: 'thin' as const, color: { argb: 'FF000000' } }
@@ -96,7 +98,8 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       for (const f of [1, 2, 3, 4]) ws.mergeCells(f, 15, f, 16)
 
       ws.getCell('A1').value = MEMBRETE.empresa
-      ws.getCell('A1').font = { bold: true, size: 16 }
+      // Rojo de la marca IMECOL. `wrapText: false` para que no se parta.
+      ws.getCell('A1').font = { bold: true, size: 18, color: { argb: 'FFD0021B' } }
       ws.getCell('B1').value = 'FORMATO'
       ws.getCell('B1').font = { bold: true, size: 11 }
       ws.getCell('B2').value = MEMBRETE.titulo
@@ -109,7 +112,25 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         ws.getCell(f, 15).font = { size: 9 }
         ws.getCell(f, 15).alignment = { vertical: 'middle', horizontal: 'left' }
       }
-      for (const ref of ['A1', 'B1', 'B2']) ws.getCell(ref).alignment = centro
+      for (const ref of ['B1', 'B2']) ws.getCell(ref).alignment = centro
+      ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center', wrapText: false }
+      // Si algun dia se sube el logo a public/, se incrusta aqui y el texto
+      // queda de respaldo debajo. exceljs acepta png/jpg en base64.
+      try {
+        const resp = await fetch('/logo-imecol.png')
+        if (resp.ok) {
+          const b64 = await resp.blob().then((bl) => new Promise<string>((res) => {
+            const fr = new FileReader()
+            fr.onload = () => res(String(fr.result).split(',')[1] ?? '')
+            fr.readAsDataURL(bl)
+          }))
+          if (b64) {
+            const idImg = wb.addImage({ base64: b64, extension: 'png' })
+            ws.addImage(idImg, { tl: { col: 0.15, row: 0.2 }, ext: { width: 110, height: 55 } })
+            ws.getCell('A1').value = ''
+          }
+        }
+      } catch { /* sin logo se queda el texto, que ya dice IMECOL */ }
       for (let f = 1; f <= 4; f += 1) {
         for (let c = 1; c <= 16; c += 1) ws.getCell(f, c).border = marco
       }
@@ -129,7 +150,8 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         cel.border = marco
       })
 
-      lista.forEach((s, i) => {
+      const enOrden = [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha))
+      enOrden.forEach((s, i) => {
         const f = filaCab + 1 + i
         const valores = [
           fmtFecha(s.fecha), s.tipoServicio ?? '', s.centroCosto ?? '', s.procesoSolicitante ?? '',
@@ -188,7 +210,7 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         { header: 'ESTADO', key: 'e', width: 12 },
       ]
       ws2.getRow(1).font = { bold: true }
-      lista.forEach((s) => ws2.addRow({
+      enOrden.forEach((s) => ws2.addRow({
         f: fmtFecha(s.fecha), o: s.origen ?? '', d: s.destino ?? '', v: s.vehiculo ?? '',
         c: s.conductorNombre ?? '', fq: s.firmaNombre ?? '', fu: s.firmaUrl ?? '',
         eu: s.evidenciaUrl ?? '', e: s.estado,

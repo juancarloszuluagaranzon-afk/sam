@@ -1601,6 +1601,20 @@ export function SupervisorView({
               </>
             ) : (
               <>
+                {/* Administracion ve el tablero de primeras, igual que el dueno:
+                    es quien responde por esos numeros. El supervisor no lo lleva
+                    porque su trabajo es asignar y cerrar, no mirar indicadores. */}
+                {session.role === 'administracion' && (
+                  <button
+                    className={supervisorTab === 'inicio' ? 'active' : ''}
+                    onClick={() => setSupervisorTab('inicio')}
+                  >
+                    <span className="nav-item">
+                      <span className="nav-icon">◉</span>
+                      <span className="nav-label">Inicio</span>
+                    </span>
+                  </button>
+                )}
                 <button
                   className={supervisorTab === 'asignar' ? 'active' : ''}
                   onClick={() => setSupervisorTab('asignar')}

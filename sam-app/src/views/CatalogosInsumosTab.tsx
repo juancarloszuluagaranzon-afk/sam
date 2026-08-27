@@ -52,6 +52,19 @@ const LISTAS: Lista[] = [
     donde: 'Bandeja → Rechazar solicitud',
     ejemplo: 'SIN STOCK', normalizar: aMayus,
   },
+  // Transporte de madera. Van aqui y no en una pantalla propia porque esta ya
+  // resuelve el problema entero — alta, edicion, pegado masivo y el espejo que
+  // sigue sugiriendo sin senal. Una pantalla nueva seria la misma tres veces.
+  {
+    tipo: 'PREDIO', icono: '🌳', titulo: 'Predios de donde sale la madera',
+    donde: 'Viajes de trozas → Salida del camión → ¿De dónde sale?',
+    ejemplo: 'LA ESPERANZA', normalizar: aMayus,
+  },
+  {
+    tipo: 'DESTINO_MADERA', icono: '🏭', titulo: 'Destinos de la madera',
+    donde: 'Viajes de trozas → Salida del camión → ¿Para dónde va?',
+    ejemplo: 'PLANTA YUMBO', normalizar: aMayus,
+  },
 ]
 
 export function CatalogosInsumosTab() {

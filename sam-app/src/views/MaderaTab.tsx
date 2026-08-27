@@ -133,6 +133,13 @@ export function MaderaTab() {
           siempre con su foto, porque un número escrito a mano se puede acomodar y uno
           con foto del tablero, no.
         </p>
+        <p>
+          Los <strong>predios y los destinos</strong> se escriben libremente: la lista solo
+          sugiere lo que ya se ha usado, para no frenar a nadie en la montaña. Si quieres
+          ordenarla —agregar, corregir o quitar lugares— se administra en{' '}
+          <strong>Insumos → Catálogos</strong>, en “Predios de dónde sale la madera” y
+          “Destinos de la madera”.
+        </p>
       </Ayuda>
 
       <div className="madera-kpis">

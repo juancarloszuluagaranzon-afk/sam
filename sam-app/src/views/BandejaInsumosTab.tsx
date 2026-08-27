@@ -30,6 +30,22 @@ const ESTADO_LABEL: Record<SolicitudEstado, string> = {
   PENDIENTE: 'Pendiente', PROGRAMADA: 'Programada', ENTREGADA: 'Entregada', RECHAZADA: 'Rechazada', CANCELADA: 'Cancelada',
 }
 
+/**
+ * Para cuando lo necesita el operario, y si esa hora ya paso.
+ *
+ * Solo aplica mientras la solicitud sigue viva: una entrega de la semana pasada
+ * marcada en rojo no le dice nada a nadie y ensucia el historial. Y `undefined`
+ * cuando no lo dijo — la mayoria de las solicitudes viejas, que nadie tuvo como
+ * responder porque el campo no existia.
+ */
+function plazoDe(s: SolicitudInsumo): { falta: string; vencido: boolean } | null {
+  if (!s.requeridoPara) return null
+  if (s.estado !== 'PENDIENTE' && s.estado !== 'PROGRAMADA') return null
+  const ms = Date.parse(s.requeridoPara) - Date.now()
+  if (!Number.isFinite(ms)) return null
+  return { falta: fmtLapso(new Date().toISOString(), s.requeridoPara), vencido: ms < 0 }
+}
+
 export function BandejaInsumosTab() {
   const { users, session, insumos, setInsumos, sortedEquipment, busy, setBusy, setError, setInfo } = useAppData()
 
@@ -407,6 +423,7 @@ export function BandejaInsumosTab() {
         ) : solicitudes.length === 0 ? (
           <p className="muted-text">No hay solicitudes {filtro === 'PENDIENTE' ? 'pendientes' : filtro === 'PROGRAMADA' ? 'programadas' : filtro === 'ENTREGADA' ? 'entregadas' : ''}.</p>
         ) : solicitudes.map((s) => {
+          const plazo = plazoDe(s)
           const nombre = s.operarioNombre ?? userName.get(s.operarioId) ?? s.operarioId
           const iniciales = nombre.split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
           const tone = s.estado === 'PENDIENTE' ? 'pend' : s.estado === 'PROGRAMADA' ? 'prog' : s.estado === 'RECHAZADA' ? 'rech' : 'entr'
@@ -452,6 +469,12 @@ export function BandejaInsumosTab() {
                 })}
               </ul>
 
+              {plazo && (
+                <p className={`sol-card__nota${plazo.vencido ? ' sol-card__nota--rechazo' : ''}`}>
+                  ⏰ Lo necesita <strong>{fmtFecha(s.requeridoPara)}</strong>
+                  {plazo.vencido ? ' · ya pasó la hora' : ` · faltan ${plazo.falta}`}
+                </p>
+              )}
               {s.nota && <p className="sol-card__nota">💬 {s.nota}</p>}
               {s.motivoRechazo && <p className="sol-card__nota sol-card__nota--rechazo">✕ Rechazo: {s.motivoRechazo}</p>}
 

@@ -532,6 +532,12 @@ export interface SolicitudInsumo {
   zona?: string
   motivoRechazo?: string
   createdAt: string
+  /**
+   * Para cuando lo necesita el operario. `undefined` = no lo dijo, que es
+   * distinto de una hora inventada: las solicitudes anteriores a agosto-2026
+   * caen ahi porque nadie se las pregunto.
+   */
+  requeridoPara?: string
   items: SolicitudItem[]
   // Entrega / despacho (fase 3)
   entregadoEn?: string

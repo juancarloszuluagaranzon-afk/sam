@@ -2506,6 +2506,7 @@ function mapSolicitud(row: Record<string, unknown>): SolicitudInsumo {
     zona: row.zona ? String(row.zona) : undefined,
     motivoRechazo: row.motivo_rechazo ? String(row.motivo_rechazo) : undefined,
     createdAt: String(row.created_at ?? ''),
+    requeridoPara: row.requerido_para ? String(row.requerido_para) : undefined,
     entregadoEn: row.entregado_en ? String(row.entregado_en) : undefined,
     despachadoPor: row.despachado_por ? String(row.despachado_por) : undefined,
     ruta: row.ruta ? String(row.ruta) : undefined,
@@ -2535,6 +2536,7 @@ export async function createSolicitud(input: {
   operarioNombre?: string
   nota?: string
   zona?: string
+  requeridoPara?: string
   items: SolicitudItem[]
 }): Promise<SolicitudInsumo> {
   const { data: sol, error: e1 } = await supabase
@@ -2544,6 +2546,7 @@ export async function createSolicitud(input: {
       operario_nombre: input.operarioNombre ?? null,
       nota: input.nota ?? null,
       zona: input.zona ?? null,
+      requerido_para: input.requeridoPara ?? null,
     })
     .select('*')
     .single()

@@ -15,6 +15,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { BotonManual } from '../components/BotonManual'
 import { DictateButton } from '../components/DictateButton'
+import { isoDesdeHora, fmtFechaHora } from '../lib/fechas'
 import { DictateInlineButton } from '../components/DictateInlineButton'
 import { AvisoHorometro } from '../components/AvisoHorometro'
 import { dictationErrorMessage } from '../hooks/useDictation'
@@ -341,6 +342,10 @@ export function OperatorView({
   const [solOpen, setSolOpen] = useState(false)
   const [solItems, setSolItems] = useState<{ insumoId: string; cantidad: string }[]>([{ insumoId: '', cantidad: '' }])
   const [solNota, setSolNota] = useState('')
+  // Para cuando lo necesita. Va vacio a proposito: se sugiere, no se obliga —
+  // el que esta cargando a las 5 a.m. no puede quedar trabado por un campo mas.
+  const [solHora, setSolHora] = useState('')
+  const [solDia, setSolDia] = useState<'hoy' | 'manana'>('hoy')
   const [savingSol, setSavingSol] = useState(false)
   const [misSolicitudes, setMisSolicitudes] = useState<SolicitudInsumo[]>([])
   const [solHistOpen, setSolHistOpen] = useState(false)
@@ -375,12 +380,14 @@ export function OperatorView({
     if (items.length === 0) { setError('Agrega al menos un insumo con cantidad.'); return }
     setSavingSol(true); setError('')
     try {
-      const payload = { operarioId: session.id, operarioNombre: session.name, nota: solNota.trim() || undefined, items }
+      const requeridoPara = solHora ? isoDesdeHora(solHora, solDia) ?? undefined : undefined
+      const payload = { operarioId: session.id, operarioNombre: session.name, nota: solNota.trim() || undefined, requeridoPara, items }
       const { enviado } = await enviarOEncolar('SOLICITUD', payload, async () => { await createSolicitud(payload) })
       setInfo(enviado
         ? `Solicitud enviada (${items.length} ítem${items.length === 1 ? '' : 's'}).`
         : `Solicitud guardada (${items.length} ítem${items.length === 1 ? '' : 's'}). Se envía sola cuando haya señal.`)
       setSolOpen(false)
+      setSolHora(''); setSolDia('hoy')
       void refreshMisSolicitudes()
     } catch {
       setError('No se pudo enviar la solicitud. Revisa la conexión.')
@@ -1120,6 +1127,34 @@ export function OperatorView({
                   Nota <span className="field-optional">(opcional)</span>
                   <input type="text" placeholder="Para qué / dónde…" value={solNota} onChange={(e) => setSolNota(e.target.value)} disabled={savingSol} />
                 </label>
+
+                {/* Para cuando lo necesita. Es lo que le ordena el dia al que
+                    despacha: un pedido para dentro de una hora no es lo mismo
+                    que uno para manana, y por orden de llegada no se distinguen. */}
+                <div style={{ marginTop: 10 }}>
+                  <span className="field-label">⏰ ¿Para qué hora lo necesita? <span className="field-optional">(opcional)</span></span>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <div className="realizadas-seg" role="group" aria-label="Día">
+                      {(['hoy', 'manana'] as const).map((d) => (
+                        <button key={d} type="button"
+                                className={`realizadas-seg__btn ${solDia === d ? 'is-active' : ''}`}
+                                onClick={() => setSolDia(d)} disabled={savingSol}>
+                          {d === 'hoy' ? 'Hoy' : 'Mañana'}
+                        </button>
+                      ))}
+                    </div>
+                    <input type="time" value={solHora} onChange={(e) => setSolHora(e.target.value)}
+                           disabled={savingSol} aria-label="Hora en que lo necesita" style={{ flex: '0 1 140px' }} />
+                    {solHora && (
+                      <button type="button" className="inline-button" onClick={() => setSolHora('')} disabled={savingSol}>Quitar</button>
+                    )}
+                  </div>
+                  {solHora && (
+                    <p className="subtle-copy" style={{ margin: '4px 0 0' }}>
+                      Se necesita el <strong>{fmtFechaHora(isoDesdeHora(solHora, solDia))}</strong>.
+                    </p>
+                  )}
+                </div>
               </>
             )}
             <div className="modal-footer">

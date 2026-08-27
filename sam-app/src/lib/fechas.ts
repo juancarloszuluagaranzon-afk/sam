@@ -52,6 +52,28 @@ export function fmtHora(iso?: string | null): string {
   return d.toLocaleTimeString('es-CO', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
 }
 
+/**
+ * Convierte la hora que escogio el operario ("06:00") en un instante real.
+ *
+ * 🔴 El desfase de Colombia va FIJO (-05:00, aqui no hay horario de verano) en
+ * vez de armar un `Date` local: si alguien tiene el reloj del celular en otra
+ * zona, "las 6 de la manana" seguiria siendo la de campo y no la de su equipo.
+ * Es la misma razon por la que se muestra todo en `America/Bogota`.
+ *
+ * `dia` distingue hoy de manana porque a las 4 p.m. se pide para las 6 a.m., y
+ * adivinarlo por "esa hora ya paso" se equivoca justo al reves cuando alguien
+ * pide tarde algo que necesitaba temprano hoy.
+ */
+export function isoDesdeHora(hora: string, dia: 'hoy' | 'manana'): string | null {
+  if (!/^\d{2}:\d{2}$/.test(hora)) return null
+  const hoy = new Date()
+  if (dia === 'manana') hoy.setDate(hoy.getDate() + 1)
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(hoy) // en-CA da "2026-08-27"
+  return `${p}T${hora}:00-05:00`
+}
+
 /** Solo el día, cuando la hora ya se muestra aparte. */
 export function fmtDia(iso?: string | null): string {
   if (!iso) return ''

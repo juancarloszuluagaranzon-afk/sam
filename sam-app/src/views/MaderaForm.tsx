@@ -26,9 +26,28 @@ export function MaderaForm({
   registradoPor?: string
   registradoNombre?: string
 }) {
-  const { busy, setBusy, setError, setInfo } = useAppData()
+  const { session, equipment, users, busy, setBusy, setError, setInfo } = useAppData()
 
-  const [placa, setPlaca] = useState('')
+  /**
+   * La placa sale sola del camion asignado al conductor.
+   *
+   * Se busca por dos caminos porque `equipmentCode` se guarda en la sesion AL
+   * ENTRAR: a quien le asignen el camion hoy, su sesion abierta sigue sin el
+   * hasta que vuelva a entrar — y en carretera nadie cierra sesion. `users` si
+   * se recarga en cada arranque, asi que ahi el dato esta fresco.
+   *
+   * Se propone, no se impone: el campo sigue editable porque un dia le puede
+   * tocar otro camion.
+   */
+  const placaPorDefecto = (() => {
+    const codigo = session?.equipmentCode
+      || users.find((u) => u.id === session?.id)?.equipmentCode
+    if (!codigo) return ''
+    const eq = equipment.find((e) => e.code === codigo)
+    return eq?.plate || codigo
+  })()
+
+  const [placa, setPlaca] = useState(placaPorDefecto)
   const [kmInicio, setKmInicio] = useState('')
   const [toneladas, setToneladas] = useState('')
   const [origen, setOrigen] = useState('')
@@ -51,7 +70,7 @@ export function MaderaForm({
       // Perfil `documento`: el tablero hay que poder LEERLO. Con el perfil de
       // evidencia (800 px) los dígitos del odómetro no se distinguen.
       const { url, local } = await subirOGuardarFoto(
-        `tablero-${registradoPor ?? 'x'}-${Date.now()}`, file, 0, uploadEvidencia)
+        `guia-${registradoPor ?? 'x'}-${Date.now()}`, file, 0, uploadEvidencia)
       setFotoTablero(url)
       if (local) setInfo('Foto guardada en el equipo. Se sube sola cuando haya señal.')
     } catch { setError('No se pudo subir la foto.') }
@@ -60,12 +79,15 @@ export function MaderaForm({
 
   async function guardar() {
     if (!placa.trim()) { setError('¿Cuál camión?'); return }
-    const km = Number(kmInicio)
-    if (!Number.isFinite(km) || km <= 0) { setError('Escribe los kilómetros que marca el tablero.'); return }
+    // ⚠️ El kilometraje quedo OPCIONAL: el odometro del camion esta danado
+    // (27-ago-2026). Exigirlo obligaria a inventar un numero, que es peor que
+    // no tenerlo. Cuando lo reparen, se vuelve obligatorio quitando el `|| 0`.
+    const km = Number(kmInicio) || 0
     const ton = Number(toneladas)
     if (!Number.isFinite(ton) || ton <= 0) { setError('Escribe cuántas toneladas se cargaron.'); return }
-    // La foto es el punto entero del registro, así que se pide de verdad.
-    if (!fotoTablero) { setError('Falta la foto del tablero: es la que respalda el kilometraje.'); return }
+    // La foto es el punto entero del registro, asi que se pide de verdad. Con el
+    // odometro danado es lo UNICO que respalda el viaje.
+    if (!fotoTablero) { setError('Falta la foto de la guía de despacho: es el respaldo del viaje.'); return }
 
     setBusy(true); setError('')
     try {
@@ -82,7 +104,7 @@ export function MaderaForm({
       recordarPlaca(placa)
       if (origen) recordarValor('PREDIO', origen)
       if (destino) recordarValor('DESTINO_MADERA', destino)
-      setInfo(`Viaje abierto: ${placa.trim()} · ${km} km · ${ton} t.`)
+      setInfo(`Viaje abierto: ${placa.trim()} · ${ton} t${km > 0 ? ` · ${km} km` : ''}.`)
       onGuardado()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo registrar el viaje.')
@@ -107,8 +129,9 @@ export function MaderaForm({
             <CampoPlaca value={placa} onChange={setPlaca} disabled={busy} />
           </label>
 
-          <label><span>Kilómetros al salir <span style={{ color: '#b3261e' }}>*</span></span>
+          <label><span>Kilómetros al salir <span className="field-optional">(si el tablero los marca)</span></span>
             <input type="number" min={0} step="any" inputMode="numeric" value={kmInicio}
+                   placeholder="Déjalo vacío si el odómetro está dañado"
                    onChange={(e) => setKmInicio(e.target.value)} disabled={busy} />
           </label>
 
@@ -119,24 +142,24 @@ export function MaderaForm({
 
           <label>¿De dónde sale?
             <CampoLista tipo="PREDIO" value={origen} onChange={setOrigen} disabled={busy}
-                        placeholder="LA ESPERANZA" />
+                        placeholder="FINCA LA ARGENTINA" />
           </label>
 
           <label>¿Para dónde va?
             <CampoLista tipo="DESTINO_MADERA" value={destino} onChange={setDestino} disabled={busy}
-                        placeholder="PLANTA YUMBO" />
+                        placeholder="MADERAS BARBOSA" />
           </label>
         </div>
 
         <div className="flota-comprobante">
           <span className="flota-comprobante__lbl">
-            📷 Foto del tablero <span style={{ color: '#b3261e' }}>*</span>
+            📷 Foto de la guía de despacho <span style={{ color: '#b3261e' }}>*</span>
           </span>
           <p className="subtle-copy" style={{ margin: '2px 0 8px' }}>
-            Que se alcance a leer el kilometraje. Es lo que respalda el número.
+            Que se alcance a leer. Con el odómetro dañado, es lo único que respalda el viaje.
           </p>
           <div className="flota-foto-row">
-            {fotoTablero && <FotoEvidencia url={fotoTablero} alt="tablero del camión" tam={72} />}
+            {fotoTablero && <FotoEvidencia url={fotoTablero} alt="guía de despacho" tam={72} />}
             <button type="button" className="inline-button" onClick={() => fotoRef.current?.click()}
                     disabled={busy || subiendo}>
               {subiendo ? 'Subiendo…' : fotoTablero ? 'Repetir foto' : '📷 Tomar foto'}

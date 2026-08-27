@@ -95,15 +95,15 @@ export function MaderaTab({ conductorScope }: {
 
   async function guardarCierre() {
     if (!cerrando) return
-    const km = Number(kmFin)
-    if (!Number.isFinite(km) || km <= 0) { setError('Escribe los kilómetros de llegada.'); return }
-    // El odómetro no baja. Si el número llega menor es un dedazo, y dejarlo
-    // pasar daría un recorrido negativo que después nadie entiende.
-    if (cerrando.kmInicio != null && km < cerrando.kmInicio) {
+    // Opcional mientras el odometro este danado: exigirlo obligaria a inventar.
+    const km = Number(kmFin) || 0
+    // El odometro no baja. Si el numero llega menor es un dedazo, y dejarlo
+    // pasar daria un recorrido negativo que despues nadie entiende.
+    if (km > 0 && cerrando.kmInicio != null && km < cerrando.kmInicio) {
       setError(`El tablero marcaba ${n1(cerrando.kmInicio)} km al salir. ¿Seguro son ${n1(km)}?`)
       return
     }
-    if (!fotoFin) { setError('Falta la foto del tablero al llegar.'); return }
+    if (!fotoFin) { setError('Falta la foto de la guía al llegar.'); return }
     setBusy(true); setError('')
     try {
       await cerrarViaje(cerrando.id, km, fotoFin)
@@ -133,14 +133,14 @@ export function MaderaTab({ conductorScope }: {
 
       <Ayuda>
         <p>
-          Cada viaje se abre cuando el camión sale —con los kilómetros del tablero, la
-          foto y las toneladas— y se cierra al llegar con la foto del tablero otra vez.
-          De ahí sale cuánto recorrió, sin que nadie tenga que sumar.
+          Cada viaje se abre cuando el camión sale —con las toneladas y la foto de la
+          guía de despacho— y se cierra al llegar con la guía otra vez.
         </p>
         <p>
-          <strong>La hora no se digita:</strong> la pone el sistema. Y el kilometraje va
-          siempre con su foto, porque un número escrito a mano se puede acomodar y uno
-          con foto del tablero, no.
+          <strong>La hora no se digita:</strong> la pone el sistema, para que no se pueda
+          acomodar después. El <strong>kilometraje es opcional</strong> mientras el odómetro
+          del camión esté dañado — exigirlo obligaría a inventar un número, que es peor
+          que no tenerlo.
         </p>
         <p>
           Los <strong>predios y los destinos</strong> se escriben libremente: la lista solo
@@ -169,7 +169,7 @@ export function MaderaTab({ conductorScope }: {
             {totales.sinFoto}
           </span>
           <span className="madera-kpi__rot">
-            {totales.sinFoto === 0 ? 'todos con foto del tablero' : 'sin foto que respalde el km'}
+            {totales.sinFoto === 0 ? 'todos con su guía' : 'sin guía que respalde el viaje'}
           </span>
         </div>
       </div>
@@ -210,17 +210,19 @@ export function MaderaTab({ conductorScope }: {
 
               <div className="madera-card__carga">
                 <span><strong>{n1(v.toneladas)}</strong> t cargadas</span>
-                <span>
-                  <strong>{n1(v.kmInicio)}</strong> km al salir
-                  {v.kmFin != null && <> → <strong>{n1(v.kmFin)}</strong> al llegar</>}
-                </span>
+                {v.kmInicio != null && v.kmInicio > 0 && (
+                  <span>
+                    <strong>{n1(v.kmInicio)}</strong> km al salir
+                    {v.kmFin != null && v.kmFin > 0 && <> → <strong>{n1(v.kmFin)}</strong> al llegar</>}
+                  </span>
+                )}
                 {v.kmRecorridos != null && <span><strong>{n1(v.kmRecorridos)}</strong> km recorridos</span>}
               </div>
 
               <div className="madera-card__doc">
                 {v.fotoTableroUrl
-                  ? <><span>Tablero al salir</span><FotoEvidencia url={v.fotoTableroUrl} alt="tablero al salir" tam={48} /></>
-                  : <span className="madera-dias--mal">Sin foto del tablero: el kilometraje no tiene respaldo</span>}
+                  ? <><span>Guía de salida</span><FotoEvidencia url={v.fotoTableroUrl} alt="guía de despacho" tam={48} /></>
+                  : <span className="madera-dias--mal">Sin foto de la guía: el viaje no tiene respaldo</span>}
                 {v.fotoTableroFinUrl && (
                   <><span>al llegar</span><FotoEvidencia url={v.fotoTableroFinUrl} alt="tablero al llegar" tam={48} /></>
                 )}
@@ -272,13 +274,15 @@ export function MaderaTab({ conductorScope }: {
               <strong>{n1(cerrando.toneladas)} t</strong>, hace {fmtLapso(cerrando.createdAt)}.
             </p>
 
-            <label style={{ display: 'block', marginTop: 8 }}>Kilómetros al llegar
+            <label style={{ display: 'block', marginTop: 8 }}>Kilómetros al llegar{' '}
+              <span className="field-optional">(si el tablero los marca)</span>
               <input type="number" min={0} step="any" inputMode="numeric" value={kmFin} autoFocus
+                     placeholder="Déjalo vacío si el odómetro está dañado"
                      onChange={(e) => setKmFin(e.target.value)} disabled={busy} />
             </label>
 
             <div className="flota-comprobante" style={{ marginTop: 10 }}>
-              <span className="flota-comprobante__lbl">📷 Foto del tablero al llegar</span>
+              <span className="flota-comprobante__lbl">📷 Foto de la guía al llegar</span>
               <div className="flota-foto-row">
                 {fotoFin && <FotoEvidencia url={fotoFin} alt="tablero al llegar" tam={72} />}
                 <button type="button" className="inline-button" onClick={() => fotoFinRef.current?.click()}

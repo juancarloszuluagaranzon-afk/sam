@@ -4,7 +4,7 @@ import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
 import type { Assignment } from '../domain/sam'
 import { deleteAssignment, formatTime } from '../services/samApi'
-import { isSameCycle } from '../utils/suerteCycle'
+import { avanceCerradoPorSuerte, areaDelDia, cuentaEnPlanilla } from '../lib/planilla'
 import {
   executionDateKey,
   loadPlanillaRevisiones,
@@ -61,21 +61,9 @@ import {
 // asi una labor que cruza de dia NO se cuenta dos veces. Antes sumaba el area
 // PLANIFICADA al abrir, lo que duplicaba los cruces de dia (13.3+13.3=26.7).
 
-/**
- * Área que cuenta de una labor CERRADA.
- *
- * 🔴 El fallback importa y es la regla del proyecto: cerrar una labor sin
- * escribir el área significa "hice lo planificado", no "hice cero". Sin esto la
- * Planilla le restaba hectáreas a quien cerró así — medido el 7-ago-2026: **9
- * labores de 7 operarios, 89,91 ha** desde el 29 de mayo, y el Resumen mostraba
- * un número distinto para la misma quincena. Es dinero: con esta planilla se paga.
- *
- * Aplica SOLO a COMPLETADA/PARCIAL. Una labor abierta muestra 0.
- */
-function areaCerrada(a: Assignment): number {
-  const ejec = a.executedArea ?? 0
-  return ejec > 0 ? ejec : (a.area ?? 0)
-}
+// 🔴 La regla de area vive en `lib/planilla.ts`, no aqui: la comparte con la
+// linea que ve cada operario en su pantalla. Tener dos copias de un criterio de
+// dinero fue lo que dejo 89,91 ha por fuera de la quincena en agosto.
 
 const WEEKDAY = ['D', 'L', 'M', 'M', 'J', 'V', 'S']
 
@@ -378,18 +366,11 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     }
     // Avance ya CERRADO (executedArea) por suerte+labor, para estimar el restante
     // de las labores EN_PROCESO sin duplicar lo ya hecho en días anteriores.
-    const cerradoBySuerte = new Map<string, { date: string; exec: number }[]>()
-    for (const a of assignments) {
-      if (a.status !== 'COMPLETADA' && a.status !== 'PARCIAL') continue
-      const k = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
-      const arr = cerradoBySuerte.get(k) ?? []
-      arr.push({ date: executionDateKey(a), exec: areaCerrada(a) })
-      cerradoBySuerte.set(k, arr)
-    }
+    const cerradoBySuerte = avanceCerradoPorSuerte(assignments)
     // 2) Sumar el área REAL por día (executedArea de lo cerrado; restante estimado
     //    de lo EN_PROCESO). Así una labor que cruza de día NO se cuenta dos veces.
     for (const a of assignments) {
-      if (a.status !== 'EN_PROCESO' && a.status !== 'PARCIAL' && a.status !== 'COMPLETADA') continue
+      if (!cuentaEnPlanilla(a)) continue
       const dk = executionDateKey(a)
       if (!matchesSummaryFilter(dk, planillaMonth, planillaQuincena, todayKey)) continue
       const name = (a.operatorName || 'Sin operador').trim()
@@ -401,18 +382,9 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         row = { id: id || key, name, perDay: {}, perDayProceso: {}, total: 0 }
         map.set(key, row)
       }
-      // Área real del día:
-      let val: number
-      if (a.status === 'EN_PROCESO') {
-        const sk = `${a.suerteCode}|${a.labor.trim().toUpperCase()}`
-        const yaCerrado = (cerradoBySuerte.get(sk) ?? [])
-          .filter((c) => isSameCycle(c.date, dk))
-          .reduce((s, c) => s + c.exec, 0)
-        val = Math.max(0, a.area - yaCerrado)
-        row.perDayProceso[dk] = true
-      } else {
-        val = areaCerrada(a)
-      }
+      // Área real del día — misma regla que ve el operario en su pantalla.
+      const { area: val, enProceso } = areaDelDia(a, cerradoBySuerte)
+      if (enProceso) row.perDayProceso[dk] = true
       row.perDay[dk] = (row.perDay[dk] ?? 0) + val
       row.total += val
     }

@@ -16,6 +16,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import { BotonManual } from '../components/BotonManual'
 import { DictateButton } from '../components/DictateButton'
 import { isoDesdeHora, fmtFechaHora } from '../lib/fechas'
+import { MiPlanilla } from '../components/MiPlanilla'
 import { DictateInlineButton } from '../components/DictateInlineButton'
 import { AvisoHorometro } from '../components/AvisoHorometro'
 import { dictationErrorMessage } from '../hooks/useDictation'
@@ -1872,6 +1873,11 @@ export function OperatorView({
         {operatorTab === 'mapa' ? <MapaView onBack={() => setOperatorTab('activas')} /> : null}
 
         {operatorTab === 'historial' ? (
+          <>
+          {/* Su propia linea de planilla del mes: la misma fila con la que se le
+              paga. Va de primeras porque es lo que viene a mirar. */}
+          {session && <MiPlanilla assignments={assignments} operatorId={session.id} />}
+
           <section className="panel-card operator-history-card">
             <div className="panel-title split">
               <h2>Historial</h2>
@@ -2071,6 +2077,7 @@ export function OperatorView({
               ) : null}
             </div>
           </section>
+          </>
         ) : null}
 
         <div className={`modal-overlay ${isPinModalOpen ? 'open' : ''}`}>

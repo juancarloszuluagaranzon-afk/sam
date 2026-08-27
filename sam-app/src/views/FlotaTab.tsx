@@ -126,11 +126,15 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           }))
           if (b64) {
             const idImg = wb.addImage({ base64: b64, extension: 'png' })
-            // El PNG es CUADRADO (447x447). Ponerlo 110x55 lo aplasta, asi que
-            // va proporcionado y las cuatro filas del membrete se hacen mas
-            // altas para darle sitio.
-            ws.addImage(idImg, { tl: { col: 0.12, row: 0.15 }, ext: { width: 72, height: 72 } })
-            for (const f of [1, 2, 3, 4]) ws.getRow(f).height = 20
+            // El logo va RECORTADO (404x80, proporcion 5:1). El original venia
+            // cuadrado de 447x447 con la marca chiquita en medio de un mar de
+            // blanco: dentro de la celda del membrete salia diminuta.
+            //
+            // 112x22 respeta esa proporcion y cabe en la columna de 18 de ancho
+            // (~126 px). El `row: 1.5` lo baja media celda para que quede
+            // centrado en el alto de las cuatro filas, no pegado arriba.
+            ws.addImage(idImg, { tl: { col: 0.08, row: 1.5 }, ext: { width: 112, height: 22 } })
+            for (const f of [1, 2, 3, 4]) ws.getRow(f).height = 18
             ws.getCell('A1').value = ''
           }
         }

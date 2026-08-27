@@ -23,6 +23,21 @@ update public.mapas set
   minzoom = 10, maxzoom = 14, orden = 80, updated_at = now()
 where id = '82277915-1f51-493b-8be9-afa49353be25';
 
-update public.mapas set nombre = 'PICHICHI NORTE', orden = 90 where nombre = 'MAYAGUEZ NORTE';
-update public.mapas set nombre = 'MAYAGUEZ',       orden = 50 where nombre = 'MAYAGUEZ SUR';
 update public.mapas set orden = 100 where nombre = 'CASTILLA';
+
+-- ⚠️ El norte de PICHICHI vino en un archivo aparte (`MAPA GRAL NORTE-2.pdf`).
+-- Por un rato se dio por hecho que era el "PLANO GENERAL SECTOR NORTE" porque sus
+-- coordenadas se parecian a las del PICHICHI viejo; era el de **Mayaguez**, como
+-- lo habia dicho el jefe. Los bounds definitivos lo zanjan: las tres hojas de
+-- Pichichi son franjas contiguas (SUR 3,41-3,73 · CENTRO 3,68-3,99 · NORTE
+-- 3,95-4,27), mientras que la de Mayaguez abarca sola de 3,65 a 4,35.
+-- 🔴 Parecerse en coordenadas NO alcanza para identificar una hoja: un plano
+-- general y uno sectorial del mismo sitio se solapan sin ser el mismo.
+insert into public.mapas (nombre, tiles_base, bounds, minzoom, maxzoom, activo, orden)
+select 'PICHICHI NORTE',
+       'https://api.mapview.surcoapp.tech/storage/v1/object/public/tiles/d2598200-c647-4ffe-b73e-32dc92d8072d/26e6b7ef-fcf8-4f79-88c7-5c1862638cde',
+       '[-76.4297878, 3.9496342, -76.1141353, 4.2665847]'::jsonb, 10, 14, true, 90
+where not exists (select 1 from public.mapas where nombre = 'PICHICHI NORTE');
+
+update public.mapas set orden = 50 where nombre = 'MAYAGUEZ NORTE';
+update public.mapas set orden = 60 where nombre = 'MAYAGUEZ SUR';

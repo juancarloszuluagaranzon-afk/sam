@@ -220,8 +220,9 @@ Si el guardado falla, se recarga del servidor, que es la verdad.
 
 ### Orden vigente (27-ago-2026)
 
-RIOPAILA CASTILLA · RIOPAILA AGRICOLA · RISARALDA · SAN CARLOS · MAYAGUEZ ·
-**PICHICHI SUR · PICHICHI CENTRO · PICHICHI NORTE** · CASTILLA
+RIOPAILA CASTILLA · RIOPAILA AGRICOLA · RISARALDA · SAN CARLOS ·
+MAYAGUEZ NORTE · MAYAGUEZ SUR · **PICHICHI SUR · PICHICHI CENTRO · PICHICHI
+NORTE** · CASTILLA (10 mapas)
 
 ## Reemplazar cartografia: la fila se conserva, NO se borra y se crea
 
@@ -231,13 +232,20 @@ tenia bajado se le queda un mapa huerfano en el celular. Actualizando
 `tiles_base`/`bounds` sobre la misma fila, ve el aviso de re-descarga y sigue
 siendo el mismo mapa. Es lo que hace 🔄 **Reemplazar** en la pantalla.
 
-⚠️ **Los bounds identifican un plano mejor que su nombre de archivo.** El
-"PLANO GENERAL SECTOR NORTE" se habia registrado como MAYAGUEZ NORTE, y sus
-coordenadas (lat 3,646–4,346) eran las del PICHICHI viejo (3,625–4,347): era la
-version nueva de esa misma hoja. **Antes de registrar un plano, comparar sus
-bounds con los que ya estan** — un solape casi exacto significa que es un
-reemplazo, no un mapa nuevo. Igual salio que el "MAPA GRAL SUR" traia bounds
-identicos a los de PICHICHI SUR.
+⚠️ **Los bounds ayudan, pero NO alcanzan para identificar una hoja.** El "MAPA
+GRAL SUR" traia bounds **identicos a 7 decimales** a los de PICHICHI SUR, y ahi si
+era la version nueva del mismo plano — esa coincidencia exacta si prueba algo.
+
+🔴 Un **parecido** no prueba nada. El "PLANO GENERAL SECTOR NORTE" cubria
+3,646–4,346 y el PICHICHI viejo 3,625–4,347, y de ese parecido se dedujo que era
+la hoja norte de Pichichi. Era la de **Mayaguez**, como lo habia dicho el jefe
+desde el principio; el norte de Pichichi vino despues en otro archivo y cubre
+3,95–4,27. **Un plano general y uno sectorial del mismo sitio se solapan sin ser
+el mismo.** Las tres hojas de Pichichi son franjas contiguas (3,41–3,73 ·
+3,68–3,99 · 3,95–4,27); la de Mayaguez abarca sola casi todo ese rango.
+
+**Cuando el jefe nombra un plano, ese nombre gana**: el sabe de que finca es la
+hoja y la geometria no.
 
 ⚠️ El conteo de paginas que reporta el lector de archivos **no es el del PDF**:
 anunciaba 137 y 201 paginas para planos que `pypdf` lee como **una sola**. Antes

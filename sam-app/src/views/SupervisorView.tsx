@@ -54,12 +54,13 @@ import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
 import { MaderaTab } from './MaderaTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
+import { HorometrosTab } from './HorometrosTab'
 import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1190,6 +1191,18 @@ export function SupervisorView({
                 </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
+                    className={`more-sheet__item ${supervisorTab === 'horometros' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('horometros'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">⏱️</span>
+                    <div>
+                      <div className="more-sheet__label">Horómetros</div>
+                      <div className="more-sheet__desc">Última lectura de cada máquina y el tope de las 24 h</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
                     className={`more-sheet__item ${supervisorTab === 'taller' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('taller'); setMoreMenuOpen(false) }}
                   >
@@ -2298,6 +2311,7 @@ export function SupervisorView({
         {supervisorTab === 'flota' ? <FlotaTab /> : null}
         {supervisorTab === 'madera' ? <MaderaTab /> : null}
         {supervisorTab === 'listas' ? <CatalogosInsumosTab /> : null}
+        {supervisorTab === 'horometros' ? <HorometrosTab /> : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
           <InsumosResumenTab />

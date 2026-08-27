@@ -8681,3 +8681,24 @@ td.planilla-vacio:hover { background: #fde047; }
   font-size: 0.84rem;
   line-height: 1.45;
 }
+
+/* Tabla de horometros: la referencia contra la que se juzgan los registros. */
+.tabla-scroll { overflow-x: auto; border: 1px solid var(--color-border); border-radius: 10px; }
+.horometros-tabla { border-collapse: collapse; width: 100%; font-size: 0.86rem; min-width: 620px; }
+.horometros-tabla th, .horometros-tabla td {
+  text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--color-divider);
+}
+.horometros-tabla thead th {
+  background: var(--color-bg-muted); font-size: 0.76rem; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--color-ink-mid); font-weight: 600;
+}
+.horometros-tabla td.n, .horometros-tabla th.n {
+  text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.horometros-tabla tbody tr:last-child td { border-bottom: 0; }
+/* La lectura vieja se atenua: no es un error, pero hay que ir a mirarla. */
+.horometros-tabla tr.fila-vieja { background: var(--color-status-pending-bg); }
+
+.horometros-sin { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--color-border); }
+.horometros-sin h4 { margin: 0 0 6px; font-size: 0.9rem; color: var(--color-ink-mid); }
+.horometros-sin__lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }

@@ -769,7 +769,11 @@ ponerlas a mano (ya pasó con la VALTRA 9902 — ver `managing-taller`).
 
 ## 🔴 Corregir un tanqueo mal registrado (22-ago-2026)
 
-**No hay pantalla para esto, y ese es el hueco.** Un despacho se corrige
+> ✅ **YA TIENE PANTALLA** desde el 25-ago — ver el apartado al final de esta
+> sección. Lo que sigue es cómo se hizo a mano la primera vez y por qué, que es
+> lo que explica el diseño de la función.
+
+**Cuando se escribió esto no había pantalla, y ese era el hueco.** Un despacho se corrige
 (`editarDespacho`) y se elimina (`eliminarDespacho`); un **tanqueo** solo se puede
 *rechazar* desde `AvalesCombustibleTab` —que reversa el movimiento— y pedirle al que
 lo registró que lo vuelva a teclear. Cuando el dueño llamó pidiendo que le arreglaran
@@ -909,3 +913,39 @@ Es un problema de **operación, no de código**, pero al mirar cualquier número
 principal hay que saberlo: **su kardex no es un libro de compras, es una serie de
 correcciones**. Los saldos de los CARROS sí son confiables — ahí todo entra por
 tanqueo o traslado.
+
+
+## ✅ La pantalla de corrección, y por qué es una FUNCIÓN de base de datos (25-ago-2026)
+
+Botón **✎ Corregir galones** en `AvalesCombustibleTab`, sobre cualquier tanqueo
+PENDIENTE. Lo ve el analista.
+
+🔴 **Va por `corregir_tanqueo(id, galones, motivo, quien)` y no por varios
+`update` desde el navegador.** Cambiar la cantidad obliga a rehacer el `saldo` de
+TODOS los movimientos posteriores de esa bodega — el saldo es una foto del stock
+en ese instante, no una fórmula. Seis llamadas sueltas pueden cortarse en la
+tercera y dejar el kardex a medio corregir, que es **peor que no haberlo tocado**.
+
+La función **recalcula la cadena entera desde el principio** en vez de desplazar
+por la diferencia: así los `AJUSTE` quedan bien, que FIJAN el saldo en vez de
+sumarlo.
+
+Probado de ida y vuelta contra producción: corregir de 62,255 a 80 y devolverlo
+deja los tres saldos **exactamente** como estaban. 105 filas recalculadas sin
+pérdida.
+
+### Validaciones en los dos lados
+
+- **En la base**: galones > 0, motivo obligatorio, el evento existe y no está
+  rechazado, y `for update` para que dos personas no lo corrijan a la vez.
+- **En la pantalla**: la misma guarda del punto decimal del registro original.
+  **Corregir no puede ser la puerta por donde vuelve a entrar el mismo dedazo.**
+
+### 🔴 NO avala, y sÍ se permite sobre el registro propio
+
+Corregir y avalar son cosas distintas: el aval es el segundo par de ojos y si la
+misma acción hiciera las dos, el control desaparece. Un tanqueo corregido sigue
+**PENDIENTE**.
+
+Y por lo mismo corregir SÍ se permite sobre lo que uno registró: **arreglar un
+dedazo no es firmarse a sí mismo.**

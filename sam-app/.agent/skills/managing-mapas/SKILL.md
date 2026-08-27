@@ -153,3 +153,49 @@ puesto en la primera rama no se renderiza nunca cuando sí hay mapas. Ya pasó.
 
 Ocultar/mostrar (`activo`) se queda en Catálogos a propósito: el visor solo
 carga los activos, así que desde ahí no habría forma de recuperar uno oculto.
+
+
+## Volvió a pasar: MAYAGUEZ (27-ago-2026)
+
+Tercera vez. El plano quedó `ready` en FieldMaps a las 21:49 y **sin registrar en
+ASM**, igual que PICHICHI y PICHICHI SUR en julio. El cliente reportó "no está
+quedando".
+
+El diagnóstico de esta skill funcionó tal cual: `select ... from public.maps` en
+`fieldmaps-db` lo mostró `ready`, y `mapas` en ASM no lo tenía.
+
+⚠️ **Que la reconciliación exista en la UI no basta**: quien sube el plano sigue
+sin darse cuenta de que falta confirmarlo. Si esto se repite una cuarta vez, el
+arreglo ya no es documental — hay que **registrar automáticamente** al llegar a
+`ready`, o al menos avisar en el Inicio del dueño.
+
+### Subir un plano sin la UI
+
+```bash
+curl -X POST "https://mapview.surcoapp.tech/api/asm/ingest"   -H "x-asm-secret: <el de fieldmapsApi.ts>"   -F "file=@PLANO.pdf" -F "nombre=NOMBRE DEL MAPA"
+# devuelve {"map_id":"...","status":"processing"}; sondear con ?id=<map_id>
+# hasta `ready`, y ahí sí insertar en `mapas` de ASM con bounds/minzoom/maxzoom.
+```
+
+Tarda unos minutos: un PDF de 4 MB tomó ~6 sondeos.
+
+### ⚠️ Al probar un tile, calcular bien las coordenadas
+
+Probar `z/x/y` a ojo da **400** y hace creer que el mapa quedó mal. La fórmula:
+
+```python
+x = int((lon + 180) / 360 * 2**z)
+y = int((1 - log(tan(rad(lat)) + 1/cos(rad(lat))) / pi) / 2 * 2**z)
+```
+
+Con el centro de los `bounds` los tiles responden 200 con 16-80 KB. Y **la primera
+petición en frío puede devolver 200 con 0 bytes** — repetir antes de alarmarse.
+
+### Mapas registrados a 27-ago-2026
+
+MAYAGUEZ (z9-14) · RISARALDA — Plano general 2025 (z8-14) · CASTILLA MANEJO
+DIRECTO (z8-14), además de PICHICHI, PICHICHI SUR, SAN CARLOS, RIOPAILA detallado
+y el general.
+
+⚠️ El de CASTILLA vino de un PDF de **39 páginas** y el worker procesa **una
+sola**. Si el cliente esperaba las 39 hojas, eso sigue pendiente.

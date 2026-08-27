@@ -366,3 +366,70 @@ Se carga del Excel de combustible que administración ya lleva
 Excel y genera el SQL con `on conflict do update`). ⚠️ El Excel escribe
 `CASE 1002` y la BD usa `CASE1002` — hay que normalizar el código o el `insert`
 falla contra la FK de `equipos`.
+
+## El aviso de las 24 horas entre lectura y lectura (25-ago-2026)
+
+Regla del cliente, y está bien pensada: **entre dos lecturas seguidas de la misma
+máquina no puede haber más de 24 horas de avance, así hayan pasado tres días.**
+Porque la máquina no está prendida todo el tiempo — si estuvo en el taller el
+horómetro no avanzó. Lo que se mide es trabajo, no calendario.
+
+⚠️ **Mi primer diseño multiplicaba por los días transcurridos y estaba MAL**: le
+regalaba 72 horas de margen a una máquina que pasó tres días parada, que es justo
+el caso que hay que cazar. El cliente lo corrigió.
+
+**Medido antes de escribirlo**, sobre 3.447 lecturas reales:
+
+| | |
+|---|---|
+| Avance típico entre dos lecturas | **3,9 horas** |
+| Menos de 12 h | 81,7% |
+| Pasa de 24 h | 8,4% |
+| Pasa de 48 h | 6,2% — eso ya no es trabajo |
+
+24 es **seis veces** el uso normal: avisa poco y cuando avisa acierta. Al ritmo
+real son 2 o 3 avisos al día en toda la flota.
+
+### 🔴 Avisa, NO bloquea
+
+Un bloqueo duro habría rechazado el **13,5%** de los registros históricos, y ahí
+dentro hay casos legítimos — la VALTRA 9902, a la que le CAMBIARON el horómetro y
+arrancó de cero. Dejar a un operario varado a las 6 a.m. frente a la máquina es
+peor que un dato dudoso marcado.
+
+### No toca el guardado
+
+`<AvisoHorometro>` es un `<p>` debajo del campo. Si fallara, la labor se cierra
+igual. **Cerrar labor es por donde la gente cobra** y no se arriesga.
+
+Está solo en **cerrar labor** (91% de las lecturas). Entrega de insumos, tanqueo
+y órdenes de trabajo todavía no lo tienen — a propósito, para que este corriera
+unos días primero.
+
+### La referencia es la lectura LIMPIA
+
+Sale de `equipo_horometro_v`, no de la última fila cruda. Sin eso la PUMA 2101,
+que tiene la escala ×10, daría alarma en cada registro; con eso su referencia sale
+en 14.560,9 y la guarda de escala calla el aviso.
+
+Offline: el espejo de 21 referencias vive en **`localStorage`** (`sam:horometro-ref`,
+373 bytes) y no en Dexie, porque subir la versión de Dexie dispara migraciones que
+en este proyecto han sido destructivas. **Sin referencia no avisa**: inventar una
+alarma sin con qué comparar es peor que callarse.
+
+## Tabla de horómetros — la referencia a la vista (27-ago-2026)
+
+**Más → ⏱️ Horómetros.** Una fila por máquina: última lectura buena, **el tope que
+aceptaría el próximo registro** (esa lectura + 24), cuándo se leyó y de dónde salió.
+
+Existe porque el aviso juzgaba con un número que no aparecía en ninguna pantalla:
+si a alguien le salta la alarma y no está de acuerdo, no tenía cómo comprobar
+contra qué lo comparan. **Una regla que no se puede auditar la gente aprende a
+ignorarla.**
+
+Es el MISMO dato que usa el aviso, no otro cálculo — ese es el punto. Se nota en
+la columna "de dónde salió": la PUMA 2101 y la VALTRA 9902 dicen **Manual**, que
+son las dos corregidas a mano y por eso mandan sobre lo tecleado en campo.
+
+Las de lectura vieja suben arriba y se marcan. Las **5 sin ninguna lectura** salen
+aparte con su explicación. Y abrir la pantalla refresca el espejo local del aviso.

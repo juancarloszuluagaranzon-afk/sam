@@ -646,3 +646,32 @@ reportar** en esas cinco suertes.
 
 ⚠️ Al cerrar una labor trabada **con área en cero**, el respaldo le paga el área
 COMPLETA planificada. Cerrar en cero no es lo conservador: es lo caro.
+
+
+## 🔴 La unidad ya NO siempre es hectáreas (27-ago-2026)
+
+**ACEQUIAS se mide en hectómetros (hm)**, no en hectáreas. Es lineal: se abre
+tanto de zanja, no se cubre tanto de terreno.
+
+`labores_catalogo.unidad` (default `'ha'`) y `asignaciones.unidad`. En la interfaz
+manda **`unidadDeLabor(nombre)`** de `lib/texto.ts`, que hoy resuelve por nombre —
+una línea que cambiar cuando el catálogo sea la única fuente.
+
+🔴 **`asignaciones.unidad` va NULLABLE y SIN default a propósito.** `null` dice
+"se registró cuando todo eran hectáreas", que no es lo mismo que afirmar que
+aquella labor de acequias de marzo se midió en ha — nadie lo sabía entonces.
+Mismo criterio que `insumos_solicitudes.engraso`.
+
+### ZANJAS y ACEQUIAS eran la misma labor
+
+Estaban las dos en el catálogo y el cliente pidió **una sola**. La migración
+renombra en el catálogo **y en las 29 `asignaciones.labor_nombre` históricas**:
+`labor_nombre` es texto copiado, no una llave foránea, así que arreglar solo el
+catálogo habría dejado 29 labores huérfanas fuera de todo filtro por labor.
+
+### ⚠️ Los totales siguen sumando peras con manzanas
+
+Cualquier total de área que cruce labores está sumando ha con hm — Planilla,
+Resumen, Reporte. Con **una sola** labor en hm el error es chico, pero **la
+Planilla es la nómina**. Al agregar la segunda labor lineal, separar los totales
+por unidad antes que nada.

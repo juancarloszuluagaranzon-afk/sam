@@ -227,6 +227,39 @@ alter table public.app_usuarios add constraint app_usuarios_rol_check check (
 );
 ```
 
+⚠️ **Ese `in (...)` de arriba ya está vencido** — hoy incluye también `taller` y
+`conductor_madera`. Siempre **leer la lista vigente antes de escribirla**, porque
+Postgres no sabe *ampliar* un CHECK: hay que soltarlo y volver a crearlo con el
+arreglo COMPLETO, y copiar una lista vieja **borra roles que ya existen** y deja
+usuarios reales sin poder guardarse.
+
+```sql
+select pg_get_constraintdef(oid) from pg_constraint
+ where conname = 'app_usuarios_rol_check';
+```
+
+### 🔴 Un rol nuevo cuesta 13 ediciones en 9 archivos
+
+Medido con `conductor_madera` (27-ago-2026). La migración del CHECK es apenas el
+primero:
+
+1. `types/domain.ts` — la unión `UserRole`
+2. `services/samApi.ts` — **`mapRole`** 🔴
+3. `App.tsx` — la ruta a su vista
+4. su vista propia
+5. `lib/roles.ts` — la etiqueta que se lee
+6. `components/ImpersonationBar.tsx` — **tres** sitios: el `useMemo`, el `find` y el `optgroup`
+7. el selector de rol al crear usuario
+8. `components/BotonManual.tsx` — `manualesDe()`
+9. la migración del CHECK
+
+🔴 **Olvidar `mapRole` no da error**: lo que no reconoce cae a `operador`, y el
+usuario entra — a la pantalla equivocada. Es el único de los nueve que falla en
+silencio, así que se revisa de primero.
+
+**Se prueba insertando un usuario de verdad**, no leyendo el código: `conductor`
+estuvo seis días en el código con la base rechazándolo.
+
 Si escribes `public.usuarios` en una migración, un `exception when undefined_table`
 se lo traga en silencio y la migración "pasa" sin hacer nada.
 

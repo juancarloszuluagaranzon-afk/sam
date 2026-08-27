@@ -79,6 +79,13 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    `AvalesCombustibleTab` esconde los botones cuando `registradoPor === session.id` y
    avisa que lo firma el dueño o administración (que ven la misma pantalla). Al abrir
    un flujo de aval a quien también origina el registro: cerrar esta puerta.
+7d. **🔴 La unidad de una labor ya no siempre es hectáreas.** **ACEQUIAS se mide en
+   HECTÓMETROS**: es lineal. Usar **`unidadDeLabor(nombre)`** de `lib/texto.ts` en toda
+   etiqueta y encabezado de área — nunca escribir "ha" fijo. `labores_catalogo.unidad`
+   y `asignaciones.unidad` (esta última **nullable y sin default**: `null` = se registró
+   cuando todo eran hectáreas). ⚠️ **Los totales que cruzan labores siguen sumando ha
+   con hm**; con una sola labor lineal el error es chico, pero **la Planilla es la
+   nómina** — al agregar la segunda, separar los totales por unidad.
 8. **Nunca usar `now()`** al normalizar fechas en SQL; usar `coalesce(fecha_inicio, created_at)`.
 
 ## Flujo de trabajo
@@ -107,7 +114,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Chequeo diario | `views/ChequeoDiarioView`, `services/chequeoApi.ts` | 30+ ítems por máquina, **un ítem por pantalla** en 3 vueltas físicas, orden rotado cada día. ⚠️ Hoy **solo activo en TRC-1** (banco de pruebas): las 21 máquinas reales tienen `chequeo_lista_id` en null hasta que el cliente lo valide — la asignación original quedó guardada en `chequeo_listas.nota` |
 | Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina. Las **horas** salen de `equipo_horas_mes` (cierre mensual de horómetros) y caen a `labor_sesiones` si el mes no tiene cierre |
 | Flota · planilla CDA-F-68 | `views/FlotaTab` | El Excel sale **calcado del formato impreso**: membrete IMECOL, códigos de normalización, las 16 columnas y la cuadrícula. ⚠️ Usa **exceljs** y no `xlsx`, porque la versión comunitaria de `xlsx` **no escribe estilos** (probado: descarta bordes y negritas al guardar). Entra por `import()` en su propio chunk. El **conductor también descarga** la suya |
-| Viajes de trozas | `views/MaderaTab`, `MaderaForm`, `maderaApi.ts` | Negocio nuevo de transporte de madera. Parte de viaje con **foto del tablero obligatoria**: el kilometraje no se declara, se demuestra. La hora la pone el servidor. ⚠️ Tiene **6 viajes DEMO** en la base (`nota like 'DEMO%'`) |
+| Viajes de trozas | `views/MaderaTab`, `MaderaForm`, `MaderaView`, `maderaApi.ts` | Negocio nuevo de transporte de madera; existe porque **el dueño del camión vive lejos** — es confianza, no reportes. Cinco campos y una **foto de la guía de despacho (obligatoria)**; la hora la pone el servidor y se muestra. Rol propio `conductor_madera` (ve solo lo suyo, sin anular). ⚠️ **El kilometraje quedó OPCIONAL: el odómetro del camión está dañado** — exigirlo obligaba a inventar un número. ⚠️ Tiene **6 viajes DEMO** (`nota like 'DEMO%'`) que hay que borrar antes de registrar de verdad. Ver `.agent/skills/managing-madera/` |
 | Máquinas (maestro) | `views/MaquinasCrudTab`, `hooks/useEquipmentForm` | Crear, editar, activar, desactivar y eliminar. Lo ven el dueño y el analista, con la **misma lógica compartida** en el hook |
 | Tarifas | `views/TarifasTab`, `tarifasApi.ts` | ⚠️ **El código está en `main` pero la entrada del menú está COMENTADA** (`SupervisorView`, buscar "TARIFAS NO SE MUESTRA"): decisión del cliente. La tabla solo tiene 27 tarifas de ejemplo, y una tarifa de mentira en una pantalla de precios es peor que no tener la pantalla. Para habilitarla: descomentar. Ver `.agent/skills/managing-facturacion/` |
 
@@ -239,7 +246,11 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   transcurridos: le regala 72 h de margen a la máquina que estuvo parada, que es justo el
   caso que hay que cazar. **Avisa, no bloquea** (un bloqueo habría rechazado el 13,5% de
   los registros históricos) y **no toca el guardado**. La referencia sale de la lectura
-  limpia y se espeja en `localStorage`; sin referencia no dice nada.
+  limpia y se espeja en `localStorage`; sin referencia no dice nada. La referencia se
+  puede **ver**: Más → ⏱️ Horómetros (`views/HorometrosTab`) lista por máquina la última
+  lectura buena, **el tope que aceptaría el próximo registro** y de dónde salió — una
+  regla que no se puede auditar la gente aprende a ignorarla. Hoy el aviso está solo en
+  **cerrar labor** (91% de las lecturas); faltan insumos, tanqueo y órdenes de trabajo.
 - **Un tanqueo también se puede rechazar**: los despachos sí
   (`editarDespacho`/`eliminarDespacho`); el tanqueo solo se puede **rechazar** en
   `AvalesCombustibleTab` —que reversa— y volver a teclear. Cuando toque corregir uno
@@ -275,9 +286,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   ASM solo guarda la config en la tabla `mapas`. Ver `.agent/skills/managing-mapas/`.
 - **Roles**: `owner`, `administracion`, `supervisor`, `operador`, `supervisor_insumos`,
   `conductor` (escolta), `conductor_madera` (camión de trozas), `analista_insumos`,
-  `taller`, `soporte`. Al agregar uno hay que tocar ~9 archivos
-  (ver cómo se hizo `conductor`: dominio, `mapRole`, routing en `App.tsx`, labels,
-  dropdown de usuarios, ImpersonationBar).
+  `taller`, `soporte`. Agregar uno cuesta **13 ediciones en 9 archivos** (checklist
+  completo en `.agent/skills/managing-supabase/`): dominio, **`mapRole`**, routing en
+  `App.tsx`, su vista, labels, **tres** sitios de ImpersonationBar, el selector de
+  usuarios, `manualesDe()` y la migración del CHECK. 🔴 **Olvidar `mapRole` no da
+  error**: el rol desconocido cae a `operador` y la persona entra a la pantalla
+  equivocada. ⚠️ Postgres no *amplía* un CHECK — hay que leer el vigente y
+  reescribirlo completo, o se borran roles que ya existen.
 - **🔴 Combustible: nadie se mete una entrada a mano.** El supervisor de insumos NO ve
   Inventario (`InsumosModule` le filtra la pestaña): si pudiera hacer "+ Entrada" el
   combustible aparecería de la nada. Todo lo que entra o sale sin un despacho pasa por
@@ -316,8 +331,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   Igual con las compras: nacen en BORRADOR y solo **recibirlas** mueve el inventario.
 - **Skills del repo**: `sam-app/.agent/skills/` — leerlas antes de tocar su área
   (`managing-assignments`, `managing-insumos`, `managing-mapas`, `managing-supabase`,
-  `managing-maestro`, `managing-taller`, `managing-facturacion`, `writing-ui-copy`,
-  `capturing-gotchas`).
+  `managing-maestro`, `managing-taller`, `managing-facturacion`, `managing-madera`,
+  `managing-flota`, `writing-ui-copy`, `building-react-forms`, `capturing-gotchas`).
 
 ## Cómo trabaja el usuario
 

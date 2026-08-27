@@ -53,12 +53,13 @@ import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
 import { MaderaTab } from './MaderaTab'
+import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1084,6 +1085,16 @@ export function SupervisorView({
                       <div>
                         <div className="more-sheet__label">Terceros</div>
                         <div className="more-sheet__desc">Clientes a los que se presta la labor</div>
+                      </div>
+                    </button>
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'listas' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('listas'); setMoreMenuOpen(false) }}
+                    >
+                      <span className="more-sheet__icon">📍</span>
+                      <div>
+                        <div className="more-sheet__label">Lugares y listas</div>
+                        <div className="more-sheet__desc">Predios y destinos de la madera, estaciones, placas</div>
                       </div>
                     </button>
                     <button
@@ -2286,6 +2297,7 @@ export function SupervisorView({
 
         {supervisorTab === 'flota' ? <FlotaTab /> : null}
         {supervisorTab === 'madera' ? <MaderaTab /> : null}
+        {supervisorTab === 'listas' ? <CatalogosInsumosTab /> : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
           <InsumosResumenTab />

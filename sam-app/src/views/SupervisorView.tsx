@@ -97,6 +97,7 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'soporte') return 'Soporte'
   if (role === 'supervisor_insumos') return 'Supervisor de insumos'
   if (role === 'conductor') return 'Conductor de escolta'
+  if (role === 'conductor_madera') return 'Conductor de madera'
   if (role === 'analista_insumos') return 'Analista de insumos y materiales'
   if (role === 'taller') return 'Taller'
   return 'Operador'
@@ -2852,6 +2853,7 @@ export function SupervisorView({
                       <option value="supervisor">Supervisor</option>
                       <option value="supervisor_insumos">Supervisor de insumos</option>
                       <option value="conductor">Conductor de escolta</option>
+                        <option value="conductor_madera">Conductor de madera</option>
                       <option value="analista_insumos">Analista de insumos y materiales</option>
                       <option value="taller">Taller / mecanico</option>
                       <option value="administracion">Administración</option>

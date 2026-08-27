@@ -274,7 +274,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 - **Mapas**: los tiles los genera **FieldMaps** (otro proyecto del usuario, VPS aparte).
   ASM solo guarda la config en la tabla `mapas`. Ver `.agent/skills/managing-mapas/`.
 - **Roles**: `owner`, `administracion`, `supervisor`, `operador`, `supervisor_insumos`,
-  `conductor`, `analista_insumos`, `soporte`. Al agregar uno hay que tocar ~6 archivos
+  `conductor` (escolta), `conductor_madera` (camión de trozas), `analista_insumos`,
+  `taller`, `soporte`. Al agregar uno hay que tocar ~9 archivos
   (ver cómo se hizo `conductor`: dominio, `mapRole`, routing en `App.tsx`, labels,
   dropdown de usuarios, ImpersonationBar).
 - **🔴 Combustible: nadie se mete una entrada a mano.** El supervisor de insumos NO ve

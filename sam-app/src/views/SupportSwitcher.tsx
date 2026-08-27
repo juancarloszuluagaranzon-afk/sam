@@ -33,6 +33,10 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
     () => users.filter((u) => u.role === 'supervisor_insumos' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const conductoresMadera = useMemo(
+    () => users.filter((u) => u.role === 'conductor_madera' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
   const conductores = useMemo(
     () => users.filter((u) => u.role === 'conductor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
@@ -42,6 +46,7 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
   const [opId, setOpId] = useState('')
   const [insId, setInsId] = useState('')
   const [conId, setConId] = useState('')
+  const [madId, setMadId] = useState('')
 
   // Para roles "globales" usamos un usuario real si existe (su id no afecta:
   // ven todo). Si no hay, sintetizamos uno con la identidad de soporte.
@@ -184,6 +189,31 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
               disabled={!conId}
               onClick={() => {
                 const u = conductores.find((s) => s.id === conId)
+                if (u) onView({ ...u })
+              }}
+            >
+              Ver
+            </button>
+          </div>
+        )}
+
+        {conductoresMadera.length > 0 && (
+          <div className="support-pick">
+            <label className="support-pick__field">
+              <span className="support-pick__label">Conductor de madera</span>
+              <SearchableSelect
+                value={madId}
+                onChange={setMadId}
+                options={conductoresMadera.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Buscar…"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button support-pick__btn"
+              disabled={!madId}
+              onClick={() => {
+                const u = conductoresMadera.find((s) => s.id === madId)
                 if (u) onView({ ...u })
               }}
             >

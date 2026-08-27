@@ -30,8 +30,12 @@ function n1(v: number | null): string {
   return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(v)
 }
 
-export function MaderaTab() {
+export function MaderaTab({ conductorScope }: {
+  /** Cuando viene, el conductor solo ve y cierra SUS propios viajes. */
+  conductorScope?: { id: string; nombre: string }
+} = {}) {
   const { session, busy, setBusy, setError, setInfo } = useAppData()
+  const esConductor = !!conductorScope
 
   const [viajes, setViajes] = useState<MaderaViaje[]>([])
   const [cargando, setCargando] = useState(true)
@@ -54,10 +58,15 @@ export function MaderaTab() {
   useEffect(() => { void refrescar() }, [refrescar])
 
   const lista = useMemo(() => {
+    // El conductor ve SOLO los suyos. Se compara contra el nombre porque es lo
+    // que queda en el viaje; el id no viaja al listado.
+    const mios = conductorScope
+      ? viajes.filter((v) => v.registradoNombre === conductorScope.nombre)
+      : viajes
     const q = busca.trim().toLowerCase()
-    if (!q) return viajes
-    return viajes.filter((v) => `${v.placa} ${v.origen} ${v.destino} ${v.registradoNombre}`.toLowerCase().includes(q))
-  }, [viajes, busca])
+    if (!q) return mios
+    return mios.filter((v) => `${v.placa} ${v.origen} ${v.destino} ${v.registradoNombre}`.toLowerCase().includes(q))
+  }, [viajes, busca, conductorScope])
 
   const vivos = useMemo(() => lista.filter((v) => v.estado !== 'ANULADO'), [lista])
 
@@ -116,7 +125,7 @@ export function MaderaTab() {
   return (
     <section className="panel-card">
       <div className="panel-title split">
-        <h2>Viajes del camión</h2>
+        <h2>{esConductor ? 'Mis viajes' : 'Viajes del camión'}</h2>
         <button type="button" className="primary-button" onClick={() => setFormOpen(true)} disabled={busy}>
           + Registrar salida
         </button>
@@ -227,8 +236,12 @@ export function MaderaTab() {
                       Cerrar viaje
                     </button>
                   )}
-                  <button type="button" className="inline-button maestro-delete-btn" disabled={busy}
-                          onClick={() => void anular(v)}>Anular</button>
+                  {/* Anular es de administracion: el conductor corrige llamando,
+                      no borrando su propio registro. */}
+                  {!esConductor && (
+                    <button type="button" className="inline-button maestro-delete-btn" disabled={busy}
+                            onClick={() => void anular(v)}>Anular</button>
+                  )}
                 </div>
               )}
             </article>

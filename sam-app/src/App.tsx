@@ -7,6 +7,7 @@ import { SupportSwitcher } from './views/SupportSwitcher'
 import { InsumosView } from './views/InsumosView'
 import { AnalistaView } from './views/AnalistaView'
 import { FlotaView } from './views/FlotaView'
+import { MaderaView } from './views/MaderaView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
@@ -518,6 +519,17 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <AnalistaView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  // Rol Conductor de madera → sus partes de viaje del camión de trozas.
+  if (session.role === 'conductor_madera') {
+    return (
+      <>
+        {impersonationBar}
+        {syncErrorBanner}
+        <MaderaView onLogout={() => saveSession(null)} />
       </>
     )
   }

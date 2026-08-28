@@ -1,3 +1,4 @@
+import { unidadDeLabor } from '../lib/texto'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadEquiposEstado, executionDateKey, loadKardexReporte, loadBodegas, type EquipoEstado } from '../services/samApi'
@@ -542,7 +543,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
                       <span>{a.labor} — {a.operatorName}</span>
                     </div>
                     <div className="dash-detalle__side">
-                      <strong>{nf(areaEjec(a) || a.area)} ha</strong>
+                      <strong>{nf(areaEjec(a) || a.area)} {unidadDeLabor(a.labor)}</strong>
                       <small>{fmtDia(executionDateKey(a))}</small>
                     </div>
                   </div>

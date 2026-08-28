@@ -4,6 +4,7 @@ import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import { updateAssignment, createAssignment, executionDateKey, createLaborSesion } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
+import { unidadDeLabor } from '../lib/texto'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
 
@@ -40,6 +41,20 @@ export function useAssignmentActions() {
    * ⚠️ Se busca por NOMBRE de hacienda, no por código: hay códigos compartidos
    * entre haciendas distintas (ver `project_maestro_codigo_compartido`).
    */
+  /**
+   * 🔴 El tope del maestro NO aplica a las labores que se miden en HECTÓMETROS.
+   *
+   * ACEQUIAS es longitud: se abren tantos hectómetros de zanja dentro de una
+   * suerte de tantas hectáreas. Son **dimensiones distintas** y compararlas no
+   * significa nada — una suerte de 5,9 ha puede llevar 12 hm de acequia sin que
+   * eso tenga nada de raro. Topar lo uno con lo otro le impediría al operario
+   * registrar lo que de verdad hizo, que es el peor error posible aquí: con esto
+   * se le paga.
+   */
+  function tieneTopeDeArea(a: Assignment): boolean {
+    return unidadDeLabor(a.labor) === 'ha'
+  }
+
   function areaOficialSuerte(a: Assignment): number | null {
     const suerte = a.suerte.trim().toUpperCase()
     const hacienda = a.haciendaName.trim().toUpperCase()
@@ -278,10 +293,12 @@ export function useAssignmentActions() {
     const sessionDraftValue = Number(draft?.area ?? '')
 
     if (!sessionDraftValue && !isComplete) {
-      setError('Ingresa las hectareas ejecutadas antes de finalizar.')
+      setError(unidadDeLabor(assignment.labor) === 'hm'
+        ? 'Ingresa los hectómetros ejecutados antes de finalizar.'
+        : 'Ingresa las hectareas ejecutadas antes de finalizar.')
       return
     }
-    if (!isComplete && sessionDraftValue > sessionMax + 0.001) {
+    if (!isComplete && tieneTopeDeArea(assignment) && sessionDraftValue > sessionMax + 0.001) {
       const cap = formatArea(sessionMax)
       setError(
         suerteExecutedOthers > 0
@@ -648,7 +665,11 @@ export function useAssignmentActions() {
         .filter((a) => a.id !== assignment.id && (a.status === 'COMPLETADA' || a.status === 'PARCIAL'))
         .reduce((s, a) => s + (a.executedArea ?? 0), 0)
       const restante = Math.max(0, suerteTotalArea - ejecOtros)
-      if (patch.executedArea > restante + 0.001) {
+      // ⚠️ `tieneTopeDeArea`: las labores en hectómetros no se topan contra el
+      // área de la suerte — son dimensiones distintas. Va aquí, en la condición,
+      // y no como una salida temprana: salir de `editAssignment` antes de tiempo
+      // se saltaría también el guardado y diría que guardó sin haber guardado.
+      if (tieneTopeDeArea(assignment) && patch.executedArea > restante + 0.001) {
         setError(
           ejecOtros > 0
             ? `El área ejecutada (${patch.executedArea.toFixed(2)} ha) supera lo que queda de la suerte ${assignment.suerte}: otros parciales ya sumaron ${ejecOtros.toFixed(2)} de ${suerteTotalArea.toFixed(2)} ha, quedan ${restante.toFixed(2)} ha.`

@@ -177,7 +177,10 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
           <p className="eyebrow">Áreas</p>
           {editing ? (
             <label className="assignment-detail-field">
-              <span>Hectáreas ejecutadas</span>
+              {/* La unidad la manda la labor: ACEQUIAS va en HECTÓMETROS porque es
+                  longitud, no superficie. Escribir "hectáreas" fijo hacía que el
+                  supervisor tecleara metros creyendo que eran ha. */}
+              <span>{unidadDeLabor(a.labor) === 'hm' ? 'Hectómetros ejecutados' : 'Hectáreas ejecutadas'}</span>
               <input
                 type="number"
                 min={0}
@@ -192,11 +195,11 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
               <div className="assignment-detail-areas">
                 <div>
                   <strong>{a.executedArea.toFixed(2)}</strong>
-                  <span>ha ejecutadas</span>
+                  <span>{unidadDeLabor(a.labor)} ejecutadas</span>
                 </div>
                 <div>
                   <strong>{a.area.toFixed(2)}</strong>
-                  <span>ha planificadas</span>
+                  <span>{unidadDeLabor(a.labor)} planificadas</span>
                 </div>
                 <div>
                   <strong>{a.area > 0 ? `${completion}%` : '-'}</strong>

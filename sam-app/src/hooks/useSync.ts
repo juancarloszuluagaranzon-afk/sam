@@ -149,6 +149,8 @@ export function useSync({
     // "resucitaba" en la caché de los demás. Aquí capturamos el id del evento
     // DELETE y lo quitamos de Dexie antes del refresh.
     const pendingDeletes = new Set<string>()
+    // ¿El websocket esta arriba? Lo dice el callback de `.subscribe`.
+    let realtimeVivo = false
     const channel = supabase
       .channel('asignaciones-changes')
       .on(
@@ -177,17 +179,32 @@ export function useSync({
           }, 500)
         },
       )
-      .subscribe()
+      // El estado del websocket decide cada cuanto hace falta el poll de
+      // respaldo: mientras Realtime este conectado, avisa el solo.
+      .subscribe((estado) => { realtimeVivo = estado === 'SUBSCRIBED' })
 
-    // Poll periodico como fallback defensivo: si Realtime se cae o no
-    // estamos conectados al websocket, igual mantenemos sync. Cada 30s.
-    // Es silencioso (delta sync ~pocos KB, solo trae filas que cambiaron
-    // desde lastSync-10s) y el usuario no ve absolutamente nada salvo si
-    // hay datos nuevos en la lista. Costo: 30 dispositivos * 1 req/30s =
-    // ~60 req/min al VPS, despreciable.
-    const POLL_INTERVAL_MS = 30000
+    // Poll periodico como fallback defensivo: si Realtime se cae o no estamos
+    // conectados al websocket, igual mantenemos sync.
+    //
+    // 🔴 El ritmo lo decide el estado del websocket. Con Realtime conectado el
+    // poll es puro respaldo y basta cada 2 minutos; sin el, vuelve a 30 s.
+    //
+    // Medido: cada revision vacia son ~1,1 KB entre peticion y cabeceras, y con
+    // la app abierta una jornada de 8 h eso da ~1,1 MB al dia por operario — lo
+    // mas caro que consume la app despues de las actualizaciones. Aflojando a 2
+    // minutos cuando no hace falta, baja a ~0,3 MB. **No se apaga**: si Realtime
+    // se cae en silencio, sin el poll las labores dejarian de llegar y nadie se
+    // enteraria, que es mucho peor que gastar unos megas.
+    const POLL_RAPIDO_MS = 30000
+    const POLL_LENTO_MS = 120000
+    let ultimoPoll = 0
+    const TICK_MS = 10000
     const pollId = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
+      const cada = realtimeVivo ? POLL_LENTO_MS : POLL_RAPIDO_MS
+      const ahora = Date.now()
+      if (ahora - ultimoPoll < cada) return
+      ultimoPoll = ahora
       void loadAssignments().then((r) => {
         // 🔴 Solo se toca el estado si de verdad llego algo. Antes se entregaba
         // la lista siempre, y como es un array nuevo cada vez, la app entera se
@@ -197,7 +214,7 @@ export function useSync({
         if (r.changed) onAssignmentsReloaded(r.data)
         onSyncError(r.error)
       })
-    }, POLL_INTERVAL_MS)
+    }, TICK_MS)
 
     return () => {
       window.removeEventListener('online', onOnline)

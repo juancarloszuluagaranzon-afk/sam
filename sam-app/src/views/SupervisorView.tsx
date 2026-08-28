@@ -1,3 +1,4 @@
+import { unidadDeLabor } from '../lib/texto'
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 
@@ -2227,7 +2228,7 @@ export function SupervisorView({
                                   </span>
                                 )}
                                 {status === 'PENDIENTE' && (
-                                  <span>{(assignment?.area ?? row.area).toFixed(2)} ha</span>
+                                  <span>{(assignment?.area ?? row.area).toFixed(2)} {unidadDeLabor(assignment?.labor)}</span>
                                 )}
                               </div>
                             </td>
@@ -3527,7 +3528,7 @@ export function SupervisorView({
                         </span>
                       </div>
                       <div className="equipment-card-body">
-                        <strong>{planned.toFixed(2)} ha</strong>
+                        <strong>{planned.toFixed(2)} {unidadDeLabor(selectedLabor?.labor)}</strong>
                         <span>
                           {active
                             ? `${active.operatorName} - ${active.haciendaName} ${active.suerte}`
@@ -3815,7 +3816,8 @@ export function SupervisorView({
                     </label>
 
                     <label className="assignment-detail-field">
-                      <span>Hectáreas ejecutadas</span>
+                      {/* La unidad la manda la labor: ACEQUIAS va en hectómetros. */}
+                      <span>{unidadDeLabor(selectedLabor.labor) === 'hm' ? 'Hectómetros ejecutados' : 'Hectáreas ejecutadas'}</span>
                       <input
                         type="number"
                         min={0}
@@ -3823,7 +3825,7 @@ export function SupervisorView({
                         value={editLaborDraft.executedArea}
                         onChange={(e) => setEditLaborDraft((d) => ({ ...d, executedArea: e.target.value }))}
                       />
-                      <small>Planificadas: {selectedLabor.area.toFixed(2)} ha</small>
+                      <small>Planificadas: {selectedLabor.area.toFixed(2)} {unidadDeLabor(selectedLabor.labor)}</small>
                     </label>
 
                     <div className="assignment-detail-field-grid">

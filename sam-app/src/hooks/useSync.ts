@@ -189,7 +189,12 @@ export function useSync({
     const pollId = window.setInterval(() => {
       if (document.visibilityState !== 'visible' || !navigator.onLine) return
       void loadAssignments().then((r) => {
-        onAssignmentsReloaded(r.data)
+        // 🔴 Solo se toca el estado si de verdad llego algo. Antes se entregaba
+        // la lista siempre, y como es un array nuevo cada vez, la app entera se
+        // re-renderizaba cada 30 segundos aunque no hubiera pasado nada: un
+        // tironcito cada medio minuto durante toda la jornada. Eso es lo que la
+        // gente siente como "el telefono se puso lento".
+        if (r.changed) onAssignmentsReloaded(r.data)
         onSyncError(r.error)
       })
     }, POLL_INTERVAL_MS)

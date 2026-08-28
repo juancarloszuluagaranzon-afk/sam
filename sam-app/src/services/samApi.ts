@@ -634,6 +634,20 @@ export async function loadAssignments(): Promise<{
   data: Assignment[]
   source: Source
   error: string | null
+  /**
+   * ¿Cambió algo de verdad, o es la misma lista de antes?
+   *
+   * 🔴 Existe por el poll de 30 segundos. `db.assignments.toArray()` devuelve un
+   * **array nuevo** cada vez, y meterlo al estado hace re-renderizar la app
+   * entera — unas veinte pantallas — aunque no haya llegado un solo cambio. En
+   * un celular de gama baja eso es un tironcito cada medio minuto, todo el dia,
+   * y es lo que la gente siente como "el telefono se puso lento".
+   *
+   * Con esto el que llama puede no tocar el estado cuando no hay nada nuevo, que
+   * es el caso normal: en una jornada tipica la inmensa mayoria de los polls
+   * vuelven vacios.
+   */
+  changed: boolean
 }> {
   const cached = await db.assignments.toArray()
   const lastSync = (await db.meta.get('assignments_last_sync'))?.value
@@ -680,7 +694,8 @@ export async function loadAssignments(): Promise<{
         const all = await db.assignments.toArray()
         all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
         void db.meta.put({ key: 'assignments_last_sync', value: now })
-        return { data: all, source: 'supabase', error: null }
+        // El delta vacio es el caso NORMAL: nada que avisar.
+        return { data: all, source: 'supabase', error: null, changed: safeDeltas.length > 0 }
       }
       // rawDelta.length >= 1000 → posible cap; continúa al full sync abajo.
     }
@@ -742,7 +757,9 @@ export async function loadAssignments(): Promise<{
     // en vez de la del servidor, asi la UI no parpadea.
     const localById = new Map(localPendingRows.map((r) => [r.id, r]))
     const finalData = mapped.map((row) => localById.get(row.id) ?? row)
-    return { data: finalData, source: 'supabase', error: null }
+    // Sync completo: se asume que cambio. Pasa en el primer arranque y cuando el
+    // delta no es confiable, no cada 30 segundos.
+    return { data: finalData, source: 'supabase', error: null, changed: true }
   } catch (err) {
     // El fetch a Supabase fallo. Devolvemos lo que tengamos en cache y
     // exponemos el error para que la UI muestre un banner. Si el caller
@@ -755,7 +772,8 @@ export async function loadAssignments(): Promise<{
         : typeof err === 'object' && err !== null && 'message' in err
           ? String((err as { message: unknown }).message)
           : 'No pudimos conectarnos al servidor'
-    return { data: cached, source: 'fallback', error: message }
+    // Se cayo la red: lo que hay es lo que ya estaba en pantalla.
+    return { data: cached, source: 'fallback', error: message, changed: false }
   }
 }
 

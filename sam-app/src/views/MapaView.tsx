@@ -9,7 +9,7 @@ import { listarCartografias, type CartografiaRemota } from '../services/fieldmap
 import { useAppData } from '../context/AppDataContext'
 import { MapaFormModal } from '../components/MapaFormModal'
 import {
-  descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes,
+  descargarMapa, borrarMapa, metaDescarga, estadoDescarga, enumerarTiles, formatoBytes, estimarPeso,
 } from '../lib/mapaOffline'
 import {
   MARCADOR_COLORS, actualizarMedicion, borrarMarcador, borrarMedicion, crearMarcador, crearMedicion,
@@ -525,9 +525,30 @@ export function MapaView({ onBack }: { onBack?: () => void } = {}) {
 
   async function handleDescargar(m: MapaConfig) {
     if (descargandoId) return
+
+    // 🔴 Se avisa cuanto ocupa ANTES, no despues. Un plano puede pesar 1 MB o
+    // 80 MB segun el area y el detalle, y hasta ahora el aviso llegaba cuando ya
+    // estaba en el telefono. Llenarle el celular a alguien en campo es un
+    // problema de verdad: el aparato completo se pone lento, no solo el app.
     setDescargandoId(m.id)
+    setMsg('Calculando cuanto ocupa...')
+    const est = await estimarPeso(m)
+    if (est && est.bytes > 25 * 1024 * 1024) {
+      const ok = window.confirm(
+        `"${m.nombre}" va a ocupar cerca de ${formatoBytes(est.bytes)} en este equipo `
+        + `(${est.tiles} imagenes).
+
+Sirve para verlo sin senal. Si el celular esta `
+        + `justo de espacio, mejor dejalo sin descargar: el mapa igual se ve con datos.
+
+`
+        + `¿Descargarlo de todas formas?`,
+      )
+      if (!ok) { setDescargandoId(null); setMsg(''); return }
+    }
+
     setMsg('')
-    setProgreso({ hechos: 0, total: enumerarTiles(m).length })
+    setProgreso({ hechos: 0, total: est?.tiles ?? enumerarTiles(m).length })
     abortRef.current = new AbortController()
     try {
       const meta = await descargarMapa(m, (hechos, total) => setProgreso({ hechos, total }), abortRef.current.signal)

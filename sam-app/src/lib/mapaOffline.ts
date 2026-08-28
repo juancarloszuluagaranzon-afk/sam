@@ -82,6 +82,37 @@ export function urlTile(cfg: MapaConfig, t: { z: number; x: number; y: number })
 }
 
 /**
+ * Cuanto va a ocupar el mapa en el celular, ANTES de bajarlo.
+ *
+ * 🔴 Se MIDEN unas cuantas imagenes reales en vez de suponer un promedio: el
+ * peso por imagen va de 2 KB a 50 KB segun el plano, o sea un factor de 25. Un
+ * promedio inventado se equivoca por cientos de megas, que es justo la cifra que
+ * decide si alguien llena el telefono o no.
+ *
+ * Se piden 6 imagenes con HEAD (solo la cabecera, no la imagen) repartidas entre
+ * el zoom mas bajo y el mas alto, porque las de mas detalle pesan distinto. Si
+ * ninguna responde, se devuelve `null`: **no se inventa un numero** — mejor no
+ * decir nada que decir una cifra que no se midio.
+ */
+export async function estimarPeso(cfg: MapaConfig): Promise<{ tiles: number; bytes: number } | null> {
+  const tiles = enumerarTiles(cfg)
+  if (tiles.length === 0) return null
+  const paso = Math.max(1, Math.floor(tiles.length / 6))
+  const muestra = tiles.filter((_, i) => i % paso === 0).slice(0, 6)
+  const pesos: number[] = []
+  await Promise.all(muestra.map(async (t) => {
+    try {
+      const res = await fetch(urlTile(cfg, t), { method: 'HEAD' })
+      const len = Number(res.headers.get('content-length'))
+      if (res.ok && Number.isFinite(len) && len > 0) pesos.push(len)
+    } catch { /* una muestra que falla no invalida el resto */ }
+  }))
+  if (pesos.length === 0) return null
+  const promedio = pesos.reduce((s, b) => s + b, 0) / pesos.length
+  return { tiles: tiles.length, bytes: Math.round(promedio * tiles.length) }
+}
+
+/**
  * Descarga TODOS los tiles del mapa a Cache Storage con progreso. Los tiles de
  * borde que no existen (404) se ignoran (la pirámide no es un rectángulo
  * perfecto). Devuelve el meta guardado. `onProgress(hechos, total)`.

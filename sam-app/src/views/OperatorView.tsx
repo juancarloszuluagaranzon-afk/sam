@@ -24,7 +24,7 @@ import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { MapButton } from '../components/MapButton'
 import { fmtCantidad } from '../lib/cantidad'
-import { unidadDeLabor } from '../lib/texto'
+import { unidadDeLabor, formatArea } from '../lib/texto'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
@@ -115,10 +115,6 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
  * Recibe el nombre de la labor porque es lo unico que viaja en todas las
  * pantallas — `asignaciones` guarda `labor_nombre` como texto suelto.
  */
-function formatArea(value: number, laborNombre?: string | null) {
-  return `${value.toFixed(2)} ${unidadDeLabor(laborNombre)}`
-}
-
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
 }

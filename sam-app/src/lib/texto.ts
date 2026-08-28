@@ -40,3 +40,18 @@ export function unidadDeLabor(laborNombre?: string | null): 'ha' | 'hm' {
   const n = String(laborNombre ?? '').trim().toUpperCase()
   return LABORES_EN_HECTOMETROS.has(n) ? 'hm' : 'ha'
 }
+
+/**
+ * Un area con su unidad: "9.32 ha", "15.00 hm".
+ *
+ * 🔴 Vive aqui porque habia **cuatro copias** de esta funcion en el proyecto y
+ * solo una sabia de hectometros: el Reporte mostraba "9.32 ha" en una fila de
+ * ACEQUIAS. Una funcion de formato duplicada se arregla en un sitio y sigue
+ * mintiendo en los otros tres.
+ *
+ * Recibe el nombre de la labor porque es lo unico que viaja en todas las
+ * pantallas — `asignaciones` guarda `labor_nombre` como texto suelto.
+ */
+export function formatArea(value: number, laborNombre?: string | null): string {
+  return `${value.toFixed(2)} ${unidadDeLabor(laborNombre)}`
+}

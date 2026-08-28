@@ -4,13 +4,9 @@ import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import { updateAssignment, createAssignment, executionDateKey, createLaborSesion } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
-import { unidadDeLabor } from '../lib/texto'
+import { unidadDeLabor, formatArea } from '../lib/texto'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
-
-function formatArea(value: number) {
-  return `${value.toFixed(2)} ha`
-}
 
 export function useAssignmentActions() {
   const {
@@ -299,7 +295,7 @@ export function useAssignmentActions() {
       return
     }
     if (!isComplete && tieneTopeDeArea(assignment) && sessionDraftValue > sessionMax + 0.001) {
-      const cap = formatArea(sessionMax)
+      const cap = formatArea(sessionMax, assignment.labor)
       setError(
         suerteExecutedOthers > 0
           ? `Otro operario ya avanzo en esta suerte. Solo puedes registrar hasta ${cap}.`

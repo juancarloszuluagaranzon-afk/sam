@@ -1,4 +1,4 @@
-import { unidadDeLabor } from '../lib/texto'
+import { unidadDeLabor, formatArea } from '../lib/texto'
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 
@@ -108,10 +108,6 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
 
 function isSupervisorOrOwner(role: UserProfile['role'] | undefined): boolean {
   return role === 'supervisor' || role === 'owner' || role === 'administracion'
-}
-
-function formatArea(value: number) {
-  return `${value.toFixed(2)} ha`
 }
 
 // VENTANA DE APROBACIÓN del supervisor: tiene 36 h desde que la labor se CERRÓ
@@ -2093,7 +2089,7 @@ export function SupervisorView({
                               {assignment.zone === 'NORTE' ? 'Norte' : 'Sur'}
                             </span>
                           )}
-                          <span className="movement-card__area">{formatArea(assignment.area)}</span>
+                          <span className="movement-card__area">{formatArea(assignment.area, assignment.labor)}</span>
                         </div>
                         <div className="movement-card__footer">
                           <span>{assignment.operatorName || 'Sin operador'}</span>
@@ -2538,10 +2534,10 @@ export function SupervisorView({
                           <td>{a.haciendaName}</td>
                           <td>{a.suerte}</td>
                           <td>{a.labor}</td>
-                          <td className="num-cell">{formatArea(a.area)}</td>
+                          <td className="num-cell">{formatArea(a.area, a.labor)}</td>
                           <td className="num-cell">
                             {a.status === 'COMPLETADA' || a.status === 'PARCIAL'
-                              ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
+                              ? formatArea(a.executedArea > 0 ? a.executedArea : a.area, a.labor)
                               : '—'}
                           </td>
                           <td>{clienteLabel}</td>
@@ -2670,7 +2666,7 @@ export function SupervisorView({
                                     <td className="num-cell">{hrs}</td>
                                     <td className="num-cell">
                                       {a.status === 'COMPLETADA' || a.status === 'PARCIAL'
-                                        ? formatArea(a.executedArea > 0 ? a.executedArea : a.area)
+                                        ? formatArea(a.executedArea > 0 ? a.executedArea : a.area, a.labor)
                                         : formatArea(a.area)}
                                     </td>
                                     <td>{clienteLabel}</td>

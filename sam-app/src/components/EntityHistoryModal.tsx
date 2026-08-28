@@ -1,3 +1,4 @@
+import { formatArea } from '../lib/texto'
 import { memo, useMemo, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
 import { formatTime, executionDateKey, formatExecutionDate } from '../services/samApi'
@@ -55,10 +56,6 @@ export function buildMonthOptions(reference: string): { value: string; label: st
     out.push({ value, label: label.charAt(0).toUpperCase() + label.slice(1) })
   }
   return out
-}
-
-function formatArea(value: number) {
-  return `${value.toFixed(2)} ha`
 }
 
 function getStatusMeta(a: Assignment) {
@@ -234,7 +231,7 @@ export const EntityHistoryModal = memo(function EntityHistoryModal({
                 </div>
                 <div className="movement-side">
                   <span className={`status-pill ${meta.tone}`}>
-                    {meta.label} · {formatArea(display)}
+                    {meta.label} · {formatArea(display, a.labor)}
                   </span>
                   {a.finishedAt && <small>{formatTime(a.finishedAt)}</small>}
                 </div>

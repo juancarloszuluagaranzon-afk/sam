@@ -2607,58 +2607,51 @@ export async function entregarDirecto(input: {
   engraso?: boolean
   items: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
 }): Promise<{ solicitudId: string; insumos: Insumo[] }> {
-  const ahora = new Date().toISOString()
-  const { data: sol, error: e1 } = await supabase
-    .from('insumos_solicitudes')
-    .insert({
-      operario_id: input.operarioId,
-      operario_nombre: input.operarioNombre ?? null,
-      nota: input.nota ?? null,
-      origen: 'DIRECTA',
-      estado: 'ENTREGADA',
-      entregado_en: ahora,
-      despachado_por: input.despachadoPor ?? null,
-      ruta: input.ruta ?? null,
-      horometro: input.horometro ?? null,
-      equipo_codigo: input.equipoCodigo,
-      bodega_id: input.bodegaId ?? null,
-      evidencia_urls: input.evidenciaUrls,
-      engraso: input.engraso ?? null,
-    })
-    .select('id')
-    .single()
-  if (e1 || !sol) throw e1 ?? new Error('No se pudo crear la entrega directa')
+  // 🔴 UNA sola llamada: `entregar_directo` escribe la entrega, sus materiales
+  // y el descuento de inventario dentro de la MISMA transacción.
+  //
+  // Antes eran tres escrituras sueltas desde el navegador y una señal que se
+  // cortaba en la mitad dejaba el registro a medias. Pasó de verdad el 26 y 27
+  // de agosto: tres entregas sin un solo material, una de 50 galones que nunca
+  // salieron del inventario, y otra que anotó cuatro materiales y solo descontó
+  // el combustible. El sistema decía que el material seguía en el carro cuando ya
+  // se lo habían llevado, y nadie tenía cómo darse cuenta.
+  //
+  // Ahora queda completa o no queda nada — y si no queda nada, el supervisor lo
+  // ve y lo repite, que es muchísimo mejor que media entrega que nadie revisa.
+  //
+  // El id se genera AQUÍ, no en la base: así un reintento por señal mala reusa el
+  // mismo id y la función lo ignora en vez de crear una entrega gemela. Dos de
+  // las entregas vacías del 26 eran justo eso, la misma repetida un minuto
+  // después con el mismo horómetro.
+  const id = crypto.randomUUID()
+  const { error } = await supabase.rpc('entregar_directo', {
+    p_id: id,
+    p_operario_id: input.operarioId,
+    p_operario_nombre: input.operarioNombre ?? null,
+    p_despachado_por: input.despachadoPor ?? null,
+    p_equipo_codigo: input.equipoCodigo,
+    p_bodega_id: input.bodegaId ?? null,
+    p_horometro: input.horometro ?? null,
+    p_ruta: input.ruta ?? null,
+    p_nota: input.nota ?? null,
+    p_evidencia: input.evidenciaUrls ?? [],
+    p_engraso: input.engraso ?? null,
+    p_items: input.items.map((it) => ({
+      insumoId: it.insumoId, insumoNombre: it.insumoNombre,
+      unidad: it.unidad, cantidad: it.cantidad,
+    })),
+  })
+  if (error) throw new Error(error.message || 'No se pudo registrar la entrega')
 
-  const itemRows = input.items.map((it) => ({
-    solicitud_id: sol.id,
-    insumo_id: it.insumoId,
-    insumo_nombre: it.insumoNombre,
-    unidad: it.unidad,
-    cantidad: it.cantidad,
-    cantidad_despachada: it.cantidad,
-  }))
-  if (itemRows.length) {
-    const { error: e2 } = await supabase.from('insumos_solicitud_items').insert(itemRows)
-    if (e2) throw new Error(e2.message || 'No se pudieron guardar los ítems')
-  }
-
+  // Los insumos actualizados se releen: la función ya dejó el stock bueno.
+  const tocados = [...new Set(input.items.filter((it) => it.insumoId && it.cantidad > 0).map((it) => it.insumoId))]
   const insumos: Insumo[] = []
-  for (const it of input.items) {
-    if (it.insumoId && it.cantidad > 0) {
-      const upd = await registrarMovimientoInsumo({
-        insumoId: it.insumoId,
-        tipo: 'SALIDA',
-        cantidad: it.cantidad,
-        motivo: 'Entrega directa',
-        referencia: sol.id,
-        creadoPor: input.despachadoPor,
-        equipoCodigo: input.equipoCodigo,
-        bodegaId: input.bodegaId,
-      })
-      insumos.push(upd)
-    }
+  if (tocados.length) {
+    const { data } = await supabase.from('insumos').select('*').in('id', tocados)
+    for (const row of data ?? []) insumos.push(mapInsumo(row as Record<string, unknown>))
   }
-  return { solicitudId: sol.id, insumos }
+  return { solicitudId: id, insumos }
 }
 
 /**

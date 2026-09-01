@@ -8811,3 +8811,10 @@ td.planilla-vacio:hover { background: #fde047; }
   padding-top: 8px; border-top: 1px solid rgba(0,0,0,.08);
   color: #8a6116;
 }
+
+/* El hectometro dentro de la celda del dia: debajo, mas chico y CON su unidad.
+   Sin la unidad se leeria como una hectarea mas. */
+.planilla-hm {
+  display: block; font-size: 0.66rem; line-height: 1.2;
+  color: var(--color-ink-mid, #5a5f57); font-weight: 600;
+}

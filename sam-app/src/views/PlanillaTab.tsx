@@ -352,17 +352,29 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     type Row = {
       id: string
       name: string
+      /** Hectáreas por día. */
       perDay: Record<string, number>
+      /**
+       * Hectómetros por día, aparte.
+       *
+       * 🔴 ACEQUIAS se mide en hectómetros y sumarla con las hectáreas da un
+       * número que no significa nada. Y no es teórico: **8 de los 17 días con
+       * acequias tienen también una labor en hectáreas del mismo operario**, o sea
+       * que casi la mitad de esas celdas estaba sumando peras con manzanas — en la
+       * planilla con la que se paga.
+       */
+      perDayHm: Record<string, number>
       // true si ese día hay alguna labor EN_PROCESO (aún sin cerrar) → se pinta naranja.
       perDayProceso: Record<string, boolean>
       total: number
+      totalHm: number
     }
     const map = new Map<string, Row>()
     // 1) Sembrar TODOS los operarios del catálogo (rol operador) con fila vacía.
     //    .trim() defensivo: algunos nombres en BD traen espacios/NBSP al inicio
     //    que rompían el orden alfabético (quedaban arriba de todo).
     for (const o of operators) {
-      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, perDayProceso: {}, total: 0 })
+      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, perDayHm: {}, perDayProceso: {}, total: 0, totalHm: 0 })
     }
     // Avance ya CERRADO (executedArea) por suerte+labor, para estimar el restante
     // de las labores EN_PROCESO sin duplicar lo ya hecho en días anteriores.
@@ -379,14 +391,20 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       const key = id && map.has(id) ? id : id || `name:${name.trim().toUpperCase()}`
       let row = map.get(key)
       if (!row) {
-        row = { id: id || key, name, perDay: {}, perDayProceso: {}, total: 0 }
+        row = { id: id || key, name, perDay: {}, perDayHm: {}, perDayProceso: {}, total: 0, totalHm: 0 }
         map.set(key, row)
       }
       // Área real del día — misma regla que ve el operario en su pantalla.
       const { area: val, enProceso } = areaDelDia(a, cerradoBySuerte)
       if (enProceso) row.perDayProceso[dk] = true
-      row.perDay[dk] = (row.perDay[dk] ?? 0) + val
-      row.total += val
+      // Cada unidad a su columna. Mezclarlas era el error de fondo.
+      if (unidadDeLabor(a.labor) === 'hm') {
+        row.perDayHm[dk] = (row.perDayHm[dk] ?? 0) + val
+        row.totalHm += val
+      } else {
+        row.perDay[dk] = (row.perDay[dk] ?? 0) + val
+        row.total += val
+      }
     }
     // 3) Los operarios INACTIVOS (los que ya no están en el catálogo activo) NO se
     //    muestran en la planilla, aunque tengan novedades registradas. Solo salen
@@ -456,15 +474,18 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
   // Totales por columna (dia) y gran total.
   const dayTotals = useMemo(() => {
     const t: Record<string, number> = {}
+    const tHm: Record<string, number> = {}
     let grand = 0
+    let grandHm = 0
     for (const r of filteredRows) {
       for (const d of days) {
-        const v = r.perDay[d.key] ?? 0
-        t[d.key] = (t[d.key] ?? 0) + v
+        t[d.key] = (t[d.key] ?? 0) + (r.perDay[d.key] ?? 0)
+        tHm[d.key] = (tHm[d.key] ?? 0) + (r.perDayHm[d.key] ?? 0)
       }
       grand += r.total
+      grandHm += r.totalHm
     }
-    return { t, grand }
+    return { t, tHm, grand, grandHm }
   }, [filteredRows, days])
 
   const quincenaLabel = planillaQuincena === 'SEGUNDA' ? '2da quincena (16-fin)' : '1ra quincena (1-15)'
@@ -484,16 +505,20 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         const nov = novedades.get(`${rowKey}|${dayKey}`)
         return nov ?? cell(v)
       }
-      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total']
+      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total ha', 'Total hm']
       const body = filteredRows.map((r) => [
         r.name,
         ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
         Number(r.total.toFixed(2)),
+        // ⚠️ Los hectómetros en su propia columna, no sumados: el Excel de la
+        // planilla es con el que se liquida.
+        r.totalHm > 0 ? Number(r.totalHm.toFixed(2)) : '',
       ])
       const footer = [
         'Total',
         ...days.map((d) => cell(dayTotals.t[d.key] ?? 0)),
         Number(dayTotals.grand.toFixed(2)),
+        dayTotals.grandHm > 0 ? Number(dayTotals.grandHm.toFixed(2)) : '',
       ]
       const aoa = [
         [`Planilla quincenal · ${monthLabel} · ${quincenaLabel}`],
@@ -558,9 +583,15 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       </div>
 
       <p className="planilla-caption">
-        Hectáreas <strong>realmente ejecutadas</strong> por operario y día (lo cerrado cuenta su área hecha;
+        Área <strong>realmente ejecutada</strong> por operario y día (lo cerrado cuenta su área hecha;
         lo que está <strong>en proceso</strong>, el restante estimado). Una labor que cruza de día NO se cuenta
         dos veces. {monthLabel} · {quincenaLabel}.
+      </p>
+      <p className="planilla-caption">
+        🔴 <strong>Las hectáreas y los hectómetros van en columnas separadas.</strong>{' '}
+        ACEQUIAS se mide en hectómetros — es longitud, no superficie — y sumarla con las
+        hectáreas daba un número que no significa nada. Dentro de la casilla del día, lo
+        que esté en hectómetros aparece debajo y siempre con su unidad.
       </p>
 
       <div className="planilla-legend">
@@ -642,7 +673,8 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     <span className="planilla-day">{d.day}</span>
                   </th>
                 ))}
-                <th className="planilla-total-col">Total</th>
+                <th className="planilla-total-col">Total ha</th>
+                <th className="planilla-total-col">Total hm</th>
               </tr>
             </thead>
             <tbody>
@@ -659,15 +691,19 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     </td>
                     {days.map((d) => {
                       const v = r.perDay[d.key] ?? 0
+                      // 🔴 Los hectómetros van APARTE dentro de la misma celda, con su
+                      // unidad al lado. Sumarlos con las hectáreas daba un número sin
+                      // significado, y pasaba en 8 de los 17 días con acequias.
+                      const vHm = r.perDayHm[d.key] ?? 0
                       const hl = revisadas.get(`${rowKey}|${d.key}`)
                       const nov = novedades.get(`${rowKey}|${d.key}`)
                       const proceso = r.perDayProceso[d.key]
-                      const numClass = v > 0 && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
-                      const canDetail = !markMode && v > 0 && !nov
+                      const numClass = (v > 0 || vHm > 0) && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
+                      const canDetail = !markMode && (v > 0 || vHm > 0) && !nov
                       // Casilla VACÍA hasta el día de hoy (sin área, sin novedad y sin
                       // resaltado manual) → se pinta amarillo como "falta por registrar".
                       // Clic (fuera de modo resaltar) abre la novedad de ese día (default F).
-                      const vacio = v <= 0 && !nov && !hl && d.key <= todayKey
+                      const vacio = v <= 0 && vHm <= 0 && !nov && !hl && d.key <= todayKey
                       return (
                         <td
                           key={d.key}
@@ -693,11 +729,21 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                         >
                           {nov
                             ? <b style={{ color: novPorCodigo.get(nov)?.color }}>{novLetter(nov)}</b>
-                            : fmt(v)}
+                            : (
+                              <>
+                                {fmt(v)}
+                                {/* El hectómetro va debajo y CON su unidad: si fuera un
+                                    número suelto se leería como hectáreas. */}
+                                {vHm > 0 && (
+                                  <span className="planilla-hm">{vHm.toFixed(2)} hm</span>
+                                )}
+                              </>
+                            )}
                         </td>
                       )
                     })}
                     <td className="planilla-total-col">{r.total.toFixed(2)}</td>
+                    <td className="planilla-total-col">{r.totalHm > 0 ? r.totalHm.toFixed(2) : ''}</td>
                   </tr>
                 )
               })}
@@ -708,9 +754,13 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                 {days.map((d) => (
                   <td key={d.key} className={`planilla-foot${d.isToday ? ' planilla-today' : ''}`}>
                     {fmt(dayTotals.t[d.key] ?? 0)}
+                    {(dayTotals.tHm[d.key] ?? 0) > 0 && (
+                      <span className="planilla-hm">{(dayTotals.tHm[d.key] ?? 0).toFixed(2)} hm</span>
+                    )}
                   </td>
                 ))}
                 <td className="planilla-total-col planilla-foot">{dayTotals.grand.toFixed(2)}</td>
+                <td className="planilla-total-col planilla-foot">{dayTotals.grandHm > 0 ? dayTotals.grandHm.toFixed(2) : ''}</td>
               </tr>
             </tfoot>
           </table>

@@ -109,7 +109,7 @@ export function Donut({
         <text x={cx} y={cy + 14} textAnchor="middle" className="dash-donut__uni">{unidad}</text>
       </svg>
 
-      <ul className="dash-series">
+      <ul className="dash-leyenda">
         {datos.map((d, i) => {
           const pct = (d.valor / suma) * 100
           return (

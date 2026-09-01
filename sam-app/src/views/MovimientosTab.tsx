@@ -5,8 +5,8 @@ import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 import {
   loadResumenMovimientos, indiceCalidad, entregasPorDia, ritmoPorHora, hhmm,
-  cuadreCarro, esDeRuta,
-  type ResumenMovimientos, type Despachador,
+  cuadreCarro, esDeRuta, loadSolicitudesOperarios,
+  type ResumenMovimientos, type Despachador, type ResumenSolicitudes,
 } from '../services/movimientosApi'
 
 /**
@@ -58,11 +58,21 @@ export function MovimientosTab() {
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
   const [detalle, setDetalle] = useState<Despachador | null>(null)
+  // El panel de solicitudes va en su propia consulta: es el que menos se abre y
+  // no tiene por que viajar en cada carga del tablero.
+  const [solicitudes, setSolicitudes] = useState<ResumenSolicitudes>({
+    porOperario: [], porInsumo: [], detalle: [],
+  })
 
   const cargar = useCallback(async () => {
     setCargando(true); setError('')
     try {
-      setDatos(await loadResumenMovimientos(desde, hasta))
+      const [res, sols] = await Promise.all([
+        loadResumenMovimientos(desde, hasta),
+        loadSolicitudesOperarios(desde, hasta),
+      ])
+      setDatos(res)
+      setSolicitudes(sols)
     } catch {
       setError('No se pudo cargar el tablero. Revisa la conexión.')
     } finally { setCargando(false) }
@@ -428,39 +438,125 @@ export function MovimientosTab() {
             </div>
           </div>
 
-          {/* ── Las solicitudes del operario, con su verdad por delante ─── */}
-          <h3 className="dash-titulo">Solicitudes hechas por operarios</h3>
-          {(sol.total ?? 0) < 20 ? (
-            <div className="mov-vacio-explicado">
-              <p>
-                <strong>Este flujo casi no se usa todavía.</strong> En el periodo hay
-                {' '}<strong>{sol.total ?? 0} solicitudes</strong> de operarios contra
-                {' '}<strong>{n0(t.entregas)} entregas</strong>: de cada 100 entregas,
-                menos de 2 nacieron de un pedido. Las demás las lleva el supervisor por su
-                cuenta.
-              </p>
-              <p>
-                Han pedido <strong>{sol.operariosQuePidieron ?? 0} de {datos?.operariosActivos ?? 0} operarios</strong>
-                {' '}({adopcion}%). Por eso aquí no hay ranking de quién pide más: con esos
-                números, el primer puesto lo decidiría una sola solicitud.
-              </p>
-              <p className="subtle-copy">
-                Si quiere que este flujo arranque, lo que mueve la aguja es el operario, no
-                el tablero. Mientras tanto, «quién recibe» de arriba responde la misma
-                pregunta —quién consume y cuánto— con datos de verdad.
-              </p>
+          {/* ── Quién solicita y qué solicita ───────────────────── */}
+          <h3 className="dash-titulo">Quién solicita, y qué pide</h3>
+
+          <div className="dash-kpis">
+            <div className="dash-kpi">
+              <strong>{n0(sol.total ?? 0)}</strong>
+              <span>solicitudes</span>
+              <small>contra {n0(t.entregas)} entregas directas</small>
             </div>
-          ) : (
-            <div className="dash-kpis">
-              <div className="dash-kpi"><strong>{sol.total}</strong><span>solicitudes</span></div>
-              <div className="dash-kpi"><strong>{sol.pendientes ?? 0}</strong><span>sin atender</span></div>
-              <div className="dash-kpi">
-                <strong>{sol.minutosRespuesta ? n0(sol.minutosRespuesta / 60) : '—'}</strong>
-                <span>horas de respuesta</span>
-              </div>
-              <div className="dash-kpi"><strong>{adopcion}%</strong><span>de operarios pide</span></div>
+            <div className="dash-kpi">
+              <strong>{sol.operariosQuePidieron ?? 0}/{datos!.operariosActivos}</strong>
+              <span>operarios han pedido</span>
+              <small>{adopcion}% de adopción</small>
+            </div>
+            <div className="dash-kpi">
+              <strong>{n0(sol.entregadas ?? 0)}</strong>
+              <span>terminaron entregadas</span>
+              <small>de {n0(sol.total ?? 0)}</small>
+            </div>
+            <div className="dash-kpi">
+              <strong>{n0(sol.rechazadas ?? 0)}</strong>
+              <span>rechazadas</span>
+              <small>{n0(sol.pendientes ?? 0)} sin atender</small>
+            </div>
+          </div>
+
+          {/* 🔴 El hallazgo del panel: no es que no pidan, es que les dicen que
+              no. Va DESTACADO porque es accionable, no una nota al pie. */}
+          {(sol.rechazadas ?? 0) > 0 && (sol.rechazadas ?? 0) >= (sol.entregadas ?? 0) && (
+            <div className="mov-clave">
+              <p>
+                🔴 <strong>No es que los operarios no pidan: es que la mayoría de los
+                pedidos no termina en entrega.</strong> De {n0(sol.total ?? 0)} solicitudes,
+                {' '}<strong>{n0(sol.rechazadas ?? 0)} fueron rechazadas</strong> y solo{' '}
+                {n0(sol.entregadas ?? 0)} llegó a entregarse.
+              </p>
+              <p>
+                Mire los motivos abajo. Si dicen <em>«ya se entregó»</em>, el material sí
+                llegó — el supervisor pasó con el carro antes de que alguien atendiera el
+                pedido. <strong>El pedido no compite con la falta de material, compite
+                con la ruta</strong>, y la ruta va primero. Eso explica la adopción mejor
+                que cualquier otra cosa, y se arregla del lado de la operación.
+              </p>
             </div>
           )}
+
+          {solicitudes.porOperario.length > 0 && (
+            <div className="mov-dos">
+              <div>
+                <p className="eyebrow">Quién pide</p>
+                <BarrasH
+                  datos={solicitudes.porOperario.map((o) => ({
+                    id: o.id, label: o.nombre, valor: o.solicitudes,
+                  }))}
+                  unidad="solicitudes"
+                  color={SERIES[4]}
+                />
+              </div>
+              <div>
+                <p className="eyebrow">Qué piden</p>
+                <BarrasH
+                  datos={solicitudes.porInsumo.map((i) => ({
+                    id: i.nombre, label: i.nombre, valor: i.entregas, sufijo: 'veces',
+                  }))}
+                  unidad="veces"
+                  color={SERIES[5]}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Con pocas solicitudes la LISTA COMPLETA informa más que cualquier
+              agregado: deja ver el caso concreto y su motivo. */}
+          {solicitudes.detalle.length > 0 && (
+            <div className="tabla-scroll" style={{ marginTop: 14 }}>
+              <table className="horometros-tabla">
+                <thead>
+                  <tr>
+                    <th>Operario</th>
+                    <th>Qué pidió</th>
+                    <th>Cuándo</th>
+                    <th>En qué quedó</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {solicitudes.detalle.map((s) => (
+                    <tr key={s.id}>
+                      <td><strong>{s.operario}</strong></td>
+                      <td>
+                        {s.items ?? '—'}
+                        {s.nota && <span className="field-optional"> · {s.nota}</span>}
+                      </td>
+                      <td>
+                        {fmtFechaHora(s.creada)}
+                        {s.requeridoPara && (
+                          <span className="field-optional"> · lo quería {fmtFechaHora(s.requeridoPara)}</span>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-pill ${s.estado === 'ENTREGADA' ? 'green'
+                          : s.estado === 'RECHAZADA' ? 'red' : 'amber'}`}>
+                          {s.estado}
+                        </span>
+                        {s.motivo && <span className="field-optional"> {s.motivo}</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <p className="subtle-copy mov-nota">
+            ⚠️ <strong>Son pocas solicitudes y el número está a la vista a propósito.</strong>
+            {' '}Con {n0(sol.total ?? 0)} pedidos, el primer puesto del ranking lo decide
+            uno solo: sirve para saber <em>quiénes</em> ya usan el flujo — son a los que
+            hay que preguntarles cómo les fue — pero no para comparar operarios entre sí.
+            La lista completa de abajo dice más que el ranking.
+          </p>
 
           {/* ── Lo que hay que ir a arreglar ───────────────────── */}
           <h3 className="dash-titulo">Lo que falta cerrar</h3>

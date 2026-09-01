@@ -324,3 +324,65 @@ export function hhmm(decimal: number): string {
   const m = Math.round((decimal - h) * 60)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }
+
+/* ─────────── Quién solicita y qué solicita (panel aparte) ─────────── */
+
+export interface SolicitanteMov {
+  id: string
+  nombre: string
+  solicitudes: number
+  entregadas: number
+  pendientes: number
+  rechazadas: number
+  ultima: string
+}
+
+export interface PedidoDetalle {
+  id: string
+  operario: string
+  creada: string
+  entregada: string | null
+  requeridoPara: string | null
+  estado: string
+  nota: string | null
+  items: string | null
+  /** Por que se rechazo. El dato mas informativo del panel. */
+  motivo: string | null
+}
+
+export interface ResumenSolicitudes {
+  porOperario: SolicitanteMov[]
+  porInsumo: InsumoMov[]
+  detalle: PedidoDetalle[]
+}
+
+/**
+ * El panel de "quién solicita".
+ *
+ * 🔴 Va en su propia consulta y no dentro del resumen general: es el panel que
+ * menos se abre y no tiene por qué viajar en cada carga del tablero.
+ *
+ * ⚠️ **Este panel tiene pocos datos y aun así se muestra.** La primera versión lo
+ * reemplazó por una explicación de por qué estaría vacío, y esa fue una decisión
+ * que no me correspondía: el dueño lo pidió, y un indicador con pocos datos sigue
+ * siendo un indicador — la adopción del flujo es justo el número que dice si vale
+ * la pena empujarlo. Lo que sí se conserva es el **tamaño de la muestra al lado
+ * del dato**: un ranking de tres filas se lee distinto cuando se ve que son
+ * siete solicitudes. Esconderlo era paternalista; mostrarlo pelado sería
+ * engañoso.
+ */
+export async function loadSolicitudesOperarios(desde: string, hasta: string): Promise<ResumenSolicitudes> {
+  const vacio: ResumenSolicitudes = { porOperario: [], porInsumo: [], detalle: [] }
+  try {
+    const { data, error } = await supabase.rpc('resumen_solicitudes_operarios', {
+      p_desde: desde, p_hasta: hasta,
+    })
+    if (error || !data) return vacio
+    const d = data as Partial<ResumenSolicitudes>
+    return {
+      porOperario: d.porOperario ?? [],
+      porInsumo: d.porInsumo ?? [],
+      detalle: d.detalle ?? [],
+    }
+  } catch { return vacio }
+}

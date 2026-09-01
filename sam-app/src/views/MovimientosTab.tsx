@@ -268,6 +268,14 @@ export function MovimientosTab() {
               distintas</strong>, y con el total del mes a secas se toma una creyendo que
               se toma la otra.
             </p>
+            <p className="mov-clave__ojo">
+              ⚠ <strong>El «por hora» sirve para entender, no para pagar.</strong> Las
+              horas salen de la primera y la última entrega del día, o sea del mismo dato
+              que se está midiendo: dos entregas separadas ocho horas se ven como «ritmo
+              malo» y dos seguidas como «ritmo excelente», cuando en la mitad pudo haber
+              un viaje de hora y media o una espera en la bomba. Lealo como una señal de
+              que los totales engañan, no como la nota de nadie.
+            </p>
           </div>
 
           <p className="subtle-copy mov-nota">

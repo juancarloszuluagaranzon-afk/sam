@@ -8807,3 +8807,7 @@ td.planilla-vacio:hover { background: #fde047; }
   padding: 5px 8px; border-radius: 8px; background: var(--color-bg-soft, #f2f5f0);
 }
 .mov-cuadre--ojo { background: rgba(214,158,46,.14); color: #8a6116; }
+.mov-clave__ojo {
+  padding-top: 8px; border-top: 1px solid rgba(0,0,0,.08);
+  color: #8a6116;
+}

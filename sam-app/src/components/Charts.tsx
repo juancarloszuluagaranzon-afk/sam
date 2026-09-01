@@ -109,7 +109,7 @@ export function Donut({
         <text x={cx} y={cy + 14} textAnchor="middle" className="dash-donut__uni">{unidad}</text>
       </svg>
 
-      <ul className="dash-leyenda">
+      <ul className="dash-series">
         {datos.map((d, i) => {
           const pct = (d.valor / suma) * 100
           return (
@@ -219,6 +219,103 @@ export function Columnas({
           </button>
         )
       })}
+    </div>
+  )
+}
+
+/* ──────────────── Columnas apiladas (un día, varias personas) ──────────────── */
+
+export interface Serie {
+  id: string
+  label: string
+  color: string
+}
+
+/**
+ * Una columna por día, partida por persona.
+ *
+ * Responde dos preguntas de un golpe —cuánto se movió ese día y quién lo movió—
+ * y por eso gana a tres gráficas separadas: el dueño quiere comparar, y comparar
+ * entre gráficas obliga a recordar.
+ *
+ * 🔴 El color lo manda la ENTIDAD por su posición fija en `series`, no el
+ * ranking del día. Si el orden se repintara, el mismo tono sería Genaro un día y
+ * Castañeda otro, y el ojo aprende el color antes que la leyenda.
+ *
+ * Entre segmento y segmento va un corte de 2px del color del fondo: sin él, dos
+ * tonos vecinos se leen como una sola barra más larga.
+ */
+export function ColumnasApiladas({
+  dias,
+  series,
+  onPick,
+}: {
+  dias: { id: string; label: string; valores: Record<string, number> }[]
+  series: Serie[]
+  onPick?: (dia: string) => void
+}) {
+  if (dias.length === 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
+  const totalDe = (d: { valores: Record<string, number> }) =>
+    series.reduce((t, s) => t + (d.valores[s.id] ?? 0), 0)
+  const max = Math.max(...dias.map(totalDe), 1)
+
+  return (
+    <div className="dash-cols dash-cols--apilada" style={{ ['--n' as string]: dias.length }}>
+      {dias.map((d) => {
+        const total = totalDe(d)
+        const detalle = series
+          .filter((s) => (d.valores[s.id] ?? 0) > 0)
+          .map((s) => `${s.label}: ${d.valores[s.id]}`)
+          .join(' · ')
+        return (
+          <button
+            key={d.id}
+            type="button"
+            className="dash-col"
+            onClick={() => onPick?.(d.id)}
+            disabled={!onPick}
+            aria-label={`${d.label}: ${total} entregas. ${detalle || 'sin entregas'}`}
+            title={detalle ? `${d.label} — ${detalle}` : `${d.label} — sin entregas`}
+          >
+            <span className="dash-col__wrap">
+              {total > 0 && <span className="dash-col__num is-fuera">{total}</span>}
+              <span className="dash-col__pila" style={{ height: `${(total / max) * 100}%` }}>
+                {series.map((s) => {
+                  const v = d.valores[s.id] ?? 0
+                  if (v <= 0) return null
+                  return (
+                    <span
+                      key={s.id}
+                      className="dash-col__seg"
+                      style={{ flexGrow: v, background: s.color }}
+                    />
+                  )
+                })}
+              </span>
+            </span>
+            <span className="dash-col__lbl">{d.label}</span>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+/**
+ * Leyenda de series. Va SIEMPRE que haya dos o más: sin ella la identidad
+ * quedaría solo en el color, y quien no distingue esos tonos se queda sin poder
+ * leer la gráfica.
+ */
+export function Leyenda({ series }: { series: Serie[] }) {
+  if (series.length < 2) return null
+  return (
+    <div className="dash-series">
+      {series.map((s) => (
+        <span key={s.id} className="dash-series__item">
+          <i className="dash-series__punto" style={{ background: s.color }} />
+          {s.label}
+        </span>
+      ))}
     </div>
   )
 }

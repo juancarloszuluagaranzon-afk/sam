@@ -56,12 +56,13 @@ import { ConsumoDashboardTab } from './ConsumoDashboardTab'
 import { MaderaTab } from './MaderaTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { HorometrosTab } from './HorometrosTab'
+import { MovimientosTab } from './MovimientosTab'
 import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1188,6 +1189,18 @@ export function SupervisorView({
                 </button>
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
+                    className={`more-sheet__item ${supervisorTab === 'movimientos' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('movimientos'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">📦</span>
+                    <div>
+                      <div className="more-sheet__label">Movimientos de insumos</div>
+                      <div className="more-sheet__desc">Quién entrega, qué entrega y a quién — con su calidad al lado</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
                     className={`more-sheet__item ${supervisorTab === 'horometros' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('horometros'); setMoreMenuOpen(false) }}
                   >
@@ -2309,6 +2322,7 @@ export function SupervisorView({
         {supervisorTab === 'madera' ? <MaderaTab /> : null}
         {supervisorTab === 'listas' ? <CatalogosInsumosTab /> : null}
         {supervisorTab === 'horometros' ? <HorometrosTab /> : null}
+        {supervisorTab === 'movimientos' ? <MovimientosTab /> : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
           <InsumosResumenTab />

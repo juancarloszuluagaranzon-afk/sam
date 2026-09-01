@@ -8702,3 +8702,93 @@ td.planilla-vacio:hover { background: #fde047; }
 .horometros-sin { margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--color-border); }
 .horometros-sin h4 { margin: 0 0 6px; font-size: 0.9rem; color: var(--color-ink-mid); }
 .horometros-sin__lista { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+/* ── Columna apilada: un día, varias personas ─────────────────────────────── */
+.dash-col__pila {
+  width: 100%; border-radius: 4px 4px 0 0; overflow: hidden;
+  display: flex; flex-direction: column-reverse;
+  /* El corte entre segmentos es del color del fondo, no una línea de color:
+     dos tonos vecinos sin separación se leen como una sola barra más larga. */
+  gap: 2px;
+}
+.dash-col__seg { width: 100%; min-height: 3px; }
+.dash-col:active .dash-col__pila { opacity: .65; }
+
+/* Leyenda horizontal de series. Va siempre que haya 2 o más: sin ella la
+   identidad quedaría solo en el color. */
+.dash-series { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; }
+.dash-series__item {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 0.82rem; color: var(--color-ink-mid, #5a5f57);
+}
+.dash-series__punto { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+
+/* ── Tablero de movimientos de insumos ────────────────────────────────────── */
+.dash-titulo {
+  margin: 22px 0 10px; font-size: 1rem; font-weight: 700;
+  color: var(--color-ink, #22261f);
+}
+
+/* Tarjeta por despachador. Es un boton: lleva al detalle de la persona. */
+.mov-tarjetas { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.mov-tarjeta {
+  text-align: left; width: 100%; padding: 12px; cursor: pointer;
+  background: var(--color-surface, #fff); color: inherit;
+  border: 1px solid var(--color-border, #e3e6df); border-radius: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.mov-tarjeta:active { background: var(--color-bg-soft, #f2f5f0); }
+.mov-tarjeta__head { display: flex; align-items: center; gap: 8px; }
+.mov-tarjeta__color { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.mov-tarjeta__cifras { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.mov-tarjeta__cifras > div { display: flex; flex-direction: column; min-width: 0; }
+.mov-tarjeta__cifras b { font-size: 1.12rem; line-height: 1.15; }
+.mov-tarjeta__cifras span {
+  font-size: 0.7rem; color: var(--color-ink-mid, #5a5f57); line-height: 1.2;
+}
+
+/* El indice de calidad viaja SIEMPRE pegado al volumen: es la mitad que
+   impide que el numero de entregas se pueda cobrar solo. */
+.mov-calidad {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 9px; border-radius: 9px; font-size: 0.74rem;
+  background: var(--color-bg-soft, #f2f5f0);
+}
+.mov-calidad__num { font-size: 1rem; font-weight: 700; flex: none; }
+.mov-calidad__det { color: var(--color-ink-mid, #5a5f57); line-height: 1.25; }
+.mov-calidad--ok    { background: rgba(27,175,122,.12); }
+.mov-calidad--ok    .mov-calidad__num { color: #12805a; }
+.mov-calidad--medio { background: rgba(214,158,46,.14); }
+.mov-calidad--medio .mov-calidad__num { color: #8a6116; }
+.mov-calidad--bajo  { background: rgba(179,38,30,.12); }
+.mov-calidad--bajo  .mov-calidad__num { color: #b3261e; }
+
+.mov-alerta {
+  margin: 0; padding: 6px 8px; border-radius: 8px; font-size: 0.75rem;
+  background: rgba(214,158,46,.14); color: #8a6116;
+}
+.mov-nota { margin: 8px 0 0; line-height: 1.5; }
+.mov-dos { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+
+/* Un panel vacio SIN explicacion se lee como que el sistema esta roto. */
+.mov-vacio-explicado {
+  padding: 12px 14px; border-radius: 12px; line-height: 1.5;
+  background: var(--color-bg-soft, #f2f5f0);
+  border: 1px dashed var(--color-border, #e3e6df);
+}
+.mov-vacio-explicado p { margin: 0 0 8px; }
+.mov-vacio-explicado p:last-child { margin-bottom: 0; }
+
+.mov-advertencia {
+  margin-top: 22px; padding: 12px 14px; border-radius: 12px; line-height: 1.5;
+  background: rgba(214,158,46,.10); border-left: 4px solid #d69e2e;
+}
+.mov-advertencia p { margin: 0 0 6px; }
+.mov-advertencia ul { margin: 0; padding-left: 18px; }
+.mov-advertencia li { margin-bottom: 6px; font-size: 0.86rem; }
+
+.mov-detalle-lista { margin: 12px 0; padding-left: 18px; line-height: 1.7; font-size: 0.88rem; }
+
+@media (max-width: 420px) {
+  .mov-tarjeta__cifras { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+}

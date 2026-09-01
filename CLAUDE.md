@@ -83,9 +83,12 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    HECTÓMETROS**: es lineal. Usar **`unidadDeLabor(nombre)`** de `lib/texto.ts` en toda
    etiqueta y encabezado de área — nunca escribir "ha" fijo. `labores_catalogo.unidad`
    y `asignaciones.unidad` (esta última **nullable y sin default**: `null` = se registró
-   cuando todo eran hectáreas). ⚠️ **Los totales que cruzan labores siguen sumando ha
-   con hm**; con una sola labor lineal el error es chico, pero **la Planilla es la
-   nómina** — al agregar la segunda, separar los totales por unidad.
+   cuando todo eran hectáreas). ✅ **La Planilla ya los separa**: dos columnas de total
+   (ha y hm) y, dentro de la casilla del día, el hectómetro va debajo CON su unidad.
+   Medido antes de separarlos: a un operario se le sumaban 196,88 hm con 59,51 ha y
+   salía un total de 256,39 sin significado — y **8 de los 17 días con acequias**
+   mezclaban las dos unidades. ⚠️ El Resumen y el Reporte **todavía suman**; al tocar
+   un total que cruce labores, separarlo igual.
 8. **Nunca usar `now()`** al normalizar fechas en SQL; usar `coalesce(fecha_inicio, created_at)`.
 
 ## Flujo de trabajo

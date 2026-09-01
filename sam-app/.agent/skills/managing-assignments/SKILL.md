@@ -675,3 +675,21 @@ Cualquier total de área que cruce labores está sumando ha con hm — Planilla,
 Resumen, Reporte. Con **una sola** labor en hm el error es chico, pero **la
 Planilla es la nómina**. Al agregar la segunda labor lineal, separar los totales
 por unidad antes que nada.
+
+## ✅ La Planilla separa hectáreas de hectómetros (1-sep-2026)
+
+Dos columnas de total: **Total ha** y **Total hm**. Dentro de la casilla del día,
+lo que va en hectómetros aparece **debajo y siempre con su unidad** — suelto se
+leería como una hectárea más. El pie de totales y el Excel, igual.
+
+🔴 **No era un detalle teórico.** Medido en la 2da quincena de agosto: a OSORIO
+DIEGO FERNANDO se le sumaban **196,88 hm con 59,51 ha** y salía un total de
+**256,39** que no significa nada. Y **8 de los 17 días con acequias** tienen
+también una labor en hectáreas del mismo operario, o sea que casi la mitad de esas
+casillas estaba mal. Con esa planilla se paga.
+
+La columna de hm sale **vacía** cuando no hay acequias en el periodo: meterle una
+columna de ceros a quien no la usa es ruido.
+
+⚠️ **El Resumen y el Reporte todavía suman las dos unidades.** Al tocar cualquier
+total que cruce labores, separarlo igual.

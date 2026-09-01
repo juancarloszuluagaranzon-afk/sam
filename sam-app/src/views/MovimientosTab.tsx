@@ -5,6 +5,7 @@ import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 import {
   loadResumenMovimientos, indiceCalidad, entregasPorDia, ritmoPorHora, hhmm,
+  cuadreCarro, esDeRuta,
   type ResumenMovimientos, type Despachador,
 } from '../services/movimientosApi'
 
@@ -30,6 +31,13 @@ import {
 function n0(v: number) { return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(v) }
 function n1(v: number) { return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(v) }
 function pct(parte: number, total: number) { return total > 0 ? Math.round((parte / total) * 100) : 0 }
+
+/** "RIVERA HERREÑO GENARO" → "Genaro". El apellido no ayuda a leer una frase. */
+function primerNombre(completo: string): string {
+  const partes = completo.trim().split(/\s+/)
+  const n = partes[partes.length - 1] || completo
+  return n.charAt(0) + n.slice(1).toLowerCase()
+}
 
 /** Primer día del mes actual y hoy, en zona Bogotá. */
 function rangoMesActual(): { desde: string; hasta: string } {
@@ -119,6 +127,36 @@ export function MovimientosTab() {
     [datos],
   )
 
+  /**
+   * El hallazgo, CALCULADO del periodo cargado.
+   *
+   * 🔴 Este párrafo tenía los números de agosto escritos a mano. Servía ese mes
+   * y mentía en cuanto alguien cambiaba las fechas — la peor clase de error,
+   * porque suena bien y nadie vuelve a revisarlo.
+   *
+   * Compara a los dos de RUTA con más y menos entregas. Solo dice algo si el
+   * volumen difiere de verdad (1,5× o más) y el ritmo por hora casi no (menos del
+   * 15%): ahí la diferencia fue presencia y hay que decirlo. Si no se cumple, no
+   * se inventa una conclusión.
+   */
+  const hallazgo = useMemo(() => {
+    const ruta = (datos?.despachadores ?? []).filter(esDeRuta)
+      .map((d) => ({ d, ritmo: ritmoPorHora(d, datos?.jornadas ?? []) }))
+      .filter((x): x is { d: Despachador; ritmo: number } => x.ritmo != null)
+    if (ruta.length < 2) return null
+    const orden = [...ruta].sort((a, b) => b.d.entregas - a.d.entregas)
+    const alto = orden[0]
+    const bajo = orden[orden.length - 1]
+    const veces = bajo.d.entregas > 0 ? alto.d.entregas / bajo.d.entregas : 0
+    const brecha = Math.abs(alto.ritmo - bajo.ritmo) / Math.max(alto.ritmo, bajo.ritmo)
+    if (veces < 1.5 || brecha > 0.15) return null
+    return {
+      alto, bajo, veces,
+      jA: (datos?.jornadas ?? []).find((j) => j.id === alto.d.id),
+      jB: (datos?.jornadas ?? []).find((j) => j.id === bajo.d.id),
+    }
+  }, [datos])
+
   const sol = datos?.solicitudes ?? {}
   const adopcion = pct(sol.operariosQuePidieron ?? 0, datos?.operariosActivos ?? 0)
 
@@ -160,6 +198,11 @@ export function MovimientosTab() {
         </label>
       </div>
 
+      {datos?.desdeCache && (
+        <p className="mov-alerta" style={{ marginTop: 10 }}>
+          ⚠ Sin conexión. Estos datos son del <strong>{fmtFechaHora(datos.guardadoEn)}</strong>.
+        </p>
+      )}
       {error && <p className="error">{error}</p>}
       {cargando && <p className="muted-text">Cargando movimientos…</p>}
 
@@ -202,6 +245,7 @@ export function MovimientosTab() {
               const ritmo = ritmoPorHora(d, datos?.jornadas ?? [])
               const jor = (datos?.jornadas ?? []).find((j) => j.id === d.id)
               const porEvento = d.eventos > 0 ? d.entregas / d.eventos : 1
+              const cuadre = cuadreCarro(d)
               return (
                 <button key={d.id} type="button" className="mov-tarjeta" onClick={() => setDetalle(d)}>
                   <div className="mov-tarjeta__head">
@@ -230,10 +274,22 @@ export function MovimientosTab() {
                       <span>jornada</span>
                     </div>
                   </div>
-                  {jor && (
+                  <p className="mov-jornada">
+                    {d.dias} días activos
+                    {jor && <> · de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}</>}
+                    {' · '}{n0(d.galones)} galones · {d.maquinas} máquinas
+                    {d.horasAvalMediana != null && <> · aval en {n1(d.horasAvalMediana)} h</>}
+                  </p>
+                  {cuadre != null && (
+                    <p className={`mov-cuadre${Math.abs(cuadre) > 50 ? ' mov-cuadre--ojo' : ''}`}>
+                      Carro: cargó {n0(d.cargado)} gal · entregó {n0(d.galones)} gal ·{' '}
+                      <strong>{cuadre > 0 ? '+' : ''}{n0(cuadre)}</strong>
+                    </p>
+                  )}
+                  {!esDeRuta(d) && (
                     <p className="mov-jornada">
-                      {d.dias} días activos · de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}
-                      {' · '}{n0(d.galones)} galones · {d.maquinas} máquinas
+                      Despacha desde la bodega principal, no hace ruta — no se compara con
+                      los supervisores.
                     </p>
                   )}
                   <div className={`mov-calidad mov-calidad--${cal >= 95 ? 'ok' : cal >= 85 ? 'medio' : 'bajo'}`}>
@@ -243,6 +299,18 @@ export function MovimientosTab() {
                       {' '}{pct(d.avaladas, d.entregas)}% avalado
                     </span>
                   </div>
+                  {d.carguesSospechosos > 0 && (
+                    <p className="mov-alerta">
+                      ⚠ {d.carguesSospechosos} cargue{d.carguesSospechosos > 1 ? 's' : ''} por
+                      encima de 500 galones, por fuera del cuadre. Revíselo en Avales.
+                    </p>
+                  )}
+                  {d.avalVencido > 0 && (
+                    <p className="mov-alerta">
+                      ⚠ {d.avalVencido} entrega{d.avalVencido > 1 ? 's' : ''} sin avalar con
+                      más de 3 días
+                    </p>
+                  )}
                   {porEvento > 1.15 && (
                     <p className="mov-alerta">
                       ⚠ {n1(porEvento)} entregas por visita — revisar si se están partiendo
@@ -254,20 +322,36 @@ export function MovimientosTab() {
           </div>
 
           <div className="mov-clave">
-            <p>
-              🔴 <strong>Antes de comparar los totales, mire la columna «por hora en
-              campo».</strong> En agosto Genaro entregó 263 veces y Castañeda 104 — dos
-              veces y media más. Pero por hora van <strong>1,2 los dos</strong>: el mismo
-              ritmo. Toda la diferencia es <strong>presencia</strong>: Genaro trabajó 29 de
-              31 días con jornadas de 7 horas; Castañeda 20 días con jornadas de 4.
-            </p>
-            <p>
-              Eso no le quita mérito a Genaro — estar es parte del trabajo, y en los dos
-              domingos que él descansó fue Castañeda quien cubrió. Pero{' '}
-              <strong>premiar la presencia y premiar la productividad son dos decisiones
-              distintas</strong>, y con el total del mes a secas se toma una creyendo que
-              se toma la otra.
-            </p>
+            {hallazgo ? (
+              <>
+                <p>
+                  🔴 <strong>Antes de comparar los totales, mire «por hora en
+                  ruta».</strong> {primerNombre(hallazgo.alto.d.nombre)} hizo{' '}
+                  <strong>{n0(hallazgo.alto.d.entregas)}</strong> entregas y{' '}
+                  {primerNombre(hallazgo.bajo.d.nombre)}{' '}
+                  <strong>{n0(hallazgo.bajo.d.entregas)}</strong>, {n1(hallazgo.veces)} veces
+                  más. Pero por hora van <strong>{n1(hallazgo.alto.ritmo)}</strong> y{' '}
+                  <strong>{n1(hallazgo.bajo.ritmo)}</strong>: prácticamente el mismo ritmo.
+                </p>
+                <p>
+                  La diferencia es <strong>presencia</strong>.{' '}
+                  {primerNombre(hallazgo.alto.d.nombre)} trabajó {hallazgo.alto.d.dias} días
+                  {hallazgo.jA ? ` con jornadas de ${n1(hallazgo.jA.horas)} horas` : ''} y{' '}
+                  {primerNombre(hallazgo.bajo.d.nombre)}, {hallazgo.bajo.d.dias}
+                  {hallazgo.jB ? ` con jornadas de ${n1(hallazgo.jB.horas)}` : ''}. Estar es
+                  parte del trabajo y eso no le quita mérito a nadie — pero{' '}
+                  <strong>premiar la presencia y premiar la productividad son dos
+                  decisiones distintas</strong>, y con el total a secas se toma una
+                  creyendo que se toma la otra.
+                </p>
+              </>
+            ) : (
+              <p>
+                En este periodo los totales y el ritmo por hora cuentan la misma historia,
+                así que comparar los totales no engaña. Mire igual el porcentaje de
+                registro completo: el volumen sin él no dice si el trabajo quedó probado.
+              </p>
+            )}
             <p className="mov-clave__ojo">
               ⚠ <strong>El «por hora» sirve para entender, no para pagar.</strong> Las
               horas salen de la primera y la última entrega del día, o sea del mismo dato
@@ -377,6 +461,34 @@ export function MovimientosTab() {
               <div className="dash-kpi"><strong>{adopcion}%</strong><span>de operarios pide</span></div>
             </div>
           )}
+
+          {/* ── Lo que hay que ir a arreglar ───────────────────── */}
+          <h3 className="dash-titulo">Lo que falta cerrar</h3>
+          <div className="dash-kpis">
+            <div className="dash-kpi">
+              <strong>{n0(t.entregas - t.conFoto)}</strong>
+              <span>sin foto</span>
+              <small>de {n0(t.entregas)} entregas</small>
+            </div>
+            <div className="dash-kpi">
+              <strong>{n0(datos.avalVencido.length)}</strong>
+              <span>sin avalar</span>
+              <small>con más de 3 días</small>
+            </div>
+            <div className="dash-kpi">
+              <strong>{t.horasAvalMediana != null ? n1(t.horasAvalMediana) : '—'} h</strong>
+              <span>tarda el aval</span>
+              <small>la mitad, menos de eso</small>
+            </div>
+          </div>
+          <p className="subtle-copy mov-nota">
+            El tiempo del aval es una <strong>mediana</strong>, no un promedio: unos pocos
+            avales muy viejos arrastran el promedio a un número que no describe a nadie.
+            ⚠️ Ese reloj lo para el operario cuando confirma, no el despachador:{' '}
+            <strong>no se le puede cobrar a quien entrega</strong>, o se responde
+            presionando al operario para que firme sin revisar — y ahí se pierde el
+            control entero.
+          </p>
 
           {/* ── La advertencia que no se puede quitar ───────────────────── */}
           <div className="mov-advertencia">

@@ -51,6 +51,30 @@ begin
   -- Medido el 31-ago-2026: hoy va en 1,01 entregas por visita en los tres. O sea
   -- nadie está partiendo nada. Sirve de LÍNEA BASE: si ese número empieza a
   -- subir después de anunciar el pago por productividad, ahí está la respuesta.
+  -- CUADRE DEL CARRO: cuánto combustible cargó cada supervisor a su carro
+  -- contra cuánto entregó desde él.
+  --
+  -- 🔴 Es la pregunta que un pago por productividad obliga a hacer. Medido en
+  -- agosto: los dos supervisores **entregaron 553 galones más de los que
+  -- registraron haber cargado**. No significa que falten galones —puede ser
+  -- saldo que traían de julio, o cargues que no se registraron— pero es
+  -- exactamente el número que tiene que cuadrar si de esto sale plata.
+  --
+  -- ⚠️ `sospechosas` cuenta los cargues por encima de 500 galones, que un carro
+  -- no puede recibir. Existe porque el 31-ago alguien tecleó 108.571 galones (la
+  -- tirilla decía 108.571 = ciento ocho): un solo dedazo así destruye el cuadre,
+  -- y es mejor avisar que mostrar un número roto sin explicación.
+  cargues as (
+    select c.registrado_por as quien,
+           round(sum(c.galones) filter (where c.galones <= 500)::numeric, 2) as gal,
+           count(*) filter (where c.galones > 500) as sospechosas
+      from combustible_externo c
+     where c.destino in ('CARRO', 'PIMPINAS')
+       and c.estado <> 'RECHAZADO'
+       and c.created_at >= p_desde::timestamptz
+       and c.created_at < (p_hasta + 1)::timestamptz
+     group by c.registrado_por
+  ),
   eventos as (
     select despachado_por, count(*) filter (where nuevo) as n
       from (
@@ -81,6 +105,9 @@ begin
           'conHorometro', count(*) filter (where e.horometro is not null and e.horometro > 0),
           -- Visitas: entregas a la misma máquina dentro de 90 min cuentan una.
           'eventos', coalesce(max(ev.n), 0),
+          -- Cuadre del carro: lo que cargó contra lo que entregó.
+          'cargado', coalesce(max(cg.gal), 0),
+          'carguesSospechosos', coalesce(max(cg.sospechosas), 0),
           'primera', min(e.cuando),
           'ultima', max(e.cuando)
         ) as x
@@ -88,6 +115,7 @@ begin
           left join galones g on g.solicitud_id = e.id
           left join app_usuarios u on u.id = e.despachado_por
           left join eventos ev on ev.despachado_por = e.despachado_por
+          left join cargues cg on cg.quien = e.despachado_por
          where e.despachado_por is not null
          group by e.despachado_por, u.nombre_completo
       ) t

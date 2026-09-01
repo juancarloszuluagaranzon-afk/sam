@@ -282,6 +282,15 @@ export function MovimientosTab() {
             que para eso es un control.
           </p>
 
+          <p className="subtle-copy mov-nota">
+            <strong>El cuadre del carro</strong> compara lo que cada supervisor cargó
+            contra lo que entregó desde él. Un número en negativo <em>no</em> quiere decir
+            que falten galones — puede ser saldo que venía del mes pasado o un cargue que
+            no se registró. Quiere decir que <strong>las cuentas del mes no cierran
+            solas</strong>, y eso hay que resolverlo antes de amarrarle plata. A quien
+            despacha desde la bodega principal no le sale cuadre, porque no tiene carro.
+          </p>
+
           {/* ── La serie diaria: lo que pidió el cliente ─────────────────── */}
           <h3 className="dash-titulo">Entregas por día</h3>
           <ColumnasApiladas dias={dias} series={seriesDespachadores} />

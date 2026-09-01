@@ -46,6 +46,20 @@ export interface Despachador {
    * base: si sube después de anunciar el pago, ahí está la respuesta.
    */
   eventos: number
+  /**
+   * Galones que cargó a su carro en el periodo. `0` = no tiene carro (Diego
+   * despacha desde la bodega principal), no "no cargó nada".
+   */
+  cargado: number
+  /**
+   * Cargues por encima de 500 galones, que un carro no puede recibir. Se
+   * excluyen de `cargado` y se cuentan aquí.
+   *
+   * 🔴 Existe porque el 31-ago alguien tecleó **108.571 galones** — la tirilla
+   * decía `108.571` y en Colombia el punto es de miles. Un solo dedazo así
+   * destruye el cuadre del carro, y es mejor avisar que mostrar un número roto.
+   */
+  carguesSospechosos: number
   primera: string
   ultima: string
 }
@@ -189,4 +203,25 @@ export function hhmm(decimal: number): string {
   const h = Math.floor(decimal)
   const m = Math.round((decimal - h) * 60)
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+
+/**
+ * Cuadre del carro: lo que cargó menos lo que entregó.
+ *
+ * 🔴 Es la pregunta que un pago por productividad obliga a hacer. Medido en
+ * agosto, los dos supervisores entregaron **más** de lo que registraron haber
+ * cargado (Genaro −329 gal, Castañeda −129).
+ *
+ * ⚠️ Un negativo NO significa que falten galones: puede ser saldo que traían del
+ * mes anterior, o cargues que no se registraron. Significa que **las cuentas del
+ * mes no cierran solas**, y eso hay que resolverlo antes de amarrarle plata.
+ *
+ * Devuelve `null` para quien no tiene carro: Diego despacha desde la bodega
+ * principal y mostrarle un cuadre de −535 sería acusarlo de un hueco que no
+ * existe.
+ */
+export function cuadreCarro(d: Despachador): number | null {
+  if (d.cargado <= 0) return null
+  return d.cargado - d.galones
 }

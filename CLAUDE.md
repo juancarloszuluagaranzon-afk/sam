@@ -115,6 +115,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Eficiencia maquinaria | `views/ConsumoDashboardTab`, `consumoApi.ts` | Segunda cara del tablero del dueño. Une el papel (mar–jul) con la app (ago→) vía `consumo_unificado_v`; gal/hora contra la referencia 2025 de CADA máquina. Las **horas** salen de `equipo_horas_mes` (cierre mensual de horómetros) y caen a `labor_sesiones` si el mes no tiene cierre |
 | Flota · planilla CDA-F-68 | `views/FlotaTab` | El Excel sale **calcado del formato impreso**: membrete IMECOL, códigos de normalización, las 16 columnas y la cuadrícula. ⚠️ Usa **exceljs** y no `xlsx`, porque la versión comunitaria de `xlsx` **no escribe estilos** (probado: descarta bordes y negritas al guardar). Entra por `import()` en su propio chunk. El **conductor también descarga** la suya |
 | Viajes de trozas | `views/MaderaTab`, `MaderaForm`, `MaderaView`, `maderaApi.ts` | Negocio nuevo de transporte de madera; existe porque **el dueño del camión vive lejos** — es confianza, no reportes. Cinco campos y una **foto de la guía de despacho (obligatoria)**; la hora la pone el servidor y se muestra. Rol propio `conductor_madera` (ve solo lo suyo, sin anular). ⚠️ **El kilometraje quedó OPCIONAL: el odómetro del camión está dañado** — exigirlo obligaba a inventar un número. ⚠️ Tiene **6 viajes DEMO** (`nota like 'DEMO%'`) que hay que borrar antes de registrar de verdad. Ver `.agent/skills/managing-madera/` |
+| Movimientos de insumos | `views/MovimientosTab`, `movimientosApi`, `resumen_movimientos_insumos` | Quién entrega, qué y a quién. Base del **pago por productividad** que quiere arrancar el cliente. 🔴 **El volumen nunca se muestra solo**: al lado va la calidad del registro y las visitas. Un despacho es UN hecho — contar filas de kardex infla un 51%. Ver `.agent/skills/managing-movimientos/` |
 | Máquinas (maestro) | `views/MaquinasCrudTab`, `hooks/useEquipmentForm` | Crear, editar, activar, desactivar y eliminar. Lo ven el dueño y el analista, con la **misma lógica compartida** en el hook |
 | Tarifas | `views/TarifasTab`, `tarifasApi.ts` | ⚠️ **El código está en `main` pero la entrada del menú está COMENTADA** (`SupervisorView`, buscar "TARIFAS NO SE MUESTRA"): decisión del cliente. La tabla solo tiene 27 tarifas de ejemplo, y una tarifa de mentira en una pantalla de precios es peor que no tener la pantalla. Para habilitarla: descomentar. Ver `.agent/skills/managing-facturacion/` |
 
@@ -329,10 +330,21 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   no hay disponibilidad ni TMR. Los repuestos se descuentan **al cerrar**, marcados uno
   por uno (`ot_repuestos.descargado`) para que cerrar dos veces no descuente doble.
   Igual con las compras: nacen en BORRADOR y solo **recibirlas** mueve el inventario.
+- **🔴 Medir a la gente cambia las reglas del dato.** Cuando un número va a decidir
+  un pago deja de ser un reporte: se vuelve la meta, y entonces deja de medir
+  (Goodhart). Tres reglas que salieron de construir el tablero de movimientos y
+  aplican a cualquier métrica de desempeño que se construya aquí:
+  1. **El volumen nunca va solo** — al lado, la calidad de lo registrado.
+  2. **Numerador y denominador salen del mismo conjunto.** Ya mordió: el ritmo por
+     hora dividía todas las entregas entre horas que excluían los días de una sola.
+  3. **Ninguna cifra escrita a mano en la pantalla.** Un número quemado sirve el mes
+     que se escribió y miente después, y nadie vuelve a revisarlo.
+  Ver `.agent/skills/managing-movimientos/`.
 - **Skills del repo**: `sam-app/.agent/skills/` — leerlas antes de tocar su área
   (`managing-assignments`, `managing-insumos`, `managing-mapas`, `managing-supabase`,
   `managing-maestro`, `managing-taller`, `managing-facturacion`, `managing-madera`,
-  `managing-flota`, `writing-ui-copy`, `building-react-forms`, `capturing-gotchas`).
+  `managing-flota`, `managing-movimientos`, `writing-ui-copy`, `building-react-forms`,
+  `capturing-gotchas`).
 
 ## Cómo trabaja el usuario
 

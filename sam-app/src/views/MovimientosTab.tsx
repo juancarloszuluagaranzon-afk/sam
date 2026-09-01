@@ -506,13 +506,20 @@ export function MovimientosTab() {
                 revisar, y ahí se pierde el control entero.
               </li>
               <li>
-                <strong>Un solo mes es poco.</strong> Estos datos arrancan el 1 de agosto.
-                Antes de amarrarles plata, deje correr un par de meses y mire si el número
-                de entregas por visita se mantiene en 1,0.
+                <strong>Un periodo corto dice poco.</strong> Antes de amarrarle plata a
+                estos números, deje correr un par de meses y vigile que las entregas por
+                visita se mantengan cerca de 1,0.
               </li>
             </ul>
           </div>
         </>
+      )}
+
+      {/* Sello de corte: en este proyecto todo entregable dice cuándo se sacó. */}
+      {!cargando && datos?.corteEn && (
+        <p className="subtle-copy" style={{ marginTop: 22 }}>
+          Corte del {fmtFechaHora(datos.corteEn)} · periodo {datos.desde} a {datos.hasta}.
+        </p>
       )}
 
       {/* ── Detalle de una persona ──────────────────────────────────────── */}

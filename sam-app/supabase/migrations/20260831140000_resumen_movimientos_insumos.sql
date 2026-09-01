@@ -93,18 +93,45 @@ begin
       ) t
     ), '[]'::jsonb),
 
-    -- Horas de jornada por despachador: de la primera a la última entrega de
-    -- cada día, promediadas. Va aparte porque necesita agrupar dos veces.
+    -- 🔴 JORNADA Y RITMO — la mitad de la historia que el volumen esconde.
+    --
+    -- Medido en agosto: Genaro entrega 2,5 veces más que Castañeda, pero el
+    -- ritmo POR HORA es prácticamente el mismo (1,24 contra 1,22). La diferencia
+    -- no es velocidad, es presencia: Genaro trabajó 29 de 31 días con jornadas de
+    -- 7,3 h; Castañeda faltó 11 días y sus jornadas son de 4,1 h. De hecho, en
+    -- días de carga pareja Castañeda cierra más rápido.
+    --
+    -- Sin este dato, el dueño pagaría PRESENCIA creyendo que paga PRODUCTIVIDAD,
+    -- que son dos decisiones distintas y solo una de ellas fue la que pidió.
+    --
+    -- `horas` = suma de (última − primera entrega) de cada día. Es una VENTANA de
+    -- trabajo, no horas pagadas: nadie marca entrada. Llamarla "hora-hombre"
+    -- sería falso, y sobre eso se iba a pagar.
     'jornadas', coalesce((
-      select jsonb_agg(jsonb_build_object('id', quien, 'horas', round(h::numeric, 1)))
-        from (select d.quien, avg(extract(epoch from (d.fin - d.ini)) / 3600) h
-                from (select e.despachado_por quien,
-                             (e.cuando at time zone 'America/Bogota')::date dia,
-                             min(e.cuando) ini, max(e.cuando) fin, count(*) n
-                        from entregas e where e.despachado_por is not null
-                       group by 1, 2) d
-               where d.n > 1
-               group by d.quien) s
+      -- ⚠️ Los promedios se calculan en una subconsulta aparte: `avg()` dentro de
+      -- `jsonb_agg()` es un agregado anidado y Postgres lo rechaza.
+      select jsonb_agg(jsonb_build_object(
+        'id', z.quien, 'horas', z.horas, 'horasTotal', z.horas_total,
+        'primeraHora', z.primera_hora, 'ultimaHora', z.ultima_hora
+      ))
+        from (
+      select d.quien,
+             round(avg(d.h)::numeric, 1) as horas,
+             round(sum(d.h)::numeric, 1) as horas_total,
+             round(avg(d.hini)::numeric, 1) as primera_hora,
+             round(avg(d.hfin)::numeric, 1) as ultima_hora
+        from (select e.despachado_por quien,
+                     extract(epoch from (max(e.cuando) - min(e.cuando))) / 3600 h,
+                     extract(hour from min(e.cuando) at time zone 'America/Bogota')
+                       + extract(minute from min(e.cuando) at time zone 'America/Bogota') / 60.0 hini,
+                     extract(hour from max(e.cuando) at time zone 'America/Bogota')
+                       + extract(minute from max(e.cuando) at time zone 'America/Bogota') / 60.0 hfin,
+                     count(*) n
+                from entregas e where e.despachado_por is not null
+               group by e.despachado_por, (e.cuando at time zone 'America/Bogota')::date) d
+       where d.n > 1
+       group by d.quien
+        ) z
     ), '[]'::jsonb),
 
     -- La serie diaria: el "cuántas entregas por día" que pidió el cliente.

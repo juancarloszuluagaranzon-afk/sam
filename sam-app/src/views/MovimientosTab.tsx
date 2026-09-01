@@ -4,7 +4,7 @@ import { BarrasH, Columnas, ColumnasApiladas, Leyenda, plegarOtros, colorDe, SER
 import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 import {
-  loadResumenMovimientos, indiceCalidad, entregasPorDia,
+  loadResumenMovimientos, indiceCalidad, entregasPorDia, ritmoPorHora, hhmm,
   type ResumenMovimientos, type Despachador,
 } from '../services/movimientosApi'
 
@@ -199,6 +199,8 @@ export function MovimientosTab() {
             {despachadores.map((d, i) => {
               const cal = indiceCalidad(d)
               const porDia = entregasPorDia(d)
+              const ritmo = ritmoPorHora(d, datos?.jornadas ?? [])
+              const jor = (datos?.jornadas ?? []).find((j) => j.id === d.id)
               const porEvento = d.eventos > 0 ? d.entregas / d.eventos : 1
               return (
                 <button key={d.id} type="button" className="mov-tarjeta" onClick={() => setDetalle(d)}>
@@ -215,15 +217,25 @@ export function MovimientosTab() {
                       <b>{n1(porDia)}</b>
                       <span>por día trabajado</span>
                     </div>
+                    {/* 🔴 El ritmo va PEGADO al volumen. Es el número que cambia
+                        la conclusión: dos personas con volumen muy distinto pueden
+                        tener el mismo ritmo, y entonces la diferencia era presencia,
+                        no productividad. */}
                     <div>
-                      <b>{n0(d.galones)}</b>
-                      <span>galones</span>
+                      <b>{ritmo != null ? n1(ritmo) : '—'}</b>
+                      <span>por hora en campo</span>
                     </div>
                     <div>
-                      <b>{d.maquinas}</b>
-                      <span>máquinas</span>
+                      <b>{jor ? n1(jor.horas) : '—'} h</b>
+                      <span>jornada</span>
                     </div>
                   </div>
+                  {jor && (
+                    <p className="mov-jornada">
+                      {d.dias} días activos · de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}
+                      {' · '}{n0(d.galones)} galones · {d.maquinas} máquinas
+                    </p>
+                  )}
                   <div className={`mov-calidad mov-calidad--${cal >= 95 ? 'ok' : cal >= 85 ? 'medio' : 'bajo'}`}>
                     <span className="mov-calidad__num">{cal}%</span>
                     <span className="mov-calidad__det">
@@ -241,14 +253,33 @@ export function MovimientosTab() {
             })}
           </div>
 
+          <div className="mov-clave">
+            <p>
+              🔴 <strong>Antes de comparar los totales, mire la columna «por hora en
+              campo».</strong> En agosto Genaro entregó 263 veces y Castañeda 104 — dos
+              veces y media más. Pero por hora van <strong>1,2 los dos</strong>: el mismo
+              ritmo. Toda la diferencia es <strong>presencia</strong>: Genaro trabajó 29 de
+              31 días con jornadas de 7 horas; Castañeda 20 días con jornadas de 4.
+            </p>
+            <p>
+              Eso no le quita mérito a Genaro — estar es parte del trabajo, y en los dos
+              domingos que él descansó fue Castañeda quien cubrió. Pero{' '}
+              <strong>premiar la presencia y premiar la productividad son dos decisiones
+              distintas</strong>, y con el total del mes a secas se toma una creyendo que
+              se toma la otra.
+            </p>
+          </div>
+
           <p className="subtle-copy mov-nota">
             <strong>«Por día trabajado»</strong> divide entre los días en que de verdad
             entregó, no entre los días del mes: comparar contra el calendario castigaría a
-            quien estuvo incapacitado o de descanso. Y <strong>el porcentaje de la
-            izquierda</strong> es qué tan completo quedó el registro — foto, aval del
-            operario y sin diferencias reportadas, multiplicados. Se multiplican y no se
-            promedian a propósito: fallar en cualquiera de los tres tiene que bajarlo, que
-            para eso es un control.
+            quien estuvo incapacitado o de descanso. <strong>«Por hora en campo»</strong>
+            usa el tiempo entre la primera y la última entrega del día — es una ventana de
+            trabajo, no horas pagadas: aquí nadie marca entrada. Y{' '}
+            <strong>el porcentaje de abajo</strong> es qué tan completo quedó el registro:
+            foto, aval del operario y sin diferencias, multiplicados. Se multiplican y no
+            se promedian a propósito: fallar en cualquiera de los tres tiene que bajarlo,
+            que para eso es un control.
           </p>
 
           {/* ── La serie diaria: lo que pidió el cliente ─────────────────── */}

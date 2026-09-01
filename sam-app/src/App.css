@@ -8792,3 +8792,12 @@ td.planilla-vacio:hover { background: #fde047; }
 @media (max-width: 420px) {
   .mov-tarjeta__cifras { grid-template-columns: repeat(2, 1fr); gap: 8px; }
 }
+
+/* La conclusion que el volumen esconde: va destacada, no en letra chica. */
+.mov-clave {
+  margin: 14px 0; padding: 12px 14px; border-radius: 12px; line-height: 1.55;
+  background: rgba(27,175,122,.08); border-left: 4px solid var(--dash-s1, #1baf7a);
+}
+.mov-clave p { margin: 0 0 8px; font-size: 0.88rem; }
+.mov-clave p:last-child { margin-bottom: 0; }
+.mov-jornada { margin: 0; font-size: 0.74rem; color: var(--color-ink-mid, #5a5f57); }

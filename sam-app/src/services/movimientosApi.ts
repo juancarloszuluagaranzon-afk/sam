@@ -15,6 +15,14 @@ import { supabase } from '../lib/supabase'
  * solo insumo por viaje. Si de este número sale un pago, eso es plata mal repartida.
  */
 
+export interface Jornada {
+  id: string
+  horas: number
+  horasTotal: number
+  primeraHora: number
+  ultimaHora: number
+}
+
 export interface Despachador {
   id: string
   nombre: string
@@ -69,7 +77,7 @@ export interface ResumenMovimientos {
   desde: string
   hasta: string
   despachadores: Despachador[]
-  jornadas: { id: string; horas: number }[]
+  jornadas: Jornada[]
   porDia: { dia: string; quien: string; entregas: number }[]
   porHora: { hora: number; entregas: number }[]
   insumos: InsumoMov[]
@@ -152,4 +160,33 @@ export function indiceCalidad(d: Despachador): number {
 /** Entregas por día ACTIVO — el divisor honesto: días en que sí trabajó. */
 export function entregasPorDia(d: Despachador): number {
   return d.dias > 0 ? d.entregas / d.dias : 0
+}
+
+/**
+ * Entregas por hora en campo — el número que cambia la conclusión.
+ *
+ * 🔴 Medido en agosto: Genaro entregó 263 veces y Castañeda 104, dos veces y
+ * media más. Pero por hora van **1,24 contra 1,26**: el mismo ritmo. La
+ * diferencia entera es presencia — Genaro trabajó 29 días con jornadas de 7,3 h,
+ * Castañeda 20 días con jornadas de 4,3 h.
+ *
+ * Sin este número el dueño paga PRESENCIA creyendo que paga PRODUCTIVIDAD. Son
+ * dos decisiones distintas y solo una fue la que pidió. Puede que después de
+ * verlo decida premiar la presencia igual —es su empresa y es una decisión
+ * legítima— pero tiene que saber cuál está tomando.
+ *
+ * ⚠️ Las horas son la VENTANA entre la primera y la última entrega del día, no
+ * horas pagadas: nadie marca entrada. Llamarlas "hora-hombre" sería falso.
+ */
+export function ritmoPorHora(d: Despachador, jornadas: Jornada[]): number | null {
+  const j = jornadas.find((x) => x.id === d.id)
+  if (!j || j.horasTotal <= 0) return null
+  return d.entregas / j.horasTotal
+}
+
+/** La hora del día como "06:30", desde el decimal que devuelve la base. */
+export function hhmm(decimal: number): string {
+  const h = Math.floor(decimal)
+  const m = Math.round((decimal - h) * 60)
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
 }

@@ -152,6 +152,7 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 | Flota · planilla CDA-F-68 | `views/FlotaTab` | El Excel sale **calcado del formato impreso**: membrete IMECOL, códigos de normalización, las 16 columnas y la cuadrícula. ⚠️ Usa **exceljs** y no `xlsx`, porque la versión comunitaria de `xlsx` **no escribe estilos** (probado: descarta bordes y negritas al guardar). Entra por `import()` en su propio chunk. El **conductor también descarga** la suya |
 | Viajes de trozas | `views/MaderaTab`, `MaderaForm`, `MaderaView`, `maderaApi.ts` | Negocio nuevo de transporte de madera; existe porque **el dueño del camión vive lejos** — es confianza, no reportes. Cinco campos y una **foto de la guía de despacho (obligatoria)**; la hora la pone el servidor y se muestra. Rol propio `conductor_madera` (ve solo lo suyo, sin anular). ⚠️ **El kilometraje quedó OPCIONAL: el odómetro del camión está dañado** — exigirlo obligaba a inventar un número. ⚠️ Tiene **6 viajes DEMO** (`nota like 'DEMO%'`) que hay que borrar antes de registrar de verdad. Ver `.agent/skills/managing-madera/` |
 | Movimientos de insumos | `views/MovimientosTab`, `movimientosApi`, `resumen_movimientos_insumos` | Quién entrega, qué y a quién. Base del **pago por productividad** que quiere arrancar el cliente. 🔴 **El volumen nunca se muestra solo**: al lado va la calidad del registro y las visitas. Un despacho es UN hecho — contar filas de kardex infla un 51%. Ver `.agent/skills/managing-movimientos/` |
+| Casos de soporte | `views/ReportarView`, `SoporteView`, `MisCasosView`, `SoporteShell`, `soporteApi` | El operario reporta una falla del app **con un toque** — la única pregunta es si puede seguir trabajando; foto y texto se agregan **después**, ya con el caso creado. El folio (`S-U032-0902-1435-K7`) lo arma **el celular**, no la base: sin un número visible, un reporte hecho sin señal se siente como que no quedó y la persona se va al WhatsApp. Rol `soporte` abre en la **bandeja**, con «Ver como…» a un toque. ⚠️ El app solo tiene `select`: todo lo que escribe pasa por funciones `security definer` |
 | Máquinas (maestro) | `views/MaquinasCrudTab`, `hooks/useEquipmentForm` | Crear, editar, activar, desactivar y eliminar. Lo ven el dueño y el analista, con la **misma lógica compartida** en el hook |
 | Tarifas | `views/TarifasTab`, `tarifasApi.ts` | ⚠️ **El código está en `main` pero la entrada del menú está COMENTADA** (`SupervisorView`, buscar "TARIFAS NO SE MUESTRA"): decisión del cliente. La tabla solo tiene 27 tarifas de ejemplo, y una tarifa de mentira en una pantalla de precios es peor que no tener la pantalla. Para habilitarla: descomentar. Ver `.agent/skills/managing-facturacion/` |
 
@@ -183,6 +184,15 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   entregado. Ese cero es deliberado: lo pedido sigue siendo cero porque el operario no
   lo pidió, y la diferencia entre lo que se solicita y lo que de verdad hace falta en
   campo es justamente el dato interesante. **No igualar las dos cifras.**
+- **🔴 Un KPI se escribe con `dash-kpi__val` / `__lbl` / `__pie`, nunca con
+  `<strong>/<span>/<small>` pelados.** `App.css` solo estiliza esas tres clases: una etiqueta
+  pelada dentro de `.dash-kpi` sale como negrita de párrafo dentro de una caja con borde.
+  Costó el reclamo «no me gusta el diseño» del tablero de movimientos — en la MISMA pantalla
+  de Inicio, la cara vecina mostraba cifras de 1,7 rem en verde marca y esa mostraba negrita
+  corriente. Eran 17 KPI. **Y la escala de tipos de una pantalla va scopeada**
+  (`.mov { --fs-… }`), no en `:root`: `.dash-kpi > span` tiene especificidad (0,1,1) y le gana
+  a `.dash-kpi__val` (0,1,0) — una escala global encoge los KPI de las otras pantallas.
+  Ver `.agent/skills/managing-movimientos/`.
 - **🔴 El texto que explica una pantalla va dentro de `<Ayuda>`** (`src/components/`):
   un botoncito "ⓘ Info", cerrado por defecto. Sirve la primera vez, pero al que entra
   quince veces al día le come media pantalla del celular — en Bodegas eran **231 px**,

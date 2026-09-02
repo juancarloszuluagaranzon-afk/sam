@@ -63,20 +63,28 @@ export class PantallaSegura extends Component<Props, State> {
             Recargar la aplicación
           </button>
         </div>
-        <details style={{ marginTop: 14 }}>
-          <summary className="subtle-copy" style={{ cursor: 'pointer' }}>
-            Detalle técnico (para reportarlo)
-          </summary>
-          <pre
-            style={{
-              marginTop: 8, padding: 10, borderRadius: 8, overflowX: 'auto',
-              fontSize: '0.74rem', lineHeight: 1.45,
-              background: 'var(--color-bg-soft, #f2f5f0)',
-            }}
-          >
-            {error.message}
-          </pre>
-        </details>
+        {/* ⚠️ El mensaje va A LA VISTA, no plegado. Estaba escondido tras un
+            «Detalle técnico» y eso obliga a pedirle al usuario que lo abra y mande
+            otra captura — un viaje de ida y vuelta por cada error. El texto no le
+            estorba a nadie y es lo único que sirve para arreglarlo. */}
+        <p className="subtle-copy" style={{ marginTop: 14, marginBottom: 6 }}>
+          Mande esta captura tal como está; lo de abajo es lo que se necesita para
+          arreglarlo.
+        </p>
+        <pre
+          style={{
+            margin: 0, padding: 10, borderRadius: 8, overflowX: 'auto',
+            fontSize: '0.76rem', lineHeight: 1.5, whiteSpace: 'pre-wrap',
+            background: 'var(--color-bg-soft, #f2f5f0)',
+          }}
+        >
+          {error.message}
+          {error.stack ? `
+
+${error.stack.split('
+').slice(1, 5).join('
+')}` : ''}
+        </pre>
       </section>
     )
   }

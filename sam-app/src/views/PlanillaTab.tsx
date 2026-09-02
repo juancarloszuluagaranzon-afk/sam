@@ -505,18 +505,20 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         const nov = novedades.get(`${rowKey}|${dayKey}`)
         return nov ?? cell(v)
       }
-      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total ha', 'Total hm']
+      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total', 'Total ha', 'Total hm']
       const body = filteredRows.map((r) => [
         r.name,
         ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
+        // El total de siempre, y enseguida de qué está hecho. El Excel de la
+        // planilla es con el que se liquida, así que lleva las tres.
+        Number((r.total + r.totalHm).toFixed(2)),
         Number(r.total.toFixed(2)),
-        // ⚠️ Los hectómetros en su propia columna, no sumados: el Excel de la
-        // planilla es con el que se liquida.
         r.totalHm > 0 ? Number(r.totalHm.toFixed(2)) : '',
       ])
       const footer = [
         'Total',
         ...days.map((d) => cell(dayTotals.t[d.key] ?? 0)),
+        Number((dayTotals.grand + dayTotals.grandHm).toFixed(2)),
         Number(dayTotals.grand.toFixed(2)),
         dayTotals.grandHm > 0 ? Number(dayTotals.grandHm.toFixed(2)) : '',
       ]
@@ -588,10 +590,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         dos veces. {monthLabel} · {quincenaLabel}.
       </p>
       <p className="planilla-caption">
-        🔴 <strong>Las hectáreas y los hectómetros van en columnas separadas.</strong>{' '}
-        ACEQUIAS se mide en hectómetros — es longitud, no superficie — y sumarla con las
-        hectáreas daba un número que no significa nada. Dentro de la casilla del día, lo
-        que esté en hectómetros aparece debajo y siempre con su unidad.
+Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempre y,
+        enseguida, de qué está hecho — <strong>Total ha</strong> y <strong>Total hm</strong>.
+        ACEQUIAS se mide en hectómetros porque es longitud, no superficie; el Total las
+        junta como se ha venido pagando, y el desglose al lado deja ver cuánto de ese
+        número es de cada cosa. Dentro de la casilla del día, lo que esté en hectómetros
+        aparece debajo y siempre con su unidad.
       </p>
 
       <div className="planilla-legend">
@@ -673,6 +677,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     <span className="planilla-day">{d.day}</span>
                   </th>
                 ))}
+                <th className="planilla-total-col">Total</th>
                 <th className="planilla-total-col">Total ha</th>
                 <th className="planilla-total-col">Total hm</th>
               </tr>
@@ -742,6 +747,11 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                         </td>
                       )
                     })}
+                    {/* El TOTAL de siempre, y a su lado de qué está hecho. Mezcla
+                        hectáreas con hectómetros, y por eso el desglose va PEGADO:
+                        así el combinado se puede auditar de un vistazo en vez de
+                        quedar como un número suelto que nadie sabe leer. */}
+                    <td className="planilla-total-col">{(r.total + r.totalHm).toFixed(2)}</td>
                     <td className="planilla-total-col">{r.total.toFixed(2)}</td>
                     <td className="planilla-total-col">{r.totalHm > 0 ? r.totalHm.toFixed(2) : ''}</td>
                   </tr>
@@ -759,6 +769,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
                     )}
                   </td>
                 ))}
+                <td className="planilla-total-col planilla-foot">{(dayTotals.grand + dayTotals.grandHm).toFixed(2)}</td>
                 <td className="planilla-total-col planilla-foot">{dayTotals.grand.toFixed(2)}</td>
                 <td className="planilla-total-col planilla-foot">{dayTotals.grandHm > 0 ? dayTotals.grandHm.toFixed(2) : ''}</td>
               </tr>

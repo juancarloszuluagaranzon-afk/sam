@@ -93,6 +93,16 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    "Entregado a" es obligatorio salvo que el que registra sea el propio operario — él
    es quien recibe. ⚠️ **Los VEHÍCULOS todavía no piden operario** (decisión del
    cliente, 3-ago-2026). `operario_id`/`confirmado_por` son TEXT, no uuid.
+7e. **🔴 La pantalla dice «aprobación»; la base sigue diciendo «aval».** Decisión del
+   cliente (1-sep-2026): se cambió la palabra en TODO lo que ve la gente — app y
+   manuales — pero las columnas (`aval_estado`, `avalado_por`, `avalado_nombre`,
+   `avalado_en`, `aval_nota`), las propiedades (`avaladas`, `avalVencido`,
+   `avalEstado`…), la ruta `'avales'` y `AvalesCombustibleTab` **se quedaron como
+   estaban**: renombrarlas era romper producción sin ganar nada. Es una capa de
+   traducción permanente — al leer una columna `aval_*`, es la aprobación.
+   ⚠️ Y si toca volver a cambiar una palabra así: **«aval» es masculino y
+   «aprobación» femenino**, o queda «el aprobación». Las frases con artículo se
+   reemplazan completas y primero.
 7b. **🔴 Nadie avala lo que él mismo registró.** El analista ahora también entrega y
    tanquea; el aval es el segundo par de ojos y si firma lo suyo el control desaparece.
    `AvalesCombustibleTab` esconde los botones cuando `registradoPor === session.id` y

@@ -79,11 +79,7 @@ export class PantallaSegura extends Component<Props, State> {
           }}
         >
           {error.message}
-          {error.stack ? `
-
-${error.stack.split('
-').slice(1, 5).join('
-')}` : ''}
+          {error.stack ? '\n\n' + error.stack.split('\n').slice(1, 5).join('\n') : ''}
         </pre>
       </section>
     )

@@ -3330,12 +3330,21 @@ export interface OperarioNovedad {
   tipo: NovedadTipo
 }
 
+/**
+ * ⚠️ LANZA si no pudo cargar, en vez de devolver lista vacía.
+ *
+ * 🔴 Antes devolvía `[]` en los dos casos — "no tiene novedades" y "no pude
+ * preguntarle al servidor" — y eso hacía que la pantalla del operario BORRARA la
+ * novedad que acababa de reportar sin señal: el refresco traía vacío y pisaba lo
+ * que tenía en pantalla. Quien llama tiene que poder distinguir las dos cosas.
+ */
 export async function loadOperarioNovedades(operadorId?: string): Promise<OperarioNovedad[]> {
   let query = supabase.from('operario_novedades').select('operador_id,fecha,tipo')
   // Filtro opcional: la vista del operario solo necesita SUS novedades.
   if (operadorId) query = query.eq('operador_id', operadorId)
   const { data, error } = await query
-  if (error || !data) return []
+  if (error) throw new Error(error.message || 'No se pudieron cargar las novedades')
+  if (!data) return []
   return data.map((r) => ({
     operadorId: String(r.operador_id),
     fecha: String(r.fecha),

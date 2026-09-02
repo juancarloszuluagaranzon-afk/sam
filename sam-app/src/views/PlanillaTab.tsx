@@ -205,7 +205,8 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
 
   useEffect(() => {
     let alive = true
-    void loadOperarioNovedades().then((rows) => {
+    // Si falla, la planilla se queda con lo que ya tenia en vez de vaciarse.
+    void loadOperarioNovedades().catch(() => []).then((rows) => {
       if (alive) setNovedades(new Map(rows.map((r) => [`${r.operadorId}|${r.fecha}`, r.tipo])))
     })
     return () => {

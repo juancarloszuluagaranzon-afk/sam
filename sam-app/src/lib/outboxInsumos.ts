@@ -2,6 +2,7 @@ import { db } from './db'
 import {
   entregarSolicitud, entregarDirecto, confirmarRecepcion, createSolicitud,
   confirmarTraslado, registrarCombustibleExterno, autoAbastecer, anularTraslado,
+  setOperarioNovedades, confirmarTanqueo,
 } from '../services/samApi'
 
 /**
@@ -32,6 +33,8 @@ export type InsumoOpKind =
   | 'TANQUEO'              // combustible: estación o sede
   | 'AUTOABASTECER'        // el supervisor toma material de la principal
   | 'ANULAR_TRASLADO'      // se devuelve a la principal: error al enviar o rechazo
+  | 'NOVEDAD'              // el operario reporta vacaciones, taller, incapacidad…
+  | 'CONFIRMAR_TANQUEO'    // el operario aprueba el combustible que le echaron
 
 /** Etiqueta para la pantalla de pendientes; el operario no lee códigos. */
 export const OP_LABEL: Record<InsumoOpKind, string> = {
@@ -43,6 +46,8 @@ export const OP_LABEL: Record<InsumoOpKind, string> = {
   TANQUEO: 'Tanqueo de combustible',
   AUTOABASTECER: 'Abastecimiento del carro',
   ANULAR_TRASLADO: 'Rechazo de traslado',
+  NOVEDAD: 'Novedad reportada',
+  CONFIRMAR_TANQUEO: 'Confirmación de tanqueo',
 }
 
 /**
@@ -92,6 +97,8 @@ export async function ejecutarInsumo(kind: InsumoOpKind, payload: unknown): Prom
     case 'TANQUEO': await registrarCombustibleExterno(p); return
     case 'AUTOABASTECER': await autoAbastecer(p); return
     case 'ANULAR_TRASLADO': await anularTraslado(p); return
+    case 'NOVEDAD': await setOperarioNovedades(p.operadorId, p.fechas, p.tipo); return
+    case 'CONFIRMAR_TANQUEO': await confirmarTanqueo(p); return
     default: throw new Error(`Operación desconocida en la cola: ${kind}`)
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */

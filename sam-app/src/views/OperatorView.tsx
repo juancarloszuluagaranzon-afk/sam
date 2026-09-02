@@ -322,7 +322,9 @@ export function OperatorView({
     try {
       setMisNovedades(await loadOperarioNovedades(session.id))
     } catch {
-      /* sin conexión: se queda con lo último cargado */
+      // Sin conexión se queda con lo que hay en pantalla. ⚠️ Esto solo funciona
+      // porque el cargador ahora LANZA cuando falla; cuando devolvía lista vacía,
+      // este `catch` nunca corría y la novedad recién reportada se borraba sola.
     }
   }
 
@@ -422,8 +424,17 @@ export function OperatorView({
   async function confirmarTq(t: CombustibleExterno, conforme: boolean, nota?: string) {
     setConfirmandoSol(true)
     try {
-      await confirmarTanqueo({ id: t.id, conforme, nota, operarioId: session?.id })
-      setInfo(conforme ? 'Confirmado. Gracias.' : 'Reportado. Lo revisa quien aprueba.')
+      // 🔴 Por la COLA: el operario confirma el combustible EN LA BOMBA, a las 6
+      // de la manana, que es justo donde no hay senal. Sin esto le salia "no se
+      // pudo confirmar" y el tanqueo se quedaba esperando su visto bueno.
+      const payload = { id: t.id, conforme, nota, operarioId: session?.id }
+      const { enviado } = await enviarOEncolar('CONFIRMAR_TANQUEO', payload,
+        () => confirmarTanqueo(payload))
+      setInfo(enviado
+        ? (conforme ? 'Confirmado. Gracias.' : 'Reportado. Lo revisa quien aprueba.')
+        : 'Guardado. Se envia solo cuando haya senal.')
+      // Sale de la lista de una: ya no tiene nada pendiente con ese tanqueo.
+      setTanqueosPorConfirmar((previos) => previos.filter((x) => x.id !== t.id))
       await refrescarTanqueos()
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'No se pudo confirmar')
@@ -489,16 +500,32 @@ export function OperatorView({
     setSavingNov(true)
     setError('')
     try {
-      await setOperarioNovedades(session.id, fechas, novTipoSel)
-      setInfo(
-        `${NOVEDAD_LABEL[novTipoSel]} reportado (${fechas.length} día${fechas.length === 1 ? '' : 's'}).`,
-      )
+      // 🔴 Va por la COLA, como todo lo que el operario registra en campo.
+      //
+      // Antes llamaba directo al servidor y sin señal salía "no se pudo reportar,
+      // revisa la conexión". Eso es exactamente al revés de donde se usa: quien
+      // reporta que está incapacitado o en vacaciones lo hace desde su casa o
+      // desde el lote, no sentado con wifi — y si no le recibe, la novedad no
+      // queda y el día le sale como falta en la planilla con la que se le paga.
+      const payload = { operadorId: session.id, fechas, tipo: novTipoSel }
+      const { enviado } = await enviarOEncolar('NOVEDAD', payload,
+        () => setOperarioNovedades(session.id, fechas, novTipoSel))
+      const dias = `${fechas.length} día${fechas.length === 1 ? '' : 's'}`
+      setInfo(enviado
+        ? `${NOVEDAD_LABEL[novTipoSel]} reportado (${dias}).`
+        : `${NOVEDAD_LABEL[novTipoSel]} guardado (${dias}). Se envía solo cuando haya señal.`)
       setNovOpen(false)
       setNovDesde('')
       setNovHasta('')
+      // Se pinta de una en la lista del operario, aunque todavía no haya salido:
+      // si no ve que quedó, lo reporta otra vez.
+      setMisNovedades((previas) => [
+        ...previas.filter((n) => !fechas.includes(n.fecha)),
+        ...fechas.map((f) => ({ operadorId: session.id, fecha: f, tipo: novTipoSel })),
+      ])
       void refreshMisNovedades()
     } catch {
-      setError('No se pudo reportar la novedad. Revisa la conexión.')
+      setError('No se pudo reportar la novedad.')
     } finally {
       setSavingNov(false)
     }

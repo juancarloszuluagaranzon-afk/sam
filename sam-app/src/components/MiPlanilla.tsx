@@ -34,7 +34,7 @@ export function MiPlanilla({ assignments, operatorId }: {
     if (!operatorId) return
     let vivo = true
     // Solo las suyas: `loadOperarioNovedades` ya recibe el filtro.
-    void loadOperarioNovedades(operatorId).then((ns) => {
+    void loadOperarioNovedades(operatorId).catch(() => []).then((ns) => {
       if (!vivo) return
       const m = new Map<string, NovedadTipo>()
       for (const n of ns) m.set(n.fecha, n.tipo)

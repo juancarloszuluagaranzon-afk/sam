@@ -148,3 +148,58 @@ alguien abre el tablero, y los datos móviles son el gasto que la gente sí nota
   configuración de un pago que no existe es adivinar.
 - **Totales que crucen unidades**: galones y unidades van en dos listas separadas,
   siempre.
+
+## Cómo está armada la pantalla (rediseño 2-sep-2026, commit `f2c2244`)
+
+El cliente dijo «no me gusta el diseño». Medida la pantalla, la causa principal no
+era estética: `MovimientosTab` escribía **`<strong>/<span>/<small>` pelados dentro
+de `.dash-kpi`**, y `App.css` solo estiliza `.dash-kpi__val/__lbl/__pie`. En la
+misma pestaña de Inicio, la cara vecina (`DashboardTab`) mostraba cifras de 1,7 rem
+en verde marca y esta mostraba negrita de párrafo. **Al agregar un KPI: usar las
+tres clases, no etiquetas peladas.**
+
+Lo demás era volumen: ~830 palabras de prosa visible y 6.500-7.000 px de alto.
+Quedó en ~95 palabras y **1.628 px medidos a 375 px**, sin scroll lateral.
+
+**Tres capas, y el orden importa:**
+
+1. **Sin rodar** — veredicto en 2 frases, las tres filas de despachador, el freno
+   «todavía no son para pagar» y la cinta de pendientes. Iván decide a quién le
+   pagaría más, y si el dato es confiable, sin desplazar.
+2. **Primer scroll** — los 4 KPI del periodo y la tira de presencia.
+3. **Plegado** — cuatro acordeones cerrados, cada uno **con su cifra en el renglón
+   cerrado**. Sin esa cifra hay que abrir los cuatro para saber cuál mirar, y
+   plegar solo habría agregado toques.
+
+**🔴 Las tres cifras de la fila van en UNA rejilla, no en tres celdas sueltas.**
+Con celdas independientes cada una alinea sus propios hijos y las cifras quedaban
+a 354, 360 y 355 px — medido en el navegador. `.mov-fila__cifras` es un grid de
+`repeat(3, auto)` con `align-items: baseline`: así 148 (1,7 rem) y 26 (0,94 rem)
+se leen como una fila. Y las columnas van **al ancho de su contenido**: con
+anchos fijos, «POR HORA» pedía 49 px en una columna de 46 y se partía en dos.
+
+**🔴 La tira de presencia reemplazó arriba a las 31 columnas apiladas, no las
+borró.** El cliente pidió la serie diaria; sigue estando, a un toque en «Ver día
+a día». Apilar por semana se descartó porque **borra justo el patrón de
+asistencia por persona**, que es lo que sostiene el veredicto de «presencia, no
+ritmo». La casilla de 7,9 px es **lectura, no objetivo táctil** — el toque está
+en la fila de la persona.
+
+**🔴 El CSS nuevo va scopeado bajo `.mov`, nunca en `:root`.** La regla
+`.dash-kpi > span` tiene especificidad (0,1,1) y le ganaría a `.dash-kpi__val`
+(0,1,0): una escala global habría encogido los KPI del `DashboardTab`. Por lo
+mismo `.mov .dash-barra { padding: 11px 4px }` sube el objetivo táctil a 44 px
+solo aquí, porque `.dash-barra` la comparte el tablero del dueño.
+
+**Color:** `--mov-amber` / `--mov-rojo` con su par en `[data-theme="dark"]`. Antes
+`#8a6116` y `#b3261e` estaban quemados en 6 sitios **sin ninguna variante
+oscura**. Rojo solo cuando hay consecuencia real (cuadre > 50 gal, aprobación
+vencida), nunca por énfasis.
+
+**Ningún `title=`**: no existe en táctil y la mitad de la audiencia está en
+celular. Lo que define plata va como renglón visible o dentro de `<Ayuda>`.
+
+⚠️ `MovimientosTab` **se monta dos veces con el mismo componente y sin props**
+(`SupervisorView.tsx`: tercera cara de Inicio y pestaña propia). Por eso no hay
+cabecera fija ni versión «reducida» para Inicio — un `position:sticky` con
+márgenes negativos se comportaría distinto en cada montaje.

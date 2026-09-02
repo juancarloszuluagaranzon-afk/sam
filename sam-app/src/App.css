@@ -8350,7 +8350,12 @@ td.planilla-vacio:hover { background: #fde047; }
   background: var(--color-brand); color: var(--color-ink-on-brand);
   border-color: var(--color-brand);
 }
-@media (max-width: 420px) { .tablero-caras button { font-size: 0.78rem; padding: 10px 4px; } }
+/* Con tres caras ya no caben en una fila de celular: se permite que bajen a una
+   segunda linea en vez de encogerse hasta no poderse leer. */
+@media (max-width: 560px) {
+  .tablero-caras { flex-wrap: wrap; }
+  .tablero-caras button { flex: 1 1 46%; font-size: 0.78rem; padding: 10px 4px; }
+}
 
 /* Las dos caras del tablero del dueño. Ocupan el ancho porque son la primera
    decisión de la pantalla, no un filtro secundario. */
@@ -8365,7 +8370,12 @@ td.planilla-vacio:hover { background: #fde047; }
   background: var(--color-brand); color: var(--color-ink-on-brand);
   border-color: var(--color-brand);
 }
-@media (max-width: 420px) { .tablero-caras button { font-size: 0.78rem; padding: 10px 4px; } }
+/* Con tres caras ya no caben en una fila de celular: se permite que bajen a una
+   segunda linea en vez de encogerse hasta no poderse leer. */
+@media (max-width: 560px) {
+  .tablero-caras { flex-wrap: wrap; }
+  .tablero-caras button { flex: 1 1 46%; font-size: 0.78rem; padding: 10px 4px; }
+}
 
 /* Material agregado después de la entrega. Va en su propia línea y en tono
    apagado: es una aclaración del ítem, no un dato que compita con la cantidad. */

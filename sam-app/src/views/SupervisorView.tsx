@@ -57,6 +57,7 @@ import { MaderaTab } from './MaderaTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { HorometrosTab } from './HorometrosTab'
 import { MovimientosTab } from './MovimientosTab'
+import { PantallaSegura } from '../components/PantallaSegura'
 import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
@@ -286,7 +287,7 @@ export function SupervisorView({
   // Las dos caras del tablero del dueño. Un selector y no dos entradas de menú:
   // son la misma pregunta ("¿cómo va la operación?") mirada desde dos ángulos, y
   // separarlas obliga a acordarse de que existen dos sitios.
-  const [caraTablero, setCaraTablero] = useState<'operacion' | 'maquinaria'>('operacion')
+  const [caraTablero, setCaraTablero] = useState<'operacion' | 'maquinaria' | 'insumos'>('operacion')
   const [equipoConsumo, setEquipoConsumo] = useState<Equipment | null>(null)
   const [equipoConsumoRows, setEquipoConsumoRows] = useState<InsumoKardex[]>([])
   const [equipoConsumoLoading, setEquipoConsumoLoading] = useState(false)
@@ -2259,11 +2260,11 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion' || session.role === 'supervisor') && supervisorTab === 'maestros' ? (
-          <MaestrosTab />
+          <PantallaSegura nombre="Maestro de suertes"><MaestrosTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'facturacion' ? (
-          <FacturacionTab />
+          <PantallaSegura nombre="Facturación"><FacturacionTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'planilla' ? (
@@ -2271,33 +2272,37 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion' || session.role === 'supervisor') && supervisorTab === 'realizadas' ? (
-          <RealizadasTab />
+          <PantallaSegura nombre="realizadas"><RealizadasTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'catalogo' ? (
-          <LaboresTab />
+          <PantallaSegura nombre="Catálogo de labores"><LaboresTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'ingenios' ? (
-          <IngeniosTab />
+          <PantallaSegura nombre="Ingenios"><IngeniosTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'motivacion' ? (
-          <MotivacionTab />
+          <PantallaSegura nombre="Rendimiento"><MotivacionTab /></PantallaSegura>
         ) : null}
 
-        {supervisorTab === 'mapa' ? <MapaView onBack={() => setSupervisorTab('labores')} /> : null}
+        {supervisorTab === 'mapa' ? (
+          <PantallaSegura nombre="Mapa">
+            <MapaView onBack={() => setSupervisorTab('labores')} />
+          </PantallaSegura>
+        ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'mapascat' ? (
-          <MapasTab />
+          <PantallaSegura nombre="Mapas"><MapasTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'novedadtipos' ? (
-          <NovedadTiposTab />
+          <PantallaSegura nombre="Novedades de la planilla"><NovedadTiposTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'tarifas' ? (
-          <TarifasTab />
+          <PantallaSegura nombre="Tarifas"><TarifasTab /></PantallaSegura>
         ) : null}
 
         {supervisorTab === 'inicio' ? (
@@ -2311,49 +2316,70 @@ export function SupervisorView({
                       onClick={() => setCaraTablero('maquinaria')}>
                 ⛽ Eficiencia maquinaria
               </button>
+              {/* La tercera cara del tablero del dueño. Es el MISMO componente que
+                  la pestaña de Más, no una copia: dos tableros del mismo hecho
+                  terminan dando dos verdades. */}
+              <button type="button" className={caraTablero === 'insumos' ? 'is-sel' : ''}
+                      onClick={() => setCaraTablero('insumos')}>
+                📦 Movimientos
+              </button>
             </div>
-            {caraTablero === 'operacion'
-              ? <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
-              : <ConsumoDashboardTab />}
+            {caraTablero === 'operacion' ? (
+              <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+            ) : caraTablero === 'maquinaria' ? (
+              <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
+            ) : (
+              <PantallaSegura nombre="Movimientos de insumos"><MovimientosTab /></PantallaSegura>
+            )}
           </>
         ) : null}
 
-        {supervisorTab === 'flota' ? <FlotaTab /> : null}
-        {supervisorTab === 'madera' ? <MaderaTab /> : null}
-        {supervisorTab === 'listas' ? <CatalogosInsumosTab /> : null}
-        {supervisorTab === 'horometros' ? <HorometrosTab /> : null}
-        {supervisorTab === 'movimientos' ? <MovimientosTab /> : null}
+        {supervisorTab === 'flota' ? (
+          <PantallaSegura nombre="Flota"><FlotaTab /></PantallaSegura>
+        ) : null}
+        {supervisorTab === 'madera' ? (
+          <PantallaSegura nombre="Viajes de trozas"><MaderaTab /></PantallaSegura>
+        ) : null}
+        {supervisorTab === 'listas' ? (
+          <PantallaSegura nombre="Lugares y listas"><CatalogosInsumosTab /></PantallaSegura>
+        ) : null}
+        {supervisorTab === 'horometros' ? (
+          <PantallaSegura nombre="Horómetros"><HorometrosTab /></PantallaSegura>
+        ) : null}
+        {supervisorTab === 'movimientos' ? (
+          <PantallaSegura nombre="Movimientos de insumos"><MovimientosTab /></PantallaSegura>
+        ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (
-          <InsumosResumenTab />
+          <PantallaSegura nombre="Resumen de inventario"><InsumosResumenTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'bodegas' ? (
-          <BodegasTab />
+          <PantallaSegura nombre="Bodegas"><BodegasTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'avales' ? (
-          <AvalesCombustibleTab />
+          <PantallaSegura nombre="Avales de combustible"><AvalesCombustibleTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'taller' ? (
-          <TallerModule />
+          <PantallaSegura nombre="Taller"><TallerModule /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'empresas' ? (
-          <EmpresasTab />
+          <PantallaSegura nombre="Empresas"><EmpresasTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'terceros' ? (
-          <TercerosTab />
+          <PantallaSegura nombre="Terceros"><TercerosTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'zonas' ? (
-          <ZonasTab />
+          <PantallaSegura nombre="Zonas"><ZonasTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumos' ? (
-          <InsumosModule />
+          <PantallaSegura nombre="Insumos"><InsumosModule /></PantallaSegura>
         ) : null}
 
         {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor') && supervisorTab === 'reporte' ? (

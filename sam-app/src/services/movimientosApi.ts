@@ -191,7 +191,32 @@ function leerCache(clave: string): ResumenMovimientos | null {
     const crudo = window.localStorage.getItem(`${CACHE_KEY}:${clave}`)
     if (!crudo) return null
     const { json, guardadoEn } = JSON.parse(crudo)
-    return { ...json, desdeCache: true, guardadoEn }
+    // 🔴 Se rellena contra VACIO, no se devuelve crudo.
+    //
+    // Un espejo guardado con una version ANTERIOR del tablero no tiene las
+    // secciones que se agregaron despues, y leerlas revienta la pantalla. Paso
+    // de verdad: el espejo del 31-ago no tenia `sinFoto` ni `avalVencido`, se
+    // agregaron al dia siguiente, y al abrir el tablero salio TODO EN BLANCO.
+    //
+    // Un cache es de una version vieja por definicion: rellenar es obligatorio,
+    // no defensivo.
+    return {
+      ...VACIO,
+      ...json,
+      despachadores: json?.despachadores ?? [],
+      jornadas: json?.jornadas ?? [],
+      porDia: json?.porDia ?? [],
+      porHora: json?.porHora ?? [],
+      insumos: json?.insumos ?? [],
+      operarios: json?.operarios ?? [],
+      maquinas: json?.maquinas ?? [],
+      sinFoto: json?.sinFoto ?? [],
+      avalVencido: json?.avalVencido ?? [],
+      solicitudes: json?.solicitudes ?? {},
+      totales: { ...VACIO.totales, ...(json?.totales ?? {}) },
+      desdeCache: true,
+      guardadoEn,
+    }
   } catch { return null }
 }
 

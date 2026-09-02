@@ -448,7 +448,7 @@ export function MovimientosTab() {
               <small>contra {n0(t.entregas)} entregas directas</small>
             </div>
             <div className="dash-kpi">
-              <strong>{sol.operariosQuePidieron ?? 0}/{datos!.operariosActivos}</strong>
+              <strong>{sol.operariosQuePidieron ?? 0}/{datos?.operariosActivos ?? 0}</strong>
               <span>operarios han pedido</span>
               <small>{adopcion}% de adopción</small>
             </div>
@@ -484,12 +484,12 @@ export function MovimientosTab() {
             </div>
           )}
 
-          {solicitudes.porOperario.length > 0 && (
+          {(solicitudes.porOperario?.length ?? 0) > 0 && (
             <div className="mov-dos">
               <div>
                 <p className="eyebrow">Quién pide</p>
                 <BarrasH
-                  datos={solicitudes.porOperario.map((o) => ({
+                  datos={(solicitudes.porOperario ?? []).map((o) => ({
                     id: o.id, label: o.nombre, valor: o.solicitudes,
                   }))}
                   unidad="solicitudes"
@@ -499,7 +499,7 @@ export function MovimientosTab() {
               <div>
                 <p className="eyebrow">Qué piden</p>
                 <BarrasH
-                  datos={solicitudes.porInsumo.map((i) => ({
+                  datos={(solicitudes.porInsumo ?? []).map((i) => ({
                     id: i.nombre, label: i.nombre, valor: i.entregas, sufijo: 'veces',
                   }))}
                   unidad="veces"
@@ -511,7 +511,7 @@ export function MovimientosTab() {
 
           {/* Con pocas solicitudes la LISTA COMPLETA informa más que cualquier
               agregado: deja ver el caso concreto y su motivo. */}
-          {solicitudes.detalle.length > 0 && (
+          {(solicitudes.detalle?.length ?? 0) > 0 && (
             <div className="tabla-scroll" style={{ marginTop: 14 }}>
               <table className="horometros-tabla">
                 <thead>
@@ -523,7 +523,7 @@ export function MovimientosTab() {
                   </tr>
                 </thead>
                 <tbody>
-                  {solicitudes.detalle.map((s) => (
+                  {(solicitudes.detalle ?? []).map((s) => (
                     <tr key={s.id}>
                       <td><strong>{s.operario}</strong></td>
                       <td>
@@ -567,7 +567,7 @@ export function MovimientosTab() {
               <small>de {n0(t.entregas)} entregas</small>
             </div>
             <div className="dash-kpi">
-              <strong>{n0(datos.avalVencido.length)}</strong>
+              <strong>{n0(datos.avalVencido?.length ?? 0)}</strong>
               <span>sin avalar</span>
               <small>con más de 3 días</small>
             </div>

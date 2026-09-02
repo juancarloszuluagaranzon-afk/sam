@@ -1,4 +1,5 @@
 import { db } from './db'
+import { crearCaso } from '../services/soporteApi'
 import {
   entregarSolicitud, entregarDirecto, confirmarRecepcion, createSolicitud,
   confirmarTraslado, registrarCombustibleExterno, autoAbastecer, anularTraslado,
@@ -35,6 +36,7 @@ export type InsumoOpKind =
   | 'ANULAR_TRASLADO'      // se devuelve a la principal: error al enviar o rechazo
   | 'NOVEDAD'              // el operario reporta vacaciones, taller, incapacidad…
   | 'CONFIRMAR_TANQUEO'    // el operario aprueba el combustible que le echaron
+  | 'SOPORTE'              // el operario reporta una falla de la app
 
 /** Etiqueta para la pantalla de pendientes; el operario no lee códigos. */
 export const OP_LABEL: Record<InsumoOpKind, string> = {
@@ -48,6 +50,7 @@ export const OP_LABEL: Record<InsumoOpKind, string> = {
   ANULAR_TRASLADO: 'Rechazo de traslado',
   NOVEDAD: 'Novedad reportada',
   CONFIRMAR_TANQUEO: 'Confirmación de tanqueo',
+  SOPORTE: 'Reporte a soporte',
 }
 
 /**
@@ -99,6 +102,9 @@ export async function ejecutarInsumo(kind: InsumoOpKind, payload: unknown): Prom
     case 'ANULAR_TRASLADO': await anularTraslado(p); return
     case 'NOVEDAD': await setOperarioNovedades(p.operadorId, p.fechas, p.tipo); return
     case 'CONFIRMAR_TANQUEO': await confirmarTanqueo(p); return
+    // ⚠️ `crearCaso` es idempotente por folio: el reintento de la cola no crea
+    // un caso gemelo. Probado contra produccion.
+    case 'SOPORTE': await crearCaso(p); return
     default: throw new Error(`Operación desconocida en la cola: ${kind}`)
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */

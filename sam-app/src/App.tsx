@@ -3,7 +3,7 @@ import { AppDataProvider, SESSION_KEY, useAppData } from './context/AppDataConte
 import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
-import { SupportSwitcher } from './views/SupportSwitcher'
+import { SoporteShell } from './views/SoporteShell'
 import { InsumosView } from './views/InsumosView'
 import { AnalistaView } from './views/AnalistaView'
 import { FlotaView } from './views/FlotaView'
@@ -19,7 +19,7 @@ import { db } from './lib/db'
 
 export type ReportPeriod = 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'
 
-type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo'
+type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo' | 'soporte'
 
 // Guarda la sesión real del usuario de SOPORTE mientras impersona a otro rol,
 // para poder volver. Separado de SESSION_KEY (que es la sesión EFECTIVA).
@@ -462,10 +462,15 @@ function AppContent() {
     )
   }
 
-  // Rol SOPORTE sin impersonar → pantalla "Ver como" para elegir a quién ver.
+  // Rol SOPORTE sin impersonar → su BANDEJA de casos.
+  //
+  // 🔴 Antes entraba directo al "Ver como", que es una herramienta, no un
+  // trabajo. Ahora abre en lo que tiene por hacer; el "Ver como" sigue a un
+  // toque, porque reproducir el problema en la pantalla del que lo sufre es
+  // justamente como se resuelve un caso.
   if (session.role === 'soporte') {
     return (
-      <SupportSwitcher
+      <SoporteShell
         me={session}
         users={users}
         onView={enterImpersonation}

@@ -17,6 +17,9 @@ import { BotonManual } from '../components/BotonManual'
 import { DictateButton } from '../components/DictateButton'
 import { isoDesdeHora, fmtFechaHora } from '../lib/fechas'
 import { MiPlanilla } from '../components/MiPlanilla'
+import { PantallaSegura } from '../components/PantallaSegura'
+import { ReportarView, AcuseCaso } from './ReportarView'
+import { MisCasosView } from './MisCasosView'
 import { DictateInlineButton } from '../components/DictateInlineButton'
 import { AvisoHorometro } from '../components/AvisoHorometro'
 import { dictationErrorMessage } from '../hooks/useDictation'
@@ -36,7 +39,7 @@ import { enviarOEncolar } from '../lib/outboxInsumos'
 import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, loadTanqueosPorConfirmar, confirmarTanqueo, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
 
-type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo'
+type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo' | 'soporte'
 
 // Lista de fechas 'YYYY-MM-DD' entre desde y hasta (inclusive). Para reportar
 // novedades (vacaciones/taller) por rango. Guard de 400 días por seguridad.
@@ -309,6 +312,11 @@ export function OperatorView({
   // fechas → se marcan en la Planilla.
   const [novOpen, setNovOpen] = useState(false)
   const [novTipoSel, setNovTipoSel] = useState<NovedadTipo>('V')
+
+  // Casos de soporte: `reportando` abre el formulario, `acuse` guarda el folio
+  // recien creado para mostrarselo aunque no haya senal.
+  const [reportando, setReportando] = useState(false)
+  const [acuse, setAcuse] = useState<string | null>(null)
   const [novDesde, setNovDesde] = useState('')
   const [novHasta, setNovHasta] = useState('')
   const [savingNov, setSavingNov] = useState(false)
@@ -1350,6 +1358,15 @@ export function OperatorView({
               </span>
             </button>
             <button
+              className={operatorTab === 'soporte' ? 'active' : ''}
+              onClick={() => { setOperatorTab('soporte'); setReportando(false); setAcuse(null) }}
+            >
+              <span className="nav-item">
+                <span className="nav-icon">☉</span>
+                <span className="nav-label">Ayuda</span>
+              </span>
+            </button>
+            <button
               className={operatorTab === 'historial' ? 'active' : ''}
               onClick={() => setOperatorTab('historial')}
             >
@@ -1894,6 +1911,20 @@ export function OperatorView({
         ) : null}
 
         {operatorTab === 'mapa' ? <MapaView onBack={() => setOperatorTab('activas')} /> : null}
+
+        {/* 🔴 Casos de soporte. La pieza que decide si el modulo vive es que el
+            operario VEA lo que reporto: por WhatsApp el ve que llego y que
+            alguien lo leyo, y contra eso un formulario mudo pierde siempre. */}
+        {operatorTab === 'soporte' ? (
+          <PantallaSegura nombre="Reportar una falla">
+            {acuse
+              ? <AcuseCaso folio={acuse} cuando={new Date().toISOString()}
+                           onCerrar={() => { setAcuse(null); setReportando(false) }} />
+              : reportando
+                ? <ReportarView pantalla="Operario" onListo={(f) => setAcuse(f)} />
+                : <MisCasosView onReportar={() => setReportando(true)} />}
+          </PantallaSegura>
+        ) : null}
 
         {operatorTab === 'historial' ? (
           <>

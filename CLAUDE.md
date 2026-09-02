@@ -27,6 +27,15 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    con el detalle técnico plegado y el resto se sigue usando. **Al agregar una
    pantalla nueva, envolverla.** ⚠️ No reemplaza verificar el deploy: contiene el
    daño, no lo evita.
+2c. **🔴 Un tipo escrito a mano sobre lo que devuelve una consulta es una PROMESA,
+   no una comprobación.** Si el tipo afirma un campo que el SQL no manda, TypeScript
+   **no dice nada** y el valor llega `undefined`. Ya costó una pantalla: el resumen de
+   solicitudes devuelve `veces` y estaba tipado con `entregas` → `undefined.toFixed()`
+   dejó la pestaña sin dibujar. Al escribir un tipo para un RPC nuevo: **compararlo
+   campo por campo contra el `jsonb_build_object`**.
+2d. **🔴 Una gráfica no puede tumbar la pantalla que la rodea.** `BarrasH`, `Columnas`
+   y `Donut` sanean su entrada (`Number(d?.valor) || 0`): es un adorno, puede salir mal,
+   pero el resto tiene que seguir dibujándose.
 2b. **🔴 Un caché local es de una versión VIEJA por definición.** Al leerlo hay que
    rellenarlo contra el objeto vacío, nunca devolverlo crudo: si el código nuevo lee
    una sección que la versión anterior no guardaba, revienta. Ya pasó — el espejo del

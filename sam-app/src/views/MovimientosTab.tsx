@@ -500,7 +500,7 @@ export function MovimientosTab() {
                 <p className="eyebrow">Qué piden</p>
                 <BarrasH
                   datos={(solicitudes.porInsumo ?? []).map((i) => ({
-                    id: i.nombre, label: i.nombre, valor: i.entregas, sufijo: 'veces',
+                    id: i.nombre, label: i.nombre, valor: i.veces, sufijo: 'veces',
                   }))}
                   unidad="veces"
                   color={SERIES[5]}

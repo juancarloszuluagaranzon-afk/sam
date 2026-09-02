@@ -375,9 +375,29 @@ export interface PedidoDetalle {
   motivo: string | null
 }
 
+/**
+ * Lo que se pide, con su propio tipo.
+ *
+ * 🔴 El campo se llama `veces`, no `entregas`. Aquí estaba tipado como
+ * `InsumoMov` — que sí tiene `entregas` — y por eso TypeScript no dijo nada: el
+ * tipo AFIRMABA un campo que la consulta nunca manda. En pantalla eso fue un
+ * `undefined.toFixed()` y la pestaña completa dejó de dibujarse.
+ *
+ * La leccion: un tipo escrito a mano sobre lo que devuelve una consulta es una
+ * PROMESA, no una comprobación. Si la promesa es falsa, el compilador ayuda a
+ * romperlo mas rapido.
+ */
+export interface InsumoPedido {
+  nombre: string
+  unidad: string
+  /** Cuántas solicitudes lo incluyeron. */
+  veces: number
+  cantidad: number
+}
+
 export interface ResumenSolicitudes {
   porOperario: SolicitanteMov[]
-  porInsumo: InsumoMov[]
+  porInsumo: InsumoPedido[]
   detalle: PedidoDetalle[]
 }
 

@@ -69,7 +69,7 @@ export function Donut({
   onPick?: (p: Punto) => void
 }) {
   const suma = datos.reduce((t, d) => t + d.valor, 0)
-  if (suma <= 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
+  if (!Number.isFinite(suma) || suma <= 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
 
   const size = 190
   const cx = size / 2
@@ -130,7 +130,7 @@ export function Donut({
 /* ────────────────────── Barras horizontales (magnitud) ────────────────────── */
 
 export function BarrasH({
-  datos,
+  datos: entrada,
   unidad,
   onPick,
   color = SERIES[0],
@@ -140,6 +140,13 @@ export function BarrasH({
   onPick?: (p: Punto) => void
   color?: string
 }) {
+  // 🔴 Un valor que no es número se vuelve 0, no revienta la pantalla.
+  //
+  // Paso de verdad: quien llama pasó un campo que no existía en el dato, el valor
+  // llegó `undefined` y `undefined.toFixed()` dejó la pestaña entera sin dibujar.
+  // Una gráfica es un adorno de una pantalla: puede salir mal, pero **no puede
+  // tumbar** lo que la rodea. Vale para las tres.
+  const datos = entrada.filter(Boolean).map((d) => ({ ...d, valor: Number(d?.valor) || 0 }))
   if (datos.length === 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
   const max = Math.max(...datos.map((d) => d.valor), 0.0001)
   return (
@@ -172,7 +179,7 @@ export function BarrasH({
 /* ───────────────────── Columnas por día (evolución) ───────────────────── */
 
 export function Columnas({
-  datos,
+  datos: entrada,
   onPick,
   color = SERIES[0],
   ink = 'rgba(0,0,0,.82)',
@@ -188,6 +195,8 @@ export function Columnas({
    */
   ink?: string
 }) {
+  // Misma proteccion que en BarrasH: un dato malo no tumba la pantalla.
+  const datos = entrada.filter(Boolean).map((d) => ({ ...d, valor: Number(d?.valor) || 0 }))
   if (datos.length === 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
   const max = Math.max(...datos.map((d) => d.valor), 0.0001)
   return (

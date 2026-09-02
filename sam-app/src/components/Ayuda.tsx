@@ -10,7 +10,12 @@ import { useState, type ReactNode } from 'react'
  *
  * Cerrada por defecto: quien la quiera, la abre.
  */
-export function Ayuda({ children }: { children: ReactNode }) {
+export function Ayuda({ children, rotulo = 'Info' }: {
+  children: ReactNode
+  /** Qué dice el botón cerrado. Por defecto «Info»; se cambia cuando la ayuda
+   *  responde a una frase concreta que está al lado («Por qué», por ejemplo). */
+  rotulo?: string
+}) {
   const [abierta, setAbierta] = useState(false)
 
   return (
@@ -21,7 +26,7 @@ export function Ayuda({ children }: { children: ReactNode }) {
         onClick={() => setAbierta(!abierta)}
         aria-expanded={abierta}
       >
-        <span aria-hidden>ⓘ</span> {abierta ? 'Ocultar' : 'Info'}
+        <span aria-hidden>ⓘ</span> {abierta ? 'Ocultar' : rotulo}
       </button>
       {abierta && <div className="ayuda__texto">{children}</div>}
     </div>

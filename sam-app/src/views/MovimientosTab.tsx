@@ -4,7 +4,7 @@ import { BarrasH, Columnas, ColumnasApiladas, Leyenda, plegarOtros, colorDe, SER
 import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 import {
-  loadResumenMovimientos, indiceCalidad, entregasPorDia, ritmoPorHora, hhmm,
+  loadResumenMovimientos, indiceCalidad, ritmoPorHora, hhmm,
   cuadreCarro, esDeRuta, loadSolicitudesOperarios,
   type ResumenMovimientos, type Despachador, type ResumenSolicitudes,
 } from '../services/movimientosApi'
@@ -45,15 +45,78 @@ function rangoMesActual(): { desde: string; hasta: string } {
   return { desde: `${hoy.slice(0, 7)}-01`, hasta: hoy }
 }
 
+/** Hoy en zona Bogotá (yyyy-mm-dd), sin depender del reloj del equipo. */
+function hoyBogota(): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
+}
+
+/** La quincena en curso: 1–15 o 16–fin de mes. Es como se paga. */
+function rangoQuincena(): { desde: string; hasta: string } {
+  const hoy = hoyBogota()
+  const [y, m, d] = hoy.split('-')
+  return Number(d) <= 15
+    ? { desde: `${y}-${m}-01`, hasta: hoy }
+    : { desde: `${y}-${m}-16`, hasta: hoy }
+}
+
+function rango30dias(): { desde: string; hasta: string } {
+  const hoy = hoyBogota()
+  const [y, m, d] = hoy.split('-').map(Number)
+  const atras = new Date(Date.UTC(y, m - 1, d - 29))
+  return { desde: atras.toISOString().slice(0, 10), hasta: hoy }
+}
+
+type Periodo = 'quincena' | 'mes' | 'd30' | 'otro'
+
+const PERIODOS: { id: Periodo; label: string }[] = [
+  { id: 'quincena', label: 'Quincena' },
+  { id: 'mes', label: 'Mes' },
+  { id: 'd30', label: '30 días' },
+  { id: 'otro', label: 'Otro' },
+]
+
 function diaCorto(iso: string): string {
   const [, m, d] = iso.split('-')
   return `${Number(d)}/${Number(m)}`
 }
 
+/**
+ * Una sección que se abre a propósito, con su cifra de resumen en el título.
+ *
+ * La cifra en el renglón cerrado es lo que hace que valga la pena plegar: sin
+ * ella hay que abrir las cuatro para saber cuál mirar, y entonces plegar solo
+ * agregó toques. No usa las píldoras de `tablero-caras` a propósito — ese
+ * control ya significa «cambiar de cara» 400 px más arriba.
+ */
+function Acordeon({ titulo, resumen, children }: {
+  titulo: string
+  resumen: string
+  children: React.ReactNode
+}) {
+  const [abierto, setAbierto] = useState(false)
+  return (
+    <div className="mov-acc">
+      <button
+        type="button"
+        className="mov-acc__btn"
+        aria-expanded={abierto}
+        onClick={() => setAbierto(!abierto)}
+      >
+        <span className="mov-acc__tit">{titulo}</span>
+        <span className="mov-acc__res">{resumen}</span>
+        <span className="mov-acc__chev" aria-hidden>{abierto ? '⌃' : '⌄'}</span>
+      </button>
+      {abierto && <div className="mov-acc__cuerpo">{children}</div>}
+    </div>
+  )
+}
+
 export function MovimientosTab() {
   const { desde: d0, hasta: h0 } = rangoMesActual()
+  const [periodo, setPeriodo] = useState<Periodo>('mes')
   const [desde, setDesde] = useState(d0)
   const [hasta, setHasta] = useState(h0)
+  const [diaADia, setDiaADia] = useState(false)
   const [datos, setDatos] = useState<ResumenMovimientos | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -78,6 +141,15 @@ export function MovimientosTab() {
     } finally { setCargando(false) }
   }, [desde, hasta])
   useEffect(() => { void cargar() }, [cargar])
+
+  /** «Otro» no toca las fechas: deja las que haya y muestra los dos campos. */
+  function aplicarPeriodo(id: Periodo) {
+    setPeriodo(id)
+    if (id === 'otro') return
+    const r = id === 'quincena' ? rangoQuincena() : id === 'd30' ? rango30dias() : rangoMesActual()
+    setDesde(r.desde)
+    setHasta(r.hasta)
+  }
 
   const t = datos?.totales
   const despachadores = datos?.despachadores ?? []
@@ -113,6 +185,21 @@ export function MovimientosTab() {
     })),
     [datos],
   )
+
+  /**
+   * Las dos cifras que resumen la hora sin abrir la gráfica.
+   *
+   * Lo temprano es la firma de una ruta que arranca de madrugada; lo nocturno
+   * es lo contrario — una entrega a las 11 p.m. no es mala por sí misma, pero
+   * es cuando menos gente hay para comprobarla, y ese es el dato.
+   */
+  const { pctTemprano, nocturnas } = useMemo(() => {
+    const filas = datos?.porHora ?? []
+    const total = filas.reduce((s, h) => s + h.entregas, 0)
+    const temprano = filas.filter((h) => h.hora < 8).reduce((s, h) => s + h.entregas, 0)
+    const noche = filas.filter((h) => h.hora >= 20 || h.hora < 4).reduce((s, h) => s + h.entregas, 0)
+    return { pctTemprano: pct(temprano, total), nocturnas: noche }
+  }, [datos])
 
   // Los insumos se parten POR UNIDAD: galones y unidades no se suman jamás.
   const insumosGalon = useMemo(
@@ -170,46 +257,87 @@ export function MovimientosTab() {
   const sol = datos?.solicitudes ?? {}
   const adopcion = pct(sol.operariosQuePidieron ?? 0, datos?.operariosActivos ?? 0)
 
+  /** Todo lo que falta cerrar, en una sola pasada: es la cinta de la capa 1. */
+  const pendientes = useMemo(() => {
+    const desc = despachadores.filter((d) => cuadreCarro(d) != null)
+    return {
+      sinFoto: t ? t.entregas - t.conFoto : 0,
+      sinAprobar: datos?.avalVencido?.length ?? 0,
+      cuadre: desc.reduce((s, d) => s + (cuadreCarro(d) ?? 0), 0),
+      hayCuadre: desc.length > 0,
+    }
+  }, [despachadores, datos, t])
+
+  /**
+   * La tira de presencia: una fila por persona, una casilla por día.
+   *
+   * Reemplaza arriba a las 31 columnas apiladas —que siguen existiendo, a un
+   * toque— porque apilar borra justo lo que sostiene el veredicto: quién estuvo
+   * qué días. Un hueco en la fila se ve sin leer ningún número.
+   */
+  const tira = useMemo(() => {
+    let max = 0
+    for (const dia of dias) for (const d of despachadores) {
+      max = Math.max(max, dia.valores[d.id] ?? 0)
+    }
+    return { max: max || 1 }
+  }, [dias, despachadores])
+
   return (
-    <section className="panel-card">
+    <section className="panel-card mov">
       <div className="panel-title split">
-        <h2>📦 Movimientos de insumos</h2>
-        <button type="button" className="inline-button" onClick={() => void cargar()} disabled={cargando}>
-          {cargando ? 'Cargando…' : '↻ Actualizar'}
-        </button>
+        <h2>Movimientos de insumos</h2>
+        <div className="mov-titulo-acciones">
+          <Ayuda>
+            <p>Quién entrega insumos y combustible, cuánto y a quién.</p>
+            <p>
+              Aquí se cuentan <strong>entregas, no materiales</strong>: ganchos y combustible
+              en un mismo viaje son <em>una</em> entrega. Contarlas por material inflaría a
+              quien reparte suelto un 51%, y con ese número se iba a pagar.
+            </p>
+            <p>
+              <strong>Por día trabajado</strong> — entre los días en que de verdad entregó, no
+              entre los del mes.<br />
+              <strong>Por hora en ruta</strong> — entre la primera y la última entrega del día.<br />
+              <strong>Registro</strong> — foto, aprobación del operario y sin diferencias,
+              multiplicados: fallar en uno solo lo baja.<br />
+              <strong>Carro</strong> — galones cargados menos entregados. En negativo no quiere
+              decir que falten; quiere decir que el mes no cierra solo.
+            </p>
+          </Ayuda>
+          <button type="button" className="inline-button" onClick={() => void cargar()} disabled={cargando}>
+            {cargando ? 'Cargando…' : '↻ Actualizar'}
+          </button>
+        </div>
       </div>
 
-      <Ayuda>
-        <p>
-          Quién entrega el material y el combustible, qué entrega y a quién. Está pensado
-          para responder <strong>cómo va cada despachador</strong> sin que el número se
-          pueda inflar.
-        </p>
-        <p>
-          🔴 <strong>Aquí se cuentan ENTREGAS, no materiales.</strong> Una entrega de
-          ganchos y combustible es <em>un</em> viaje del supervisor, no dos. Suena a
-          detalle y no lo es: contando materiales, Genaro aparecería con un 51% más de
-          trabajo del que hizo — y con ese número se iba a pagar.
-        </p>
-        <p>
-          🔴 <strong>El volumen nunca va solo.</strong> Al lado de cuántas entregas hizo
-          cada uno va si quedaron con foto, si el operario las aprobó y cuántas
-          <em> visitas</em> fueron. Un número de entregas sin esas tres cosas se puede
-          inflar en un día; con ellas, no.
-        </p>
-      </Ayuda>
-
-      <div className="dash-filtros" style={{ marginTop: 12 }}>
-        <label>Desde
-          <input type="date" value={desde} max={hasta} onChange={(e) => setDesde(e.target.value)} />
-        </label>
-        <label>Hasta
-          <input type="date" value={hasta} min={desde} onChange={(e) => setHasta(e.target.value)} />
-        </label>
+      {/* Chips en vez de dos campos de fecha: el 95% de las veces se quiere la
+          quincena o el mes, y escribirlos a mano en un celular son ocho toques. */}
+      <div className="mov-periodo">
+        {PERIODOS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            aria-pressed={periodo === p.id}
+            onClick={() => aplicarPeriodo(p.id)}
+          >
+            {p.label}
+          </button>
+        ))}
+        {periodo === 'otro' && (
+          <div className="mov-periodo__rango">
+            <label>Desde
+              <input type="date" value={desde} max={hasta} onChange={(e) => setDesde(e.target.value)} />
+            </label>
+            <label>Hasta
+              <input type="date" value={hasta} min={desde} onChange={(e) => setHasta(e.target.value)} />
+            </label>
+          </div>
+        )}
       </div>
 
       {datos?.desdeCache && (
-        <p className="mov-alerta" style={{ marginTop: 10 }}>
+        <p className="mov-alerta">
           ⚠ Sin conexión. Estos datos son del <strong>{fmtFechaHora(datos.guardadoEn)}</strong>.
         </p>
       )}
@@ -222,400 +350,354 @@ export function MovimientosTab() {
 
       {!cargando && t && t.entregas > 0 && (
         <>
-          {/* ── Lo que pasó en el periodo ───────────────────────────────── */}
-          <div className="dash-kpis">
-            <div className="dash-kpi">
-              <strong>{n0(t.entregas)}</strong>
-              <span>entregas</span>
-              <small>en {t.dias} días</small>
-            </div>
-            <div className="dash-kpi">
-              <strong>{n0(t.galones)}</strong>
-              <span>galones</span>
-              <small>de combustible</small>
-            </div>
-            <div className="dash-kpi">
-              <strong>{t.operarios}</strong>
-              <span>operarios</span>
-              <small>{t.maquinas} máquinas</small>
-            </div>
-            <div className="dash-kpi">
-              <strong>{pct(t.avaladas, t.entregas)}%</strong>
-              <span>aprobadas</span>
-              <small>{t.conDiferencia} con diferencia</small>
-            </div>
+          {/* ── CAPA 1: el veredicto, las tres filas y el freno ──────────── */}
+          <div className="mov-veredicto">
+            {hallazgo ? (
+              <>
+                <p>
+                  <b>{primerNombre(hallazgo.alto.d.nombre)} entregó{' '}
+                  {n1(hallazgo.veces)} veces más que {primerNombre(hallazgo.bajo.d.nombre)},
+                  pero por hora van casi igual</b> — {n1(hallazgo.alto.ritmo)} y{' '}
+                  {n1(hallazgo.bajo.ritmo)}. La diferencia es presencia, no ritmo.
+                </p>
+                <p className="mov-veredicto__pie">
+                  El «por hora» se mide entre la primera y la última entrega del día:
+                  sirve para comparar, no para pagar.
+                </p>
+              </>
+            ) : (
+              <>
+                <p>
+                  <b>Este periodo los totales y el ritmo por hora cuentan la misma
+                  historia.</b> Comparar los totales no engaña.
+                </p>
+                <p className="mov-veredicto__pie">
+                  Mire igual el registro antes de decidir: el volumen sin él no dice si
+                  el trabajo quedó probado.
+                </p>
+              </>
+            )}
           </div>
 
-          {/* ── El ranking, siempre con su calidad al lado ──────────────── */}
-          <h3 className="dash-titulo">Cómo va cada despachador</h3>
+          {/* Una fila por persona. Volumen, presencia y ritmo en la misma línea
+              —el veredicto afirma los tres— y debajo la calidad del registro,
+              para que ninguna de las dos cosas obligue a abrir un modal. */}
           <div className="mov-tarjetas">
             {despachadores.map((d, i) => {
               const cal = indiceCalidad(d)
-              const porDia = entregasPorDia(d)
               const ritmo = ritmoPorHora(d, datos?.jornadas ?? [])
-              const jor = (datos?.jornadas ?? []).find((j) => j.id === d.id)
               const porEvento = d.eventos > 0 ? d.entregas / d.eventos : 1
               const cuadre = cuadreCarro(d)
+              const alertas = (d.carguesSospechosos > 0 ? 1 : 0) + (d.avalVencido > 0 ? 1 : 0)
+                + (porEvento > 1.15 ? 1 : 0)
               return (
-                <button key={d.id} type="button" className="mov-tarjeta" onClick={() => setDetalle(d)}>
-                  <div className="mov-tarjeta__head">
-                    <i className="mov-tarjeta__color" style={{ background: colorDe(i) }} />
-                    <strong>{d.nombre}</strong>
-                  </div>
-                  <div className="mov-tarjeta__cifras">
-                    <div>
-                      <b>{n0(d.entregas)}</b>
-                      <span>entregas</span>
-                    </div>
-                    <div>
-                      <b>{n1(porDia)}</b>
-                      <span>por día trabajado</span>
-                    </div>
-                    {/* 🔴 El ritmo va PEGADO al volumen. Es el número que cambia
-                        la conclusión: dos personas con volumen muy distinto pueden
-                        tener el mismo ritmo, y entonces la diferencia era presencia,
-                        no productividad. */}
-                    <div>
-                      <b>{ritmo != null ? n1(ritmo) : '—'}</b>
-                      <span>por hora en campo</span>
-                    </div>
-                    <div>
-                      <b>{jor ? n1(jor.horas) : '—'} h</b>
-                      <span>jornada</span>
-                    </div>
-                  </div>
-                  <p className="mov-jornada">
-                    {d.dias} días activos
-                    {jor && <> · de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}</>}
-                    {' · '}{n0(d.galones)} galones · {d.maquinas} máquinas
-                    {d.horasAvalMediana != null && <> · aprobación en {n1(d.horasAvalMediana)} h</>}
-                  </p>
-                  {cuadre != null && (
-                    <p className={`mov-cuadre${Math.abs(cuadre) > 50 ? ' mov-cuadre--ojo' : ''}`}>
-                      Carro: cargó {n0(d.cargado)} gal · entregó {n0(d.galones)} gal ·{' '}
-                      <strong>{cuadre > 0 ? '+' : ''}{n0(cuadre)}</strong>
-                    </p>
-                  )}
-                  {!esDeRuta(d) && (
-                    <p className="mov-jornada">
-                      Despacha desde la bodega principal, no hace ruta — no se compara con
-                      los supervisores.
-                    </p>
-                  )}
-                  <div className={`mov-calidad mov-calidad--${cal >= 95 ? 'ok' : cal >= 85 ? 'medio' : 'bajo'}`}>
-                    <span className="mov-calidad__num">{cal}%</span>
-                    <span className="mov-calidad__det">
-                      registro completo · {pct(d.conFoto, d.entregas)}% con foto ·
-                      {' '}{pct(d.avaladas, d.entregas)}% aprobado
+                <button key={d.id} type="button" className="mov-fila" onClick={() => setDetalle(d)}>
+                  <i className="mov-fila__color" style={{ background: colorDe(i) }} />
+                  <span className="mov-fila__nom">{primerNombre(d.nombre)}</span>
+                  {/* Las tres van en UNA rejilla y no en tres celdas sueltas:
+                      cada celda por su cuenta alinea sus propios hijos, y las
+                      cifras quedaban a 354, 360 y 355 px — medido. Aquí
+                      comparten fila y línea base aunque tengan tamaños distintos. */}
+                  <span className="mov-fila__cifras">
+                    <span className="mov-fila__c mov-fila__c--n">
+                      <b>{n0(d.entregas)}</b><i>entregas</i>
                     </span>
-                  </div>
-                  {d.carguesSospechosos > 0 && (
-                    <p className="mov-alerta">
-                      ⚠ {d.carguesSospechosos} cargue{d.carguesSospechosos > 1 ? 's' : ''} por
-                      encima de 500 galones, por fuera del cuadre. Revíselo en Aprobaciones.
-                    </p>
-                  )}
-                  {d.avalVencido > 0 && (
-                    <p className="mov-alerta">
-                      ⚠ {d.avalVencido} entrega{d.avalVencido > 1 ? 's' : ''} sin aprobar con
-                      más de 3 días
-                    </p>
-                  )}
-                  {porEvento > 1.15 && (
-                    <p className="mov-alerta">
-                      ⚠ {n1(porEvento)} entregas por visita — revisar si se están partiendo
-                    </p>
-                  )}
+                    <span className="mov-fila__c">
+                      <b>{d.dias}</b><i>días</i>
+                    </span>
+                    <span className="mov-fila__c">
+                      <b>{ritmo != null ? n1(ritmo) : '—'}</b><i>por hora</i>
+                    </span>
+                  </span>
+                  {/* La celda se declara siempre, con alerta o sin ella: si
+                      desapareciera, esa fila entera se correría de columna. */}
+                  <span className="mov-fila__alerta">{alertas > 0 ? `⚠${alertas}` : ''}</span>
+                  <span className="mov-fila__ir" aria-hidden>›</span>
+                  <span className="mov-fila__pie">
+                    <span className={cal >= 95 ? '' : cal >= 85 ? 'es-ojo' : 'es-mal'}>
+                      <b>{cal}%</b> registro
+                    </span>
+                    {cuadre != null ? (
+                      <span className={Math.abs(cuadre) > 50 ? 'es-mal' : ''}>
+                        carro <b>{cuadre > 0 ? '+' : ''}{n0(cuadre)}</b> gal
+                      </span>
+                    ) : (
+                      <span>bodega, sin carro · no se compara con los de ruta</span>
+                    )}
+                  </span>
                 </button>
               )
             })}
           </div>
 
-          <div className="mov-clave">
-            {hallazgo ? (
-              <>
-                <p>
-                  🔴 <strong>Antes de comparar los totales, mire «por hora en
-                  ruta».</strong> {primerNombre(hallazgo.alto.d.nombre)} hizo{' '}
-                  <strong>{n0(hallazgo.alto.d.entregas)}</strong> entregas y{' '}
-                  {primerNombre(hallazgo.bajo.d.nombre)}{' '}
-                  <strong>{n0(hallazgo.bajo.d.entregas)}</strong>, {n1(hallazgo.veces)} veces
-                  más. Pero por hora van <strong>{n1(hallazgo.alto.ritmo)}</strong> y{' '}
-                  <strong>{n1(hallazgo.bajo.ritmo)}</strong>: prácticamente el mismo ritmo.
-                </p>
-                <p>
-                  La diferencia es <strong>presencia</strong>.{' '}
-                  {primerNombre(hallazgo.alto.d.nombre)} trabajó {hallazgo.alto.d.dias} días
-                  {hallazgo.jA ? ` con jornadas de ${n1(hallazgo.jA.horas)} horas` : ''} y{' '}
-                  {primerNombre(hallazgo.bajo.d.nombre)}, {hallazgo.bajo.d.dias}
-                  {hallazgo.jB ? ` con jornadas de ${n1(hallazgo.jB.horas)}` : ''}. Estar es
-                  parte del trabajo y eso no le quita mérito a nadie — pero{' '}
-                  <strong>premiar la presencia y premiar la productividad son dos
-                  decisiones distintas</strong>, y con el total a secas se toma una
-                  creyendo que se toma la otra.
-                </p>
-              </>
-            ) : (
+          {/* El freno se queda a la vista SIEMPRE; lo que se pliega es la
+              explicación, nunca la advertencia. */}
+          <div className="mov-freno">
+            <span>⚠ Estos números todavía no son para pagar.</span>
+            <Ayuda rotulo="Por qué">
               <p>
-                En este periodo los totales y el ritmo por hora cuentan la misma historia,
-                así que comparar los totales no engaña. Mire igual el porcentaje de
-                registro completo: el volumen sin él no dice si el trabajo quedó probado.
+                <strong>{despachadores.filter((d) => !esDeRuta(d)).map((d) => primerNombre(d.nombre)).join(' y ') || 'Quien despacha desde la bodega'}</strong>{' '}
+                no hace ruta: entregar no es su trabajo principal y aparece de último
+                aunque haga bien lo suyo. No entra en la comparación.
               </p>
+              <p>
+                <strong>La demora en aprobar la decide el operario</strong> cuando
+                confirma, no el despachador. Cobrársela se responde presionando al
+                operario para que firme sin revisar.
+              </p>
+              <p>
+                <strong>Un mes dice poco.</strong> Deje correr dos y vigile que las
+                entregas por visita se mantengan cerca de 1,0.
+              </p>
+            </Ayuda>
+          </div>
+
+          {/* Informativa a propósito: no son botones porque no llevan a ninguna
+              parte, y un chip pulsable que no responde se aprende como adorno. */}
+          <div className="mov-cinta">
+            <span><b>{n0(pendientes.sinFoto)}</b> sin foto</span>
+            <span className={pendientes.sinAprobar > 0 ? 'es-ojo' : ''}>
+              <b>{n0(pendientes.sinAprobar)}</b> sin aprobar
+            </span>
+            {pendientes.hayCuadre && (
+              <span className={Math.abs(pendientes.cuadre) > 50 ? 'es-ojo' : ''}>
+                <b>{pendientes.cuadre > 0 ? '+' : ''}{n0(pendientes.cuadre)}</b> gal sin cuadrar
+              </span>
             )}
-            <p className="mov-clave__ojo">
-              ⚠ <strong>El «por hora» sirve para entender, no para pagar.</strong> Las
-              horas salen de la primera y la última entrega del día, o sea del mismo dato
-              que se está midiendo: dos entregas separadas ocho horas se ven como «ritmo
-              malo» y dos seguidas como «ritmo excelente», cuando en la mitad pudo haber
-              un viaje de hora y media o una espera en la bomba. Lealo como una señal de
-              que los totales engañan, no como la nota de nadie.
-            </p>
           </div>
 
-          <p className="subtle-copy mov-nota">
-            <strong>«Por día trabajado»</strong> divide entre los días en que de verdad
-            entregó, no entre los días del mes: comparar contra el calendario castigaría a
-            quien estuvo incapacitado o de descanso. <strong>«Por hora en campo»</strong>
-            usa el tiempo entre la primera y la última entrega del día — es una ventana de
-            trabajo, no horas pagadas: aquí nadie marca entrada. Y{' '}
-            <strong>el porcentaje de abajo</strong> es qué tan completo quedó el registro:
-            foto, aprobación del operario y sin diferencias, multiplicados. Se multiplican y no
-            se promedian a propósito: fallar en cualquiera de los tres tiene que bajarlo,
-            que para eso es un control.
-          </p>
-
-          <p className="subtle-copy mov-nota">
-            <strong>El cuadre del carro</strong> compara lo que cada supervisor cargó
-            contra lo que entregó desde él. Un número en negativo <em>no</em> quiere decir
-            que falten galones — puede ser saldo que venía del mes pasado o un cargue que
-            no se registró. Quiere decir que <strong>las cuentas del mes no cierran
-            solas</strong>, y eso hay que resolverlo antes de amarrarle plata. A quien
-            despacha desde la bodega principal no le sale cuadre, porque no tiene carro.
-          </p>
-
-          {/* ── La serie diaria: lo que pidió el cliente ─────────────────── */}
-          <h3 className="dash-titulo">Entregas por día</h3>
-          <ColumnasApiladas dias={dias} series={seriesDespachadores} />
-          <Leyenda series={seriesDespachadores} />
-
-          {/* ── A qué hora ──────────────────────────────────────────────── */}
-          <h3 className="dash-titulo">A qué hora se entrega</h3>
-          <Columnas datos={horas} />
-          <p className="subtle-copy mov-nota">
-            La ruta arranca de madrugada y se apaga después del mediodía. Las entregas
-            sueltas de la noche valen una mirada: no está mal entregar tarde, pero es
-            cuando menos gente hay para comprobar.
-          </p>
-
-          {/* ── Qué se entrega ──────────────────────────────────────────── */}
-          <h3 className="dash-titulo">Qué se entrega</h3>
-          <div className="mov-dos">
-            <div>
-              <p className="eyebrow">Combustible y aceites (galones)</p>
-              <BarrasH datos={insumosGalon} unidad="gal" />
-            </div>
-            <div>
-              <p className="eyebrow">Repuestos y materiales (unidades)</p>
-              <BarrasH datos={insumosUnidad} unidad="unidad" color={SERIES[1]} />
-            </div>
-          </div>
-          <p className="subtle-copy mov-nota">
-            Van en dos listas y no en una a propósito: <strong>sumar galones con unidades
-            da un número que no significa nada.</strong> Ya pasó una vez en el Inicio
-            —«entrega directa 63,95» eran 40 ganchos más 23,95 galones— y nadie lo notó.
-          </p>
-
-          {/* ── Quién recibe ────────────────────────────────────────────── */}
-          <h3 className="dash-titulo">Quién recibe</h3>
-          <div className="mov-dos">
-            <div>
-              <p className="eyebrow">Operarios con más entregas</p>
-              <BarrasH datos={topOperarios} unidad="entregas" color={SERIES[2]} />
-            </div>
-            <div>
-              <p className="eyebrow">Máquinas por combustible</p>
-              <BarrasH datos={topMaquinas} unidad="gal" color={SERIES[3]} />
-            </div>
-          </div>
-
-          {/* ── Quién solicita y qué solicita ───────────────────── */}
-          <h3 className="dash-titulo">Quién solicita, y qué pide</h3>
-
+          {/* ── CAPA 2: el periodo completo ──────────────────────────────── */}
           <div className="dash-kpis">
             <div className="dash-kpi">
-              <strong>{n0(sol.total ?? 0)}</strong>
-              <span>solicitudes</span>
-              <small>contra {n0(t.entregas)} entregas directas</small>
+              <span className="dash-kpi__val">{n0(t.entregas)}</span>
+              <span className="dash-kpi__lbl">entregas</span>
+              <span className="dash-kpi__pie">en {t.dias} días</span>
             </div>
             <div className="dash-kpi">
-              <strong>{sol.operariosQuePidieron ?? 0}/{datos?.operariosActivos ?? 0}</strong>
-              <span>operarios han pedido</span>
-              <small>{adopcion}% de adopción</small>
+              <span className="dash-kpi__val">{n0(t.galones)}</span>
+              <span className="dash-kpi__lbl">galones</span>
+              <span className="dash-kpi__pie">de combustible</span>
             </div>
             <div className="dash-kpi">
-              <strong>{n0(sol.entregadas ?? 0)}</strong>
-              <span>terminaron entregadas</span>
-              <small>de {n0(sol.total ?? 0)}</small>
+              <span className="dash-kpi__val">{t.operarios}</span>
+              <span className="dash-kpi__lbl">operarios</span>
+              <span className="dash-kpi__pie">{t.maquinas} máquinas</span>
             </div>
             <div className="dash-kpi">
-              <strong>{n0(sol.rechazadas ?? 0)}</strong>
-              <span>rechazadas</span>
-              <small>{n0(sol.pendientes ?? 0)} sin atender</small>
+              <span className="dash-kpi__val">{pct(t.avaladas, t.entregas)}%</span>
+              <span className="dash-kpi__lbl">aprobadas</span>
+              <span className="dash-kpi__pie">{t.conDiferencia} con diferencia</span>
             </div>
           </div>
 
-          {/* 🔴 El hallazgo del panel: no es que no pidan, es que les dicen que
-              no. Va DESTACADO porque es accionable, no una nota al pie. */}
-          {(sol.rechazadas ?? 0) > 0 && (sol.rechazadas ?? 0) >= (sol.entregadas ?? 0) && (
-            <div className="mov-clave">
-              <p>
-                🔴 <strong>No es que los operarios no pidan: es que la mayoría de los
-                pedidos no termina en entrega.</strong> De {n0(sol.total ?? 0)} solicitudes,
-                {' '}<strong>{n0(sol.rechazadas ?? 0)} fueron rechazadas</strong> y solo{' '}
-                {n0(sol.entregadas ?? 0)} llegó a entregarse.
-              </p>
-              <p>
-                Mire los motivos abajo. Si dicen <em>«ya se entregó»</em>, el material sí
-                llegó — el supervisor pasó con el carro antes de que alguien atendiera el
-                pedido. <strong>El pedido no compite con la falta de material, compite
-                con la ruta</strong>, y la ruta va primero. Eso explica la adopción mejor
-                que cualquier otra cosa, y se arregla del lado de la operación.
-              </p>
-            </div>
-          )}
+          <h3 className="dash-titulo">Quién estuvo, día por día</h3>
+          <div className="mov-tira">
+            {despachadores.map((d, i) => (
+              <div key={d.id} className="mov-tira__fila">
+                <span className="mov-tira__nom">{primerNombre(d.nombre)}</span>
+                <span className="mov-tira__dias">
+                  {dias.map((dia) => {
+                    const v = dia.valores[d.id] ?? 0
+                    return (
+                      <span
+                        key={dia.id}
+                        className="mov-tira__dia"
+                        title={`${dia.label}: ${v}`}
+                        style={v > 0 ? {
+                          background: colorDe(i),
+                          opacity: 0.35 + 0.65 * (v / tira.max),
+                        } : undefined}
+                      />
+                    )
+                  })}
+                </span>
+              </div>
+            ))}
+            {dias.length > 0 && (
+              <div className="mov-tira__esc">
+                <span>{dias[0].label}</span>
+                <span>{dias[dias.length - 1].label}</span>
+              </div>
+            )}
+          </div>
+          <div className="mov-tira__pie">
+            <button type="button" className="inline-button" onClick={() => setDiaADia(true)}>
+              Ver día a día
+            </button>
+          </div>
 
-          {(solicitudes.porOperario?.length ?? 0) > 0 && (
+          {/* ── CAPA 3: lo que se abre a propósito ───────────────────────── */}
+          <Acordeon titulo="Qué se entrega y a quién" resumen={`${n0(t.galones)} gal`}>
             <div className="mov-dos">
               <div>
-                <p className="eyebrow">Quién pide</p>
-                <BarrasH
-                  datos={(solicitudes.porOperario ?? []).map((o) => ({
-                    id: o.id, label: o.nombre, valor: o.solicitudes,
-                  }))}
-                  unidad="solicitudes"
-                  color={SERIES[4]}
-                />
+                <p className="eyebrow">Combustible y aceites (galones)</p>
+                <BarrasH datos={insumosGalon} unidad="gal" />
               </div>
               <div>
-                <p className="eyebrow">Qué piden</p>
-                <BarrasH
-                  datos={(solicitudes.porInsumo ?? []).map((i) => ({
-                    id: i.nombre, label: i.nombre, valor: i.veces, sufijo: 'veces',
-                  }))}
-                  unidad="veces"
-                  color={SERIES[5]}
-                />
+                <p className="eyebrow">Repuestos y materiales (unidades)</p>
+                <BarrasH datos={insumosUnidad} unidad="unidad" color={SERIES[1]} />
               </div>
             </div>
-          )}
-
-          {/* Con pocas solicitudes la LISTA COMPLETA informa más que cualquier
-              agregado: deja ver el caso concreto y su motivo. */}
-          {(solicitudes.detalle?.length ?? 0) > 0 && (
-            <div className="tabla-scroll" style={{ marginTop: 14 }}>
-              <table className="horometros-tabla">
-                <thead>
-                  <tr>
-                    <th>Operario</th>
-                    <th>Qué pidió</th>
-                    <th>Cuándo</th>
-                    <th>En qué quedó</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(solicitudes.detalle ?? []).map((s) => (
-                    <tr key={s.id}>
-                      <td><strong>{s.operario}</strong></td>
-                      <td>
-                        {s.items ?? '—'}
-                        {s.nota && <span className="field-optional"> · {s.nota}</span>}
-                      </td>
-                      <td>
-                        {fmtFechaHora(s.creada)}
-                        {s.requeridoPara && (
-                          <span className="field-optional"> · lo quería {fmtFechaHora(s.requeridoPara)}</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`status-pill ${s.estado === 'ENTREGADA' ? 'green'
-                          : s.estado === 'RECHAZADA' ? 'red' : 'amber'}`}>
-                          {s.estado}
-                        </span>
-                        {s.motivo && <span className="field-optional"> {s.motivo}</span>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="mov-dos">
+              <div>
+                <p className="eyebrow">Operarios con más entregas</p>
+                <BarrasH datos={topOperarios} unidad="entregas" color={SERIES[2]} />
+              </div>
+              <div>
+                <p className="eyebrow">Máquinas por combustible</p>
+                <BarrasH datos={topMaquinas} unidad="gal" color={SERIES[3]} />
+              </div>
             </div>
-          )}
+          </Acordeon>
 
-          <p className="subtle-copy mov-nota">
-            ⚠️ <strong>Son pocas solicitudes y el número está a la vista a propósito.</strong>
-            {' '}Con {n0(sol.total ?? 0)} pedidos, el primer puesto del ranking lo decide
-            uno solo: sirve para saber <em>quiénes</em> ya usan el flujo — son a los que
-            hay que preguntarles cómo les fue — pero no para comparar operarios entre sí.
-            La lista completa de abajo dice más que el ranking.
-          </p>
+          <Acordeon titulo="A qué hora se entrega" resumen={`${pctTemprano}% antes de 8`}>
+            {nocturnas > 0 && (
+              <p className="mov-alerta">
+                ⚠ {n0(nocturnas)} entrega{nocturnas > 1 ? 's' : ''} entre las 8 p.m. y las
+                4 a.m. Es cuando menos gente hay para comprobar.
+              </p>
+            )}
+            <Columnas datos={horas} />
+          </Acordeon>
 
-          {/* ── Lo que hay que ir a arreglar ───────────────────── */}
-          <h3 className="dash-titulo">Lo que falta cerrar</h3>
-          <div className="dash-kpis">
-            <div className="dash-kpi">
-              <strong>{n0(t.entregas - t.conFoto)}</strong>
-              <span>sin foto</span>
-              <small>de {n0(t.entregas)} entregas</small>
-            </div>
-            <div className="dash-kpi">
-              <strong>{n0(datos.avalVencido?.length ?? 0)}</strong>
-              <span>sin aprobar</span>
-              <small>con más de 3 días</small>
-            </div>
-            <div className="dash-kpi">
-              <strong>{t.horasAvalMediana != null ? n1(t.horasAvalMediana) : '—'} h</strong>
-              <span>tarda la aprobación</span>
-              <small>la mitad, menos de eso</small>
-            </div>
-          </div>
-          <p className="subtle-copy mov-nota">
-            El tiempo de la aprobación es una <strong>mediana</strong>, no un promedio: unos pocos
-            aprobaciones muy viejos arrastran el promedio a un número que no describe a nadie.
-            ⚠️ Ese reloj lo para el operario cuando confirma, no el despachador:{' '}
-            <strong>no se le puede cobrar a quien entrega</strong>, o se responde
-            presionando al operario para que firme sin revisar — y ahí se pierde el
-            control entero.
-          </p>
+          <Acordeon
+            titulo="Quién pide, y qué"
+            resumen={`${n0(sol.total ?? 0)} · ${n0(sol.rechazadas ?? 0)} rechazadas`}
+          >
+            {(sol.total ?? 0) > 0 && (sol.total ?? 0) < 30 && (
+              <span className="mov-chip-n">muestra pequeña · n={n0(sol.total ?? 0)}</span>
+            )}
 
-          {/* ── La advertencia que no se puede quitar ───────────────────── */}
-          <div className="mov-advertencia">
-            <p><strong>Antes de pagar con estos números</strong></p>
-            <ul>
-              <li>
-                <strong>No compare a Diego con los otros dos.</strong> Es analista, no
-                supervisor de ruta: entregar no es su trabajo principal y aparecerá siempre
-                de último aunque haga bien lo suyo.
-              </li>
-              <li>
-                <strong>El tiempo hasta la aprobación no es culpa del despachador.</strong> Ese
-                reloj lo para el operario cuando confirma, y a veces confirma al otro día.
-                Castigarlo por eso se responde presionando al operario para que firme sin
-                revisar, y ahí se pierde el control entero.
-              </li>
-              <li>
-                <strong>Un periodo corto dice poco.</strong> Antes de amarrarle plata a
-                estos números, deje correr un par de meses y vigile que las entregas por
-                visita se mantengan cerca de 1,0.
-              </li>
-            </ul>
-          </div>
+            {(sol.rechazadas ?? 0) > 0 && (sol.rechazadas ?? 0) >= (sol.entregadas ?? 0) && (
+              <p className="mov-veredicto">
+                <b>De {n0(sol.total ?? 0)} solicitudes, {n0(sol.rechazadas ?? 0)} terminaron
+                rechazadas.</b> No es que no pidan: el pedido compite con la ruta, y la
+                ruta va primero.
+              </p>
+            )}
+
+            <div className="dash-kpis">
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{n0(sol.total ?? 0)}</span>
+                <span className="dash-kpi__lbl">solicitudes</span>
+                <span className="dash-kpi__pie">contra {n0(t.entregas)} entregas directas</span>
+              </div>
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{sol.operariosQuePidieron ?? 0}/{datos?.operariosActivos ?? 0}</span>
+                <span className="dash-kpi__lbl">operarios han pedido</span>
+                <span className="dash-kpi__pie">{adopcion}% de adopción</span>
+              </div>
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{n0(sol.entregadas ?? 0)}</span>
+                <span className="dash-kpi__lbl">terminaron entregadas</span>
+                <span className="dash-kpi__pie">de {n0(sol.total ?? 0)}</span>
+              </div>
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{n0(sol.rechazadas ?? 0)}</span>
+                <span className="dash-kpi__lbl">rechazadas</span>
+                <span className="dash-kpi__pie">{n0(sol.pendientes ?? 0)} sin atender</span>
+              </div>
+            </div>
+
+            {(solicitudes.porOperario?.length ?? 0) > 0 && (
+              <div className="mov-dos">
+                <div>
+                  <p className="eyebrow">Quién pide</p>
+                  <BarrasH
+                    datos={(solicitudes.porOperario ?? []).map((o) => ({
+                      id: o.id, label: o.nombre, valor: o.solicitudes,
+                    }))}
+                    unidad="solicitudes"
+                    color={SERIES[4]}
+                  />
+                </div>
+                <div>
+                  <p className="eyebrow">Qué piden</p>
+                  <BarrasH
+                    datos={(solicitudes.porInsumo ?? []).map((i) => ({
+                      id: i.nombre, label: i.nombre, valor: i.veces, sufijo: 'veces',
+                    }))}
+                    unidad="veces"
+                    color={SERIES[5]}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Con pocas solicitudes la LISTA COMPLETA informa más que cualquier
+                agregado: deja ver el caso concreto y su motivo. Va en filas y no
+                en tabla — una tabla de 620 px obliga a rodar de lado en celular. */}
+            {(solicitudes.detalle ?? []).map((s) => (
+              <div key={s.id} className="mov-row">
+                <div className="mov-row__items">
+                  <strong>{s.operario}</strong>
+                  <span className={`status-pill ${s.estado === 'ENTREGADA' ? 'green'
+                    : s.estado === 'RECHAZADA' ? 'red' : 'amber'}`}>
+                    {s.estado}
+                  </span>
+                </div>
+                <p className="subtle-copy">
+                  {s.items ?? '—'}
+                  {s.nota && <> · {s.nota}</>}
+                </p>
+                <p className="subtle-copy">
+                  {fmtFechaHora(s.creada)}
+                  {s.requeridoPara && <> · lo quería {fmtFechaHora(s.requeridoPara)}</>}
+                  {s.motivo && <> · {s.motivo}</>}
+                </p>
+              </div>
+            ))}
+          </Acordeon>
+
+          <Acordeon titulo="Lo que falta cerrar" resumen={`${n0(pendientes.sinFoto)} sin foto`}>
+            <div className="dash-kpis">
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{n0(pendientes.sinFoto)}</span>
+                <span className="dash-kpi__lbl">sin foto</span>
+                <span className="dash-kpi__pie">de {n0(t.entregas)} entregas</span>
+              </div>
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{n0(pendientes.sinAprobar)}</span>
+                <span className="dash-kpi__lbl">sin aprobar</span>
+                <span className="dash-kpi__pie">con más de 3 días</span>
+              </div>
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{t.horasAvalMediana != null ? n1(t.horasAvalMediana) : '—'} h</span>
+                <span className="dash-kpi__lbl">tarda la aprobación</span>
+                <span className="dash-kpi__pie">la mitad, menos de eso</span>
+              </div>
+            </div>
+            <p className="subtle-copy mov-nota">
+              Es una <strong>mediana</strong>, no un promedio: unas pocas aprobaciones muy
+              viejas arrastran el promedio a un número que no describe a nadie.
+            </p>
+          </Acordeon>
         </>
       )}
 
       {/* Sello de corte: en este proyecto todo entregable dice cuándo se sacó. */}
       {!cargando && datos?.corteEn && (
-        <p className="subtle-copy" style={{ marginTop: 22 }}>
+        <p className="subtle-copy mov-sello">
           Corte del {fmtFechaHora(datos.corteEn)} · periodo {datos.desde} a {datos.hasta}.
         </p>
+      )}
+
+      {/* La serie diaria completa que pidió el cliente: sigue existiendo, pero
+          dentro de un modal, donde el gesto lateral no le compite al scroll. */}
+      {diaADia && (
+        <div className="modal-overlay open" onClick={() => setDiaADia(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="labor-detail-header">
+              <div>
+                <p className="eyebrow">Entregas por día</p>
+                <h3>{datos?.desde} a {datos?.hasta}</h3>
+              </div>
+              <button type="button" className="modal-close-btn" onClick={() => setDiaADia(false)} aria-label="Cerrar">✕</button>
+            </div>
+            <ColumnasApiladas dias={dias} series={seriesDespachadores} />
+            <Leyenda series={seriesDespachadores} />
+          </div>
+        </div>
       )}
 
       {/* ── Detalle de una persona ──────────────────────────────────────── */}
@@ -630,25 +712,60 @@ export function MovimientosTab() {
               <button type="button" className="modal-close-btn" onClick={() => setDetalle(null)} aria-label="Cerrar">✕</button>
             </div>
             <div className="dash-kpis">
-              <div className="dash-kpi"><strong>{n0(detalle.entregas)}</strong><span>entregas</span></div>
-              <div className="dash-kpi"><strong>{n0(detalle.eventos)}</strong><span>visitas</span></div>
-              <div className="dash-kpi"><strong>{detalle.dias}</strong><span>días activos</span></div>
-              <div className="dash-kpi"><strong>{n0(detalle.galones)}</strong><span>galones</span></div>
-              <div className="dash-kpi"><strong>{detalle.maquinas}</strong><span>máquinas</span></div>
-              <div className="dash-kpi"><strong>{detalle.operarios}</strong><span>operarios</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{n0(detalle.entregas)}</span><span className="dash-kpi__lbl">entregas</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{n0(detalle.eventos)}</span><span className="dash-kpi__lbl">visitas</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{detalle.dias}</span><span className="dash-kpi__lbl">días activos</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{n0(detalle.galones)}</span><span className="dash-kpi__lbl">galones</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{detalle.maquinas}</span><span className="dash-kpi__lbl">máquinas</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{detalle.operarios}</span><span className="dash-kpi__lbl">operarios</span></div>
             </div>
-            <ul className="mov-detalle-lista">
-              <li>Con foto: <strong>{detalle.conFoto}</strong> de {detalle.entregas} ({pct(detalle.conFoto, detalle.entregas)}%)</li>
-              <li>Aprobadas por el operario: <strong>{detalle.avaladas}</strong> ({pct(detalle.avaladas, detalle.entregas)}%)</li>
-              <li>Reportadas con diferencia: <strong>{detalle.conDiferencia}</strong></li>
-              <li>Con horómetro registrado: <strong>{detalle.conHorometro}</strong> ({pct(detalle.conHorometro, detalle.entregas)}%)</li>
-              <li>Primera entrega: {fmtFechaHora(detalle.primera)}</li>
-              <li>Última entrega: {fmtFechaHora(detalle.ultima)}</li>
-              <li>
-                Promedio por entrega:{' '}
-                <strong>{fmtCantidad(detalle.entregas > 0 ? detalle.galones / detalle.entregas : 0, 'galón')} gal</strong>
-              </li>
-            </ul>
+            {(() => {
+              const jor = (datos?.jornadas ?? []).find((j) => j.id === detalle.id)
+              const porEvento = detalle.eventos > 0 ? detalle.entregas / detalle.eventos : 1
+              return (
+                <>
+                  <ul className="mov-detalle-lista">
+                    {jor && (
+                      <li>
+                        Jornada: de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}{' '}
+                        (<strong>{n1(jor.horas)} h</strong>)
+                      </li>
+                    )}
+                    <li>Con foto: <strong>{detalle.conFoto}</strong> de {detalle.entregas} ({pct(detalle.conFoto, detalle.entregas)}%)</li>
+                    <li>Aprobadas por el operario: <strong>{detalle.avaladas}</strong> ({pct(detalle.avaladas, detalle.entregas)}%)</li>
+                    <li>Reportadas con diferencia: <strong>{detalle.conDiferencia}</strong></li>
+                    <li>Con horómetro registrado: <strong>{detalle.conHorometro}</strong> ({pct(detalle.conHorometro, detalle.entregas)}%)</li>
+                    {detalle.horasAvalMediana != null && (
+                      <li>La aprobación tarda <strong>{n1(detalle.horasAvalMediana)} h</strong> (mediana)</li>
+                    )}
+                    <li>Primera entrega: {fmtFechaHora(detalle.primera)}</li>
+                    <li>Última entrega: {fmtFechaHora(detalle.ultima)}</li>
+                    <li>
+                      Promedio por entrega:{' '}
+                      <strong>{fmtCantidad(detalle.entregas > 0 ? detalle.galones / detalle.entregas : 0, 'galón')} gal</strong>
+                    </li>
+                  </ul>
+
+                  {detalle.carguesSospechosos > 0 && (
+                    <p className="mov-alerta">
+                      ⚠ {detalle.carguesSospechosos} cargue{detalle.carguesSospechosos > 1 ? 's' : ''} por
+                      encima de 500 galones, por fuera del cuadre. Revíselo en Aprobaciones.
+                    </p>
+                  )}
+                  {detalle.avalVencido > 0 && (
+                    <p className="mov-alerta">
+                      ⚠ {detalle.avalVencido} entrega{detalle.avalVencido > 1 ? 's' : ''} sin
+                      aprobar con más de 3 días
+                    </p>
+                  )}
+                  {porEvento > 1.15 && (
+                    <p className="mov-alerta">
+                      ⚠ {n1(porEvento)} entregas por visita — revisar si se están partiendo
+                    </p>
+                  )}
+                </>
+              )
+            })()}
             <p className="subtle-copy">
               «Visitas» agrupa las entregas a la misma máquina dentro de hora y media. Si
               las entregas suben mucho más rápido que las visitas, alguien está partiendo

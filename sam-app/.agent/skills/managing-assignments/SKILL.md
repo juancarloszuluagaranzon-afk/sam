@@ -678,7 +678,10 @@ por unidad antes que nada.
 
 ## ✅ La Planilla separa hectáreas de hectómetros (1-sep-2026)
 
-Dos columnas de total: **Total ha** y **Total hm**. Dentro de la casilla del día,
+**TRES** columnas al final: **Total** (el de siempre, que junta las dos unidades),
+**Total ha** y **Total hm**. El cliente pidió conservar el Total y es su decisión — se
+le advirtió dos veces que mezcla unidades. Con el desglose PEGADO deja de ser un
+número suelto: se audita de un vistazo. Dentro de la casilla del día,
 lo que va en hectómetros aparece **debajo y siempre con su unidad** — suelto se
 leería como una hectárea más. El pie de totales y el Excel, igual.
 

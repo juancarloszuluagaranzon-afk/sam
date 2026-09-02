@@ -83,8 +83,12 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    HECTÓMETROS**: es lineal. Usar **`unidadDeLabor(nombre)`** de `lib/texto.ts` en toda
    etiqueta y encabezado de área — nunca escribir "ha" fijo. `labores_catalogo.unidad`
    y `asignaciones.unidad` (esta última **nullable y sin default**: `null` = se registró
-   cuando todo eran hectáreas). ✅ **La Planilla ya los separa**: dos columnas de total
-   (ha y hm) y, dentro de la casilla del día, el hectómetro va debajo CON su unidad.
+   cuando todo eran hectáreas). ✅ **La Planilla los desglosa**: TRES columnas al final
+   — **Total** (el de siempre, que junta las dos), **Total ha** y **Total hm** — y,
+   dentro de la casilla del día, el hectómetro va debajo CON su unidad. El desglose va
+   PEGADO al total a propósito: así el combinado se audita de un vistazo en vez de ser
+   un número suelto. Decisión del cliente conservar el Total — se le advirtió dos veces
+   que mezcla unidades y lo reafirmó.
    Medido antes de separarlos: a un operario se le sumaban 196,88 hm con 59,51 ha y
    salía un total de 256,39 sin significado — y **8 de los 17 días con acequias**
    mezclaban las dos unidades. ⚠️ El Resumen y el Reporte **todavía suman**; al tocar

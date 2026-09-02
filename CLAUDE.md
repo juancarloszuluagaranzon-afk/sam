@@ -22,6 +22,16 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    de trabajo (19-may-2026). Hay un hook automático que lo recuerda.
 2. **Verificar producción DESPUÉS de cada deploy** (cargar la URL y ver que renderiza,
    consola sin errores). Hubo un incidente de **pantalla blanca** por un chunk lazy.
+   ✅ Desde el 1-sep-2026 las pantallas van envueltas en **`<PantallaSegura>`**
+   (`src/components/`): un fallo de dibujo ya no tumba la app entera, sale un aviso
+   con el detalle técnico plegado y el resto se sigue usando. **Al agregar una
+   pantalla nueva, envolverla.** ⚠️ No reemplaza verificar el deploy: contiene el
+   daño, no lo evita.
+2b. **🔴 Un caché local es de una versión VIEJA por definición.** Al leerlo hay que
+   rellenarlo contra el objeto vacío, nunca devolverlo crudo: si el código nuevo lee
+   una sección que la versión anterior no guardaba, revienta. Ya pasó — el espejo del
+   tablero de movimientos no tenía `sinFoto` y dejó la pantalla en blanco al día
+   siguiente de agregarla.
 3. **NO introducir `React.lazy` / chunks nuevos** sin verificar el preview real de
    Vercel: el chunking de Vercel difiere del local y tumbó producción (17-jul-2026).
 4. **Migraciones**: van en `sam-app/supabase/migrations/`. Normalmente **las corre el

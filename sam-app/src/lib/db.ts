@@ -16,7 +16,7 @@ import type {
 export interface OutboxItem {
   id?: number
   // INSUMO: operaciones del modulo de insumos hechas sin senal (despacho,
-  // entrega directa, tanqueo, avales). Antes solo se encolaban labores y todo
+  // entrega directa, tanqueo, aprobaciones). Antes solo se encolaban labores y todo
   // lo de insumos se perdia sin cobertura.
   type: 'UPDATE' | 'CREATE' | 'INSUMO'
   // For UPDATE (START, FINISH, CANCEL):

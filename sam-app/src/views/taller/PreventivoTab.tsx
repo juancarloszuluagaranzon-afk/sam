@@ -109,9 +109,9 @@ export function PreventivoTab() {
           {visibles.map((v) => (
             <div key={`${v.plan.id}-${v.equipoCodigo}`} className={`taller-venc taller-venc--${v.estado.toLowerCase()}`}>
               <div className="taller-venc__main">
-                <div className="aval-row__top">
+                <div className="aprobación-row__top">
                   <strong>{v.equipoCodigo}</strong>
-                  <span className={`aval-tag aval-tag--${v.estado === 'VENCIDO' ? 'vehiculo' : v.estado === 'PROXIMO' ? 'maquina' : 'carro'}`}>
+                  <span className={`aprobación-tag aprobación-tag--${v.estado === 'VENCIDO' ? 'vehiculo' : v.estado === 'PROXIMO' ? 'maquina' : 'carro'}`}>
                     {v.estado === 'VENCIDO' ? '🔴 Vencido'
                       : v.estado === 'PROXIMO' ? '🟡 Próximo'
                       : v.estado === 'SIN_LECTURA' ? '⚪ Sin lectura' : '🟢 Al día'}

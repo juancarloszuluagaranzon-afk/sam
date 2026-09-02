@@ -295,7 +295,7 @@ export interface StockBodega {
 }
 
 // Traslado principal → satélite. Sale de la principal y queda EN_TRANSITO
-// hasta que el supervisor del satélite confirma lo que recibió (aval).
+// hasta que el supervisor del satélite confirma lo que recibió (aprobación).
 export type TrasladoEstado = 'EN_TRANSITO' | 'RECIBIDO' | 'ANULADO'
 
 export interface TrasladoItem {
@@ -321,7 +321,7 @@ export interface Traslado {
   conforme?: boolean | null
   notaRecepcion?: string
   // El supervisor lo tomo de la principal por su cuenta (llega a las 5:30 y el
-  // analista entra a las 7:00). Va con aval posterior, como el combustible.
+  // analista entra a las 7:00). Va con aprobación posterior, como el combustible.
   autoservicio?: boolean
   avalEstado?: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
   avaladoPor?: string
@@ -351,7 +351,7 @@ export type CombustibleDestino =
 /** DE DÓNDE salió: comprado en bomba, o sacado de la bodega principal. */
 export type CombustibleOrigen = 'ESTACION' | 'SEDE'
 
-/** Aval del analista de insumos y materiales. */
+/** Aprobación del analista de insumos y materiales. */
 export type CombustibleEstado = 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
 
 export const DESTINO_LABEL: Record<CombustibleDestino, string> = {
@@ -497,7 +497,7 @@ export interface EdicionDespacho {
 export type SolicitudEstado = 'PENDIENTE' | 'PROGRAMADA' | 'ENTREGADA' | 'RECHAZADA' | 'CANCELADA'
 
 // Origen de la solicitud/entrega: la pidió el operario, o el supervisor la
-// entregó directo (entrega directa — igual requiere aval del operario).
+// entregó directo (entrega directa — igual requiere aprobación del operario).
 export type SolicitudOrigen = 'OPERARIO' | 'DIRECTA'
 
 export interface SolicitudItem {
@@ -550,7 +550,7 @@ export interface SolicitudInsumo {
   // Bodega de la que salió el material (satélite del supervisor). Sirve para
   // que una devolución por diferencia regrese a la misma bodega.
   bodegaId?: string
-  // Aval del operario (fase 4): confirmación de recepción sobre ENTREGADA.
+  // Aprobación del operario (fase 4): confirmación de recepción sobre ENTREGADA.
   // conforme=true → recibió todo; false → reportó diferencia (nota con motivo);
   // confirmadoEn null → entregada sin confirmar aún.
   confirmadoEn?: string

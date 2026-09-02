@@ -949,7 +949,7 @@ export async function createEquipment(input: CreateEquipmentInput) {
  * saldo es una foto del stock en ese instante, no una formula. Si eso se corta a
  * la mitad, el kardex queda peor que antes. La funcion lo hace todo o nada.
  *
- * NO avala: el tanqueo corregido sigue PENDIENTE del segundo par de ojos.
+ * NO aprueba: el tanqueo corregido sigue PENDIENTE del segundo par de ojos.
  */
 export async function corregirTanqueo(input: {
   id: string
@@ -1955,7 +1955,7 @@ export async function registrarMovimientoInsumo(input: {
   return upd
 }
 
-// ── TRASLADOS principal → satélite (con aval de quien recibe) ───────────────
+// ── TRASLADOS principal → satélite (con aprobación de quien recibe) ───────────────
 
 function mapTraslado(row: Record<string, unknown>): Traslado {
   const est = String(row.estado ?? 'EN_TRANSITO').toUpperCase()
@@ -2012,7 +2012,7 @@ export async function loadTraslados(opts?: { destinoId?: string; estados?: strin
 /**
  * Surtir un satélite: DESCUENTA de la principal de una vez (la mercancía ya
  * salió) y deja el traslado EN_TRANSITO. El satélite NO suma hasta que su
- * responsable confirme lo que recibió (aval) — así un faltante en el camino
+ * responsable confirme lo que recibió (aprobación) — así un faltante en el camino
  * queda visible en vez de aparecer como stock que no existe.
  */
 export async function crearTraslado(input: {
@@ -2066,7 +2066,7 @@ export async function crearTraslado(input: {
 }
 
 /**
- * Aval del satélite: confirma lo que realmente recibió. Cada ítem SUMA al
+ * Aprobación del satélite: confirma lo que realmente recibió. Cada ítem SUMA al
  * satélite por la cantidad recibida; si recibió menos de lo enviado, la
  * diferencia REGRESA a la principal (no se pierde ni queda fantasma).
  */
@@ -2330,7 +2330,7 @@ export async function updateVehiculo(id: string, patch: { placa?: string; descri
 }
 
 /**
- * Registra un evento de combustible y lo deja PENDIENTE del aval del analista.
+ * Registra un evento de combustible y lo deja PENDIENTE de la aprobación del analista.
  *
  * Dos ejes independientes:
  *   origen  ESTACION → se compró en la bomba: no sale de ninguna bodega.
@@ -2343,7 +2343,7 @@ export async function updateVehiculo(id: string, patch: { placa?: string; descri
  *                      con la placa o con el equipo + horómetro para el costeo.
  *
  * El supervisor de insumos ya NO tiene "+ Entrada" en Inventario: todo lo que
- * entra a su carro pasa por aquí y por el aval.
+ * entra a su carro pasa por aquí y por la aprobación.
  */
 export async function registrarCombustibleExterno(input: {
   fecha: string
@@ -2405,7 +2405,7 @@ export async function registrarCombustibleExterno(input: {
       registrado_nombre: input.registradoNombre ?? null,
       nota: input.nota ?? null,
       // Solo la máquina tiene operario que confirme. El vehículo todavía no
-      // (decisión del cliente): guardarlo ahí crearía un aval que nadie espera.
+      // (decisión del cliente): guardarlo ahí crearía una aprobación que nadie espera.
       operario_id: input.destino === 'MAQUINA' ? (input.operarioId ?? null) : null,
       operario_nombre: input.destino === 'MAQUINA' ? (input.operarioNombre ?? null) : null,
     })
@@ -2445,7 +2445,7 @@ export async function registrarCombustibleExterno(input: {
 }
 
 /**
- * Aval del analista de insumos. Aprobar solo sella el evento (el inventario ya
+ * Aprobación del analista de insumos. Aprobar solo sella el evento (el inventario ya
  * se movió al registrarlo); rechazar REVERSA los movimientos para que el stock
  * vuelva a lo que era.
  */
@@ -2471,15 +2471,15 @@ export async function revisarCombustible(input: {
     .eq('id', evento.id)
     .eq('estado', 'PENDIENTE')
     .select('id')
-  if (error) throw new Error(error.message || 'No se pudo registrar el aval')
+  if (error) throw new Error(error.message || 'No se pudo registrar la aprobación')
   // Misma guarda que en el autoabastecimiento: sin comprobar que el UPDATE
-  // tocó una fila, un doble aval reversaría el combustible dos veces.
+  // tocó una fila, un doble aprobación reversaría el combustible dos veces.
   if (!data || data.length === 0) throw new Error('Este registro ya fue revisado por otra persona')
 
   if (input.aprobar || !evento.insumoId || evento.galones <= 0) return
 
   // Reversa: exactamente los movimientos contrarios a los del registro.
-  const motivo = `Reversa por rechazo del aval`
+  const motivo = `Reversa por rechazo de la aprobación`
   if (evento.origen === 'SEDE' && evento.bodegaOrigenId) {
     await registrarMovimientoInsumo({
       insumoId: evento.insumoId,
@@ -2588,7 +2588,7 @@ export async function createSolicitud(input: {
  * ENTREGA DIRECTA: el supervisor entrega insumos a un operario SIN solicitud
  * previa. Crea la solicitud ya ENTREGADA con origen='DIRECTA', sus ítems (la
  * cantidad pedida = la despachada, la pone el supervisor), y registra la SALIDA
- * del kardex por ítem. El operario igual debe dar su aval (queda ENTREGADA sin
+ * del kardex por ítem. El operario igual debe dar su aprobación (queda ENTREGADA sin
  * confirmar → le aparece la tarjeta "¿Recibiste?"). Devuelve los insumos con el
  * stock actualizado para refrescar el contexto.
  */
@@ -2838,7 +2838,7 @@ export async function entregarSolicitud(input: {
     } else if (it.insumoId && it.cantidadDespachada > 0) {
       // Adicional: entra a la solicitud con `cantidad = 0` porque no se pidió,
       // y `cantidad_despachada` con lo que se llevó. Así el operario lo ve en
-      // su tarjeta de aval y queda claro que fue de más, no que pidió eso.
+      // su tarjeta de aprobación y queda claro que fue de más, no que pidió eso.
       await supabase.from('insumos_solicitud_items').insert({
         solicitud_id: input.solicitudId,
         insumo_id: it.insumoId,
@@ -2889,7 +2889,7 @@ export async function entregarSolicitud(input: {
  * de la corrección vive en `insumos_despachos_auditoria`, no en el inventario.
  *
  * ⚠️ Solo toca las filas **SALIDA** de este despacho. La ENTRADA que genera el
- * aval del operario cuando reclama una diferencia es un hecho suyo, aparte, y
+ * aprobación del operario cuando reclama una diferencia es un hecho suyo, aparte, y
  * pisarla borraría su reclamo.
  */
 export async function editarDespacho(input: {
@@ -3086,7 +3086,7 @@ export async function editarDespacho(input: {
  * los reportes. Un despacho que no ocurrió no ocurrió.
  *
  * **Nada se pierde.** El despacho completo —con sus ítems, su evidencia y su
- * aval— queda guardado en `insumos_despachos_auditoria` antes de borrarse. El
+ * aprobación— queda guardado en `insumos_despachos_auditoria` antes de borrarse. El
  * rastro de la equivocación vive ahí, no en el inventario.
  *
  * **A dónde vuelve la solicitud.** Si la pidió un operario, vuelve a
@@ -3122,7 +3122,7 @@ export async function eliminarDespacho(input: {
   })
 
   // 2. Fuera del libro de inventario — TODAS las filas, no solo las SALIDA.
-  //    Aquí sí entra la ENTRADA del aval: si el despacho no ocurrió, la
+  //    Aquí sí entra la ENTRADA de la aprobación: si el despacho no ocurrió, la
   //    devolución por diferencia tampoco tiene de qué ser devolución.
   const { error: eBorrar } = await supabase
     .from('insumos_kardex').delete().eq('referencia', input.solicitudId)
@@ -3140,7 +3140,7 @@ export async function eliminarDespacho(input: {
   }
 
   // 4. La solicitud vuelve a donde estaba antes de la entrega. Se limpia el
-  //    aval además de la entrega: si no, al re-despacharla el operario vería su
+  //    aprobación además de la entrega: si no, al re-despacharla el operario vería su
   //    confirmación vieja sobre material que no ha recibido.
   const directa = desp.origen === 'DIRECTA'
   const { error: eEstado } = await supabase
@@ -4037,7 +4037,7 @@ export function formatExecutionDate(a: Assignment): string {
  * El movimiento se hace de UNA (ya se lo llevó físicamente) y el traslado nace
  * `RECIBIDO` porque quien saca y quien recibe son la misma persona: pedirle que
  * "confirme" lo que él mismo tomó sería un paso vacío. Lo que sí queda es el
- * aval del analista, igual que con el combustible.
+ * aprobación del analista, igual que con el combustible.
  */
 export async function autoAbastecer(input: {
   bodegaDestinoId: string
@@ -4090,7 +4090,7 @@ export async function autoAbastecer(input: {
       insumoId: i.insumoId,
       tipo: 'SALIDA',
       cantidad: i.cantidad,
-      motivo: 'Autoabastecimiento del satélite (pendiente de aval)',
+      motivo: 'Autoabastecimiento del satélite (pendiente de aprobación)',
       referencia: trasladoId,
       creadoPor: input.supervisorId,
       bodegaId: principal.id,
@@ -4099,7 +4099,7 @@ export async function autoAbastecer(input: {
       insumoId: i.insumoId,
       tipo: 'ENTRADA',
       cantidad: i.cantidad,
-      motivo: 'Autoabastecimiento del satélite (pendiente de aval)',
+      motivo: 'Autoabastecimiento del satélite (pendiente de aprobación)',
       referencia: trasladoId,
       creadoPor: input.supervisorId,
       bodegaId: input.bodegaDestinoId,
@@ -4107,7 +4107,7 @@ export async function autoAbastecer(input: {
   }
 }
 
-/** Autoabastecimientos por estado de aval (la bandeja del analista). */
+/** Autoabastecimientos por estado de aprobación (la bandeja del analista). */
 export async function loadAutoabastecimientos(estado?: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'): Promise<Traslado[]> {
   let q = supabase
     .from('insumos_traslados')
@@ -4122,7 +4122,7 @@ export async function loadAutoabastecimientos(estado?: 'PENDIENTE' | 'APROBADO' 
 }
 
 /**
- * Aval del analista sobre un autoabastecimiento.
+ * Aprobación del analista sobre un autoabastecimiento.
  *
  * Aprobar solo lo sella: el material ya se movió al registrarlo. Rechazar
  * REVERSA — el material regresa a la principal y sale del carro — con la misma
@@ -4151,9 +4151,9 @@ export async function revisarAutoabastecimiento(input: {
     .eq('id', traslado.id)
     .eq('aval_estado', 'PENDIENTE')
     .select('id')
-  if (error) throw new Error(error.message || 'No se pudo registrar el aval')
+  if (error) throw new Error(error.message || 'No se pudo registrar la aprobación')
   // 🔴 Hay que comprobar que el UPDATE de verdad tocó una fila. Sin `.select`,
-  // avalar algo ya avalado no falla —simplemente no coincide ninguna fila— y la
+  // aprobar algo ya aprobado no falla —simplemente no coincide ninguna fila— y la
   // reversa de abajo se ejecutaría igual, descontando el material DOS VECES.
   if (!data || data.length === 0) throw new Error('Este abastecimiento ya fue revisado por otra persona')
 
@@ -4166,7 +4166,7 @@ export async function revisarAutoabastecimiento(input: {
       insumoId: it.insumoId,
       tipo: 'SALIDA',
       cantidad: cant,
-      motivo: 'Reversa por rechazo del aval',
+      motivo: 'Reversa por rechazo de la aprobación',
       referencia: traslado.id,
       creadoPor: input.revisadoPor,
       bodegaId: traslado.destinoId,
@@ -4175,7 +4175,7 @@ export async function revisarAutoabastecimiento(input: {
       insumoId: it.insumoId,
       tipo: 'ENTRADA',
       cantidad: cant,
-      motivo: 'Reversa por rechazo del aval',
+      motivo: 'Reversa por rechazo de la aprobación',
       referencia: traslado.id,
       creadoPor: input.revisadoPor,
       bodegaId: traslado.origenId,
@@ -4330,7 +4330,7 @@ export async function loadTanqueosPorConfirmar(operarioId: string): Promise<Comb
  *
  * A diferencia del material, aquí NO se reversa inventario cuando dice que no:
  * el combustible ya se quemó o ya salió de la bodega, y lo que hay que corregir
- * es el registro, no el stock. Por eso queda marcado y lo revisa quien avala.
+ * es el registro, no el stock. Por eso queda marcado y lo revisa quien aprueba.
  */
 export async function confirmarTanqueo(input: {
   id: string

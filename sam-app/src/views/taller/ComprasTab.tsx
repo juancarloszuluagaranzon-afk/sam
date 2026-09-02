@@ -156,12 +156,12 @@ export function ComprasTab() {
           {compras.map((c) => (
             <button key={c.id} type="button" className="taller-ot" onClick={() => setDetalle(c)}>
               <div className="taller-ot__main">
-                <div className="aval-row__top">
+                <div className="aprobación-row__top">
                   <strong>#{c.consecutivo}</strong>
-                  <span className={`aval-tag aval-tag--${c.estado === 'RECIBIDA' ? 'carro' : c.estado === 'ANULADA' ? 'vehiculo' : 'maquina'}`}>
+                  <span className={`aprobación-tag aprobación-tag--${c.estado === 'RECIBIDA' ? 'carro' : c.estado === 'ANULADA' ? 'vehiculo' : 'maquina'}`}>
                     {c.estado === 'RECIBIDA' ? '✔ Recibida' : c.estado === 'ANULADA' ? '✕ Anulada' : '⏳ Borrador'}
                   </span>
-                  {c.proveedorNombre && <span className="aval-tag aval-tag--origen">{c.proveedorNombre}</span>}
+                  {c.proveedorNombre && <span className="aprobación-tag aprobación-tag--origen">{c.proveedorNombre}</span>}
                 </div>
                 <span className="subtle-copy">
                   {c.fecha}{c.factura ? ` · factura ${c.factura}` : ''} · {c.items.length} ítem(s)
@@ -268,7 +268,7 @@ export function ComprasTab() {
                     try { await anularCompra(detalle.id); await recargar(); setDetalle(null); setInfo('Compra anulada.') }
                     catch { setError('No se pudo anular') } finally { setBusy(false) }
                   }}>Anular</button>
-                <button type="button" className="primary-button aval-btn" onClick={() => void recibir(detalle)} disabled={busy}>
+                <button type="button" className="primary-button aprobación-btn" onClick={() => void recibir(detalle)} disabled={busy}>
                   ✔ Recibir e ingresar
                 </button>
               </div>

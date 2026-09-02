@@ -15,7 +15,7 @@ import { Ayuda } from '../components/Ayuda'
  * bodega y **surtir** un satélite con un traslado desde la principal.
  *
  * El traslado descuenta de la principal de una vez y queda EN TRÁNSITO hasta
- * que el supervisor del satélite confirma lo que recibió (aval).
+ * que el supervisor del satélite confirma lo que recibió (aprobación).
  */
 function fmtFecha(iso: string): string {
   if (!iso) return ''

@@ -1231,7 +1231,7 @@ export function SupervisorView({
                   >
                     <span className="more-sheet__icon">✅</span>
                     <div>
-                      <div className="more-sheet__label">Avales de combustible</div>
+                      <div className="more-sheet__label">Aprobaciones de combustible</div>
                       <div className="more-sheet__desc">Tanqueos por aprobar · estación y sede</div>
                     </div>
                   </button>
@@ -2359,7 +2359,7 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'avales' ? (
-          <PantallaSegura nombre="Avales de combustible"><AvalesCombustibleTab /></PantallaSegura>
+          <PantallaSegura nombre="Aprobaciones de combustible"><AvalesCombustibleTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'taller' ? (

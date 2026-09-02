@@ -21,7 +21,7 @@ import { MapaView } from './MapaView'
  * INVENTARIO ES SOLO DE ADMINISTRACIÓN. El supervisor de insumos no lo ve: si
  * pudiera meterse una "+ Entrada" a mano, el combustible aparecería de la nada
  * y se acabó la trazabilidad. Lo que entra a su carro entra por un traslado
- * avalado o por un tanqueo avalado — nunca a dedo.
+ * aprobado o por un tanqueo aprobado — nunca a dedo.
  */
 export type InsumosTab = 'resumen' | 'bandeja' | 'mibodega' | 'inventario' | 'equipos' | 'consumo' | 'semanal' | 'catalogos' | 'mapa'
 

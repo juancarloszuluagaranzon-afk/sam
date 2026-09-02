@@ -187,7 +187,7 @@ export function MaquinasTab() {
                     ots.slice(0, 15).map((o) => (
                       <div key={o.id} className="bod-stock__row">
                         <span className="bod-stock__nom">
-                          <span className={`aval-tag aval-tag--${o.tipo === 'CORRECTIVO' ? 'vehiculo' : 'carro'}`}>
+                          <span className={`aprobación-tag aprobación-tag--${o.tipo === 'CORRECTIVO' ? 'vehiculo' : 'carro'}`}>
                             {OT_TIPO_LABEL[o.tipo]}
                           </span>{' '}
                           #{o.consecutivo} · {o.descripcion}

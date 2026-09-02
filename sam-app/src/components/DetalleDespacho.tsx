@@ -13,7 +13,7 @@ const PUEDEN_CORREGIR = ['supervisor_insumos', 'analista_insumos', 'owner', 'adm
  * El formulario de una entrega, tal como se llenó.
  *
  * El kardex dice qué salió y de dónde, pero no a quién: el operario, la
- * evidencia, el horómetro y el aval viven en la solicitud. Sin esto la pregunta
+ * evidencia, el horómetro y la aprobación viven en la solicitud. Sin esto la pregunta
  * de siempre —"¿quién recibió esos 40 ganchos y ya lo confirmó?"— no tiene
  * respuesta en pantalla.
  *
@@ -191,11 +191,11 @@ export function DetalleDespacho({
             </>
           )}
 
-          {/* El aval: sin esto no se sabe si el operario reconoció lo que
+          {/* La aprobación: sin esto no se sabe si el operario reconoció lo que
               recibió, que es lo que sostiene el cobro. */}
           {e && (
             <>
-              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del operario</p>
+              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aprobación del operario</p>
               {e.confirmadoEn ? (
                 <>
                   <Dato k={e.conforme === false ? '⚠️ Reportó diferencia' : '✔ Confirmado'} v={fmtFecha(e.confirmadoEn)} />
@@ -209,7 +209,7 @@ export function DetalleDespacho({
           {/* El tanqueo a una máquina también lo confirma el operario. */}
           {tq?.operarioNombre && (
             <>
-              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del operario</p>
+              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aprobación del operario</p>
               <Dato k="Recibió" v={tq.operarioNombre} />
               {tq.confirmadoEn ? (
                 <>
@@ -223,11 +223,11 @@ export function DetalleDespacho({
           )}
           {tq && (
             <>
-              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aval del analista</p>
+              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Aprobación del analista</p>
               <p className="subtle-copy" style={{ margin: 0 }}>
-                {tq.estado === 'PENDIENTE' ? '⏳ Pendiente de aval.'
+                {tq.estado === 'PENDIENTE' ? '⏳ Pendiente de aprobación.'
                   : tq.estado === 'RECHAZADO' ? '✖ Rechazado.'
-                  : `✔ Avalado${tq.revisadoNombre ? ` por ${tq.revisadoNombre}` : ''}${tq.revisadoEn ? ` · ${fmtFecha(tq.revisadoEn)}` : ''}`}
+                  : `✔ Aprobado${tq.revisadoNombre ? ` por ${tq.revisadoNombre}` : ''}${tq.revisadoEn ? ` · ${fmtFecha(tq.revisadoEn)}` : ''}`}
               </p>
             </>
           )}

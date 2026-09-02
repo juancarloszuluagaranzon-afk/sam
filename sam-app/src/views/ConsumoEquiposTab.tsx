@@ -40,7 +40,7 @@ export function ConsumoEquiposTab() {
    * La entrega completa detrás de cada despacho.
    *
    * El kardex sabe qué salió y de dónde, pero no a quién: el operario, la
-   * evidencia, el horómetro y el aval viven en la solicitud. Sin esto la
+   * evidencia, el horómetro y la aprobación viven en la solicitud. Sin esto la
    * pregunta "¿quién recibió esos 40 ganchos?" no tiene respuesta en pantalla.
    */
   const [entregas, setEntregas] = useState<SolicitudInsumo[]>([])
@@ -410,8 +410,8 @@ export function ConsumoEquiposTab() {
                 >
                   <div className="desp-row__cab">
                     <strong>{equipoNombre.get(d.equipo) ?? d.equipo}</strong>
-                    {d.devuelto && <span className="aval-tag aval-tag--vehiculo">devolución</span>}
-                    {d.pendiente && <span className="aval-tag aval-tag--maquina">⏳ sin avalar</span>}
+                    {d.devuelto && <span className="aprobación-tag aprobación-tag--vehiculo">devolución</span>}
+                    {d.pendiente && <span className="aprobación-tag aprobación-tag--maquina">⏳ sin aprobar</span>}
                     <span className="desp-row__cant">{d.concepto}</span>
                   </div>
                   {/* Los insumos del MISMO despacho, cada uno con su unidad: no
@@ -517,7 +517,7 @@ export function ConsumoEquiposTab() {
                             {t.horometro != null ? ` · horómetro ${t.horometro}` : ''}
                             {t.registradoNombre ? ` · ${t.registradoNombre}` : ''}
                             {t.nota ? ` · ${t.nota}` : ''}
-                            {t.estado === 'PENDIENTE' ? ' · ⏳ sin avalar' : ''}
+                            {t.estado === 'PENDIENTE' ? ' · ⏳ sin aprobar' : ''}
                           </small>
                           <small className="consumo-maq__ver">ver detalle →</small>
                         </span>
@@ -593,7 +593,7 @@ export function ConsumoEquiposTab() {
                         {fmtFecha(t.createdAt)} · Tanqueo en estación
                         {t.estacion ? ` (${t.estacion})` : ''}
                         {t.registradoNombre ? ` · ${t.registradoNombre}` : ''}
-                        {t.estado === 'PENDIENTE' ? ' · ⏳ sin avalar' : ''}
+                        {t.estado === 'PENDIENTE' ? ' · ⏳ sin aprobar' : ''}
                       </small>
                       <small className="consumo-maq__ver">ver detalle →</small>
                     </span>

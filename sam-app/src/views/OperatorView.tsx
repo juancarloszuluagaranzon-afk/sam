@@ -394,10 +394,10 @@ export function OperatorView({
   // ── Tanqueo del operario ──
   // En estación (compra en bomba) o en la sede (sale de la bodega principal).
   // En los dos casos es CONSUMO de su máquina: exige horómetro y queda
-  // pendiente del aval del analista de insumos. No toca su inventario.
+  // pendiente de la aprobación del analista de insumos. No toca su inventario.
   const [tanqueoOpen, setTanqueoOpen] = useState(false)
 
-  // ── Aval del operario: confirmar recepción de una ENTREGADA (fase 4) ──
+  // ── Aprobación del operario: confirmar recepción de una ENTREGADA (fase 4) ──
   // Entregas que esperan MI confirmación (el despachador ya marcó entregado).
   const entregasPorConfirmar = useMemo(
     () => misSolicitudes.filter((s) => s.estado === 'ENTREGADA' && !s.confirmadoEn),
@@ -423,7 +423,7 @@ export function OperatorView({
     setConfirmandoSol(true)
     try {
       await confirmarTanqueo({ id: t.id, conforme, nota, operarioId: session?.id })
-      setInfo(conforme ? 'Confirmado. Gracias.' : 'Reportado. Lo revisa quien avala.')
+      setInfo(conforme ? 'Confirmado. Gracias.' : 'Reportado. Lo revisa quien aprueba.')
       await refrescarTanqueos()
     } catch (err) {
       setError((err as { message?: string })?.message ?? 'No se pudo confirmar')
@@ -1164,7 +1164,7 @@ export function OperatorView({
         </div>
       )}
 
-      {/* Reportar problema con una entrega de insumos (aval con diferencia).
+      {/* Reportar problema con una entrega de insumos (aprobación con diferencia).
           Chips de motivo predefinidos — sin tipeo obligatorio. */}
       {problemaSol && (
         <div className="modal-overlay open" onClick={() => { if (!confirmandoSol) setProblemaSol(null) }}>
@@ -1444,7 +1444,7 @@ export function OperatorView({
               </button>
             </div>
 
-            {/* Aval del operario: entregas de insumos que esperan SU confirmación.
+            {/* Aprobación del operario: entregas de insumos que esperan SU confirmación.
                 Tarjeta de un toque (cero tipeo): "Recibí todo" / "Hubo un problema". */}
             {entregasPorConfirmar.map((s) => (
               <div key={`conf-${s.id}`} className="confirm-entrega-card">

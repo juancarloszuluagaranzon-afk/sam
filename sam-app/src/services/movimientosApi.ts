@@ -56,9 +56,9 @@ export interface Despachador {
   avaladas: number
   conDiferencia: number
   conHorometro: number
-  /** Horas hasta el aval, MEDIANA. El promedio lo arrastran unos pocos rezagados. */
+  /** Horas hasta la aprobación, MEDIANA. El promedio lo arrastran unos pocos rezagados. */
   horasAvalMediana: number | null
-  /** Entregas sin avalar con más de 72 horas encima. */
+  /** Entregas sin aprobar con más de 72 horas encima. */
   avalVencido: number
   /**
    * Visitas: entregas a la misma máquina dentro de 90 minutos cuentan como una.
@@ -272,20 +272,20 @@ export async function loadResumenMovimientos(desde: string, hasta: string): Prom
  * registrado, y son las tres cosas que hacen creíble una entrega:
  *
  *   · **foto** — la evidencia de que ocurrió
- *   · **aval del operario** — el segundo par de ojos, que además es quien recibió
+ *   · **aprobación del operario** — el segundo par de ojos, que además es quien recibió
  *   · **sin diferencia** — que lo que recibió fue lo que se anotó
  *
  * Se multiplican, no se promedian: es la lógica del *perfect order rate* de
- * logística. Un promedio deja compensar una foto faltante con un aval sobrando;
+ * logística. Un promedio deja compensar una foto faltante con una aprobación sobrando;
  * multiplicando, fallar en cualquiera de las tres baja el resultado, que es justo
  * lo que se quiere de un control.
  */
 export function indiceCalidad(d: Despachador): number {
   if (d.entregas === 0) return 0
   const foto = d.conFoto / d.entregas
-  const aval = d.avaladas / d.entregas
+  const aprobado = d.avaladas / d.entregas
   const limpias = (d.entregas - d.conDiferencia) / d.entregas
-  return Math.round(foto * aval * limpias * 100)
+  return Math.round(foto * aprobado * limpias * 100)
 }
 
 /** Entregas por día ACTIVO — el divisor honesto: días en que sí trabajó. */

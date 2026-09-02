@@ -20,7 +20,7 @@ import {
  * Campbell, el caso Wells Fargo — y su falla no es que la gente sea deshonesta,
  * es que la medida deja de medir en cuanto se vuelve la meta. Aquí el número de
  * entregas viaja SIEMPRE pegado a tres cosas que lo hacen creíble: la foto, el
- * aval del operario y las visitas. Un tablero que mostrara el ranking pelado
+ * aprobación del operario y las visitas. Un tablero que mostrara el ranking pelado
  * sería más bonito y le costaría plata mal repartida al dueño.
  *
  * 🔴 **Todo cuenta ENTREGAS, no filas de kardex.** Medido sobre agosto: contar
@@ -193,7 +193,7 @@ export function MovimientosTab() {
         </p>
         <p>
           🔴 <strong>El volumen nunca va solo.</strong> Al lado de cuántas entregas hizo
-          cada uno va si quedaron con foto, si el operario las avaló y cuántas
+          cada uno va si quedaron con foto, si el operario las aprobó y cuántas
           <em> visitas</em> fueron. Un número de entregas sin esas tres cosas se puede
           inflar en un día; con ellas, no.
         </p>
@@ -241,7 +241,7 @@ export function MovimientosTab() {
             </div>
             <div className="dash-kpi">
               <strong>{pct(t.avaladas, t.entregas)}%</strong>
-              <span>avaladas</span>
+              <span>aprobadas</span>
               <small>{t.conDiferencia} con diferencia</small>
             </div>
           </div>
@@ -288,7 +288,7 @@ export function MovimientosTab() {
                     {d.dias} días activos
                     {jor && <> · de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}</>}
                     {' · '}{n0(d.galones)} galones · {d.maquinas} máquinas
-                    {d.horasAvalMediana != null && <> · aval en {n1(d.horasAvalMediana)} h</>}
+                    {d.horasAvalMediana != null && <> · aprobación en {n1(d.horasAvalMediana)} h</>}
                   </p>
                   {cuadre != null && (
                     <p className={`mov-cuadre${Math.abs(cuadre) > 50 ? ' mov-cuadre--ojo' : ''}`}>
@@ -306,18 +306,18 @@ export function MovimientosTab() {
                     <span className="mov-calidad__num">{cal}%</span>
                     <span className="mov-calidad__det">
                       registro completo · {pct(d.conFoto, d.entregas)}% con foto ·
-                      {' '}{pct(d.avaladas, d.entregas)}% avalado
+                      {' '}{pct(d.avaladas, d.entregas)}% aprobado
                     </span>
                   </div>
                   {d.carguesSospechosos > 0 && (
                     <p className="mov-alerta">
                       ⚠ {d.carguesSospechosos} cargue{d.carguesSospechosos > 1 ? 's' : ''} por
-                      encima de 500 galones, por fuera del cuadre. Revíselo en Avales.
+                      encima de 500 galones, por fuera del cuadre. Revíselo en Aprobaciones.
                     </p>
                   )}
                   {d.avalVencido > 0 && (
                     <p className="mov-alerta">
-                      ⚠ {d.avalVencido} entrega{d.avalVencido > 1 ? 's' : ''} sin avalar con
+                      ⚠ {d.avalVencido} entrega{d.avalVencido > 1 ? 's' : ''} sin aprobar con
                       más de 3 días
                     </p>
                   )}
@@ -379,7 +379,7 @@ export function MovimientosTab() {
             usa el tiempo entre la primera y la última entrega del día — es una ventana de
             trabajo, no horas pagadas: aquí nadie marca entrada. Y{' '}
             <strong>el porcentaje de abajo</strong> es qué tan completo quedó el registro:
-            foto, aval del operario y sin diferencias, multiplicados. Se multiplican y no
+            foto, aprobación del operario y sin diferencias, multiplicados. Se multiplican y no
             se promedian a propósito: fallar en cualquiera de los tres tiene que bajarlo,
             que para eso es un control.
           </p>
@@ -568,18 +568,18 @@ export function MovimientosTab() {
             </div>
             <div className="dash-kpi">
               <strong>{n0(datos.avalVencido?.length ?? 0)}</strong>
-              <span>sin avalar</span>
+              <span>sin aprobar</span>
               <small>con más de 3 días</small>
             </div>
             <div className="dash-kpi">
               <strong>{t.horasAvalMediana != null ? n1(t.horasAvalMediana) : '—'} h</strong>
-              <span>tarda el aval</span>
+              <span>tarda la aprobación</span>
               <small>la mitad, menos de eso</small>
             </div>
           </div>
           <p className="subtle-copy mov-nota">
-            El tiempo del aval es una <strong>mediana</strong>, no un promedio: unos pocos
-            avales muy viejos arrastran el promedio a un número que no describe a nadie.
+            El tiempo de la aprobación es una <strong>mediana</strong>, no un promedio: unos pocos
+            aprobaciones muy viejos arrastran el promedio a un número que no describe a nadie.
             ⚠️ Ese reloj lo para el operario cuando confirma, no el despachador:{' '}
             <strong>no se le puede cobrar a quien entrega</strong>, o se responde
             presionando al operario para que firme sin revisar — y ahí se pierde el
@@ -596,7 +596,7 @@ export function MovimientosTab() {
                 de último aunque haga bien lo suyo.
               </li>
               <li>
-                <strong>El tiempo hasta el aval no es culpa del despachador.</strong> Ese
+                <strong>El tiempo hasta la aprobación no es culpa del despachador.</strong> Ese
                 reloj lo para el operario cuando confirma, y a veces confirma al otro día.
                 Castigarlo por eso se responde presionando al operario para que firme sin
                 revisar, y ahí se pierde el control entero.
@@ -639,7 +639,7 @@ export function MovimientosTab() {
             </div>
             <ul className="mov-detalle-lista">
               <li>Con foto: <strong>{detalle.conFoto}</strong> de {detalle.entregas} ({pct(detalle.conFoto, detalle.entregas)}%)</li>
-              <li>Avaladas por el operario: <strong>{detalle.avaladas}</strong> ({pct(detalle.avaladas, detalle.entregas)}%)</li>
+              <li>Aprobadas por el operario: <strong>{detalle.avaladas}</strong> ({pct(detalle.avaladas, detalle.entregas)}%)</li>
               <li>Reportadas con diferencia: <strong>{detalle.conDiferencia}</strong></li>
               <li>Con horómetro registrado: <strong>{detalle.conHorometro}</strong> ({pct(detalle.conHorometro, detalle.entregas)}%)</li>
               <li>Primera entrega: {fmtFechaHora(detalle.primera)}</li>

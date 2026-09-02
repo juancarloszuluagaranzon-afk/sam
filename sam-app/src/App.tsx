@@ -512,7 +512,7 @@ function AppContent() {
     )
   }
 
-  // Rol Analista de insumos y materiales → bandeja de avales de combustible.
+  // Rol Analista de insumos y materiales → bandeja de aprobaciones de combustible.
   if (session.role === 'analista_insumos') {
     return (
       <>

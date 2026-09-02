@@ -28,7 +28,7 @@ const GALONES_SOSPECHOSO = 200
  *  2. ¿A QUÉ se lo echaste? Tanque de distribución y pimpinas SUMAN al carro
  *     del supervisor; vehículo y máquina son CONSUMO (placa u horómetro).
  *
- * Todo queda PENDIENTE del aval del analista de insumos. Nadie se mete una
+ * Todo queda PENDIENTE de la aprobación del analista de insumos. Nadie se mete una
  * entrada a mano en el inventario: si no pasó por aquí, no existe.
  */
 
@@ -80,8 +80,8 @@ export function TanqueoModal({
   const [confirmaGrande, setConfirmaGrande] = useState(false)
   const fotoRef = useRef<HTMLInputElement>(null)
 
-  // El propio analista también tanquea: decirle que "lo avala el analista"
-  // sería decirle que se avala a sí mismo, y no puede.
+  // El propio analista también tanquea: decirle que "lo aprueba el analista"
+  // sería decirle que se aprueba a sí mismo, y no puede.
   const soyElAnalista = session?.role === 'analista_insumos'
 
   /**
@@ -222,7 +222,7 @@ export function TanqueoModal({
       // este equipo para el próximo tanqueo.
       if (estacion) recordarValor('ESTACION', estacion)
       setInfo(enviado
-        ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente del aval ${quienAvala}.`
+        ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente de la aprobación ${quienAvala}.`
         : `Guardado sin señal: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Se envía solo cuando haya cobertura.`)
       onClose()
       onSaved?.()
@@ -383,7 +383,7 @@ export function TanqueoModal({
         </div>
 
         <p className="subtle-copy" style={{ marginTop: 10, marginBottom: 0 }}>
-          Queda <strong>pendiente del aval</strong> {quienAvala}.
+          Queda <strong>pendiente de la aprobación</strong> {quienAvala}.
           {pideOperario && <> Y el operario tiene que <strong>confirmar que lo recibió</strong>.</>}
         </p>
 

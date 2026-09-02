@@ -11,7 +11,7 @@ import { fmtDia, fmtFechaHora } from '../lib/fechas'
 import { Ayuda } from '../components/Ayuda'
 
 /**
- * Avales de combustible — la bandeja del analista de insumos y materiales.
+ * Aprobaciones de combustible — la bandeja del analista de insumos y materiales.
  *
  * Aterrizan aquí dos cosas, con el mismo trato:
  *  · **Tanqueos** — del operario o del supervisor, en estación o en la sede.
@@ -25,8 +25,8 @@ import { Ayuda } from '../components/Ayuda'
 
 
 const FILTROS: { key: CombustibleEstado; label: string }[] = [
-  { key: 'PENDIENTE', label: 'Por avalar' },
-  { key: 'APROBADO', label: 'Avalados' },
+  { key: 'PENDIENTE', label: 'Por aprobar' },
+  { key: 'APROBADO', label: 'Aprobados' },
   { key: 'RECHAZADO', label: 'Rechazados' },
 ]
 
@@ -61,11 +61,11 @@ export function AvalesCombustibleTab() {
   useEffect(() => { void refresh() }, [refresh])
 
   /**
-   * Nadie avala lo que él mismo registró.
+   * Nadie aprueba lo que él mismo registró.
    *
-   * El analista ahora también entrega y tanquea, y el aval es justamente el
+   * El analista ahora también entrega y tanquea, y la aprobación es justamente el
    * segundo par de ojos: si firma su propio registro, el control deja de
-   * existir. Lo suyo lo avala el dueño o administración, que ven esta misma
+   * existir. Lo suyo lo aprueba el dueño o administración, que ven esta misma
    * pantalla.
    */
   /** Por encima de esto la cifra no cabe en ningun carro: se pide segundo toque. */
@@ -92,7 +92,7 @@ export function AvalesCombustibleTab() {
         editadoPor: session?.name || session?.id || 'desconocido',
       })
       setInfo(`Corregido: de ${fmtCantidad(r.antes, 'galón')} a ${fmtCantidad(r.despues, 'galón')} galones. `
-        + 'Sigue pendiente del aval.')
+        + 'Sigue pendiente de la aprobación.')
       setCorrigiendo(null); setGalonesNuevos(''); setMotivoCorreccion(''); setConfirmaGrande(false)
       await refresh()
     } catch (e) {
@@ -133,13 +133,13 @@ export function AvalesCombustibleTab() {
         nota: nota.trim() || undefined,
       })
       setInfo(revAbasto.aprobar
-        ? 'Avalado. El material queda cargado al carro.'
+        ? 'Aprobado. El material queda cargado al carro.'
         : 'Rechazado. El material regresó a la bodega principal.')
       setRevAbasto(null); setNota('')
       void refresh()
     } catch (err) {
       const e = err as { message?: string }
-      setError(`No se pudo registrar el aval. (${e?.message ?? 'error'})`)
+      setError(`No se pudo registrar la aprobación. (${e?.message ?? 'error'})`)
     } finally { setBusy(false) }
   }
 
@@ -155,19 +155,19 @@ export function AvalesCombustibleTab() {
         nota: nota.trim() || undefined,
       })
       setInfo(revisar.aprobar
-        ? 'Avalado. El movimiento queda en firme.'
+        ? 'Aprobado. El movimiento queda en firme.'
         : 'Rechazado. El combustible regresó a su bodega.')
       setRevisar(null); setNota('')
       void refresh()
     } catch (err) {
       const e = err as { message?: string }
-      setError(`No se pudo registrar el aval. (${e?.message ?? 'error'})`)
+      setError(`No se pudo registrar la aprobación. (${e?.message ?? 'error'})`)
     } finally { setBusy(false) }
   }
 
   return (
     <section className="panel-card">
-      <h2>✅ Avales</h2>
+      <h2>✅ Aprobaciones</h2>
       <Ayuda>
         <p>
           Los tanqueos y el material que los supervisores toman de la bodega principal por su
@@ -175,7 +175,7 @@ export function AvalesCombustibleTab() {
         </p>
       </Ayuda>
 
-      <div className="realizadas-seg" role="group" aria-label="Estado del aval" style={{ marginTop: 10 }}>
+      <div className="realizadas-seg" role="group" aria-label="Estado de la aprobación" style={{ marginTop: 10 }}>
         {FILTROS.map((f) => (
           <button
             key={f.key}
@@ -195,11 +195,11 @@ export function AvalesCombustibleTab() {
           </p>
           <div className="inv-list">
             {abastos.map((t) => (
-              <div key={t.id} className="aval-row">
-                <div className="aval-row__main">
-                  <div className="aval-row__top">
+              <div key={t.id} className="aprobación-row">
+                <div className="aprobación-row__main">
+                  <div className="aprobación-row__top">
                     <strong>{nombreBodega.get(t.destinoId) ?? 'Carro'}</strong>
-                    <span className="aval-tag aval-tag--carro">Abastecimiento</span>
+                    <span className="aprobación-tag aprobación-tag--carro">Abastecimiento</span>
                   </div>
                   <span className="subtle-copy">
                     {t.items.map((i) => `${fmtCantidad(i.cantidad, i.unidad)} ${i.unidad} ${i.insumoNombre}`).join(' · ')}
@@ -207,19 +207,19 @@ export function AvalesCombustibleTab() {
                   <span className="subtle-copy">{fmtFechaHora(t.createdAt)}{t.nota ? ` · ${t.nota}` : ''}</span>
                   {t.avalEstado !== 'PENDIENTE' && (
                     <span className="subtle-copy">
-                      {t.avalEstado === 'APROBADO' ? '✔ Avalado' : '✕ Rechazado'} por {t.avaladoNombre ?? '—'}
+                      {t.avalEstado === 'APROBADO' ? '✔ Aprobado' : '✕ Rechazado'} por {t.avaladoNombre ?? '—'}
                       {t.avaladoEn ? ` · ${fmtFechaHora(t.avaladoEn)}` : ''}
                       {t.avalNota ? ` · ${t.avalNota}` : ''}
                     </span>
                   )}
                 </div>
                 {t.avalEstado === 'PENDIENTE' && (
-                  <div className="aval-row__side">
-                    <div className="aval-row__acts">
+                  <div className="aprobación-row__side">
+                    <div className="aprobación-row__acts">
                       <button type="button" className="inline-button" disabled={busy}
                         onClick={() => { setRevAbasto({ t, aprobar: false }); setNota('') }}>Rechazar</button>
-                      <button type="button" className="primary-button aval-btn" disabled={busy}
-                        onClick={() => { setRevAbasto({ t, aprobar: true }); setNota('') }}>✔ Avalar</button>
+                      <button type="button" className="primary-button aprobación-btn" disabled={busy}
+                        onClick={() => { setRevAbasto({ t, aprobar: true }); setNota('') }}>✔ Aprobar</button>
                     </div>
                   </div>
                 )}
@@ -234,7 +234,7 @@ export function AvalesCombustibleTab() {
         <p className="muted-text" style={{ marginTop: 12 }}>Cargando…</p>
       ) : items.length === 0 ? (
         <p className="muted-text" style={{ marginTop: 12 }}>
-          {estado === 'PENDIENTE' ? 'Nada pendiente por avalar. Todo al día.' : 'Sin registros.'}
+          {estado === 'PENDIENTE' ? 'Nada pendiente por aprobar. Todo al día.' : 'Sin registros.'}
         </p>
       ) : (
         <>
@@ -245,12 +245,12 @@ export function AvalesCombustibleTab() {
             {items.map((e) => {
               const ins = e.insumoId ? nombreInsumo.get(e.insumoId) : undefined
               return (
-                <div key={e.id} className="aval-row">
-                  <div className="aval-row__main">
-                    <div className="aval-row__top">
+                <div key={e.id} className="aprobación-row">
+                  <div className="aprobación-row__main">
+                    <div className="aprobación-row__top">
                       <strong>{fmtCantidad(e.galones, 'galón')} gal</strong>
-                      <span className={`aval-tag aval-tag--${e.destino.toLowerCase()}`}>{DESTINO_LABEL[e.destino]}</span>
-                      <span className="aval-tag aval-tag--origen">{e.origen === 'SEDE' ? '🏭 Sede' : '⛽ Estación'}</span>
+                      <span className={`aprobación-tag aprobación-tag--${e.destino.toLowerCase()}`}>{DESTINO_LABEL[e.destino]}</span>
+                      <span className="aprobación-tag aprobación-tag--origen">{e.origen === 'SEDE' ? '🏭 Sede' : '⛽ Estación'}</span>
                     </div>
                     <span className="subtle-copy">
                       {fmtDia(`${e.fecha}T12:00:00`)} · {e.registradoNombre ?? 'sin nombre'}
@@ -266,27 +266,27 @@ export function AvalesCombustibleTab() {
                     </span>
                     {e.estado !== 'PENDIENTE' && (
                       <span className="subtle-copy">
-                        {e.estado === 'APROBADO' ? '✔ Avalado' : '✕ Rechazado'} por {e.revisadoNombre ?? '—'}
+                        {e.estado === 'APROBADO' ? '✔ Aprobado' : '✕ Rechazado'} por {e.revisadoNombre ?? '—'}
                         {e.revisadoEn ? ` · ${fmtFechaHora(e.revisadoEn)}` : ''}
                         {e.revisionNota ? ` · ${e.revisionNota}` : ''}
                       </span>
                     )}
                   </div>
-                  <div className="aval-row__side">
+                  <div className="aprobación-row__side">
                     {e.tirillaUrl && (
-                      <a href={e.tirillaUrl} target="_blank" rel="noreferrer" className="aval-foto">
+                      <a href={e.tirillaUrl} target="_blank" rel="noreferrer" className="aprobación-foto">
                         <img src={e.tirillaUrl} alt="soporte" />
                       </a>
                     )}
                     {e.estado === 'PENDIENTE' && esMio(e.registradoPor) && (
-                      <p className="subtle-copy aval-row__propio">
-                        🔒 Lo registraste tú: lo avala el dueño o administración.
+                      <p className="subtle-copy aprobación-row__propio">
+                        🔒 Lo registraste tú: lo aprueba el dueño o administración.
                       </p>
                     )}
-                    {/* Corregir no es avalar: se puede sobre el propio registro,
+                    {/* Corregir no es aprobar: se puede sobre el propio registro,
                         porque arreglar un dedazo no es firmarse a si mismo. */}
                     {e.estado === 'PENDIENTE' && (
-                      <div className="aval-row__acts">
+                      <div className="aprobación-row__acts">
                         <button type="button" className="inline-button" disabled={busy}
                           onClick={() => {
                             setCorrigiendo(e)
@@ -299,12 +299,12 @@ export function AvalesCombustibleTab() {
                       </div>
                     )}
                     {e.estado === 'PENDIENTE' && !esMio(e.registradoPor) && (
-                      <div className="aval-row__acts">
+                      <div className="aprobación-row__acts">
                         <button type="button" className="inline-button" onClick={() => { setRevisar({ ev: e, aprobar: false }); setNota('') }} disabled={busy}>
                           Rechazar
                         </button>
-                        <button type="button" className="primary-button aval-btn" onClick={() => { setRevisar({ ev: e, aprobar: true }); setNota('') }} disabled={busy}>
-                          ✔ Avalar
+                        <button type="button" className="primary-button aprobación-btn" onClick={() => { setRevisar({ ev: e, aprobar: true }); setNota('') }} disabled={busy}>
+                          ✔ Aprobar
                         </button>
                       </div>
                     )}
@@ -322,7 +322,7 @@ export function AvalesCombustibleTab() {
             <div className="labor-detail-header">
               <div>
                 <p className="eyebrow">Abastecimiento</p>
-                <h3>{revAbasto.aprobar ? '✔ Avalar' : '✕ Rechazar'}</h3>
+                <h3>{revAbasto.aprobar ? '✔ Aprobar' : '✕ Rechazar'}</h3>
               </div>
               <button type="button" className="modal-close-btn" onClick={() => setRevAbasto(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
             </div>
@@ -339,7 +339,7 @@ export function AvalesCombustibleTab() {
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setRevAbasto(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void confirmarAbasto()} disabled={busy}>
-                {busy ? 'Guardando…' : revAbasto.aprobar ? 'Avalar' : 'Rechazar'}
+                {busy ? 'Guardando…' : revAbasto.aprobar ? 'Aprobar' : 'Rechazar'}
               </button>
             </div>
           </div>
@@ -351,8 +351,8 @@ export function AvalesCombustibleTab() {
           <div className="modal-card" onClick={(ev) => ev.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
             <div className="labor-detail-header">
               <div>
-                <p className="eyebrow">Aval</p>
-                <h3>{revisar.aprobar ? '✔ Avalar tanqueo' : '✕ Rechazar tanqueo'}</h3>
+                <p className="eyebrow">Aprobación</p>
+                <h3>{revisar.aprobar ? '✔ Aprobar tanqueo' : '✕ Rechazar tanqueo'}</h3>
               </div>
               <button type="button" className="modal-close-btn" onClick={() => setRevisar(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
             </div>
@@ -369,7 +369,7 @@ export function AvalesCombustibleTab() {
             <div className="modal-footer">
               <button type="button" className="inline-button" onClick={() => setRevisar(null)} disabled={busy}>Cancelar</button>
               <button type="button" className="primary-button" onClick={() => void confirmar()} disabled={busy}>
-                {busy ? 'Guardando…' : revisar.aprobar ? 'Avalar' : 'Rechazar'}
+                {busy ? 'Guardando…' : revisar.aprobar ? 'Aprobar' : 'Rechazar'}
               </button>
             </div>
           </div>
@@ -405,7 +405,7 @@ export function AvalesCombustibleTab() {
 
             <p className="subtle-copy" style={{ marginTop: 8 }}>
               Se corrige el registro y se rehacen los saldos de la bodega, todo junto.
-              <strong> No lo avala:</strong> sigue pendiente para que alguien lo revise.
+              <strong> No lo aprueba:</strong> sigue pendiente para que alguien lo revise.
               Queda en la auditoría quién lo cambió y por qué.
             </p>
 

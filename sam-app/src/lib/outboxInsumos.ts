@@ -27,7 +27,7 @@ export type InsumoOpKind =
   | 'SOLICITUD'            // el operario pide
   | 'DESPACHO'             // el supervisor entrega contra una solicitud
   | 'ENTREGA_DIRECTA'      // el supervisor entrega sin solicitud previa
-  | 'CONFIRMAR_RECEPCION'  // el operario avala lo que recibió
+  | 'CONFIRMAR_RECEPCION'  // el operario aprueba lo que recibió
   | 'CONFIRMAR_TRASLADO'   // el supervisor recibe material de la principal
   | 'TANQUEO'              // combustible: estación o sede
   | 'AUTOABASTECER'        // el supervisor toma material de la principal

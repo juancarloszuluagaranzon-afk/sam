@@ -21,18 +21,18 @@ import { BotonManual } from '../components/BotonManual'
  *
  * Es el administrador del proceso de insumos, no solo el que firma. Todo
  * tanqueo que registra un operario o un supervisor —en estación o en la sede—
- * le llega aquí pendiente de aval; además ve el inventario con su kardex, el
+ * le llega aquí pendiente de aprobación; además ve el inventario con su kardex, el
  * stock de cada bodega (la principal y el carro de cada supervisor) y mantiene
  * los catálogos —estaciones, placas, motivos— para que los formularios sugieran
  * una lista y no dependan del teclado de cada quien.
  *
  * TAMBIÉN ENTREGA. Despacha solicitudes y hace entregas directas desde la
  * bodega principal, igual que un supervisor, y registra tanqueos a máquina o
- * vehículo. Lo que entrega a un operario le pide el aval de ese operario, como
+ * vehículo. Lo que entrega a un operario le pide la aprobación de ese operario, como
  * cualquier otra entrega.
  *
- * ⚠️ Lo que él registra NO lo puede avalar él: eso lo firma el dueño o
- * administración. El aval es el segundo par de ojos; si firma lo suyo, no hay
+ * ⚠️ Lo que él registra NO lo puede aprobar él: eso lo firma el dueño o
+ * administración. La aprobación es el segundo par de ojos; si firma lo suyo, no hay
  * control.
  */
 type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'mapa'
@@ -40,7 +40,7 @@ type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' |
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
   { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Entregar y despachar' },
-  { key: 'avales', icon: '✅', label: 'Avales', desc: 'Tanqueos por aprobar' },
+  { key: 'avales', icon: '✅', label: 'Aprobaciones', desc: 'Tanqueos por aprobar' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
   { key: 'bodegas', icon: '🏢', label: 'Bodegas', desc: 'Principal y carros' },
   { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },

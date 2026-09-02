@@ -199,13 +199,13 @@ export function OrdenesTab() {
           {lista.map((o) => (
             <button key={o.id} type="button" className="taller-ot" onClick={() => setDetalle(o)}>
               <div className="taller-ot__main">
-                <div className="aval-row__top">
+                <div className="aprobación-row__top">
                   <strong>#{o.consecutivo}</strong>
-                  <span className={`aval-tag aval-tag--${o.tipo === 'CORRECTIVO' ? 'vehiculo' : 'carro'}`}>
+                  <span className={`aprobación-tag aprobación-tag--${o.tipo === 'CORRECTIVO' ? 'vehiculo' : 'carro'}`}>
                     {OT_TIPO_LABEL[o.tipo]}
                   </span>
-                  <span className="aval-tag aval-tag--origen">{o.equipoCodigo}</span>
-                  {o.estado !== 'CERRADA' && <span className="aval-tag aval-tag--maquina">{o.estado.replace('_', ' ')}</span>}
+                  <span className="aprobación-tag aprobación-tag--origen">{o.equipoCodigo}</span>
+                  {o.estado !== 'CERRADA' && <span className="aprobación-tag aprobación-tag--maquina">{o.estado.replace('_', ' ')}</span>}
                 </div>
                 <span className="subtle-copy">{o.descripcion}</span>
                 <span className="subtle-copy">
@@ -361,7 +361,7 @@ export function OrdenesTab() {
                   }}>
                   Anular
                 </button>
-                <button type="button" className="primary-button aval-btn" disabled={busy}
+                <button type="button" className="primary-button aprobación-btn" disabled={busy}
                   onClick={() => setCierre({
                     ot: detalle, trabajo: detalle.trabajoRealizado ?? '',
                     horom: String(detalle.horometro ?? horasDe.get(detalle.equipoCodigo) ?? ''),

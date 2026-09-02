@@ -161,7 +161,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <h1>Guía del analista de insumos</h1>
     <p class="portada__para">Para Diego · Administrador del proceso</p>
     <p class="portada__nota">
-      Eres el que responde por el inventario: avalas lo que registran los demás, entregas
+      Eres el que responde por el inventario: apruebas lo que registran los demás, entregas
       desde la bodega principal, surtes los carros y mantienes las listas que alimentan
       todos los formularios.
     </p>
@@ -172,7 +172,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <ol>
       <li><a href="#pantallas">Tus ocho pantallas</a></li>
       <li><a href="#resumen">Resumen: cuánto hay y dónde está</a></li>
-      <li><a href="#avales">Avales: lo que firmas cada día</a></li>
+      <li><a href="#aprobaciones">Aprobaciones: lo que firmas cada día</a></li>
       <li><a href="#bandeja">Bandeja: entregar y despachar</a></li>
       <li><a href="#tanqueo">Registrar un tanqueo</a></li>
       <li><a href="#inventario">Inventario y kardex</a></li>
@@ -194,7 +194,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
           <div class="r-tabs">
             <span class="r-tab on">📊 Resumen</span>
             <span class="r-tab">📥 Bandeja</span>
-            <span class="r-tab">✅ Avales</span>
+            <span class="r-tab">✅ Aprobaciones</span>
             <span class="r-tab">📦 Inventario</span>
           </div>
           <div class="r-tabs">
@@ -208,7 +208,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <ul class="explica">
         <li><span class="marca">1</span><div><strong>📊 Resumen</strong><span>Cuánto hay, en qué bodega y qué se está gastando. Tu pantalla de arranque.</span></div></li>
         <li><span class="marca">2</span><div><strong>📥 Bandeja</strong><span>Entregar a operarios y despachar solicitudes.</span></div></li>
-        <li><span class="marca">3</span><div><strong>✅ Avales</strong><span>Lo que registraron los demás y espera tu firma.</span></div></li>
+        <li><span class="marca">3</span><div><strong>✅ Aprobaciones</strong><span>Lo que registraron los demás y espera tu firma.</span></div></li>
         <li><span class="marca">4</span><div><strong>📦 Inventario</strong><span>Stock total, entradas de compra, ajustes y el kardex de cada insumo.</span></div></li>
         <li><span class="marca">5</span><div><strong>🏢 Bodegas</strong><span>La principal y los carros. Desde aquí surtes a Genaro y Eduvin.</span></div></li>
         <li><span class="marca">6</span><div><strong>📚 Catálogos</strong><span>Estaciones, placas, motivos. Lo que se sugiere en los formularios.</span></div></li>
@@ -262,8 +262,8 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <!-- 3 ─────────────────────────────────────────────── -->
-  <section class="paso" id="avales">
-    <h2><span class="paso__num">3</span> Avales: lo que firmas cada día</h2>
+  <section class="paso" id="aprobaciones">
+    <h2><span class="paso__num">3</span> Aprobaciones: lo que firmas cada día</h2>
     <p class="paso__intro">
       Aquí caen los tanqueos y el material que los supervisores tomaron por su cuenta.
       El inventario ya se movió cuando lo registraron —porque físicamente ya se lo
@@ -272,9 +272,9 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
 
     <div class="pantalla">
       <div class="recorte">
-        <div class="recorte__barra">✅ Avales</div>
+        <div class="recorte__barra">✅ Aprobaciones</div>
         <div class="recorte__cuerpo">
-          <div class="r-tabs"><span class="r-tab on">Por avalar</span><span class="r-tab">Avalados</span><span class="r-tab">Rechazados</span></div>
+          <div class="r-tabs"><span class="r-tab on">Por aprobar</span><span class="r-tab">Aprobados</span><span class="r-tab">Rechazados</span></div>
           <div class="r-sub">4 REGISTRO(S) · 136,72 GALONES</div>
           <div class="r-card r-card--verde">
             <div class="r-fila"><span class="r-titulo">61,59 gal · Tanque de distribución</span><span class="r-sub">🏭 Sede</span></div>
@@ -282,28 +282,28 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
             <div style="height:8px"></div>
             <div class="r-fila">
               <span class="r-btn r-btn--gris" style="flex:1">Rechazar</span>
-              <span class="r-btn" style="flex:1">✔ Avalar</span>
+              <span class="r-btn" style="flex:1">✔ Aprobar</span>
             </div>
           </div>
           <div class="r-card">
             <div class="r-fila"><span class="r-titulo">3 gal · Máquina</span><span class="r-sub">⛽ Estación</span></div>
             <div class="r-sub">2 ago · URDINOLA VELEZ DIEGO · registrado 16:31</div>
-            <div class="r-card r-card--rojo" style="margin-top:8px">🔒 Lo registraste tú: lo avala el dueño o administración.</div>
+            <div class="r-card r-card--rojo" style="margin-top:8px">🔒 Lo registraste tú: lo aprueba el dueño o administración.</div>
           </div>
         </div>
       </div>
       <ul class="explica">
         <li><span class="marca">1</span><div><strong>Revisa contra la tirilla</strong><span>La foto está en la tarjeta. Compara galones, estación y fecha.</span></div></li>
-        <li><span class="marca">2</span><div><strong>Avalar</strong><span>Confirmas que corresponde. El movimiento queda firme.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Aprobar</strong><span>Confirmas que corresponde. El movimiento queda firme.</span></div></li>
         <li><span class="marca">3</span><div><strong>Rechazar reversa todo</strong><span>El stock vuelve solo a la bodega de donde salió. No tienes que corregir nada a mano.</span></div></li>
         <li><span class="marca">4</span><div><strong>Lo tuyo no lo firmas tú</strong><span>Tus propios registros aparecen bloqueados. Los firma el dueño o administración.</span></div></li>
       </ul>
     </div>
 
     <div class="ojo">
-      <strong>Por qué no puedes avalar lo tuyo.</strong> El aval es el segundo par de ojos.
+      <strong>Por qué no puedes aprobar lo tuyo.</strong> La aprobación es el segundo par de ojos.
       Desde que también entregas y tanqueas, firmar tus propios registros sería quedarte sin
-      control. Le avisas al dueño y él los revisa desde <em>Más → ✅ Avales</em>.
+      control. Le avisas al dueño y él los revisa desde <em>Más → ✅ Aprobaciones</em>.
     </div>
   </section>
 
@@ -331,7 +331,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       </div>
       <ul class="explica">
         <li><span class="marca">1</span><div><strong>Entrega directa</strong><span>Le entregas a un operario sin que lo haya pedido. Se descuenta de la principal.</span></div></li>
-        <li><span class="marca">2</span><div><strong>Al operario le llega el aval</strong><span>Igual que con los supervisores: la tarjeta “¿Recibiste esto?”. No se salta ningún control.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Al operario le llega la aprobación</strong><span>Igual que con los supervisores: la tarjeta “¿Recibiste esto?”. No se salta ningún control.</span></div></li>
         <li><span class="marca">3</span><div><strong>Despachar solicitudes</strong><span>Si un operario pide algo y te toca a ti atenderlo, lo programas y lo entregas desde aquí.</span></div></li>
       </ul>
     </div>
@@ -356,7 +356,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
           <div class="r-sub">Galones *</div><div class="r-card">40</div>
           <div class="r-sub">Horómetro *</div><div class="r-card">8353.1</div>
           <div class="r-sub">Entregado a *</div><div class="r-card">Buscar operario…</div>
-          <div class="r-card r-card--rojo">Queda pendiente del aval del dueño o administración. Y el operario tiene que confirmar que lo recibió.</div>
+          <div class="r-card r-card--rojo">Queda pendiente de la aprobación del dueño o administración. Y el operario tiene que confirmar que lo recibió.</div>
           <div class="r-btn r-btn--ancho">Registrar tanqueo</div>
         </div>
       </div>
@@ -364,7 +364,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
         <li><span class="marca">1</span><div><strong>Solo máquina o vehículo</strong><span>Son destinos de consumo. Sumarle a un carro es del supervisor de ese carro — si no, no se sabría de quién es el material.</span></div></li>
         <li><span class="marca">2</span><div><strong>En sede descuenta la principal</strong><span>Sale del inventario y se le carga a la máquina. Aparece como “Abastecimiento en sede”. <em>El tanqueo solo saca de la principal; para meterle, ve a Inventario → + Entrada.</em></span></div></li>
         <li><span class="marca">3</span><div><strong>Lo firma el dueño</strong><span>El formulario te lo dice antes de guardar, para que no te quedes esperando.</span></div></li>
-        <li><span class="marca">4</span><div><strong>Si es a una máquina, di a quién</strong><span>Es obligatorio. A ese operario le llega la tarjeta “¿Recibiste este combustible?”: son <em>dos</em> avales, el suyo y el del dueño. Los vehículos todavía no lo piden.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Si es a una máquina, di a quién</strong><span>Es obligatorio. A ese operario le llega la tarjeta “¿Recibiste este combustible?”: son <em>dos</em> aprobaciones, el suyo y el del dueño. Los vehículos todavía no lo piden.</span></div></li>
       </ul>
     </div>
   </section>
@@ -405,7 +405,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <br><br>
       Es la <strong>única</strong> pantalla donde se puede sumar inventario escribiéndolo, y
       por eso solo la tienes tú: los supervisores no la ven. Ellos no pueden crear
-      combustible de la nada — el suyo entra por un traslado tuyo o por un tanqueo avalado.
+      combustible de la nada — el suyo entra por un traslado tuyo o por un tanqueo aprobado.
       <br><br>
       <strong>Pon siempre el número de la factura en el motivo.</strong> Es lo único que
       después permite cuadrar el kardex contra la contabilidad.
@@ -507,7 +507,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       </div>
       <ul class="explica">
         <li><span class="marca">1</span><div><strong>Despacho por despacho</strong><span>El libro corrido. Cada entrega con su hora, quién recibió y quién entregó.</span></div></li>
-        <li><span class="marca">2</span><div><strong>Todo se abre</strong><span>Cualquier línea abre el formulario completo: evidencia, horómetro, nota y el aval del operario.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Todo se abre</strong><span>Cualquier línea abre el formulario completo: evidencia, horómetro, nota y la aprobación del operario.</span></div></li>
         <li><span class="marca">3</span><div><strong>El Excel trae cuatro hojas</strong><span>Movimientos con detalle, resumen por máquina, resumen por insumo, y los tanqueos de bomba.</span></div></li>
       </ul>
     </div>
@@ -522,8 +522,8 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <table>
         <tr><th>Regla</th><th>De dónde sale</th></tr>
         <tr>
-          <td><strong>Nadie avala lo que él mismo registró</strong></td>
-          <td>El aval es el segundo par de ojos. Si firmas lo tuyo, no hay control.</td>
+          <td><strong>Nadie aprueba lo que él mismo registró</strong></td>
+          <td>La aprobación es el segundo par de ojos. Si firmas lo tuyo, no hay control.</td>
         </tr>
         <tr>
           <td><strong>Todo lo que recibe un operario, él lo confirma</strong></td>
@@ -531,7 +531,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
         </tr>
         <tr>
           <td><strong>Solo tú puedes sumar inventario</strong></td>
-          <td>“+ Entrada” es la única forma de crear existencias escribiéndolas, y solo tú la ves. Los supervisores no pueden: lo suyo entra por traslado o por tanqueo avalado.</td>
+          <td>“+ Entrada” es la única forma de crear existencias escribiéndolas, y solo tú la ves. Los supervisores no pueden: lo suyo entra por traslado o por tanqueo aprobado.</td>
         </tr>
         <tr>
           <td><strong>Rechazar reversa el movimiento</strong></td>

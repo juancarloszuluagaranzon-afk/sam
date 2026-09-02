@@ -50,7 +50,7 @@ export function BandejaInsumosTab() {
   const { users, session, insumos, setInsumos, sortedEquipment, busy, setBusy, setError, setInfo } = useAppData()
 
   // Operarios (destinatarios posibles de una entrega directa). Solo operadores:
-  // son quienes tienen la tarjeta de aval para confirmar la recepción.
+  // son quienes tienen la tarjeta de aprobación para confirmar la recepción.
   const operarios = useMemo(
     () => users.filter((u) => u.active !== false && u.role === 'operador')
       .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })),
@@ -354,7 +354,7 @@ export function BandejaInsumosTab() {
       })
       if (enviado) {
         void refrescarStockBodega()
-        setInfo(`Entrega directa registrada a ${operario.name}. Queda pendiente de su aval.`)
+        setInfo(`Entrega directa registrada a ${operario.name}. Queda pendiente de su aprobación.`)
       } else {
         descontarLocal(items.map((it) => ({ insumoId: it.insumoId, cantidad: it.cantidad })))
         setInfo(`Entrega a ${operario.name} guardada sin señal. Se envía sola cuando haya cobertura.`)
@@ -480,7 +480,7 @@ export function BandejaInsumosTab() {
 
               {s.estado === 'ENTREGADA' && (
                 <>
-                  {/* Aval del operario: banner que cierra (o no) el ciclo de dos partes. */}
+                  {/* Aprobación del operario: banner que cierra (o no) el ciclo de dos partes. */}
                   <div className={`sol-card__aval ${s.confirmadoEn ? (s.conforme ? 'sol-card__aval--ok' : 'sol-card__aval--dif') : 'sol-card__aval--wait'}`}>
                     {s.confirmadoEn
                       ? s.conforme
@@ -680,7 +680,7 @@ export function BandejaInsumosTab() {
               <button type="button" className="modal-close-btn" onClick={() => setDirectaOpen(false)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
-              Entregas sin que el operario lo haya pedido. Igual le llega la tarjeta <strong>“¿Recibiste?”</strong> para su aval.
+              Entregas sin que el operario lo haya pedido. Igual le llega la tarjeta <strong>“¿Recibiste?”</strong> para su aprobación.
             </p>
 
             <label>
@@ -784,7 +784,7 @@ export function BandejaInsumosTab() {
       )}
 
       {/* Tanqueo del analista: sale de la principal y va a consumo. Nace
-          PENDIENTE como cualquier otro, pero él NO puede avalar el suyo. */}
+          PENDIENTE como cualquier otro, pero él NO puede aprobar el suyo. */}
       {esAnalista && (
         <TanqueoModal
           open={tanqueoOpen}

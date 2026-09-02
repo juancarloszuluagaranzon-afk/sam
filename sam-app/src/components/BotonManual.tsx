@@ -22,7 +22,7 @@ interface Manual {
 const MANUALES: Record<string, Manual> = {
   operario: { archivo: 'manual-operario.html', titulo: '📖 Guía del operario', para: 'Tu día a día en campo' },
   supervisor: { archivo: 'manual-supervisor-insumos.html', titulo: '📖 Guía del supervisor de insumos', para: 'Tu carro, entregas y tanqueos' },
-  analista: { archivo: 'manual-analista-diego.html', titulo: '📖 Guía del analista de insumos', para: 'Avales, inventario y catálogos' },
+  analista: { archivo: 'manual-analista-diego.html', titulo: '📖 Guía del analista de insumos', para: 'Aprobaciones, inventario y catálogos' },
   taller: { archivo: 'manual-taller.html', titulo: '🔧 Guía del taller de maquinaria', para: 'Cómo se llena la información' },
 }
 

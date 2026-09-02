@@ -12,14 +12,14 @@ import { Ayuda } from '../components/Ayuda'
 /**
  * "Mi bodega" — vista del supervisor de insumos sobre SU satélite (su vehículo):
  *  · Stock actual de su carro.
- *  · Traslados EN TRÁNSITO de la principal → los confirma (aval) rectificando
+ *  · Traslados EN TRÁNSITO de la principal → los confirma (aprobación) rectificando
  *    cantidades si recibió menos; la diferencia regresa a la principal.
  *  · Tanqueo: en estación o en la sede, al tanque de distribución, a pimpinas,
  *    al vehículo (con placa) o a una máquina (con horómetro). Todo queda
- *    pendiente del aval del analista de insumos.
+ *    pendiente de la aprobación del analista de insumos.
  *
  * Ojo: aquí NO se manipula inventario a mano. El supervisor no tiene "+ Entrada";
- * lo que entra a su carro entra por un traslado avalado o por un tanqueo avalado,
+ * lo que entra a su carro entra por un traslado aprobado o por un tanqueo aprobado,
  * y así siempre se sabe de dónde salió cada galón.
  */
 
@@ -78,7 +78,7 @@ export function MiBodegaTab() {
       }
       const { enviado } = await enviarOEncolar('AUTOABASTECER', payload, () => autoAbastecer(payload))
       setInfo(enviado
-        ? 'Material cargado a tu carro. Queda pendiente del aval del analista.'
+        ? 'Material cargado a tu carro. Queda pendiente de la aprobación del analista.'
         : 'Guardado sin señal. Se registra solo cuando haya cobertura.')
       setSurtirOpen(false)
       setSurtirItems([{ insumoId: '', cantidad: '' }])
@@ -313,7 +313,7 @@ export function MiBodegaTab() {
             </div>
             <p className="subtle-copy" style={{ marginTop: 0 }}>
               Toma de la bodega principal lo que necesites para el día. Sale de la
-              principal y entra a tu carro de una; el analista lo avala después.
+              principal y entra a tu carro de una; el analista lo aprueba después.
             </p>
             <p className="subtle-copy">
               Para combustible usa <strong>⛽ Registrar tanqueo</strong>, que además pide los

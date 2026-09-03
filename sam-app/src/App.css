@@ -7854,6 +7854,36 @@ td.planilla-vacio:hover { background: #fde047; }
 .pend-aviso__pie { margin: 6px 0 0; font-size: 0.78rem; color: var(--color-ink-mid); }
 :root[data-theme="dark"] .pend-aviso__err { color: #fca5a5; }
 
+/* Lo que trae el registro atascado: la maquina y los galones. Es la diferencia
+   entre poder volver a registrarlo a mano y no poder hacer nada. */
+.pend-aviso__que {
+  font-size: 0.82rem; font-weight: 700; color: var(--color-ink);
+  overflow-wrap: anywhere;
+}
+.pend-aviso__row { flex-direction: column; align-items: stretch; }
+.pend-aviso__quitar {
+  align-self: flex-start; margin-top: 2px; padding: 6px 0;
+  background: none; border: 0; cursor: pointer; font: inherit;
+  font-size: 0.76rem; font-weight: 600; text-decoration: underline;
+  color: var(--color-ink-mid);
+}
+/* Pide un segundo toque: es lo unico de esta pantalla que borra un dato. */
+.pend-aviso__confirmar {
+  margin-top: 6px; padding: 10px; border-radius: 10px;
+  background: var(--color-bg-soft, #f2f5f0); gap: 4px !important;
+  font-size: 0.8rem;
+}
+.pend-aviso__confirmar b { font-size: 0.84rem; }
+.pend-aviso__confirmar > span:not(.pend-aviso__botones) { color: var(--color-ink-mid); }
+.pend-aviso__botones {
+  display: flex !important; flex-direction: row !important; flex-wrap: wrap;
+  gap: 8px; margin-top: 8px;
+}
+/* Medido: sin esto «Cancelar» sale de 302px (todo el ancho) y empuja a «Si,
+   quitarlo» —que mide 76— a otro renglon. Dos botones de una decision van uno
+   al lado del otro o dejan de leerse como una decision. */
+.pend-aviso__botones button { flex: 0 1 auto; width: fit-content; max-width: 100%; }
+
 
 /* Dos acciones en la cabecera de Mi bodega: surtirse y tanquear. */
 .bod-head__acciones { display: flex; flex-wrap: wrap; gap: 8px; flex: 0 0 auto; }

@@ -80,6 +80,8 @@ interface AppDataContextValue {
   isOnline: boolean
   outboxCount: number
   setOutboxCount: React.Dispatch<React.SetStateAction<number>>
+  /** Fuerza un intento de subir la cola. Lo usa el aviso de pendientes. */
+  syncOutbox: () => Promise<void>
   // Mensaje no-null cuando un fetch a Supabase fallo estando online. La UI
   // muestra un banner rojo persistente hasta que la siguiente sync exitosa
   // lo limpia.
@@ -119,7 +121,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [info, setInfo] = useState('')
   const [syncError, setSyncError] = useState<string | null>(null)
 
-  const { isOnline, outboxCount, setOutboxCount } = useSync({
+  const { isOnline, outboxCount, setOutboxCount, syncOutbox } = useSync({
     onAssignmentsReloaded: setAssignments,
     onMaestroReloaded: setMaestro,
     onInfo: setInfo,
@@ -375,7 +377,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         busy, setBusy,
         error, setError,
         info, setInfo,
-        isOnline, outboxCount, setOutboxCount,
+        isOnline, outboxCount, setOutboxCount, syncOutbox,
         syncError, retrySync, forceSync,
         supervisors, operators, todayKey, metrics, operatorStatusMap, sortedEquipment,
       }}

@@ -54,6 +54,59 @@ export const OP_LABEL: Record<InsumoOpKind, string> = {
 }
 
 /**
+ * Qué contiene una operación encolada, en una línea.
+ *
+ * 🔴 Existe porque el aviso de pendientes era un callejón sin salida: decía
+ * «Entrega directa · TypeError: Failed to fetch» y nada más. Con eso el
+ * supervisor no puede hacer NADA — ni saber a qué máquina era, ni cuántos
+ * galones, ni volverla a registrar a mano. Genaro tuvo tres atascadas ocho días
+ * (26, 27 y 28 de agosto) sin forma de recuperarlas.
+ *
+ * Devuelve '' cuando no hay nada útil que decir; quien lo use debe omitir la
+ * línea en ese caso en vez de mostrar un renglón vacío.
+ */
+export function resumenOperacion(kind: InsumoOpKind, payload: unknown): string {
+  // 🔴 Con `String(n)` el 108.571 sale con PUNTO, que en Colombia se lee como
+  // ciento ocho mil — es exactamente el dedazo que ya desconfiguró un carro. El
+  // número de esta línea se copia a mano para volver a registrarlo, así que
+  // tiene que verse como se escribe aquí.
+  const num = (n: number) =>
+    new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(n)
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const p = (payload ?? {}) as any
+  const partes: string[] = []
+
+  if (p.equipoCodigo) partes.push(String(p.equipoCodigo))
+  if (p.operarioNombre) partes.push(`a ${String(p.operarioNombre)}`)
+
+  // La novedad no tiene máquina ni insumos: lo suyo son los días marcados.
+  if (kind === 'NOVEDAD') {
+    const dias = Array.isArray(p.fechas) ? p.fechas.length : 0
+    if (p.tipo) partes.push(String(p.tipo))
+    if (dias) partes.push(`${dias} día${dias === 1 ? '' : 's'}`)
+  }
+
+  const items = Array.isArray(p.items) ? p.items : []
+  for (const it of items.slice(0, 3)) {
+    const cant = Number(it?.cantidad ?? it?.cantidadDespachada)
+    const nom = it?.insumoNombre ?? it?.nombre
+    // La unidad va SIEMPRE: «30» de ganchos y «30» de galones no son lo mismo.
+    const uni = it?.unidad ? ` ${String(it.unidad).replace(/ón$/, '')}` : ''
+    if (nom) partes.push(Number.isFinite(cant) ? `${nom} ${num(cant)}${uni}` : String(nom))
+  }
+  if (items.length > 3) partes.push(`y ${items.length - 3} más`)
+
+  // El tanqueo no lleva `items`: los galones van sueltos en el payload.
+  if (Number.isFinite(Number(p.galones))) partes.push(`${num(Number(p.galones))} gal`)
+  if (p.placa) partes.push(String(p.placa))
+  if (p.estacion) partes.push(String(p.estacion))
+  if (p.folio) partes.push(String(p.folio))
+
+  return partes.join(' · ')
+  /* eslint-enable @typescript-eslint/no-explicit-any */
+}
+
+/**
  * ¿El fallo fue por falta de red, o el servidor rechazó la operación?
  *
  * Es la distinción que decide todo: un rechazo real (stock insuficiente, una

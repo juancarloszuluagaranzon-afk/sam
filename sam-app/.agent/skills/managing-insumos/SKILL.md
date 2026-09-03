@@ -949,3 +949,38 @@ misma acción hiciera las dos, el control desaparece. Un tanqueo corregido sigue
 
 Y por lo mismo corregir SÍ se permite sobre lo que uno registró: **arreglar un
 dedazo no es firmarse a sí mismo.**
+
+## La cola tiene que dejar SALIR (3-sep-2026, commit `710fa7c`)
+
+Genaro reportó **tres registros atascados ocho días** (26, 27 y 28 de agosto).
+El aviso de pendientes decía *«Entrega directa · TypeError: Failed to fetch»* y
+nada más: ni la máquina, ni los galones. Con eso el supervisor **no puede hacer
+nada** — ni re-registrar a mano ni sacarlo de la cola.
+
+**La regla:** una cola sin salida no es una cola, es un hueco. Todo lo que quede
+encolado tiene que poder (a) **verse** —qué contiene, en términos del negocio—,
+(b) **reintentarse a voluntad**, y (c) **quitarse** cuando ya quedó registrado
+por otro camino. Sin (c), un registro que el servidor SÍ recibió pero cuya
+respuesta se perdió se queda para siempre y **el día que suba, duplica**.
+
+`resumenOperacion(kind, payload)` (`lib/outboxInsumos.ts`) arma esa línea para
+cualquier operación: máquina, operario, insumos con cantidad **y unidad**,
+galones/placa/estación del tanqueo, tipo y días de la novedad, folio del caso.
+
+🔴 **Los números de esa línea van formateados en `es-CO`.** Con `String(n)` el
+`108.571` sale con PUNTO, que en Colombia se lee como ciento ocho mil — es
+exactamente el dedazo que dejó el carro de Genaro en 108.257 galones. Ese número
+se copia a mano desde ahí, así que tiene que verse como se escribe: una carga
+real dice **108,57 gal** y el dedazo dice **108.571 gal**.
+
+⚠️ **Lo que quedó sin resolver.** No se pudo determinar POR QUÉ fallan: hay que
+mirar el equipo. Dos sospechas, en orden:
+1. **La foto.** `uploadEvidencia` no tiene tiempo de espera, y la cola llama a
+   `resolverFotosDePayload` ANTES de `ejecutarInsumo`. Si un cargue se cuelga, el
+   ciclo del `for` se queda ahí y los que vienen detrás **nunca se intentan** —
+   encaja con que el tercero de Genaro estuviera en `pending` sin mensaje de
+   error mientras los dos anteriores sí lo tenían.
+2. Un blob de Dexie desalojado por el navegador, que haría fallar el `fetch` del
+   cargue para siempre.
+Si vuelve a pasar: **poner un tiempo de espera al cargue de foto** y que un
+cargue fallido marque el ítem en error en vez de bloquear la cola.

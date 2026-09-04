@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { loadFlotaServicios, anularFlotaServicio } from '../services/samApi'
 import { FlotaForm } from './FlotaForm'
+import { FlotaFormOpe22 } from './FlotaFormOpe22'
 import type { FlotaServicio } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 
@@ -15,6 +16,14 @@ import { Ayuda } from '../components/Ayuda'
  *
  * Van aparte y con nombre para que se puedan cambiar sin tocar el codigo del
  * export: cuando salga la version 2 del formato, se edita aqui y ya.
+ */
+/**
+ * 🔴 Cada exportacion toma SOLO los servicios de su formato.
+ *
+ * Un viaje de la camioneta propia metido en la planilla de IMECOL sale con las
+ * columnas del formato equivocado — y al reves, uno de IMECOL en el F-OPE-22
+ * sale sin kilometraje y sin maquinaria. Filtrar aqui y no al cargar es a
+ * proposito: la LISTA los muestra juntos, que es lo que se pidio.
  */
 const MEMBRETE = {
   empresa: 'IMECOL',
@@ -49,7 +58,12 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
   const [desde, setDesde] = useState(primerDiaMes())
   const [hasta, setHasta] = useState(hoyISO())
   const [busca, setBusca] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
+  /**
+   * Que formulario esta abierto. Un solo estado con tres valores y no dos
+   * booleanos: dos booleanos pueden quedar en `true` a la vez y abrir los dos
+   * modales encimados.
+   */
+  const [formOpen, setFormOpen] = useState<null | 'IMECOL' | 'AGROMORALES'>(null)
   const [verFotoUrl, setVerFotoUrl] = useState<string>('')
 
   async function refresh() {
@@ -69,8 +83,11 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       `${s.origen} ${s.destino} ${s.nombrePasajero} ${s.vehiculo} ${s.conductorNombre} ${s.centroCosto}`.toLowerCase().includes(q))
   }, [servicios, busca])
 
+  const deImecol = useMemo(() => lista.filter((s) => s.formato !== 'AGROMORALES'), [lista])
+  const deAgromorales = useMemo(() => lista.filter((s) => s.formato === 'AGROMORALES'), [lista])
+
   async function exportarExcel() {
-    if (lista.length === 0) { setError('No hay servicios en el rango elegido.'); return }
+    if (deImecol.length === 0) { setError('No hay servicios de IMECOL en el rango elegido.'); return }
     setBusy(true); setError('')
     try {
       // Se usa exceljs y no xlsx porque la version comunitaria de xlsx NO
@@ -159,7 +176,7 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         cel.border = marco
       })
 
-      const enOrden = [...lista].sort((a, b) => a.fecha.localeCompare(b.fecha))
+      const enOrden = [...deImecol].sort((a, b) => a.fecha.localeCompare(b.fecha))
       enOrden.forEach((s, i) => {
         const f = filaCab + 1 + i
         const valores = [
@@ -186,17 +203,17 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       // Filas vacias hasta completar el alto del formato, para que la cuadricula
       // se vea igual aunque el rango tenga pocos viajes.
       const MINIMO = 18
-      for (let i = lista.length; i < MINIMO; i += 1) {
+      for (let i = deImecol.length; i < MINIMO; i += 1) {
         const f = filaCab + 1 + i
         for (let c = 1; c <= 16; c += 1) ws.getCell(f, c).border = marco
       }
 
-      const filaTotal = filaCab + 1 + Math.max(lista.length, MINIMO)
+      const filaTotal = filaCab + 1 + Math.max(deImecol.length, MINIMO)
       ws.getCell(filaTotal, 14).value = 'TOTAL'
       ws.getCell(filaTotal, 14).font = { bold: true, size: 9 }
       ws.getCell(filaTotal, 14).alignment = { horizontal: 'right' }
       ws.getCell(filaTotal, 14).border = marco
-      ws.getCell(filaTotal, 15).value = lista.reduce((a, s) => a + (s.totalKm ?? 0), 0)
+      ws.getCell(filaTotal, 15).value = deImecol.reduce((a, s) => a + (s.totalKm ?? 0), 0)
       ws.getCell(filaTotal, 15).font = { bold: true, size: 10 }
       ws.getCell(filaTotal, 15).alignment = centro
       ws.getCell(filaTotal, 15).border = marco
@@ -204,7 +221,7 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       const filaObs = filaTotal + 2
       ws.mergeCells(filaObs, 1, filaObs + 1, 16)
       const obs = ws.getCell(filaObs, 1)
-      obs.value = 'OBSERVACION: ' + lista.map((s) => s.observacion).filter(Boolean).join(' - ')
+      obs.value = 'OBSERVACION: ' + deImecol.map((s) => s.observacion).filter(Boolean).join(' - ')
       obs.font = { size: 9 }
       obs.alignment = { vertical: 'top', wrapText: true }
       obs.border = marco
@@ -235,7 +252,7 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       a.click()
       // Sin esto el navegador retiene el archivo completo en memoria.
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-      setInfo(`Exportado: ${lista.length} servicios.`)
+      setInfo(`Exportado: ${deImecol.length} servicios.`)
     } catch {
       setError('No se pudo generar el Excel.')
     } finally { setBusy(false) }
@@ -249,12 +266,12 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
    * misma hoja daría un encabezado que le miente a la mitad de sus filas.
    */
   async function exportarAgromorales() {
-    if (lista.length === 0) { setError('No hay servicios en el rango elegido.'); return }
+    if (deAgromorales.length === 0) { setError('No hay servicios en el rango elegido.'); return }
     setBusy(true); setError('')
     try {
       const { exportarOpe22 } = await import('../lib/planillaOpe22')
-      const hojas = await exportarOpe22(lista, users, { desde, hasta })
-      setInfo(`Exportado: ${lista.length} servicios en ${hojas} hoja${hojas === 1 ? '' : 's'}.`)
+      const hojas = await exportarOpe22(deAgromorales, users, { desde, hasta })
+      setInfo(`Exportado: ${deAgromorales.length} servicios en ${hojas} hoja${hojas === 1 ? '' : 's'}.`)
     } catch {
       setError('No se pudo generar la planilla F-OPE-22.')
     } finally { setBusy(false) }
@@ -277,7 +294,17 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
     <section className="panel-card">
       <div className="panel-title split">
         <h2>{esAdmin ? 'Flota / Escolta' : 'Mis servicios'}</h2>
-        <button type="button" className="primary-button" onClick={() => setFormOpen(true)} disabled={busy}>+ Nuevo servicio</button>
+        {/* Dos botones porque son dos formatos con campos distintos. Un solo
+            boton con un desplegable adentro hace que el dia que alguien elija
+            mal, el registro salga con los campos del formato equivocado. */}
+        <div className="flota-nuevo">
+          <button type="button" className="primary-button" onClick={() => setFormOpen('IMECOL')} disabled={busy}>
+            + Servicio IMECOL
+          </button>
+          <button type="button" className="primary-button" onClick={() => setFormOpen('AGROMORALES')} disabled={busy}>
+            + Servicio AgroMorales
+          </button>
+        </div>
       </div>
       <Ayuda>
         <p>Control de transporte de flota no propia (CDA-F-68). Cada servicio lleva su firma y foto de evidencia.</p>
@@ -290,15 +317,15 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
             pedirle que le escriba a administracion para que se la manden es
             ponerle un intermediario a su propio trabajo. Solo ve los suyos,
             porque `conductorScope` ya acota la consulta. */}
-        <button type="button" className="primary-button rep-export" onClick={() => void exportarExcel()} disabled={busy || loading || lista.length === 0}>
-          ⬇ IMECOL (CDA-F-68)
+        <button type="button" className="primary-button rep-export" onClick={() => void exportarExcel()} disabled={busy || loading || deImecol.length === 0}>
+          ⬇ IMECOL ({deImecol.length})
         </button>
         {/* Dos formatos, dos botones. No es una variante del mismo documento:
             el de IMECOL pide centro de costo y peajes, el de AgroMorales pide
             la maquinaria escoltada y el kilometraje. Un solo boton con un
             selector escondido haria que el que necesita el otro no lo encuentre. */}
-        <button type="button" className="inline-button rep-export" onClick={() => void exportarAgromorales()} disabled={busy || loading || lista.length === 0}>
-          ⬇ AgroMorales (F-OPE-22)
+        <button type="button" className="inline-button rep-export" onClick={() => void exportarAgromorales()} disabled={busy || loading || deAgromorales.length === 0}>
+          ⬇ AgroMorales ({deAgromorales.length})
         </button>
       </div>
       <input type="search" className="labores-search-input" placeholder="Buscar origen, destino, pasajero, placa…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ margin: '12px 0' }} />
@@ -306,7 +333,7 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       {loading ? (
         <p className="muted-text">Cargando…</p>
       ) : lista.length === 0 ? (
-        <p className="muted-text">Sin servicios en este rango. Registra el primero con “+ Nuevo servicio”.</p>
+        <p className="muted-text">Sin servicios en este rango. Registra el primero con uno de los dos botones de arriba.</p>
       ) : (
         <div className="list-rows">
           {lista.map((s) => (
@@ -316,6 +343,12 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
                 <span className="flota-card__fecha">{fmtFecha(s.fecha)}{s.tipoServicio ? ` · ${s.tipoServicio}` : ''}</span>
               </div>
               <div className="flota-card__meta">
+                {/* En que planilla sale. Va aqui y no en el encabezado: alla
+                    ensanchaba la columna de la fecha y partia el titulo en
+                    cuatro renglones — medido a 375px. */}
+                <span className={`flota-fmt flota-fmt--${s.formato === 'AGROMORALES' ? 'am' : 'im'}`}>
+                  {s.formato === 'AGROMORALES' ? 'AgroMorales' : 'IMECOL'}
+                </span>
                 {s.nombrePasajero && <span>👤 {s.nombrePasajero}</span>}
                 {s.vehiculo && <span>🚙 {s.vehiculo}</span>}
                 {s.horaSalidaOrigen && <span>🕐 {s.horaSalidaOrigen}{s.horaLlegadaOrigen ? `–${s.horaLlegadaOrigen}` : ''}</span>}
@@ -339,9 +372,17 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         </div>
       )}
 
-      {formOpen && (
+      {formOpen === 'IMECOL' && (
         <FlotaForm
-          onClose={() => setFormOpen(false)}
+          onClose={() => setFormOpen(null)}
+          onSaved={() => void refresh()}
+          conductorId={conductorScope?.id}
+          conductorNombre={conductorScope?.nombre}
+        />
+      )}
+      {formOpen === 'AGROMORALES' && (
+        <FlotaFormOpe22
+          onClose={() => setFormOpen(null)}
           onSaved={() => void refresh()}
           conductorId={conductorScope?.id}
           conductorNombre={conductorScope?.nombre}

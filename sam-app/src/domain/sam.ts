@@ -237,6 +237,12 @@ export interface FlotaServicio {
   horaEspera?: string
   numPeajes?: number
   otrosGastos?: number
+  /**
+   * En qué planilla sale este servicio. No es una vista distinta de lo mismo:
+   * cada formato pide campos que el otro no tiene y se registra por su propio
+   * formulario.
+   */
+  formato: FormatoFlota
   /** Máquina a la que se le hizo el servicio (F-OPE-22). Vacía en transporte de personal. */
   numeroMaquinaria?: string
   /** Consecutivo del formato F-OPE-22. */
@@ -256,8 +262,11 @@ export interface FlotaServicio {
   estado: 'REGISTRADO' | 'ANULADO'
 }
 
+export type FormatoFlota = 'IMECOL' | 'AGROMORALES'
+
 export interface CreateFlotaServicioInput {
   fecha: string
+  formato?: FormatoFlota
   vehiculo?: string
   tipoServicio?: string
   centroCosto?: string

@@ -6455,6 +6455,22 @@ td.planilla-revisada {
 :root[data-theme="dark"] .flota-km__mal,
 :root[data-theme="dark"] .flota-km__aviso { color: #ee8a8a; }
 
+/* Los dos botones de crear, uno por formato. En movil se apilan: dos botones
+   de 44px apretados en 315px se tocan mal con guantes. */
+.flota-nuevo { display: flex; flex-wrap: wrap; gap: 8px; }
+.flota-nuevo .primary-button { flex: 1 1 auto; min-width: 150px; }
+
+/* La marca de formato en la tarjeta. Sin ella los dos se ven iguales en la
+   lista, y la lista los muestra juntos a proposito. */
+.flota-fmt {
+  display: inline-block; padding: 1px 7px; border-radius: 999px;
+  font-size: 0.68rem; font-weight: 700; letter-spacing: .02em;
+}
+.flota-fmt--im { background: rgba(27,175,122,.14); color: #12805a; }
+.flota-fmt--am { background: rgba(47,111,237,.14); color: #2f6fed; }
+:root[data-theme="dark"] .flota-fmt--im { color: #6ee7b7; }
+:root[data-theme="dark"] .flota-fmt--am { color: #93b4fd; }
+
 .flota-comprobante {
   margin-top: 12px;
   padding: 10px 12px;

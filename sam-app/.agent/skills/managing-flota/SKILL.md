@@ -142,3 +142,40 @@ que los peajes: un 0 impreso afirma «no recorrió nada», que no es lo mismo qu
 recuperar: las diferencias entre lecturas consecutivas dan 25, 24, 59, 53, 25,
 75 y 25 km. El `1482.13` del 4-sep encaja como **148213** (punto decimal mal
 puesto, el mismo error de las tirillas de combustible).
+
+
+## Lo que faltaba del formato, medido contra el papel (4-sep-2026, `cb2d33c`)
+
+- **TALLER no estaba en la lista de tipos.** El pie del F-OPE-22 dice
+  «TRANSPORTE PERSONAL - ESCOLTAS - TALLER» y el formulario ofrecía ESCOLTA /
+  TRANSPORTE / DISPONIBILIDAD / OTRO. **6 de 34 servicios (18%) cayeron en
+  «OTRO»** siendo viajes de repuestos — *«se recogieron 2 baterías, 1 alternador
+  y unas platinas»*. 🔴 **Una categoría que falta no desaparece: se disfraza de
+  «otro» y deja de poder contarse.**
+  ⚠️ Los valores se dejaron **cortos y como estaban** (`TRANSPORTE`, no
+  `TRANSPORTE PERSONAL`): renombrarlos dejaría a los registros ya hechos hablando
+  otro idioma que los nuevos.
+- **«Tiempo de espera» estaba plegado.** Correcto para el CDA-F-68 — ahí va
+  siempre en blanco — pero en el F-OPE-22 es **columna principal**, y solo 2 de
+  34 la traían. Es lo que pasa cuando un campo del papel vive tras un
+  desplegable. 🔴 **Los dos formatos no están de acuerdo en qué campos importan,
+  y el formulario estaba optimizado para uno solo.** Al tocar el formulario,
+  revisar contra AMBOS papeles.
+
+Comprobado columna por columna: las 14 del F-OPE-22 tienen su campo, y el orden
+del formulario quedaró calcado del papel.
+
+## El conductor tiene manual propio (`56454b1`)
+
+`manual-conductor.html`. Antes el rol `conductor` caía al `default` de
+`manualesDe()` y le salía **el manual del operario** — labores agrícolas —, o
+sea quien llena la planilla no tenía guía de la planilla.
+
+La sección que más pesa es la del kilometraje, y va con el número real: *«ocho
+registros seguidos quedaron con 147.952, 147.977, 148.001… la planilla decía que
+un viaje de 50 minutos había sido de 147.952 kilómetros»*. Un manual que explica
+la regla en abstracto no cambia lo que hace la gente; uno que le muestra el
+error que ya ocurrió, sí.
+
+⚠️ **Al agregar un rol nuevo hay que sumarlo a `manualesDe()`** — el `default`
+no falla, entrega el manual equivocado en silencio.

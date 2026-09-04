@@ -252,6 +252,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         setMaestro(maestroResult.data)
         setAssignments(assignmentResult.data)
         setUsers(userResult.data)
+        // 🔴 Un fallback al cache ESTANDO EN LINEA no es «sin señal»: es que la
+        // consulta falló. Y callarlo cuesta caro — el 4-sep-2026 una columna nueva
+        // (`cedula`) se quedó sin `grant select`, el select respondio 401, la
+        // pantalla de Usuarios siguió mostrando la lista VIEJA sin decir nada y el
+        // dueño creó el mismo usuario dos veces creyendo que no se guardaba.
+        if (userResult.source === 'fallback' && navigator.onLine) {
+          setSyncError('No se pudo leer la lista de usuarios: estás viendo la última que se alcanzó a guardar. Un usuario nuevo puede existir aunque no aparezca aquí — no lo vuelvas a crear.')
+        }
         setEquipment(equipmentResult.data)
         setLabores(laboresResult.data)
         // Si la BD trajo ingenios, esos mandan; si cayó a fallback, conservamos

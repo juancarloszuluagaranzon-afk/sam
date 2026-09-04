@@ -17,7 +17,19 @@ function hoyISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const TIPOS = ['ESCOLTA', 'TRANSPORTE', 'DISPONIBILIDAD', 'OTRO']
+/**
+ * Los tipos que el papel nombra en su pie: TRANSPORTE PERSONAL - ESCOLTAS -
+ * TALLER. **TALLER faltaba**, y sin él 6 de los 34 servicios (18%) cayeron en
+ * «OTRO» siendo viajes de repuestos — «se recogieron 2 baterías, 1 alternador y
+ * unas platinas». Una categoría que falta no desaparece: se disfraza de «otro»
+ * y deja de poder contarse.
+ *
+ * Los valores se quedan CORTOS y como estaban (`TRANSPORTE`, no `TRANSPORTE
+ * PERSONAL`): renombrarlos dejaría a los 34 registros ya hechos hablando otro
+ * idioma que los nuevos, y la columna del papel se llena a mano igual de corta.
+ * `OTRO` sobrevive para lo que de verdad no encaje.
+ */
+const TIPOS = ['ESCOLTA', 'TRANSPORTE', 'TALLER', 'DISPONIBILIDAD', 'OTRO']
 
 /** Un odómetro va en cientos de miles: sin separador de miles no se lee. */
 function n0(v: number) {
@@ -232,6 +244,12 @@ export function FlotaForm({
           <label>Destino <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.destino} onChange={(e) => set('destino', e.target.value)} disabled={busy} /></label>
           <label>Hora salida origen<input type="time" value={f.horaSalidaOrigen} onChange={(e) => set('horaSalidaOrigen', e.target.value)} disabled={busy} /></label>
           <label>Hora llegada destino<input type="time" value={f.horaLlegadaDestino} onChange={(e) => set('horaLlegadaDestino', e.target.value)} disabled={busy} /></label>
+          {/* Va arriba y no plegado: en el CDA-F-68 de IMECOL esta casilla va
+              siempre en blanco, pero en el F-OPE-22 de AgroMorales es una
+              COLUMNA PRINCIPAL — y hoy solo 2 de 34 servicios la traen. */}
+          <label>Tiempo de espera <span className="field-optional">(opcional)</span>
+            <input type="text" value={f.horaEspera} onChange={(e) => set('horaEspera', e.target.value)}
+                   placeholder="ej. 0:45" disabled={busy} /></label>
           <label>Km inicial<input type="number" min={0} step="any" inputMode="numeric"
             value={f.kmInicial} onChange={(e) => set('kmInicial', e.target.value)} disabled={busy} /></label>
           <label>Km final<input type="number" min={0} step="any" inputMode="numeric"
@@ -272,7 +290,6 @@ export function FlotaForm({
             <label>Proceso solicitante<input type="text" autoCapitalize="characters" value={f.procesoSolicitante} onChange={(e) => set('procesoSolicitante', e.target.value)} disabled={busy} /></label>
             <label>Hora salida destino<input type="time" value={f.horaSalidaDestino} onChange={(e) => set('horaSalidaDestino', e.target.value)} disabled={busy} /></label>
             <label>Hora llegada origen<input type="time" value={f.horaLlegadaOrigen} onChange={(e) => set('horaLlegadaOrigen', e.target.value)} disabled={busy} /></label>
-            <label>Hora de espera<input type="text" value={f.horaEspera} onChange={(e) => set('horaEspera', e.target.value)} placeholder="ej. 0:45" disabled={busy} /></label>
             <label># Peajes<input type="number" min={0} value={f.numPeajes} onChange={(e) => set('numPeajes', e.target.value)} disabled={busy} /></label>
             <label>Otros gastos<input type="number" min={0} step="any" value={f.otrosGastos} onChange={(e) => set('otrosGastos', e.target.value)} disabled={busy} /></label>
             {/* En el papel esta casilla va casi siempre en blanco, igual que los

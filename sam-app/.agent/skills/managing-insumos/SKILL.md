@@ -984,3 +984,37 @@ mirar el equipo. Dos sospechas, en orden:
    cargue para siempre.
 Si vuelve a pasar: **poner un tiempo de espera al cargue de foto** y que un
 cargue fallido marque el ítem en error en vez de bloquear la cola.
+
+## La entrega directa lleva su propia fecha (4-sep-2026, `dcba23d`)
+
+El campo **«Fecha y hora de la entrega»** viene puesto con el momento actual y
+**se puede cambiar**. Escribe `fecha_efectiva` en el kardex y `entregado_en` en
+la solicitud — las dos que leen los reportes.
+
+🔴 **El registro y el hecho no pasan al mismo tiempo.** Se entrega a las 6 a.m.
+en el lote y se registra a las 4 p.m. con señal. Sin esto, el consumo por
+máquina, el informe semanal y la gráfica de «a qué hora se entrega» ubicaban
+todo en el momento de teclear.
+
+⚠️ **Por la cola importa el doble**: un registro guardado el martes sin señal
+puede subir el jueves. Por eso la fecha viaja **en el payload** y se manda
+siempre —la hayan tocado o no—, en vez de calcularse en el servidor.
+
+**El patrón para agregarle un parámetro a una función que ya está en producción**
+(el mismo de `app_update_user`): va **al final y con DEFAULT**, y por
+`drop`+`create`, no por overload. Así una PWA en caché que llame sin ese
+argumento sigue funcionando. Al reescribir `entregar_directo` había que copiar
+tal cual dos cosas que no son obvias: el **guard de idempotencia por id** (el que
+evita que un reintento de la cola cree una entrega gemela — dos de las entregas
+vacías del 26-ago fueron eso) y el respaldo a la bodega principal.
+
+⚠️ `created_at` **no se toca** y el `updated_at` del stock **se queda en now()**:
+el saldo es de ahora, no se está afirmando que el inventario cambió ese día.
+
+El aviso ámbar sale **solo si la fecha es de otro día**. Recordarle «hoy es hoy»
+a quien no tocó el campo es ruido.
+
+⚠️ **Falta el mismo campo en el DESPACHO de una solicitud.** `entregarSolicitud`
+escribe desde el cliente en varios pasos y no por una sola función, así que es
+otro trabajo. Son ~7 solicitudes al mes contra 404 entregas directas: esto cubre
+el 98% del volumen.

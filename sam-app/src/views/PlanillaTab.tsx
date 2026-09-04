@@ -4,7 +4,7 @@ import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
 import type { Assignment } from '../domain/sam'
 import { deleteAssignment, formatTime } from '../services/samApi'
-import { avanceCerradoPorSuerte, areaDelDia, cuentaEnPlanilla } from '../lib/planilla'
+import { avanceCerradoPorSuerte, areaDelDia, cuentaEnPlanilla, horasDeLabor, MOTIVO_HOROMETRO } from '../lib/planilla'
 import {
   executionDateKey,
   loadPlanillaRevisiones,
@@ -419,6 +419,49 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     )
   }, [assignments, operators, planillaMonth, planillaQuincena, todayKey])
 
+  /**
+   * Horas de máquina por operario y día, y el detalle labor por labor.
+   *
+   * 🔴 Va APARTE de `rows` a propósito. La rejilla de hectáreas es la nómina
+   * y meterle horas adentro repetiría el error que ya se corrigió con los
+   * hectómetros: dos unidades en la misma casilla. Aquí las horas viajan en su
+   * propia hoja, con la MISMA forma (operario × día) para poder leerlas al lado.
+   */
+  const horometros = useMemo(() => {
+    const porOperario = new Map<string, { nombre: string; porDia: Record<string, number>; total: number }>()
+    const detalle: {
+      operario: string; dia: string; maquina: string; labor: string
+      inicial: number | null; final: number | null; horas: number | null; problema: string | null
+    }[] = []
+
+    for (const a of assignments) {
+      if (!cuentaEnPlanilla(a)) continue
+      const dk = executionDateKey(a)
+      if (!matchesSummaryFilter(dk, planillaMonth, planillaQuincena, todayKey)) continue
+      const nombre = (a.operatorName || 'Sin operador').trim()
+      const r = horasDeLabor(a)
+
+      detalle.push({
+        operario: nombre, dia: dk, maquina: a.equipmentCode || '', labor: a.labor || '',
+        inicial: a.horometroInicial, final: a.horometroFinal,
+        horas: r.horas, problema: r.problema,
+      })
+
+      if (r.problema != null) continue
+      const fila = porOperario.get(nombre) ?? { nombre, porDia: {}, total: 0 }
+      fila.porDia[dk] = Math.round(((fila.porDia[dk] ?? 0) + r.horas) * 100) / 100
+      fila.total = Math.round((fila.total + r.horas) * 100) / 100
+      porOperario.set(nombre, fila)
+    }
+
+    detalle.sort((x, y) => x.dia.localeCompare(y.dia) || x.operario.localeCompare(y.operario, 'es'))
+    return {
+      filas: [...porOperario.values()].sort((x, y) => x.nombre.localeCompare(y.nombre, 'es', { sensitivity: 'base' })),
+      detalle,
+      conProblema: detalle.filter((d) => d.problema != null).length,
+    }
+  }, [assignments, planillaMonth, planillaQuincena, todayKey])
+
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(
@@ -506,7 +549,14 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         const nov = novedades.get(`${rowKey}|${dayKey}`)
         return nov ?? cell(v)
       }
-      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total', 'Total ha', 'Total hm']
+      // Las horas van al lado de los totales de área porque es ahí donde se
+      // busca la respuesta — 12 ha en 4 h dice algo que 12 ha solo no dice. No
+      // hay riesgo de sumarlas con el área: horas y hectáreas no se parecen,
+      // que era justo el problema entre ha y hm.
+      const horasDe = (nombre: string) =>
+        horometros.filas.find((f) => f.nombre === nombre.trim())?.total ?? 0
+      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`),
+        'Total', 'Total ha', 'Total hm', 'Total horas']
       const body = filteredRows.map((r) => [
         r.name,
         ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
@@ -515,6 +565,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         Number((r.total + r.totalHm).toFixed(2)),
         Number(r.total.toFixed(2)),
         r.totalHm > 0 ? Number(r.totalHm.toFixed(2)) : '',
+        horasDe(r.name) > 0 ? Number(horasDe(r.name).toFixed(2)) : '',
       ])
       const footer = [
         'Total',
@@ -522,19 +573,71 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
         Number((dayTotals.grand + dayTotals.grandHm).toFixed(2)),
         Number(dayTotals.grand.toFixed(2)),
         dayTotals.grandHm > 0 ? Number(dayTotals.grandHm.toFixed(2)) : '',
+        Number(horometros.filas.reduce((s, f) => s + f.total, 0).toFixed(2)),
       ]
       const aoa = [
         [`Planilla quincenal · ${monthLabel} · ${quincenaLabel}`],
-        ['Hectáreas abiertas por operario y día'],
+        [horometros.conProblema > 0
+          ? `Hectáreas abiertas por operario y día · ⚠ ${horometros.conProblema} lectura${horometros.conProblema === 1 ? '' : 's'} de horómetro sin usar (ver hoja «Horómetros detalle»)`
+          : 'Hectáreas abiertas por operario y día'],
         [],
         header,
         ...body,
         footer,
       ]
       const ws = utils.aoa_to_sheet(aoa)
-      ws['!cols'] = [{ wch: 24 }, ...days.map(() => ({ wch: 6 })), { wch: 9 }]
+      // Un ancho por cada columna de total: eran cuatro y solo se declaraba
+      // uno, asi que «Total horas» salia cortado.
+      ws['!cols'] = [{ wch: 24 }, ...days.map(() => ({ wch: 6 })),
+        { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 11 }]
       const wb = utils.book_new()
       utils.book_append_sheet(wb, ws, 'Planilla')
+
+      // ── Hoja 2: las horas de máquina, en la MISMA forma ───────────────
+      // Operario × día, igual que la de hectáreas, para poder leer las dos al
+      // lado: 12 ha en 4 h dice algo que 12 ha solo no dice.
+      const cabHoras = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`), 'Total horas']
+      const cuerpoHoras = horometros.filas.map((f) => [
+        f.nombre,
+        ...days.map((d) => (f.porDia[d.key] ? Number(f.porDia[d.key].toFixed(2)) : '')),
+        Number(f.total.toFixed(2)),
+      ])
+      const totalPorDia = days.map((d) =>
+        horometros.filas.reduce((s, f) => s + (f.porDia[d.key] ?? 0), 0))
+      const aoaHoras = [
+        [`Horómetros · ${monthLabel} · ${quincenaLabel}`],
+        ['Horas de máquina por operario y día (horómetro final menos inicial)'],
+        horometros.conProblema > 0
+          ? [`⚠ ${horometros.conProblema} lectura${horometros.conProblema === 1 ? '' : 's'} no se pudo usar. Están en la hoja «Horómetros detalle» con el motivo.`]
+          : ['Todas las lecturas del periodo se pudieron usar.'],
+        [],
+        cabHoras,
+        ...cuerpoHoras,
+        ['Total', ...totalPorDia.map((v) => (v ? Number(v.toFixed(2)) : '')),
+          Number(horometros.filas.reduce((s, f) => s + f.total, 0).toFixed(2))],
+      ]
+      const wsHoras = utils.aoa_to_sheet(aoaHoras)
+      wsHoras['!cols'] = [{ wch: 24 }, ...days.map(() => ({ wch: 6 })), { wch: 11 }]
+      utils.book_append_sheet(wb, wsHoras, 'Horómetros')
+
+      // ── Hoja 3: la evidencia, labor por labor ───────────────────────
+      // 🔴 Las lecturas malas van AQUÍ, no borradas. Un total que descarta 22
+      // lecturas sin decir cuáles es un total en el que no se puede confiar, y
+      // además nadie sabría qué ir a corregir.
+      const aoaDet = [
+        ['Día', 'Operario', 'Máquina', 'Labor', 'Horómetro inicial', 'Horómetro final', 'Horas', 'Revisar'],
+        ...horometros.detalle.map((d) => [
+          d.dia, d.operario, d.maquina, d.labor,
+          d.inicial ?? '', d.final ?? '',
+          d.horas ?? '',
+          d.problema ? MOTIVO_HOROMETRO[d.problema] ?? d.problema : '',
+        ]),
+      ]
+      const wsDet = utils.aoa_to_sheet(aoaDet)
+      wsDet['!cols'] = [{ wch: 11 }, { wch: 30 }, { wch: 13 }, { wch: 22 },
+        { wch: 16 }, { wch: 15 }, { wch: 8 }, { wch: 30 }]
+      utils.book_append_sheet(wb, wsDet, 'Horómetros detalle')
+
       writeFile(wb, `planilla-${planillaMonth}-${planillaQuincena.toLowerCase()}.xlsx`)
       setInfo('Planilla exportada a Excel.')
     } catch {

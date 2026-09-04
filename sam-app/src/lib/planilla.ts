@@ -83,3 +83,43 @@ export function diasDelMes(mes: string, todayKey?: string) {
   }
   return out
 }
+
+/**
+ * Las horas de máquina de UNA labor, a partir de sus dos lecturas.
+ *
+ * 🔴 **Devuelve el problema, no lo esconde.** Medido sobre la 1ª quincena de
+ * septiembre de 2026: de 154 labores con las dos lecturas, **22 dan un número
+ * imposible** — y no por poquito. `11.698,5 → 1.170.003` son 1.158.304 horas en
+ * un día: es un punto decimal perdido, el mismo error de las tirillas de
+ * combustible. Si eso se imprime sumado en la planilla con la que se paga, el
+ * total deja de significar nada y nadie vuelve a mirar la columna.
+ *
+ * Por eso el que no sirve sale **marcado y con su motivo**, no descartado en
+ * silencio: la planilla tiene que dejar ver cuáles hay que ir a arreglar.
+ *
+ * El tope de 24 h es el mismo de `MAX_HORAS_ENTRE_LECTURAS`: entre dos lecturas
+ * de la misma máquina no puede haber más de un día, así hayan pasado tres.
+ */
+export type HorasDeLabor =
+  | { horas: number; problema: null }
+  | { horas: null; problema: 'SIN_LECTURA' | 'EN_CERO' | 'AL_REVES' | 'FUERA_DE_ESCALA' }
+
+export const MOTIVO_HOROMETRO: Record<string, string> = {
+  SIN_LECTURA: 'sin lectura',
+  EN_CERO: 'lectura en cero',
+  AL_REVES: 'el final es menor que el inicial',
+  FUERA_DE_ESCALA: 'más de 24 h en un día',
+}
+
+export function horasDeLabor(a: Assignment): HorasDeLabor {
+  const hi = a.horometroInicial
+  const hf = a.horometroFinal
+  if (hi == null || hf == null) return { horas: null, problema: 'SIN_LECTURA' }
+  // Un 0 no es una lectura: es la casilla que quedó sin llenar. Un horómetro
+  // real de una máquina en uso nunca marca cero.
+  if (hi <= 0 || hf <= 0) return { horas: null, problema: 'EN_CERO' }
+  const h = Math.round((hf - hi) * 100) / 100
+  if (h < 0) return { horas: null, problema: 'AL_REVES' }
+  if (h > 24) return { horas: null, problema: 'FUERA_DE_ESCALA' }
+  return { horas: h, problema: null }
+}

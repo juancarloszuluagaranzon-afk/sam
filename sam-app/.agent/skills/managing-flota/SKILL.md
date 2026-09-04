@@ -91,3 +91,54 @@ sesión en campo.
 ⚠️ Hay **dos camionetas** registradas (`AVD300` y `VCQ605`... y `LQX955`), así que
 el respaldo de "el único vehículo" no aplica: con varias se deja en blanco a
 propósito. Proponer el carro equivocado es peor que no proponer nada.
+
+## Son DOS formatos, no uno con variantes (3-sep-2026, commit `08ecd95`)
+
+| | **CDA-F-68** (IMECOL) | **F-OPE-22** (AgroMorales) |
+|---|---|---|
+| Título | CONTROL DE TRANSPORTE FLOTA NO PROPIA | GESTIÓN OPERATIVA |
+| Columnas | 16 | 14 |
+| Propias | centro de costo, proceso solicitante, peajes, otros gastos | **número de maquinaria**, **km inicial/final/total**, N° servicio, firma responsable |
+| Encabezado | ninguno | **FECHA · PLACA · NOMBRES · CÉDULA · SEMANA** |
+| Archivo | `views/FlotaTab.tsx` | `lib/planillaOpe22.ts` |
+
+Dos botones, no un selector escondido: quien necesita el otro no lo encontraría.
+Se guardan **todos** los campos y cada exportación toma los suyos.
+
+🔴 **Una hoja por conductor Y placa.** El encabezado del F-OPE-22 lleva un solo
+nombre, una sola cédula y una sola placa. Dos conductores en la misma hoja dan un
+encabezado que le miente a la mitad de sus propias filas. `porConductorYPlaca()`.
+
+🔴 **La cédula vive en `app_usuarios`, no en `flota_servicios`.** Es un dato de la
+PERSONA: en la tabla de servicios se repetiría por fila y podría contradecirse
+entre una y otra. ⚠️ Hubo que agregarla también al **`select` explícito** de
+usuarios (`samApi.ts`) — el tipo por sí solo no la habría traído.
+
+## 🔴 Km inicial y final: el campo suelto se llenaba con el odómetro
+
+Antes había un solo campo «Total km» tecleado a mano. Medido sobre los 34
+servicios existentes:
+
+- **Julián** — 23 servicios entre 18 y 98 km. Distancias reales.
+- **Camilo** — **8 de 9 con valores > 1000**: 147952, 147977, 148001, 148060,
+  148113, 148138, 148238. Son **lecturas del odómetro consecutivas y
+  ascendentes**, no distancias. Su planilla decía 147.952 km en un viaje de 50
+  minutos.
+
+No es descuido: un campo que pide «total km» al lado del tablero del carro se
+llena con lo que dice el tablero. Con las dos lecturas el total **no se teclea**,
+es la resta — y se muestra la operación completa (`148.001 − 147.977`) para
+comprobarla contra el carro sin calculadora.
+
+- Final < inicial → **avisa en rojo, no bloquea** (misma regla que el horómetro).
+- Sin poder leer el odómetro → sigue habiendo un campo para el total directo.
+- `kmDelServicio()` devuelve **`null`** y no cero cuando falta una lectura.
+
+🔴 **KM TOTAL sin lecturas es casilla VACÍA en el papel, no cero** — misma regla
+que los peajes: un 0 impreso afirma «no recorrió nada», que no es lo mismo que
+«no se anotó». El total del pie **sí** conserva el cero.
+
+⚠️ **Los 8 registros de Camilo siguen con la lectura en `total_km`.** Se pueden
+recuperar: las diferencias entre lecturas consecutivas dan 25, 24, 59, 53, 25,
+75 y 25 km. El `1482.13` del 4-sep encaja como **148213** (punto decimal mal
+puesto, el mismo error de las tirillas de combustible).

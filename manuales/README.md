@@ -1,6 +1,6 @@
 # Manuales de AgroMorales
 
-Cuatro guías, una por rol. Se comparten **por enlace**, no como archivo adjunto:
+Cinco guías, una por rol. Se comparten **por enlace**, no como archivo adjunto:
 
 | Manual | Para quién | Enlace |
 |---|---|---|
@@ -8,6 +8,7 @@ Cuatro guías, una por rol. Se comparten **por enlace**, no como archivo adjunto
 | Supervisor de insumos | Genaro y Eduvin | `/manuales/manual-supervisor-insumos.html` |
 | Analista de insumos | Diego | `/manuales/manual-analista-diego.html` |
 | Taller de maquinaria | Quien carga el taller | `/manuales/manual-taller.html` |
+| Conductor de camioneta | Julián, Camilo — los que llenan el F-OPE-22 | `/manuales/manual-conductor.html` |
 
 Base: `https://agroserviciosmorales.vercel.app`
 
@@ -21,7 +22,7 @@ manual y nadie se entera. El enlace suelto sigue existiendo para WhatsApp.
 ## Cómo se arman
 
 ```
-_estilo.css          ← estilo común de los cuatro
+_estilo.css          ← estilo común de los cinco
 _cuerpo_*.html       ← el contenido de cada uno
 manual-*.html        ← el resultado, con el CSS YA INCRUSTADO
 ```

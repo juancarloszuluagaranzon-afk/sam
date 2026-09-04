@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Guía del conductor de camioneta — AgroMorales</title>
+<style>
+/* Estilo común de los tres manuales.
+   Pensado para leerse en el celular y para imprimirse sin quedar en blanco. */
+
+:root {
+  --verde: #155b30;
+  --verde-claro: #e9f3ed;
+  --tinta: #161a14;
+  --tinta-media: #4a5040;
+  --borde: #e3e2dc;
+  --papel: #ffffff;
+  --suave: #fafaf7;
+  --alerta: #b3261e;
+  --alerta-suave: #fdecea;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--tinta);
+  background: var(--suave);
+  line-height: 1.55;
+}
+
+.hoja { max-width: 820px; margin: 0 auto; padding: 24px 18px 60px; }
+
+/* ── Portada ── */
+.portada {
+  background: var(--verde); color: #fff;
+  border-radius: 18px; padding: 26px 22px; margin-bottom: 26px;
+}
+.portada__marca { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; }
+.portada h1 { margin: 6px 0 4px; font-size: 1.7rem; line-height: 1.2; }
+.portada__para { font-size: 1rem; opacity: 0.92; }
+.portada__nota { margin-top: 14px; font-size: 0.85rem; opacity: 0.85; }
+
+/* ── Índice ── */
+.indice { background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; padding: 16px 18px; margin-bottom: 30px; }
+.indice h2 { margin: 0 0 8px; font-size: 1rem; }
+.indice ol { margin: 0; padding-left: 20px; }
+.indice a { color: var(--verde); text-decoration: none; }
+.indice a:hover { text-decoration: underline; }
+
+/* ── Secciones ── */
+.paso { margin-bottom: 34px; scroll-margin-top: 12px; }
+.paso__num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--verde); color: #fff; font-weight: 700; font-size: 0.9rem;
+  margin-right: 8px; flex: 0 0 auto;
+}
+.paso h2 { display: flex; align-items: center; font-size: 1.2rem; margin: 0 0 6px; }
+.paso__intro { margin: 0 0 14px; color: var(--tinta-media); }
+
+/* ── Bloque de pantalla + explicación ── */
+.pantalla {
+  display: grid; gap: 16px; align-items: start;
+  grid-template-columns: 1fr;
+  background: var(--papel); border: 1px solid var(--borde);
+  border-radius: 14px; padding: 16px;
+}
+@media (min-width: 700px) { .pantalla { grid-template-columns: 300px 1fr; } }
+
+/* El "recorte": una réplica de la pantalla real de la app. */
+.recorte {
+  border: 1px solid var(--borde); border-radius: 14px; overflow: hidden;
+  background: var(--papel); font-size: 0.8rem;
+}
+.recorte__barra {
+  background: var(--verde); color: #fff; padding: 9px 12px;
+  display: flex; align-items: center; gap: 8px; font-weight: 600;
+}
+.recorte__barra small { font-weight: 400; opacity: 0.8; display: block; font-size: 0.68rem; letter-spacing: 0.06em; }
+.recorte__cuerpo { padding: 12px; display: flex; flex-direction: column; gap: 9px; }
+
+.r-tabs { display: flex; gap: 5px; flex-wrap: wrap; }
+.r-tab {
+  border: 1px solid var(--borde); border-radius: 999px;
+  padding: 3px 9px; font-size: 0.68rem; background: var(--suave);
+}
+.r-tab.on { background: var(--verde); color: #fff; border-color: var(--verde); }
+
+.r-card { border: 1px solid var(--borde); border-radius: 11px; padding: 10px; background: var(--papel); }
+.r-card--verde { border-left: 4px solid var(--verde); }
+.r-card--rojo { border-left: 4px solid var(--alerta); background: var(--alerta-suave); }
+.r-titulo { font-weight: 700; }
+.r-sub { color: var(--tinta-media); font-size: 0.72rem; }
+.r-pill {
+  display: inline-block; background: rgba(31,138,71,.12); color: #166534;
+  font-weight: 800; font-size: 0.7rem; padding: 2px 8px; border-radius: 999px;
+}
+.r-btn {
+  display: inline-block; background: var(--verde); color: #fff;
+  padding: 6px 12px; border-radius: 9px; font-weight: 600; font-size: 0.74rem; text-align: center;
+}
+.r-btn--gris { background: var(--suave); color: var(--tinta); border: 1px solid var(--borde); }
+.r-btn--rojo { background: var(--alerta); }
+.r-btn--ancho { display: block; }
+.r-fila { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+
+/* Marca sobre el recorte para señalar dónde tocar. */
+.marca {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--alerta); color: #fff; font-size: 0.7rem; font-weight: 700;
+  margin-right: 6px; flex: 0 0 auto;
+}
+
+/* ── Explicación numerada al lado del recorte ── */
+.explica { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 11px; }
+.explica li { display: flex; gap: 9px; align-items: flex-start; }
+/* Va después de .explica span a propósito: si no, el gris de la lista le gana
+   por especificidad y el número del círculo rojo sale ilegible. */
+.explica .marca { color: #fff; }
+.explica strong { display: block; }
+.explica span { color: var(--tinta-media); font-size: 0.92rem; }
+
+/* ── Avisos ── */
+.ojo {
+  border-left: 4px solid var(--alerta); background: var(--alerta-suave);
+  padding: 12px 14px; border-radius: 0 11px 11px 0; margin: 14px 0 0;
+}
+.ojo strong { color: var(--alerta); }
+.tip {
+  border-left: 4px solid var(--verde); background: var(--verde-claro);
+  padding: 12px 14px; border-radius: 0 11px 11px 0; margin: 14px 0 0;
+}
+
+.cierre {
+  margin-top: 40px; padding: 18px; border-radius: 14px;
+  background: var(--papel); border: 1px solid var(--borde);
+}
+.cierre h2 { margin-top: 0; font-size: 1.05rem; }
+
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin-top: 8px; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--borde); }
+th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
+
+@media print {
+  body { background: #fff; }
+  .hoja { max-width: none; padding: 0; }
+  .paso { break-inside: avoid; }
+  .pantalla { break-inside: avoid; }
+}
+
+</style>
+</head>
+<body>
+<div class="hoja">
+
+  <div class="portada">
+    <p class="portada__marca">AgroMorales · Manual</p>
+    <h1>Guía del conductor de camioneta</h1>
+    <p class="portada__para">Cómo se llena la planilla que se entrega</p>
+    <p class="portada__nota">
+      Cada viaje que registras en el celular es una fila de la planilla impresa. Si el
+      registro sale completo, la planilla sale sola: no hay que volver a escribirla a mano
+      ni acordarse al final del mes de qué pasó el martes.
+    </p>
+  </div>
+
+  <nav class="indice">
+    <h2>Qué vas a encontrar</h2>
+    <ol>
+      <li><a href="#dos">Son DOS planillas, no una</a></li>
+      <li><a href="#registrar">Registrar un servicio, campo por campo</a></li>
+      <li><a href="#km">El kilometraje ← donde más se equivoca uno</a></li>
+      <li><a href="#firma">La firma de quien recibe</a></li>
+      <li><a href="#fecha">Si registras después, corrige la fecha</a></li>
+      <li><a href="#descargar">Descargar la planilla</a></li>
+      <li><a href="#errores">Lo que daña la planilla</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section class="paso" id="dos">
+    <h2><span class="paso__num">1</span> Son DOS planillas, no una</h2>
+    <p class="paso__intro">
+      El mismo viaje sale en dos formatos distintos porque los pide gente distinta. Tú
+      registras <strong>una sola vez</strong>; la app arma las dos.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🚙 Flota / Escolta</div>
+        <div class="recorte__cuerpo">
+          <div class="r-btn r-btn--ancho">⬇ IMECOL (CDA-F-68)</div>
+          <div class="r-btn r-btn--ancho">⬇ AgroMorales (F-OPE-22)</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>IMECOL — CDA-F-68</strong><span>El de la empresa que contrata. Pide centro de costo, peajes y otros gastos.</span></div></li>
+        <li><span class="marca">2</span><div><strong>AgroMorales — F-OPE-22</strong><span>El de la casa, «Gestión Operativa». Pide el <strong>número de la maquinaria</strong> escoltada y el <strong>kilometraje</strong>. Es el que tiene tu nombre, tu cédula y tu placa en el encabezado.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>El de AgroMorales sale con una hoja por conductor y por placa.</strong> Si
+      descargas un rango donde manejaron tres personas, salen tres hojas: cada una con su
+      encabezado. Busca la tuya por la pestaña de abajo.
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section class="paso" id="registrar">
+    <h2><span class="paso__num">2</span> Registrar un servicio, campo por campo</h2>
+    <p class="paso__intro">
+      Se entra por <strong>+ Nuevo servicio</strong>. Los campos están en el mismo orden de
+      las columnas del papel, para que puedas ir llenando de arriba abajo.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Registrar servicio</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card"><strong>Tipo de servicio</strong><div class="r-sub">ESCOLTA · TRANSPORTE · TALLER · DISPONIBILIDAD · OTRO</div></div>
+          <div class="r-card"><strong>Número de maquinaria</strong><div class="r-sub">solo si es escolta — ej. 34261</div></div>
+          <div class="r-card r-card--verde"><strong>Origen y destino</strong><div class="r-sub">obligatorios</div></div>
+          <div class="r-card"><strong>Hora salida · Hora llegada</strong></div>
+          <div class="r-card"><strong>Tiempo de espera</strong><div class="r-sub">ej. 0:45</div></div>
+          <div class="r-card r-card--verde"><strong>Km inicial · Km final</strong></div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>TALLER es un tipo, no «OTRO»</strong><span>Los viajes a recoger repuestos —baterías, acoples, tornillos— van en TALLER. Antes no existía la opción y 6 de cada 34 servicios quedaron en «OTRO»: así no se pueden contar.</span></div></li>
+        <li><span class="marca">2</span><div><strong>El número de maquinaria solo en escolta</strong><span>Es la máquina a la que le hiciste el acompañamiento. En un transporte de personal va vacío, igual que en el papel.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El tiempo de espera es una duración</strong><span>No una hora del día. Si esperaste 45 minutos se escribe <code>0:45</code>. Es columna del formato y casi nadie la llena.</span></div></li>
+        <li><span class="marca">4</span><div><strong>La placa viene puesta</strong><span>Sale de la camioneta que tienes asignada. Se puede cambiar el día que te toque otra.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>Centro de costo, peajes y otros gastos están plegados</strong> en «Otros campos
+      del formato». En el papel van casi siempre en blanco, por eso no estorban arriba — pero
+      el día que pagues un peaje, ahí se anota.
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section class="paso" id="km">
+    <h2><span class="paso__num">3</span> El kilometraje ← donde más se equivoca uno</h2>
+    <p class="paso__intro">
+      Son <strong>dos lecturas del tablero</strong>: la de cuando sales y la de cuando
+      llegas. La app hace la resta y ese resultado es el que va a la planilla.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Kilometraje</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card"><strong>Km inicial</strong><div class="r-sub">147.977</div></div>
+          <div class="r-card"><strong>Km final</strong><div class="r-sub">148.001</div></div>
+          <div class="r-card r-card--verde"><strong>Km del servicio</strong><div class="r-sub">24 &nbsp;·&nbsp; 148.001 − 147.977</div></div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Se copia lo que marca el tablero</strong><span>Tal cual, sin restar nada de cabeza. El número grande (147.977) es correcto: es el odómetro.</span></div></li>
+        <li><span class="marca">2</span><div><strong>La app muestra la resta</strong><span>Debajo aparece la operación completa para que la puedas comprobar contra el tablero sin sacar calculadora.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Si sale en rojo, hay un dedazo</strong><span>Significa que el final quedó menor que el inicial. Revisa las dos lecturas antes de guardar.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Si el odómetro no se puede leer</strong><span>Deja las dos casillas vacías y aparece un campo para escribir los kilómetros directo.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>El error que ya pasó: escribir el odómetro donde va la distancia.</strong>
+      Cuando había una sola casilla de «total km», ocho registros seguidos quedaron con
+      <code>147.952</code>, <code>147.977</code>, <code>148.001</code>… La planilla decía que
+      un viaje de 50 minutos había sido de <strong>147.952 kilómetros</strong>. Por eso ahora
+      son dos casillas: tú pones las dos lecturas y la resta la hace la app.
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <section class="paso" id="firma">
+    <h2><span class="paso__num">4</span> La firma de quien recibe</h2>
+    <p class="paso__intro">
+      El servicio se lo prestaste a alguien, y esa persona firma en la pantalla del celular.
+      Es lo que convierte el registro en un comprobante.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Comprobante</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card"><strong>Nombre de quien firma</strong><div class="r-sub">MAURICIO CH 600486</div></div>
+          <div class="r-card"><strong>✍️ Firma</strong><div class="r-sub">se dibuja con el dedo</div></div>
+          <div class="r-card"><strong>📷 Foto de evidencia</strong></div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Nombre y cédula juntos</strong><span>Como en el papel: <code>MAURICIO CH 600486</code>. Con el nombre solo, un apellido repetido no distingue a nadie.</span></div></li>
+        <li><span class="marca">2</span><div><strong>La firma se dibuja con el dedo</strong><span>No hace falta que quede bonita; hace falta que sea de la persona que recibió.</span></div></li>
+        <li><span class="marca">3</span><div><strong>La foto pesa poco</strong><span>Se comprime sola antes de subir. No te cuida los datos gastarla.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <section class="paso" id="fecha">
+    <h2><span class="paso__num">5</span> Si registras después, corrige la fecha</h2>
+    <p class="paso__intro">
+      La fecha viene puesta con el momento en que estás llenando el formulario, pero
+      <strong>se puede cambiar</strong>.
+    </p>
+
+    <div class="tip">
+      <strong>Sin señal no se pierde nada.</strong> El registro queda guardado en el celular
+      y se manda solo cuando vuelva la señal. Si te queda alguno atascado varios días, en el
+      aviso de arriba puedes ver qué trae, volver a registrarlo a mano y quitarlo.
+    </div>
+
+    <div class="ojo">
+      <strong>Un servicio del martes registrado el jueves debe decir martes.</strong> Esa
+      fecha es la que sale en la planilla y en los reportes. Si la dejas en jueves, el viaje
+      aparece el día equivocado y a fin de mes los números no cuadran con lo que pasó.
+    </div>
+  </section>
+
+  <!-- 6 ─────────────────────────────────────────────── -->
+  <section class="paso" id="descargar">
+    <h2><span class="paso__num">6</span> Descargar la planilla</h2>
+    <p class="paso__intro">
+      La descargas tú, desde tu propio celular. No hay que pedírsela a la oficina.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">Mis servicios</div>
+        <div class="recorte__cuerpo">
+          <div class="r-card"><strong>Desde</strong><div class="r-sub">2026-09-01</div></div>
+          <div class="r-card"><strong>Hasta</strong><div class="r-sub">2026-09-15</div></div>
+          <div class="r-btn r-btn--ancho">⬇ AgroMorales (F-OPE-22)</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Eliges el rango de fechas</strong><span>Una quincena, una semana o un día. La planilla sale con los viajes de ese rango, en orden del más viejo al más nuevo.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Solo salen los tuyos</strong><span>Ves y descargas únicamente tus servicios.</span></div></li>
+        <li><span class="marca">3</span><div><strong>El encabezado se llena solo</strong><span>Tu nombre, tu cédula, la placa y el número de semana. Si la cédula sale en blanco, pídele a administración que la cargue en tu usuario.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 7 ─────────────────────────────────────────────── -->
+  <section class="paso" id="errores">
+    <h2><span class="paso__num">7</span> Lo que daña la planilla</h2>
+
+    <div class="cierre" style="margin-top:0">
+      <table>
+        <tr>
+          <th>Si haces esto…</th>
+          <th>…esto es lo que se daña</th>
+        </tr>
+        <tr>
+          <td><strong>Escribir el odómetro en «km del servicio»</strong></td>
+          <td>La planilla dice que un viaje de 50 minutos fue de 147.952 km. Ya pasó ocho veces seguidas.</td>
+        </tr>
+        <tr>
+          <td><strong>Mandar un viaje de taller como «OTRO»</strong></td>
+          <td>Los viajes de repuestos no se pueden contar, y ese es justo el gasto que la empresa quiere ver.</td>
+        </tr>
+        <tr>
+          <td><strong>Dejar la fecha de hoy en un viaje de ayer</strong></td>
+          <td>El viaje aparece el día equivocado y a fin de mes la planilla no cuadra con lo que pasó.</td>
+        </tr>
+        <tr>
+          <td><strong>Firmar tú por quien recibió</strong></td>
+          <td>El comprobante deja de comprobar. Es lo único que respalda que el servicio se prestó.</td>
+        </tr>
+        <tr>
+          <td><strong>Dejar el tiempo de espera vacío</strong></td>
+          <td>Es una columna del formato. Sin ella no se sabe cuánto de tu jornada fue esperando y no manejando.</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="ojo">
+      <strong>Si dudas de un número, no lo inventes.</strong> Una casilla vacía se ve y se
+      puede completar después. Un número inventado se mezcla con los buenos y ya nadie sabe
+      cuál era cuál.
+    </div>
+  </section>
+
+</div>
+
+
+</body>
+</html>

@@ -24,6 +24,7 @@ const MANUALES: Record<string, Manual> = {
   supervisor: { archivo: 'manual-supervisor-insumos.html', titulo: '📖 Guía del supervisor de insumos', para: 'Tu carro, entregas y tanqueos' },
   analista: { archivo: 'manual-analista-diego.html', titulo: '📖 Guía del analista de insumos', para: 'Aprobaciones, inventario y catálogos' },
   taller: { archivo: 'manual-taller.html', titulo: '🔧 Guía del taller de maquinaria', para: 'Cómo se llena la información' },
+  conductor: { archivo: 'manual-conductor.html', titulo: '🚙 Guía del conductor de camioneta', para: 'Cómo se llena la planilla que se entrega' },
 }
 
 /** Qué manual le toca a cada rol. */
@@ -35,16 +36,21 @@ function manualesDe(rol?: Role): Manual[] {
       return [MANUALES.supervisor]
     case 'analista_insumos':
       return [MANUALES.analista, MANUALES.taller]
-    // El de madera todavia no tiene manual propio; el del operario es el
-    // que explica como se registra en campo.
+    // 🔴 El conductor de escolta caia al `default` y le salia el manual del
+    // OPERARIO, que habla de labores agricolas: quien llena la planilla de la
+    // camioneta no tenia guia de la planilla de la camioneta.
+    case 'conductor':
+      return [MANUALES.conductor]
+    // El de madera comparte la mitad: registra viajes y firma, pero su formato
+    // es otro. Se le dan los dos hasta que tenga el suyo.
     case 'conductor_madera':
-      return [MANUALES.operario]
+      return [MANUALES.conductor, MANUALES.operario]
     // Dueño, administración y soporte ven la operación completa: les sirven
     // todos, porque a ellos les preguntan.
     case 'owner':
     case 'administracion':
     case 'soporte':
-      return [MANUALES.analista, MANUALES.supervisor, MANUALES.operario, MANUALES.taller]
+      return [MANUALES.analista, MANUALES.supervisor, MANUALES.operario, MANUALES.taller, MANUALES.conductor]
     default:
       return [MANUALES.operario]
   }

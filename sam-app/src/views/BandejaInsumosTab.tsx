@@ -6,6 +6,25 @@ import { SearchableSelect } from '../components/SearchableSelect'
 import { CampoLista, recordarValor } from '../components/CampoPlaca'
 import { fmtFechaHora as fmtFecha, fmtLapso } from '../lib/fechas'
 import { enviarOEncolar, subirOGuardarFoto } from '../lib/outboxInsumos'
+
+/**
+ * El momento actual con la forma que pide `<input type="datetime-local">`
+ * (`YYYY-MM-DDTHH:mm`), en la hora LOCAL del equipo.
+ *
+ * No sirve `toISOString()`: eso da UTC y en Colombia adelantaría el campo cinco
+ * horas — una entrega de las 6 a.m. aparecería a las 11 a.m.
+ */
+function ahoraLocal(): string {
+  const d = new Date()
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/** ¿La fecha elegida es de otro día? Solo entonces vale la pena avisar. */
+function esOtroDia(valor: string): boolean {
+  if (!valor) return false
+  return valor.slice(0, 10) !== ahoraLocal().slice(0, 10)
+}
 import { FotoEvidencia } from '../components/FotoEvidencia'
 import { fmtCantidad, stepDe, normalizarCantidad, redondear2 } from '../lib/cantidad'
 import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
@@ -134,6 +153,14 @@ export function BandejaInsumosTab() {
   const fotoInputRef = useRef<HTMLInputElement>(null)
 
   // Entrega directa (sin solicitud previa) — la crea el supervisor.
+  //
+  // 🔴 La fecha viene puesta con el momento actual pero SE PUEDE CAMBIAR: el
+  // supervisor entrega a las 6 a.m. en el lote y registra a las 4 p.m. cuando
+  // vuelve a tener señal, y hasta hoy los reportes ubicaban la entrega en el
+  // momento de teclearla. Es la `fecha_efectiva` del kardex — la que usan TODOS
+  // los reportes. `created_at` no se toca: sigue diciendo cuándo se tecleó, que
+  // es lo que permite ver si alguien retrofecha.
+  const [dirFecha, setDirFecha] = useState('')
   const [directaOpen, setDirectaOpen] = useState(false)
   const [dirOperario, setDirOperario] = useState('')
   const [dirItems, setDirItems] = useState<{ insumoId: string; cantidad: string }[]>([{ insumoId: '', cantidad: '' }])
@@ -280,6 +307,7 @@ export function BandejaInsumosTab() {
 
   function openDirecta() {
     dirTempIdRef.current = `directa-${session?.id ?? 'x'}-${Date.now()}`
+    setDirFecha(ahoraLocal())
     setDirOperario('')
     setDirItems([{ insumoId: '', cantidad: '' }])
     setDirEquipo('')
@@ -339,6 +367,9 @@ export function BandejaInsumosTab() {
         despachadoPor: session?.id,
         equipoCodigo: dirEquipo,
         horometro,
+        // Si la tocaron, viaja en el payload; si no, se manda igual la de ahora
+        // para que un registro encolado no quede fechado el dia que suba.
+        fechaEfectiva: dirFecha ? new Date(dirFecha).toISOString() : undefined,
         nota: dirNota.trim() || undefined,
         engraso: dirEngraso,
         evidenciaUrls: dirFotos,
@@ -682,6 +713,23 @@ export function BandejaInsumosTab() {
             <p className="subtle-copy" style={{ marginTop: 0 }}>
               Entregas sin que el operario lo haya pedido. Igual le llega la tarjeta <strong>“¿Recibiste?”</strong> para su aprobación.
             </p>
+
+            <label>
+              Fecha y hora de la entrega
+              <input
+                type="datetime-local"
+                value={dirFecha}
+                max={ahoraLocal()}
+                onChange={(e) => setDirFecha(e.target.value)}
+                disabled={busy}
+              />
+            </label>
+            {esOtroDia(dirFecha) && (
+              <p className="dir-fecha-aviso">
+                ⚠ Se va a registrar con fecha del <strong>{fmtFecha(new Date(dirFecha).toISOString())}</strong>,
+                no de hoy. Así sale en los reportes.
+              </p>
+            )}
 
             <label>
               Entregar a

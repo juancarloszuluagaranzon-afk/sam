@@ -2606,6 +2606,14 @@ export async function entregarDirecto(input: {
   bodegaId?: string
   /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
   engraso?: boolean
+  /**
+   * Cuándo OCURRIÓ la entrega (ISO). `undefined` = ahora.
+   *
+   * 🔴 Viaja en el payload y no se calcula en el servidor porque esto se
+   * encola: un registro guardado el martes sin señal puede subir el jueves, y
+   * sin este dato quedaría fechado el jueves en todos los reportes.
+   */
+  fechaEfectiva?: string
   items: { insumoId: string; insumoNombre: string; unidad: string; cantidad: number }[]
 }): Promise<{ solicitudId: string; insumos: Insumo[] }> {
   // 🔴 UNA sola llamada: `entregar_directo` escribe la entrega, sus materiales
@@ -2638,6 +2646,7 @@ export async function entregarDirecto(input: {
     p_nota: input.nota ?? null,
     p_evidencia: input.evidenciaUrls ?? [],
     p_engraso: input.engraso ?? null,
+    p_fecha_efectiva: input.fechaEfectiva ?? null,
     p_items: input.items.map((it) => ({
       insumoId: it.insumoId, insumoNombre: it.insumoNombre,
       unidad: it.unidad, cantidad: it.cantidad,

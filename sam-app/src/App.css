@@ -8991,6 +8991,14 @@ td.planilla-vacio:hover { background: #fde047; }
   color: var(--color-ink-mid, #5a5f57); font-weight: 600;
 }
 
+/* El aviso de que la entrega se va a registrar con OTRA fecha. Solo sale cuando
+   es de otro dia: recordarle "hoy es hoy" a quien no toco el campo es ruido. */
+.dir-fecha-aviso {
+  margin: 6px 0 0; padding: 8px 10px; border-radius: 10px; line-height: 1.45;
+  font-size: 0.8rem; color: #8a6116; background: rgba(214,158,46,.14);
+}
+:root[data-theme="dark"] .dir-fecha-aviso { color: #e8b54a; }
+
 /* ── Casos de soporte ─────────────────────────────────────────────────────── */
 
 .reportar-pregunta {

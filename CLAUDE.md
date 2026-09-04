@@ -232,6 +232,15 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   inventario; el resto se pliega en "Otros". Se eligen en **Insumos → 📊 Resumen →
   ⭐ Elegir materiales destacados** (y también desde Inventario → ⋯). Hoy: COMBUSTIBLE
   y GANCHOS. Dos o tres es lo sano.
+- **🔴 Un parámetro nuevo en una función que YA está en producción va al FINAL y
+  con DEFAULT**, por `drop`+`create` y no por overload. Así una PWA que quedó en caché
+  llamando sin ese argumento sigue funcionando en vez de romperse durante la ventana de
+  despliegue — y dos versiones de la misma función conviviendo es justo lo que hace que
+  un día se llame a la equivocada. Ya se usó en `app_update_user` (`p_cedula`) y en
+  `entregar_directo` (`p_fecha_efectiva`). ⚠️ Al reescribir el cuerpo, **copiar tal cual
+  lo que no es obvio**: `app_create_user` genera el id ella misma e ignora `p_id`, y
+  `entregar_directo` tiene un guard de idempotencia que evita que un reintento de la cola
+  cree una entrega gemela.
 - **🔴 En el kardex hay DOS fechas y no son intercambiables.** `created_at` = cuándo se
   tecleó (inmutable, auditoría); **`fecha_efectiva` = cuándo ocurrió (la que usan TODOS
   los reportes)**. El registro y el hecho no pasan al mismo tiempo: el supervisor entrega

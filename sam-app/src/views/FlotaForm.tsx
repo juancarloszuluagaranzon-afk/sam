@@ -19,9 +19,30 @@ function hoyISO(): string {
 
 const TIPOS = ['ESCOLTA', 'TRANSPORTE', 'DISPONIBILIDAD', 'OTRO']
 
+/** Un odómetro va en cientos de miles: sin separador de miles no se lee. */
+function n0(v: number) {
+  return Number.isFinite(v) ? new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(v) : '—'
+}
+
 /** Campos que NO se tocan: fechas, horas y números. El resto va en mayúscula. */
 const CRUDOS = new Set(['fecha', 'tipoServicio', 'horaSalidaOrigen', 'horaLlegadaDestino',
-  'horaSalidaDestino', 'horaLlegadaOrigen', 'horaEspera', 'numPeajes', 'otrosGastos', 'totalKm'])
+  'horaSalidaDestino', 'horaLlegadaOrigen', 'horaEspera', 'numPeajes', 'otrosGastos', 'totalKm',
+  'kmInicial', 'kmFinal', 'numeroServicio'])
+
+/**
+ * Los km del servicio a partir de las dos lecturas del odómetro.
+ *
+ * Devuelve `null` cuando falta alguna — no cero: no haber leído el odómetro no
+ * es lo mismo que no haber rodado. Quien lo use decide qué hacer con esa
+ * ausencia; aquí no se inventa un número para la planilla que se entrega.
+ */
+export function kmDelServicio(inicial: string, final: string): number | null {
+  const a = Number(inicial)
+  const b = Number(final)
+  if (inicial.trim() === '' || final.trim() === '') return null
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null
+  return Math.round((b - a) * 100) / 100
+}
 
 export function FlotaForm({
   onClose,
@@ -97,12 +118,28 @@ export function FlotaForm({
     horaEspera: '',
     numPeajes: '',
     otrosGastos: '',
+    numeroMaquinaria: '',
+    numeroServicio: '',
+    kmInicial: '',
+    kmFinal: '',
     totalKm: '',
     observacion: '',
     firmaNombre: '',
   })
   const set = (k: keyof typeof f, v: string) =>
     setF((prev) => ({ ...prev, [k]: CRUDOS.has(k) ? v : aMayus(v) }))
+
+  /**
+   * 🔴 El total NO se recalcula dentro del `set`: se deriva al dibujar.
+   *
+   * Guardarlo en el estado obligaría a acordarse de recalcularlo en cada sitio
+   * que toque una lectura, y el día que se olvide uno la planilla sale con un
+   * total que no corresponde a sus propios kilómetros. Derivado no se puede
+   * desincronizar.
+   */
+  const kmCalculado = kmDelServicio(f.kmInicial, f.kmFinal)
+  const kmParaGuardar = kmCalculado ?? (f.totalKm ? Number(f.totalKm) : undefined)
+  const kmAlReves = kmCalculado != null && kmCalculado < 0
 
   const firmaRef = useRef<FirmaPadHandle>(null)
   const [hayFirma, setHayFirma] = useState(false)
@@ -147,7 +184,11 @@ export function FlotaForm({
         horaEspera: f.horaEspera || undefined,
         numPeajes: f.numPeajes ? Number(f.numPeajes) : undefined,
         otrosGastos: f.otrosGastos ? Number(f.otrosGastos) : undefined,
-        totalKm: f.totalKm ? Number(f.totalKm) : undefined,
+        numeroMaquinaria: f.numeroMaquinaria.trim() || undefined,
+        numeroServicio: f.numeroServicio.trim() || undefined,
+        kmInicial: f.kmInicial ? Number(f.kmInicial) : undefined,
+        kmFinal: f.kmFinal ? Number(f.kmFinal) : undefined,
+        totalKm: kmParaGuardar,
         observacion: f.observacion.trim() || undefined,
         conductorId,
         conductorNombre,
@@ -183,13 +224,40 @@ export function FlotaForm({
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
+          <label>Número de maquinaria <span className="field-optional">(si es escolta)</span>
+            <input type="text" autoCapitalize="characters" value={f.numeroMaquinaria}
+                   onChange={(e) => set('numeroMaquinaria', e.target.value)} disabled={busy} /></label>
           <label>Nombre del pasajero<input type="text" autoCapitalize="characters" value={f.nombrePasajero} onChange={(e) => set('nombrePasajero', e.target.value)} disabled={busy} /></label>
           <label>Origen <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.origen} onChange={(e) => set('origen', e.target.value)} disabled={busy} /></label>
           <label>Destino <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.destino} onChange={(e) => set('destino', e.target.value)} disabled={busy} /></label>
           <label>Hora salida origen<input type="time" value={f.horaSalidaOrigen} onChange={(e) => set('horaSalidaOrigen', e.target.value)} disabled={busy} /></label>
           <label>Hora llegada destino<input type="time" value={f.horaLlegadaDestino} onChange={(e) => set('horaLlegadaDestino', e.target.value)} disabled={busy} /></label>
-          <label>Total km<input type="number" min={0} step="any" value={f.totalKm} onChange={(e) => set('totalKm', e.target.value)} disabled={busy} /></label>
+          <label>Km inicial<input type="number" min={0} step="any" inputMode="numeric"
+            value={f.kmInicial} onChange={(e) => set('kmInicial', e.target.value)} disabled={busy} /></label>
+          <label>Km final<input type="number" min={0} step="any" inputMode="numeric"
+            value={f.kmFinal} onChange={(e) => set('kmFinal', e.target.value)} disabled={busy} /></label>
+          {/* Con las dos lecturas el total NO se teclea: es la resta, y se
+              muestra la operación completa para que se pueda comprobar contra el
+              tablero del carro sin abrir una calculadora. */}
+          {kmCalculado == null ? (
+            <label>Km del servicio <span className="field-optional">(si no pudo leer el odómetro)</span>
+              <input type="number" min={0} step="any" value={f.totalKm}
+                     onChange={(e) => set('totalKm', e.target.value)} disabled={busy} /></label>
+          ) : (
+            <div className="flota-km">
+              <span className="flota-km__lbl">Km del servicio</span>
+              <b className={kmAlReves ? 'flota-km__mal' : 'flota-km__val'}>{n0(kmCalculado)}</b>
+              <small>{n0(Number(f.kmFinal))} − {n0(Number(f.kmInicial))}</small>
+            </div>
+          )}
         </div>
+
+        {kmAlReves && (
+          <p className="flota-km__aviso">
+            ⚠ El kilómetro final es <strong>menor</strong> que el inicial. Revisa las dos
+            lecturas: así la planilla saldría con kilómetros en negativo.
+          </p>
+        )}
 
         {/* Los siete que en el papel van siempre en blanco. Plegados, no
             borrados: el dia que haya un peaje hay que poder anotarlo. */}
@@ -207,6 +275,10 @@ export function FlotaForm({
             <label>Hora de espera<input type="text" value={f.horaEspera} onChange={(e) => set('horaEspera', e.target.value)} placeholder="ej. 0:45" disabled={busy} /></label>
             <label># Peajes<input type="number" min={0} value={f.numPeajes} onChange={(e) => set('numPeajes', e.target.value)} disabled={busy} /></label>
             <label>Otros gastos<input type="number" min={0} step="any" value={f.otrosGastos} onChange={(e) => set('otrosGastos', e.target.value)} disabled={busy} /></label>
+            {/* En el papel esta casilla va casi siempre en blanco, igual que los
+                peajes: por eso vive aqui abajo y no en la primera pantalla. */}
+            <label>N° de servicio<input type="text" value={f.numeroServicio}
+              onChange={(e) => set('numeroServicio', e.target.value)} disabled={busy} /></label>
           </div>
         )}
 

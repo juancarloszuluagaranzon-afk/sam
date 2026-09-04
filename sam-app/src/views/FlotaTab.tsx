@@ -40,7 +40,8 @@ function fmtFecha(iso: string): string {
 }
 
 export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; nombre: string } }) {
-  const { busy, setBusy, setError, setInfo } = useAppData()
+  // `users` trae la CEDULA, que va en el encabezado del F-OPE-22.
+  const { busy, setBusy, setError, setInfo, users } = useAppData()
   const esAdmin = !conductorScope
 
   const [servicios, setServicios] = useState<FlotaServicio[]>([])
@@ -240,6 +241,25 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
     } finally { setBusy(false) }
   }
 
+  /**
+   * La planilla de control de AgroMorales (F-OPE-22).
+   *
+   * Sale UNA HOJA POR CONDUCTOR Y PLACA porque el encabezado del papel lleva un
+   * solo nombre, una sola cédula y una sola placa: meter dos conductores en la
+   * misma hoja daría un encabezado que le miente a la mitad de sus filas.
+   */
+  async function exportarAgromorales() {
+    if (lista.length === 0) { setError('No hay servicios en el rango elegido.'); return }
+    setBusy(true); setError('')
+    try {
+      const { exportarOpe22 } = await import('../lib/planillaOpe22')
+      const hojas = await exportarOpe22(lista, users, { desde, hasta })
+      setInfo(`Exportado: ${lista.length} servicios en ${hojas} hoja${hojas === 1 ? '' : 's'}.`)
+    } catch {
+      setError('No se pudo generar la planilla F-OPE-22.')
+    } finally { setBusy(false) }
+  }
+
   async function anular(s: FlotaServicio) {
     if (!window.confirm(`¿Anular el servicio ${s.origen} → ${s.destino} del ${fmtFecha(s.fecha)}?`)) return
     setBusy(true); setError('')
@@ -271,7 +291,14 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
             ponerle un intermediario a su propio trabajo. Solo ve los suyos,
             porque `conductorScope` ya acota la consulta. */}
         <button type="button" className="primary-button rep-export" onClick={() => void exportarExcel()} disabled={busy || loading || lista.length === 0}>
-          ⬇ Excel (CDA-F-68)
+          ⬇ IMECOL (CDA-F-68)
+        </button>
+        {/* Dos formatos, dos botones. No es una variante del mismo documento:
+            el de IMECOL pide centro de costo y peajes, el de AgroMorales pide
+            la maquinaria escoltada y el kilometraje. Un solo boton con un
+            selector escondido haria que el que necesita el otro no lo encuentre. */}
+        <button type="button" className="inline-button rep-export" onClick={() => void exportarAgromorales()} disabled={busy || loading || lista.length === 0}>
+          ⬇ AgroMorales (F-OPE-22)
         </button>
       </div>
       <input type="search" className="labores-search-input" placeholder="Buscar origen, destino, pasajero, placa…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ margin: '12px 0' }} />

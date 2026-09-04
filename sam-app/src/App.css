@@ -6435,6 +6435,26 @@ td.planilla-revisada {
 }
 .flota-grid label { font-size: 0.8rem; display: flex; flex-direction: column; gap: 3px; }
 @media (max-width: 520px) { .flota-grid { grid-template-columns: 1fr; } }
+/* El km del servicio cuando sale de la resta: NO es un campo, es un resultado.
+   Dibujarlo como input invitaria a corregirlo a mano y a que dejara de
+   corresponder con sus propias dos lecturas. */
+.flota-km {
+  display: flex; flex-direction: column; gap: 2px; justify-content: center;
+  padding: 6px 10px; border-radius: 10px;
+  background: var(--color-bg-soft, #f2f5f0);
+  border: 1px solid var(--color-border, rgba(0,0,0,.08));
+}
+.flota-km__lbl { font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); }
+.flota-km__val { font-size: 1.25rem; font-weight: 800; color: var(--color-brand, #1baf7a); font-variant-numeric: tabular-nums; }
+.flota-km__mal { font-size: 1.25rem; font-weight: 800; color: #b3261e; font-variant-numeric: tabular-nums; }
+.flota-km small { font-size: 0.72rem; color: var(--color-ink-mid, #5a5f57); font-variant-numeric: tabular-nums; }
+.flota-km__aviso {
+  margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; line-height: 1.45;
+  font-size: 0.8rem; color: #b3261e; background: rgba(179,38,30,.08);
+}
+:root[data-theme="dark"] .flota-km__mal,
+:root[data-theme="dark"] .flota-km__aviso { color: #ee8a8a; }
+
 .flota-comprobante {
   margin-top: 12px;
   padding: 10px 12px;

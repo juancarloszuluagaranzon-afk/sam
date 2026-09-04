@@ -19,6 +19,8 @@ export interface UserProfile {
   role: Role
   equipmentCode: string
   photoUrl?: string
+  /** Documento de identidad. Se imprime en el encabezado de la planilla F-OPE-22. */
+  cedula?: string
   // Zona asignada (solo aplica a supervisores). Es el `codigo` del catálogo
   // `zonas`; se usa para auto-llenar la zona al aprobar labores.
   zona?: string
@@ -235,6 +237,15 @@ export interface FlotaServicio {
   horaEspera?: string
   numPeajes?: number
   otrosGastos?: number
+  /** Máquina a la que se le hizo el servicio (F-OPE-22). Vacía en transporte de personal. */
+  numeroMaquinaria?: string
+  /** Consecutivo del formato F-OPE-22. */
+  numeroServicio?: string
+  /** Lectura del odómetro al salir. `undefined` = no se registró. */
+  kmInicial?: number
+  /** Lectura del odómetro al regresar. `undefined` = no se registró. */
+  kmFinal?: number
+  /** Km del servicio — lo que imprime la planilla. Es la resta cuando hay lecturas. */
   totalKm?: number
   observacion?: string
   conductorId?: string
@@ -261,6 +272,10 @@ export interface CreateFlotaServicioInput {
   horaEspera?: string
   numPeajes?: number
   otrosGastos?: number
+  numeroMaquinaria?: string
+  numeroServicio?: string
+  kmInicial?: number
+  kmFinal?: number
   totalKm?: number
   observacion?: string
   conductorId?: string

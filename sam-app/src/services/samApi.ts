@@ -798,7 +798,7 @@ export async function loadAppUsers(): Promise<{
   try {
     const { data, error } = await supabase
       .from('app_usuarios')
-      .select('id,nombre_completo,rol,equipo_codigo,foto_url,zona,activo')
+      .select('id,nombre_completo,rol,equipo_codigo,foto_url,cedula,zona,activo')
       .order('orden')
 
     if (error || !data) throw error ?? new Error('empty')
@@ -809,6 +809,7 @@ export async function loadAppUsers(): Promise<{
       role: mapRole(row.rol),
       equipmentCode: String(row.equipo_codigo ?? ''),
       photoUrl: row.foto_url ? String(row.foto_url) : undefined,
+      cedula: row.cedula ? String(row.cedula) : undefined,
       zona: row.zona ? String(row.zona) : undefined,
       active: row.activo == null ? true : Boolean(row.activo),
     }))
@@ -3462,6 +3463,10 @@ function mapFlota(row: Record<string, unknown>): FlotaServicio {
     horaEspera: s(row.hora_espera),
     numPeajes: n(row.num_peajes),
     otrosGastos: n(row.otros_gastos),
+    numeroMaquinaria: s(row.numero_maquinaria),
+    numeroServicio: s(row.numero_servicio),
+    kmInicial: n(row.km_inicial),
+    kmFinal: n(row.km_final),
     totalKm: n(row.total_km),
     observacion: s(row.observacion),
     conductorId: s(row.conductor_id),
@@ -3515,6 +3520,10 @@ export async function createFlotaServicio(input: CreateFlotaServicioInput): Prom
       hora_espera: input.horaEspera ?? null,
       num_peajes: input.numPeajes ?? 0,
       otros_gastos: input.otrosGastos ?? 0,
+      numero_maquinaria: input.numeroMaquinaria ?? null,
+      numero_servicio: input.numeroServicio ?? null,
+      km_inicial: input.kmInicial ?? null,
+      km_final: input.kmFinal ?? null,
       total_km: input.totalKm ?? 0,
       observacion: input.observacion ?? null,
       conductor_id: input.conductorId ?? null,

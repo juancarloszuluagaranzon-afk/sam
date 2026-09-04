@@ -8,6 +8,8 @@ interface UserFormState {
   pin: string
   equipoCodigo: string
   zona: string
+  /** Solo la piden los conductores: va al encabezado de la planilla F-OPE-22. */
+  cedula: string
 }
 
 const EMPTY_USER_FORM: UserFormState = {
@@ -17,6 +19,7 @@ const EMPTY_USER_FORM: UserFormState = {
   pin: '',
   equipoCodigo: '',
   zona: '',
+  cedula: '',
 }
 
 export function useUserForm() {

@@ -2745,7 +2745,7 @@ export function SupervisorView({
                 className="primary-button users-new-btn"
                 onClick={() => {
                   setEditingUserId(null)
-                  setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '' })
+                  setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '', cedula: '' })
                   setIsUserFormOpen(true)
                 }}
               >
@@ -2779,7 +2779,7 @@ export function SupervisorView({
                   const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', soporte: 'Soporte' }
                   const openEdit = () => {
                     setEditingUserId(u.id)
-                    setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode, zona: u.zona ?? '' })
+                    setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode, zona: u.zona ?? '', cedula: u.cedula ?? '' })
                     setIsUserFormOpen(true)
                   }
                   return (
@@ -2823,7 +2823,7 @@ export function SupervisorView({
           const closeUserModal = () => {
             setIsUserFormOpen(false)
             setEditingUserId(null)
-            setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '' })
+            setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '', cedula: '' })
           }
           return (
             <div className="modal-overlay open" onClick={closeUserModal}>
@@ -2945,6 +2945,20 @@ export function SupervisorView({
                       options={sortedEquipment.map((item) => ({ value: item.code, label: item.name }))}
                     />
                   </label>
+                  {/* Solo a quien maneja: hoy es el unico rol cuya cedula se
+                      imprime (encabezado de la planilla F-OPE-22). */}
+                  {userForm.rol.startsWith('conductor') && (
+                    <label>
+                      Cédula <span className="field-optional">(sale en la planilla F-OPE-22)</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={userForm.cedula ?? ''}
+                        onChange={(e) => setUserForm((f) => ({ ...f, cedula: e.target.value }))}
+                        placeholder="ej. 10.116.193"
+                      />
+                    </label>
+                  )}
                   {userForm.rol === 'supervisor' && (
                     <label>
                       Zona del supervisor <span className="field-optional">(se auto-llena al aprobar)</span>
@@ -3028,7 +3042,7 @@ export function SupervisorView({
                       setConfirmDeleteUser(null)
                       setIsUserFormOpen(false)
                       setEditingUserId(null)
-                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '' })
+                      setUserForm({ id: nextUserId, nombreCompleto: '', rol: '', pin: '', equipoCodigo: '', zona: '', cedula: '' })
                     } catch (err: unknown) {
                       setError(err instanceof Error ? err.message : 'Error al eliminar usuario')
                     } finally {

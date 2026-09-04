@@ -3564,6 +3564,8 @@ export async function createAppUser(input: {
   pin: string
   equipoCodigo: string
   zona?: string
+  /** Va al encabezado de la planilla F-OPE-22. */
+  cedula?: string
 }) {
   const { error } = await supabase.rpc('app_create_user', {
     p_id: input.id.toUpperCase(),
@@ -3572,6 +3574,7 @@ export async function createAppUser(input: {
     p_pin: input.pin,
     p_equipo_codigo: input.equipoCodigo || null,
     p_zona: input.zona || null,
+    p_cedula: input.cedula || null,
   })
 
   if (error) {
@@ -3588,6 +3591,7 @@ export async function updateAppUser(input: {
   pin: string
   equipoCodigo: string
   zona?: string
+  cedula?: string
 }) {
   const { error } = await supabase.rpc('app_update_user', {
     p_id: input.id.toUpperCase(),
@@ -3596,6 +3600,8 @@ export async function updateAppUser(input: {
     p_pin: input.pin || null,
     p_equipo_codigo: input.equipoCodigo || null,
     p_zona: input.zona || null,
+    // Vacia NO borra: la funcion hace coalesce contra lo que ya habia.
+    p_cedula: input.cedula || null,
   })
 
   if (error) {

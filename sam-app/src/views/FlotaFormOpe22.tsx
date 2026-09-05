@@ -1,22 +1,27 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useEffect, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { createFlotaServicio, uploadImagenFlota } from '../services/samApi'
-import { FirmaPad, type FirmaPadHandle } from '../components/FirmaPad'
+import { createFlotaServicio, ultimoKmDePlaca } from '../services/samApi'
 import { CampoPlaca, recordarPlaca } from '../components/CampoPlaca'
 import { aMayus } from '../lib/texto'
 import { usePlacaPorDefecto } from '../hooks/usePlacaPorDefecto'
 
 /**
- * Registro de un servicio para la planilla **F-OPE-22 · GESTIÓN OPERATIVA** de
- * AgroMorales.
+ * **INICIO** de un viaje de la planilla F-OPE-22 de AgroMorales.
  *
- * 🔴 **Es un formulario aparte del de IMECOL, no una variante con un `if`.**
- * Los dos formatos no están de acuerdo en qué campos importan: el CDA-F-68 pide
- * centro de costo, peajes y otros gastos; este pide el número de la maquinaria
- * escoltada, el tiempo de espera y las dos lecturas del odómetro. Meterlos en el
- * mismo formulario obligaría a esconder la mitad de los campos según un
- * desplegable — y el día que alguien elija mal, el registro sale con los campos
- * del formato equivocado.
+ * 🔴 **El viaje se registra en DOS FASES y esta es la primera.** Aquí solo se
+ * pide lo que se sabe AL SALIR. La hora de llegada, el kilómetro final, el
+ * tiempo de espera y la firma se piden al cerrar, porque hasta entonces no
+ * existen.
+ *
+ * El motivo no es comodidad. Pedirlo todo junto obliga a llenar la planilla de
+ * memoria al final del día, y de ahí salen los odómetros inventados: ocho
+ * registros seguidos con 147.952, 147.977, 148.001… escritos donde iba la
+ * distancia recorrida.
+ *
+ * 🔴 **Es un formulario aparte del de IMECOL, no una variante con un `if`.** Los
+ * dos formatos no están de acuerdo en qué campos importan: el CDA-F-68 pide
+ * centro de costo, peajes y otros gastos; este pide la maquinaria escoltada y
+ * las dos lecturas del odómetro.
  *
  * Los campos van **en el orden de las columnas del papel**, para poder llenarlo
  * de arriba abajo mirando la planilla impresa.
@@ -25,6 +30,12 @@ import { usePlacaPorDefecto } from '../hooks/usePlacaPorDefecto'
 function hoyISO(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+/** La hora de ahora en `HH:mm`, que es lo que pide un `<input type="time">`. */
+function ahoraHHMM(): string {
+  const d = new Date()
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
 /**
@@ -39,22 +50,7 @@ function hoyISO(): string {
 const TIPOS = ['TRANSPORTE', 'ESCOLTA', 'TALLER', 'OTRO']
 
 /** Lo que se digita va en mayúscula; fechas, horas y números NO se tocan. */
-const CRUDOS = new Set(['fecha', 'tipoServicio', 'horaInicio', 'horaFinal',
-  'tiempoEspera', 'kmInicial', 'kmFinal', 'numeroServicio'])
-
-/**
- * Los km del servicio a partir de las dos lecturas del odómetro.
- *
- * Devuelve `null` cuando falta alguna — no cero: no haber leído el odómetro no
- * es lo mismo que no haber rodado. En la planilla esa casilla va en blanco.
- */
-export function kmDelServicio(inicial: string, final: string): number | null {
-  if (inicial.trim() === '' || final.trim() === '') return null
-  const a = Number(inicial)
-  const b = Number(final)
-  if (!Number.isFinite(a) || !Number.isFinite(b)) return null
-  return Math.round((b - a) * 100) / 100
-}
+const CRUDOS = new Set(['fecha', 'tipoServicio', 'horaInicio', 'kmInicial', 'numeroServicio'])
 
 /** Un odómetro va en cientos de miles: sin separador de miles no se lee. */
 function n0(v: number) {
@@ -82,14 +78,9 @@ export function FlotaFormOpe22({
     numeroMaquinaria: '',
     origen: '',
     destino: '',
-    horaInicio: '',
-    horaFinal: '',
-    tiempoEspera: '',
+    horaInicio: ahoraHHMM(),
     kmInicial: '',
-    kmFinal: '',
     numeroServicio: '',
-    observacion: '',
-    firmaNombre: '',
   })
   const set = (k: keyof typeof f, v: string) =>
     setF((prev) => ({ ...prev, [k]: CRUDOS.has(k) ? v : aMayus(v) }))
@@ -113,28 +104,25 @@ export function FlotaFormOpe22({
   }
 
   /**
-   * 🔴 El total NO se guarda en el estado: se deriva al dibujar. Guardarlo
-   * obligaría a acordarse de recalcularlo cada vez que se toca una lectura, y el
-   * día que se olvide, la planilla sale con un total que no corresponde a sus
-   * propios kilómetros. Derivado no se puede desincronizar.
+   * El último kilometraje cerrado de esa placa.
+   *
+   * 🔴 **Se muestra al lado, NO se rellena solo en el campo.** Rellenarlo haría
+   * que un conductor que no leyó el tablero guarde el número anterior sin darse
+   * cuenta, y ese viaje quedaría con cero kilómetros. Mostrado al lado hace lo
+   * que hace falta: si escribe 1.482 donde iba 148.238, la diferencia salta.
    */
-  const kmCalculado = kmDelServicio(f.kmInicial, f.kmFinal)
-  const kmAlReves = kmCalculado != null && kmCalculado < 0
+  const [ultimoKm, setUltimoKm] = useState<number | null>(null)
+  useEffect(() => {
+    let vivo = true
+    void ultimoKmDePlaca(f.vehiculo).then((v) => { if (vivo) setUltimoKm(v) })
+    // Sin señal no dice nada: una referencia que no se pudo leer no es una
+    // referencia de cero.
+    return () => { vivo = false }
+  }, [f.vehiculo])
 
-  const firmaRef = useRef<FirmaPadHandle>(null)
-  const [hayFirma, setHayFirma] = useState(false)
-  const fotoRef = useRef<HTMLInputElement>(null)
-  const [foto, setFoto] = useState<File | null>(null)
-  const [fotoPreview, setFotoPreview] = useState<string>('')
-
-  function onFoto(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    if (!file.type.startsWith('image/')) { setError('Selecciona una imagen.'); return }
-    setFoto(file)
-    setFotoPreview(URL.createObjectURL(file))
-  }
+  const kmEscrito = f.kmInicial.trim() === '' ? null : Number(f.kmInicial)
+  const kmRaro = kmEscrito != null && ultimoKm != null && Number.isFinite(kmEscrito)
+    && (kmEscrito < ultimoKm || kmEscrito > ultimoKm + 2000)
 
   async function guardar() {
     if (!f.origen.trim() || !f.destino.trim()) {
@@ -142,15 +130,13 @@ export function FlotaFormOpe22({
     }
     setBusy(true); setError('')
     try {
-      const tmpId = `${conductorId ?? 'x'}-${Date.now()}`
-      let firmaUrl: string | undefined
-      let evidenciaUrl: string | undefined
-
-      const firmaFile = await firmaRef.current?.exportar()
-      if (firmaFile) firmaUrl = await uploadImagenFlota(tmpId, firmaFile, 'firma')
-      if (foto) evidenciaUrl = await uploadImagenFlota(tmpId, foto, 'evidencia')
-
       await createFlotaServicio({
+        // 🔴 El id lo pone el TELÉFONO. El cierre necesita saber a qué viaje
+        // apunta, y con dos fases eso no puede depender de que el servidor haya
+        // respondido: se abre a las 5 a.m. y se cierra a las 7.
+        id: crypto.randomUUID(),
+        estado: 'EN_CURSO',
+        abiertoEn: new Date().toISOString(),
         formato: 'AGROMORALES',
         fecha: f.fecha,
         vehiculo: f.vehiculo.trim() || undefined,
@@ -161,26 +147,18 @@ export function FlotaFormOpe22({
         origen: f.origen.trim(),
         destino: f.destino.trim(),
         horaSalidaOrigen: f.horaInicio || undefined,
-        horaLlegadaDestino: f.horaFinal || undefined,
-        horaEspera: f.tiempoEspera || undefined,
         kmInicial: f.kmInicial ? Number(f.kmInicial) : undefined,
-        kmFinal: f.kmFinal ? Number(f.kmFinal) : undefined,
-        totalKm: kmCalculado ?? undefined,
         numeroServicio: f.numeroServicio.trim() || undefined,
-        observacion: f.observacion.trim() || undefined,
         conductorId,
         conductorNombre,
-        firmaUrl,
-        firmaNombre: f.firmaNombre.trim() || undefined,
-        evidenciaUrl,
       })
       recordarPlaca(f.vehiculo)
-      setInfo('Servicio registrado en la planilla de AgroMorales.')
+      setInfo('Viaje iniciado. Ciérralo al llegar para completar la planilla.')
       onSaved()
       onClose()
     } catch (err) {
       const e = err as { message?: string }
-      setError(`No se pudo registrar. (${e?.message ?? 'error'})`)
+      setError(`No se pudo iniciar el viaje. (${e?.message ?? 'error'})`)
     } finally { setBusy(false) }
   }
 
@@ -190,10 +168,15 @@ export function FlotaFormOpe22({
         <div className="labor-detail-header">
           <div>
             <p className="eyebrow">AgroMorales · F-OPE-22</p>
-            <h3>Registrar servicio</h3>
+            <h3>Iniciar viaje</h3>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose} disabled={busy} aria-label="Cerrar">&#x2715;</button>
         </div>
+
+        <p className="subtle-copy" style={{ marginTop: 0 }}>
+          Ahora solo lo de la salida. Al llegar lo cierras con la hora, el kilometraje
+          final y la firma.
+        </p>
 
         <div className="flota-grid">
           <label>Fecha<input type="date" value={f.fecha} onChange={(e) => set('fecha', e.target.value)} disabled={busy} /></label>
@@ -209,10 +192,6 @@ export function FlotaFormOpe22({
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          {/* Solo aparece en una ESCOLTA: es la máquina a la que se le hizo el
-              acompañamiento, y en un transporte de personal la columna del papel
-              va vacía. Un campo que nunca se llena estorba en las otras tres
-              cuartas partes de los servicios. */}
           {esEscolta && (
             <label>Número de maquinaria
               <input type="text" autoCapitalize="characters" value={f.numeroMaquinaria}
@@ -225,38 +204,25 @@ export function FlotaFormOpe22({
           <label>Lugar destino <span style={{ color: '#b3261e' }}>*</span>
             <input type="text" autoCapitalize="characters" value={f.destino}
                    onChange={(e) => set('destino', e.target.value)} disabled={busy} /></label>
+          {/* Viene con la hora de ahora: es el momento de salir. */}
           <label>Hora de inicio<input type="time" value={f.horaInicio} onChange={(e) => set('horaInicio', e.target.value)} disabled={busy} /></label>
-          <label>Hora final<input type="time" value={f.horaFinal} onChange={(e) => set('horaFinal', e.target.value)} disabled={busy} /></label>
-          {/* Es una DURACIÓN, no una hora del día: si esperó 45 minutos, `0:45`. */}
-          <label>Tiempo de espera <span className="field-optional">(opcional)</span>
-            <input type="text" value={f.tiempoEspera} onChange={(e) => set('tiempoEspera', e.target.value)}
-                   placeholder="ej. 0:45" disabled={busy} /></label>
-          <label>Km inicial<input type="number" min={0} step="any" inputMode="numeric"
-            value={f.kmInicial} onChange={(e) => set('kmInicial', e.target.value)} disabled={busy} /></label>
-          <label>Km final<input type="number" min={0} step="any" inputMode="numeric"
-            value={f.kmFinal} onChange={(e) => set('kmFinal', e.target.value)} disabled={busy} /></label>
-          {/* El km total NO se teclea: es la resta, y se muestra la operación
-              completa para poder comprobarla contra el tablero del carro. */}
-          <div className="flota-km">
-            <span className="flota-km__lbl">Km total</span>
-            {kmCalculado == null ? (
-              <>
-                <b className="flota-km__val">—</b>
-                <small>sale de las dos lecturas</small>
-              </>
-            ) : (
-              <>
-                <b className={kmAlReves ? 'flota-km__mal' : 'flota-km__val'}>{n0(kmCalculado)}</b>
-                <small>{n0(Number(f.kmFinal))} − {n0(Number(f.kmInicial))}</small>
-              </>
-            )}
-          </div>
+          <label>Km inicial
+            <input type="number" min={0} step="any" inputMode="numeric"
+                   value={f.kmInicial} onChange={(e) => set('kmInicial', e.target.value)}
+                   placeholder={ultimoKm != null ? `último: ${n0(ultimoKm)}` : 'lectura del tablero'}
+                   disabled={busy} /></label>
         </div>
 
-        {kmAlReves && (
-          <p className="flota-km__aviso">
-            ⚠ El kilómetro final es <strong>menor</strong> que el inicial. Revisa las dos
-            lecturas: así la planilla saldría con kilómetros en negativo.
+        {ultimoKm != null && (
+          <p className={kmRaro ? 'flota-km__aviso' : 'subtle-copy'} style={{ marginTop: 8 }}>
+            {kmRaro ? (
+              <>⚠ El último viaje de <strong>{f.vehiculo}</strong> cerró en{' '}
+                <strong>{n0(ultimoKm)}</strong> km. Lo que escribiste queda{' '}
+                {kmEscrito! < ultimoKm ? 'por debajo' : 'muy por encima'} — revisa el tablero.</>
+            ) : (
+              <>El último viaje de <strong>{f.vehiculo}</strong> cerró en{' '}
+                <strong>{n0(ultimoKm)}</strong> km.</>
+            )}
           </p>
         )}
 
@@ -267,42 +233,12 @@ export function FlotaFormOpe22({
                    onChange={(e) => set('numeroServicio', e.target.value)} disabled={busy} /></label>
         </div>
 
-        <label style={{ display: 'block', marginTop: 8 }}>
-          Observación
-          <textarea rows={2} value={f.observacion} onChange={(e) => set('observacion', e.target.value)} disabled={busy} />
-        </label>
-
-        {/* Comprobante: foto de evidencia (liviana) */}
-        <div className="flota-comprobante">
-          <span className="flota-comprobante__lbl">📷 Foto de evidencia <span className="field-optional">(se guarda liviana)</span></span>
-          <div className="flota-foto-row">
-            {fotoPreview && <img src={fotoPreview} alt="evidencia" className="flota-foto-thumb" />}
-            <button type="button" className="inline-button" onClick={() => fotoRef.current?.click()} disabled={busy}>
-              {foto ? 'Cambiar foto' : '📷 Tomar foto'}
-            </button>
-            {foto && <button type="button" className="inline-button" onClick={() => { setFoto(null); setFotoPreview('') }} disabled={busy}>Quitar</button>}
-            <input ref={fotoRef} type="file" accept="image/*" capture="environment" hidden onChange={onFoto} />
-          </div>
-        </div>
-
-        {/* En el papel esta columna se llama FIRMA RESPONSABLE y se escribe el
-            nombre CON la cédula («MAURICIO CH 600486»): con el nombre solo, un
-            apellido repetido no distingue a nadie. */}
-        <div className="flota-comprobante">
-          <span className="flota-comprobante__lbl">✍️ Firma responsable</span>
-          <input type="text" className="flota-firma-nombre" placeholder="Nombre y cédula de quien recibe"
-                 autoCapitalize="characters" value={f.firmaNombre}
-                 onChange={(e) => set('firmaNombre', e.target.value)} disabled={busy} />
-          <FirmaPad ref={firmaRef} onCambio={setHayFirma} disabled={busy} />
-        </div>
-
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void guardar()} disabled={busy}>
-            {busy ? 'Guardando…' : 'Registrar servicio'}
+            {busy ? 'Guardando…' : 'Iniciar viaje'}
           </button>
         </div>
-        {!hayFirma && <p className="subtle-copy" style={{ margin: '6px 0 0', textAlign: 'right' }}>Tip: pide la firma del responsable como comprobante.</p>}
       </div>
     </div>
   )

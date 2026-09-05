@@ -3473,6 +3473,8 @@ function mapFlota(row: Record<string, unknown>): FlotaServicio {
     numPeajes: n(row.num_peajes),
     otrosGastos: n(row.otros_gastos),
     formato: row.formato === 'AGROMORALES' ? 'AGROMORALES' : 'IMECOL',
+    abiertoEn: s(row.abierto_en),
+    cerradoEn: s(row.cerrado_en),
     numeroMaquinaria: s(row.numero_maquinaria),
     numeroServicio: s(row.numero_servicio),
     kmInicial: n(row.km_inicial),
@@ -3515,6 +3517,11 @@ export async function createFlotaServicio(input: CreateFlotaServicioInput): Prom
   const { data, error } = await supabase
     .from('flota_servicios')
     .insert({
+      // Si el telefono manda id, manda el suyo. Sin id la base pone su default,
+      // que es lo que hace el formulario de IMECOL (registro de una sola vez).
+      ...(input.id ? { id: input.id } : {}),
+      estado: input.estado ?? 'REGISTRADO',
+      abierto_en: input.abiertoEn ?? null,
       fecha: input.fecha,
       vehiculo: input.vehiculo ?? null,
       tipo_servicio: input.tipoServicio ?? null,
@@ -3547,6 +3554,77 @@ export async function createFlotaServicio(input: CreateFlotaServicioInput): Prom
     .single()
   if (error || !data) throw error ?? new Error('No se pudo registrar el servicio')
   return mapFlota(data)
+}
+
+/**
+ * Cierra un viaje que estaba EN_CURSO con los datos de llegada.
+ *
+ * 🔴 Es un UPDATE acotado a `estado='EN_CURSO'`. Ese filtro es el que impide
+ * que un reintento de la cola vuelva a cerrar un viaje ya cerrado y le pise la
+ * hora de llegada — la misma idea del guard de `anularTraslado`.
+ *
+ * `total_km` se calcula AQUÍ y no en el formulario: es lo que imprime la
+ * planilla, y una resta hecha en un sitio y guardada en otro es una resta que
+ * algún día deja de corresponder con sus propias lecturas.
+ */
+export async function cerrarFlotaServicio(id: string, input: {
+  horaFinal?: string
+  tiempoEspera?: string
+  kmFinal?: number
+  observacion?: string
+  firmaUrl?: string
+  firmaNombre?: string
+  evidenciaUrl?: string
+  /** El km inicial que ya tenía el viaje, para poder calcular el total. */
+  kmInicial?: number
+}): Promise<void> {
+  const total = input.kmInicial != null && input.kmFinal != null
+    ? Math.round((input.kmFinal - input.kmInicial) * 100) / 100
+    : null
+
+  const { error } = await supabase
+    .from('flota_servicios')
+    .update({
+      estado: 'REGISTRADO',
+      cerrado_en: new Date().toISOString(),
+      hora_llegada_destino: input.horaFinal ?? null,
+      hora_espera: input.tiempoEspera ?? null,
+      km_final: input.kmFinal ?? null,
+      ...(total != null ? { total_km: total } : {}),
+      observacion: input.observacion ?? null,
+      // La firma y la foto solo se pisan si vienen: un cierre sin foto no puede
+      // borrar la que se haya subido al abrir.
+      ...(input.firmaUrl ? { firma_url: input.firmaUrl } : {}),
+      firma_nombre: input.firmaNombre ?? null,
+      ...(input.evidenciaUrl ? { evidencia_url: input.evidenciaUrl } : {}),
+    })
+    .eq('id', id)
+    .eq('estado', 'EN_CURSO')
+
+  if (error) throw new Error(error.message || 'No se pudo cerrar el viaje')
+}
+
+/**
+ * El último kilometraje CERRADO de una placa, para proponerlo como inicial del
+ * siguiente viaje.
+ *
+ * 🔴 Es la defensa concreta contra el odómetro mal digitado: si la app
+ * propone 148.238 y el conductor escribe 1.482, la diferencia salta a la vista
+ * en vez de aparecer un mes después en la planilla.
+ */
+export async function ultimoKmDePlaca(placa: string): Promise<number | null> {
+  if (!placa.trim()) return null
+  const { data } = await supabase
+    .from('flota_servicios')
+    .select('km_final')
+    .eq('vehiculo', placa.trim())
+    .eq('estado', 'REGISTRADO')
+    .not('km_final', 'is', null)
+    .order('fecha', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(1)
+  const v = data?.[0]?.km_final
+  return v == null ? null : Number(v)
 }
 
 export async function anularFlotaServicio(id: string): Promise<void> {

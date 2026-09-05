@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { loadFlotaServicios, anularFlotaServicio } from '../services/samApi'
 import { FlotaForm } from './FlotaForm'
 import { FlotaFormOpe22 } from './FlotaFormOpe22'
+import { FlotaCerrarViaje } from './FlotaCerrarViaje'
 import type { FlotaServicio } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 
@@ -64,6 +65,8 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
    * modales encimados.
    */
   const [formOpen, setFormOpen] = useState<null | 'IMECOL' | 'AGROMORALES'>(null)
+  /** El viaje que se esta cerrando, o `null`. */
+  const [cerrando, setCerrando] = useState<FlotaServicio | null>(null)
   const [verFotoUrl, setVerFotoUrl] = useState<string>('')
 
   async function refresh() {
@@ -82,6 +85,20 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
     return servicios.filter((s) => !q ||
       `${s.origen} ${s.destino} ${s.nombrePasajero} ${s.vehiculo} ${s.conductorNombre} ${s.centroCosto}`.toLowerCase().includes(q))
   }, [servicios, busca])
+
+  /**
+   * Los viajes ABIERTOS van aparte y arriba.
+   *
+   * 🔴 Un viaje sin cerrar no es historial, es trabajo pendiente. Mezclado
+   * en la lista por fecha se pierde entre los cerrados y a fin de mes aparecen
+   * cinco lineas incompletas en la planilla que se entrega.
+   */
+  const abiertos = useMemo(
+    () => lista.filter((s) => s.estado === 'EN_CURSO')
+      .sort((a, b) => (b.abiertoEn ?? b.fecha).localeCompare(a.abiertoEn ?? a.fecha)),
+    [lista],
+  )
+  const cerrados = useMemo(() => lista.filter((s) => s.estado !== 'EN_CURSO'), [lista])
 
   const deImecol = useMemo(() => lista.filter((s) => s.formato !== 'AGROMORALES'), [lista])
   const deAgromorales = useMemo(() => lista.filter((s) => s.formato === 'AGROMORALES'), [lista])
@@ -337,15 +354,44 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           </button>
         </div>
       </div>
+      {/* 🔴 Los viajes sin cerrar van ARRIBA de todo y con su boton al lado.
+          Un viaje abierto es una linea de planilla a medias: si hay que buscarlo
+          entre el historial, se queda abierto. */}
+      {abiertos.length > 0 && (
+        <div className="flota-abiertos">
+          <p className="flota-abiertos__tit">
+            {abiertos.length} viaje{abiertos.length === 1 ? '' : 's'} sin cerrar
+          </p>
+          {abiertos.map((s) => (
+            <div key={s.id} className="flota-abierto">
+              <strong>{s.origen} → {s.destino}</strong>
+              <span>
+                {fmtFecha(s.fecha)}
+                {s.horaSalidaOrigen ? ` · salió ${s.horaSalidaOrigen}` : ''}
+                {s.vehiculo ? ` · ${s.vehiculo}` : ''}
+                {esAdmin && s.conductorNombre ? ` · ${s.conductorNombre}` : ''}
+              </span>
+              <button type="button" className="primary-button" onClick={() => setCerrando(s)} disabled={busy}>
+                Cerrar viaje
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <input type="search" className="labores-search-input" placeholder="Buscar origen, destino, pasajero, placa…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ margin: '12px 0' }} />
 
       {loading ? (
         <p className="muted-text">Cargando…</p>
-      ) : lista.length === 0 ? (
-        <p className="muted-text">Sin servicios en este rango. Registra el primero con uno de los dos botones de arriba.</p>
+      ) : cerrados.length === 0 ? (
+        <p className="muted-text">
+          {abiertos.length > 0
+            ? 'Todos los viajes de este rango están sin cerrar — los ves arriba.'
+            : 'Sin servicios en este rango. Registra el primero con uno de los dos botones de arriba.'}
+        </p>
       ) : (
         <div className="list-rows">
-          {lista.map((s) => (
+          {cerrados.map((s) => (
             <article key={s.id} className={`flota-card${s.estado === 'ANULADO' ? ' flota-card--anulado' : ''}`}>
               <div className="flota-card__head">
                 <strong>{s.origen} → {s.destino}</strong>
@@ -387,6 +433,13 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           onSaved={() => void refresh()}
           conductorId={conductorScope?.id}
           conductorNombre={conductorScope?.nombre}
+        />
+      )}
+      {cerrando && (
+        <FlotaCerrarViaje
+          viaje={cerrando}
+          onClose={() => setCerrando(null)}
+          onSaved={() => void refresh()}
         />
       )}
       {formOpen === 'AGROMORALES' && (

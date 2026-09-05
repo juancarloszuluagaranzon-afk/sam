@@ -259,14 +259,38 @@ export interface FlotaServicio {
   firmaUrl?: string
   firmaNombre?: string
   evidenciaUrl?: string
-  estado: 'REGISTRADO' | 'ANULADO'
+  /**
+   * `EN_CURSO` = salió y le faltan los datos de llegada. No es un error: es
+   * trabajo sin terminar. `REGISTRADO` sigue siendo el estado COMPLETO — no se
+   * renombró a 'CERRADO' porque los 37 servicios que ya existían lo tienen y
+   * todos los reportes filtran por él.
+   */
+  estado: EstadoFlota
+  /** Cuándo se abrió el viaje. `undefined` en los registrados de una sola vez. */
+  abiertoEn?: string
+  /** Cuándo se cerró. `undefined` si sigue en curso. */
+  cerradoEn?: string
 }
 
 export type FormatoFlota = 'IMECOL' | 'AGROMORALES'
 
+export type EstadoFlota = 'EN_CURSO' | 'REGISTRADO' | 'ANULADO'
+
 export interface CreateFlotaServicioInput {
+  /**
+   * 🔴 El id lo pone EL TELÉFONO, no la base.
+   *
+   * Con dos fases deja de ser opcional: el viaje se abre a las 5 a.m. y se
+   * cierra a las 7, y entre las dos puede no haber señal. Si el id lo pusiera
+   * el servidor, el cierre no tendría a qué apuntar mientras la apertura sigue
+   * en cola. Además hace que un reintento no cree un viaje gemelo — el mismo
+   * patrón que `entregar_directo`.
+   */
+  id?: string
   fecha: string
   formato?: FormatoFlota
+  estado?: EstadoFlota
+  abiertoEn?: string
   vehiculo?: string
   tipoServicio?: string
   centroCosto?: string

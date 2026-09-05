@@ -6465,6 +6465,29 @@ td.planilla-revisada {
 :root[data-theme="dark"] .flota-km__mal,
 :root[data-theme="dark"] .flota-km__aviso { color: #ee8a8a; }
 
+/* Los viajes sin cerrar. Van arriba de todo y con su boton al lado: un viaje
+   abierto es una linea de planilla a medias, y si hay que buscarlo entre el
+   historial se queda abierto. El ambar dice "te falta algo", no "esta malo". */
+.flota-abiertos {
+  margin: 12px 0; padding: 10px 12px; border-radius: 12px;
+  background: rgba(214,158,46,.10); border: 1px solid rgba(214,158,46,.35);
+}
+.flota-abiertos__tit {
+  margin: 0 0 8px; font-size: 0.8rem; font-weight: 700; color: #8a6116;
+}
+:root[data-theme="dark"] .flota-abiertos__tit { color: #e8b54a; }
+.flota-abierto {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 10px 12px; margin-bottom: 8px; border-radius: 10px;
+  background: var(--color-bg-elevated, #fff);
+  border: 1px solid var(--color-border, rgba(0,0,0,.08));
+  font-size: 0.82rem;
+}
+.flota-abierto:last-child { margin-bottom: 0; }
+.flota-abierto strong { font-size: 0.92rem; }
+.flota-abierto span { color: var(--color-ink-mid, #5a5f57); }
+.flota-abierto .primary-button { margin-top: 8px; align-self: flex-start; }
+
 /* Los dos botones de crear, uno por formato. En movil se apilan: dos botones
    de 44px apretados en 315px se tocan mal con guantes. */
 .flota-nuevo { display: flex; flex-wrap: wrap; gap: 8px; }

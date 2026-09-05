@@ -221,7 +221,11 @@ export async function exportarOpe22(
         s.kmFinal ?? '',
         kmTotal(s),
         s.numeroServicio ?? '',
-        s.observacion ?? '',
+        // 🔴 Un viaje sin cerrar sale igual, MARCADO. Esconderlo dejaria una
+        // planilla que parece completa y no lo esta; excluirlo borraria un viaje
+        // que si ocurrio. Marcado, quien firma la planilla ve que falta cerrarlo.
+        (s.estado === 'EN_CURSO' ? '⚠ SIN CERRAR' : '') +
+          (s.estado === 'EN_CURSO' && s.observacion ? ' · ' : '') + (s.observacion ?? ''),
         // La firma va escaneada en el respaldo; en el papel se firma a mano y
         // aqui queda QUIEN recibio, que es lo que se puede verificar.
         s.firmaNombre ?? '',
@@ -251,9 +255,12 @@ export async function exportarOpe22(
       const k = kmTotal(s)
       return a + (typeof k === 'number' ? k : 0)
     }, 0)
+    const sinCerrar = enOrden.filter((s) => s.estado === 'EN_CURSO').length
     const pie: [string, string][] = [
       ['TIPO DE SERVICIO:', 'TRANSPORTE PERSONAL - ESCOLTAS - TALLER'],
-      ['N° SERVICIOS:', String(enOrden.length)],
+      ['N° SERVICIOS:', sinCerrar > 0
+        ? `${enOrden.length}  (⚠ ${sinCerrar} sin cerrar)`
+        : String(enOrden.length)],
       ['HORA:', '0 - 24 HORAS'],
       // El total de km SI conserva el cero: ahi el cero si dice algo.
       ['TOTAL KM:', String(conKm)],

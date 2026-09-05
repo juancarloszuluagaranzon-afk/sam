@@ -317,16 +317,25 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
             pedirle que le escriba a administracion para que se la manden es
             ponerle un intermediario a su propio trabajo. Solo ve los suyos,
             porque `conductorScope` ya acota la consulta. */}
-        <button type="button" className="primary-button rep-export" onClick={() => void exportarExcel()} disabled={busy || loading || deImecol.length === 0}>
-          ⬇ IMECOL ({deImecol.length})
-        </button>
+        {/* Los dos van en un grupo y no sueltos: `.rep-export` lleva
+            `margin-left:auto`, y con DOS botones el primero se come todo el
+            espacio libre y empuja al segundo al renglón de abajo — que es como
+            se veían, uno de lado a lado y el otro chiquito. El auto va ahora en
+            el grupo y adentro se reparten mitad y mitad.
+            Los dos con la MISMA clase: son dos formatos igual de importantes, y
+            el verde ya lo usan los botones de crear de arriba. */}
+        <div className="rep-export-grupo">
+          <button type="button" className="inline-button" onClick={() => void exportarExcel()} disabled={busy || loading || deImecol.length === 0}>
+            ⬇ IMECOL ({deImecol.length})
+          </button>
         {/* Dos formatos, dos botones. No es una variante del mismo documento:
             el de IMECOL pide centro de costo y peajes, el de AgroMorales pide
             la maquinaria escoltada y el kilometraje. Un solo boton con un
             selector escondido haria que el que necesita el otro no lo encuentre. */}
-        <button type="button" className="inline-button rep-export" onClick={() => void exportarAgromorales()} disabled={busy || loading || deAgromorales.length === 0}>
-          ⬇ AgroMorales ({deAgromorales.length})
-        </button>
+          <button type="button" className="inline-button" onClick={() => void exportarAgromorales()} disabled={busy || loading || deAgromorales.length === 0}>
+            ⬇ AgroMorales ({deAgromorales.length})
+          </button>
+        </div>
       </div>
       <input type="search" className="labores-search-input" placeholder="Buscar origen, destino, pasajero, placa…" value={busca} onChange={(e) => setBusca(e.target.value)} style={{ margin: '12px 0' }} />
 

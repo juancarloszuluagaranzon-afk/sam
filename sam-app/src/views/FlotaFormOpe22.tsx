@@ -94,6 +94,24 @@ export function FlotaFormOpe22({
   const set = (k: keyof typeof f, v: string) =>
     setF((prev) => ({ ...prev, [k]: CRUDOS.has(k) ? v : aMayus(v) }))
 
+  const esEscolta = f.tipoServicio === 'ESCOLTA'
+
+  /**
+   * Cambiar el tipo BORRA la maquinaria.
+   *
+   * 🔴 Esconder el campo no basta: si alguien escribe 34261, se da cuenta de
+   * que era un transporte y cambia el tipo, el valor seguiría en el estado y
+   * viajaría igual al guardado. La planilla saldría con una máquina que nadie
+   * escoltó, y el error no se ve en pantalla porque el campo ya no está.
+   */
+  function cambiarTipo(v: string) {
+    setF((prev) => ({
+      ...prev,
+      tipoServicio: v,
+      numeroMaquinaria: v === 'ESCOLTA' ? prev.numeroMaquinaria : '',
+    }))
+  }
+
   /**
    * 🔴 El total NO se guarda en el estado: se deriva al dibujar. Guardarlo
    * obligaría a acordarse de recalcularlo cada vez que se toca una lectura, y el
@@ -182,17 +200,25 @@ export function FlotaFormOpe22({
           <label>Placa
             <CampoPlaca value={f.vehiculo} onChange={(v) => set('vehiculo', v)} disabled={busy} />
           </label>
-          <label>Tipo de servicio
-            <select value={f.tipoServicio} onChange={(e) => set('tipoServicio', e.target.value)} disabled={busy}>
+          {/* Sin el campo de maquinaria al lado, el tipo ocupa la fila entera. Si
+              no, todo lo de abajo se corre media casilla y «Lugar de inicio»
+              queda emparejado con el tipo, separando origen de destino — que en
+              el papel van juntos. */}
+          <label style={esEscolta ? undefined : { gridColumn: '1 / -1' }}>Tipo de servicio
+            <select value={f.tipoServicio} onChange={(e) => cambiarTipo(e.target.value)} disabled={busy}>
               {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </label>
-          {/* Solo tiene sentido en una escolta: es la máquina a la que se le hizo
-              el acompañamiento. En un transporte de personal va vacía, igual que
-              en el papel. */}
-          <label>Número de maquinaria <span className="field-optional">(si es escolta)</span>
-            <input type="text" autoCapitalize="characters" value={f.numeroMaquinaria}
-                   onChange={(e) => set('numeroMaquinaria', e.target.value)} disabled={busy} /></label>
+          {/* Solo aparece en una ESCOLTA: es la máquina a la que se le hizo el
+              acompañamiento, y en un transporte de personal la columna del papel
+              va vacía. Un campo que nunca se llena estorba en las otras tres
+              cuartas partes de los servicios. */}
+          {esEscolta && (
+            <label>Número de maquinaria
+              <input type="text" autoCapitalize="characters" value={f.numeroMaquinaria}
+                     onChange={(e) => set('numeroMaquinaria', e.target.value)}
+                     placeholder="ej. 34261" disabled={busy} /></label>
+          )}
           <label>Lugar de inicio <span style={{ color: '#b3261e' }}>*</span>
             <input type="text" autoCapitalize="characters" value={f.origen}
                    onChange={(e) => set('origen', e.target.value)} disabled={busy} /></label>

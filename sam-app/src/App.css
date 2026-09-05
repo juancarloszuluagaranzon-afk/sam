@@ -1330,6 +1330,16 @@
 .rep-fecha input { padding: 7px 10px; border-radius: 9px; border: 1px solid var(--color-border, rgba(0,0,0,.15)); background: var(--color-bg-elevated); color: inherit; }
 .rep-export { margin-left: auto; }
 @media (max-width: 520px) { .rep-export { margin-left: 0; width: 100%; } }
+/* Dos exportaciones del mismo peso, una al lado de la otra. El auto va en el
+   GRUPO: puesto en cada boton, el primero se come el espacio libre y manda al
+   segundo al renglon de abajo. `flex:1 1 0` los deja del mismo ancho aunque
+   sus textos midan distinto. */
+.rep-export-grupo { margin-left: auto; display: flex; flex-wrap: wrap; gap: 8px; }
+/* `nowrap` + el ancho que pide la etiqueta mas larga: con 155px «AgroMorales»
+   se partía en dos renglones y los dejaba de 66px de alto — del mismo ancho,
+   pero uno con el doble de alto que el otro. */
+.rep-export-grupo button { flex: 1 1 0; min-width: 180px; white-space: nowrap; }
+@media (max-width: 520px) { .rep-export-grupo { margin-left: 0; width: 100%; } }
 :root[data-theme="dark"] .sol-origen { background: rgba(255, 255, 255, 0.08); }
 :root[data-theme="dark"] .sol-origen--dir { color: #c4b5fd; background: rgba(124, 58, 237, 0.22); }
 

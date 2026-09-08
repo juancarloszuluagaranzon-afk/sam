@@ -173,7 +173,7 @@ function dayKey(value: string | null | undefined) {
   - **Índices** (`20260705120000`): `created_at`, `updated_at`, `estado`, `operador_id`, `supervisor_id` + funcional `(suerte_codigo, upper(btrim(labor_nombre)), estado)` para el trigger. Antes CERO índices → seq-scan en cada sync.
   - **Auditoría registra DELETE** (`20260705130000`): rama `AFTER DELETE` (antes el borrado —lo más sensible— no dejaba traza).
   - **Baseline** (`20260401000000`): `asignaciones` no la creaba ninguna migración (solo ALTERs) → restore/staging fallaba. `CREATE TABLE IF NOT EXISTS` reconstruido; NO afecta producción.
-- **[2026-07-05] ⚠️ SEGURIDAD (el dueño lo tiene como baja prioridad, pero documentado).** Con el `anon_key` (público en el bundle) cualquiera puede: leer `pin_hash` de todos (`app_usuarios` con `USING(true)`, sin revoke de columna) → PIN `md5(pin+':sam-piloto')` de 4 dígitos se revierte en segundos; los PIN semilla están en el repo (`SOP01=1357`, `SOP02=2468`, `U032=1234`); `DELETE` de cualquier tabla; y crear un usuario `owner` vía `app_create_user` (RPC `DEFINER` + `GRANT anon` sin verificar rol). **Raíz:** un solo `anon_key` compartido usado como auth + control de acceso solo en la UI. Mitigaciones baratas: rotar los 3 PIN semilla, `REVOKE SELECT(pin_hash)` (via grant de columnas explícito), mover DELETE/gestión-usuarios a RPC con rol. Ver informe de auditoría (artifact).
+- **[2026-07-05] ⚠️ SEGURIDAD (el dueño lo tiene como baja prioridad, pero documentado).** Con el `anon_key` (público en el bundle) cualquiera puede: leer `pin_hash` de todos (`app_usuarios` con `USING(true)`, sin revoke de columna) → PIN `md5(pin+':sam-piloto')` de 4 dígitos se revierte en segundos; los PIN semilla están en el repo (`SOP01=1357`, `SOP02=2468`, `U032=1234`); `DELETE` de cualquier tabla; y crear un usuario `owner` vía `app_create_user` (RPC `DEFINER` + `GRANT anon` sin verificar rol). **Raíz:** un solo `anon_key` compartido usado como auth + control de acceso solo en la UI. Mitigaciones baratas: rotar los 3 PIN semilla, `REVOKE SELECT(pin_hash)` (via grant de columnas explícito), mover DELETE/gestión-usuarios a RPC con rol. Ver informe de auditoría (artifact). ✅ **El grant por columnas ya está**: `app_usuarios` deja `pin_hash` fuera (verificado 4-sep-2026: sigue dando 401) — y trae su propia trampa, ver §2b.
 - **[2026-06-29] Nuevos paths de escritura (sin migración, reusan policies existentes).** (1) **`registrarLaborRealizada`** — INSERT directo en `asignaciones` que nace `estado=COMPLETADA` + `aprobacion=APROBADA` (registro rápido del supervisor; ver `managing-assignments`). (2) Maestro: **`bulkUpdateMaestroArea`**/**`bulkReactivateMaestro`**/**`bulkDeactivateMaestro`** (UPDATE sobre `maestro_risaralda`, reusan la policy de UPDATE mig. `20260601150000`; ver `managing-maestro`). (3) **`updateAssignment` ya mapea `aprobacion`/`aprobada_por`/`aprobada_en`** → el `EditPatch` del Reporte (editar ESTADO) los usa para mandar a la bandeja: COMPLETADA/PARCIAL → `aprobacion=PENDIENTE`. Ningún path nuevo necesitó policy nueva.
 - **[2026-06-24] ⚠️ RLS, no el cliente: los INACTIVOS no llegaban aunque el query no filtrara.** Síntoma: tras quitar `.eq('activo', true)` de `loadAppUsers`, los usuarios inactivos **seguían sin aparecer** — ni en incógnito ni tras rebuild. **Causa:** la policy de SELECT de `app_usuarios` restringía a `activo=true` → RLS los filtra **en el servidor** para el rol `anon` (Studio/`postgres` los ve porque bypassa RLS — pista clásica). **Fix:** mig. `20260623180000` agrega policy permisiva `app_usuarios_select_all ... FOR SELECT TO anon, authenticated USING (true)` (las permisivas se combinan con OR → con `USING(true)` pasan todos). `pin_hash` nunca se selecciona. **Regla:** si una fila existe en Studio pero el cliente anon no la recibe pese a un query sin filtro, sospechar de la policy de SELECT (su `USING`), no del frontend ni de la caché.
 - **[2026-06-24] `loadAssignments` (full sync) carga SIEMPRE todas las ABIERTAS — anti-cap de PostgREST.** Antes hacía `select('*').order('created_at', desc)` sin paginar → PostgREST capa en ~1000 filas; ordenando por `created_at`, las asignaciones VIEJAS (incluidas programadas/abiertas) se salían de la ventana y **desaparecían de Activas en cada full sync** (caso real con 1020 filas totales). **Fix:** dos consultas combinadas (dedupe por id): (1) `not('estado','in','(COMPLETADA,CANCELADA,FINALIZADO)')` = TODAS las abiertas sin importar antigüedad; (2) las recientes para historial. Una abierta nunca se pierde hasta cerrarse/cancelarse. El delta sync no se tocó (acumula).
@@ -279,6 +279,38 @@ Verificar después de cualquier tabla nueva:
 ```sql
 select table_name, grantee from information_schema.role_table_grants
  where table_name = 'mi_tabla';
+```
+
+### 2b. Una COLUMNA nueva tampoco hereda el GRANT, si la tabla lo tiene por columnas (4-sep-2026, `8d51ab7`)
+
+`app_usuarios` **no** tiene `grant select` sobre la tabla entera: lo tiene sobre una
+LISTA de columnas, que deja `pin_hash` por fuera a propósito. Al agregar `cedula`
+(mig. `20260903130000`) la columna nació sin permiso, y el `select` de la app —que la
+pide por nombre— empezó a responder **401 permission denied**.
+
+Lo peor no fue el 401: `loadAppUsers` atrapa el error y devuelve el espejo de Dexie,
+así que la pantalla de Usuarios siguió mostrando la lista VIEJA sin un solo mensaje.
+El dueño creó un conductor, no lo vio aparecer y lo volvió a crear: **dos usuarios
+reales de una sola persona** (se dejó uno, HERNANDEZ JUNIOR CAMILO).
+
+Dos arreglos (mig. `20260904160000_cedula_grant_select`):
+
+1. `grant select (cedula) on public.app_usuarios to anon, authenticated;` — **SOLO esa
+   columna**. Un `grant select on public.app_usuarios` a secas arreglaría el síntoma y
+   de paso le entregaría `pin_hash` a `anon`. Verificado: `pin_hash` sigue dando 401.
+2. **Un fallback al caché estando EN LÍNEA ya no es mudo.** `loadAppUsers` siempre
+   devolvió `source: 'fallback'` y nadie lo miraba; ahora `AppDataContext` levanta el
+   banner rojo: la lista puede estar vieja, NO vuelva a crear el usuario. Sin señal no
+   dice nada — ahí el caché es la respuesta correcta.
+
+Regla: **al agregar una columna a `app_usuarios` (o a cualquier tabla con grant por
+columnas), la migración lleva su `grant select (columna)` en el mismo archivo.**
+Verificar:
+```sql
+select column_name, grantee, privilege_type
+  from information_schema.column_privileges
+ where table_name = 'app_usuarios' and grantee in ('anon','authenticated')
+ order by column_name;
 ```
 
 ### Correr una migración por SSH

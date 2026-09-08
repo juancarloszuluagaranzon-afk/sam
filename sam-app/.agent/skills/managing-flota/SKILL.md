@@ -1,11 +1,14 @@
 ---
 name: managing-flota
 description: >
-  Módulo FLOTA / ESCOLTA y la planilla CDA-F-68. Úsala cuando toques FlotaTab,
-  FlotaForm, FlotaView, `flota_servicios` o cualquier exportación a Excel con
+  Módulo FLOTA / ESCOLTA y sus DOS planillas: CDA-F-68 (IMECOL) y F-OPE-22
+  (AgroMorales, en dos fases: iniciar y cerrar el viaje). Úsala cuando toques
+  FlotaTab, FlotaForm, FlotaFormOpe22, FlotaCerrarViaje, FlotaView,
+  `flota_servicios`, `lib/planillaOpe22` o cualquier exportación a Excel con
   formato. También si el usuario menciona "flota", "escolta", "CDA-F-68",
-  "planilla de camionetas", "IMECOL", "membrete", "Julián", o pide que un Excel
-  salga con bordes, logo o cuadrícula.
+  "F-OPE-22", "AgroMorales", "planilla de camionetas", "IMECOL", "membrete",
+  "iniciar viaje", "cerrar viaje", "km inicial", "Julián", "Camilo", o pide que
+  un Excel salga con bordes, logo o cuadrícula.
 ---
 
 # Flota / Escolta — y la planilla que se entrega
@@ -179,3 +182,100 @@ error que ya ocurrió, sí.
 
 ⚠️ **Al agregar un rol nuevo hay que sumarlo a `manualesDe()`** — el `default`
 no falla, entrega el manual equivocado en silencio.
+
+## El F-OPE-22 tiene formulario PROPIO, no un `if` dentro del de IMECOL (4-sep-2026, `40c9286`)
+
+Corrección de rumbo del cliente: *«la de AgroMorales se debe gestionar desde otro
+formulario diferente; el formulario que ya hay es solo para IMECOL; si le
+modificaste algo déjalo como ya estaba»*. Se revirtió todo lo agregado al
+`FlotaForm` de IMECOL **salvo el km inicial/final**, que sí se pidió para esa planilla.
+
+- `flota_servicios.formato` — `'IMECOL' | 'AGROMORALES'`, **NOT NULL DEFAULT
+  'IMECOL'** porque los 35 servicios previos entraron por ese formulario. Sin
+  default, un servicio sin formato no sabría en cuál planilla salir y quedaría
+  fuera de las dos: sin error y sin rastro.
+- `views/FlotaFormOpe22.tsx` — campos en el orden de las columnas del papel. **No
+  es un `if`**: los dos formatos no están de acuerdo en qué campos importan, y
+  esconder la mitad según un desplegable hace que el día que alguien elija mal, el
+  registro salga con los campos del formato equivocado.
+- Dos botones de crear y **un solo estado de tres valores** (`null | IMECOL |
+  AGROMORALES`): dos booleanos pueden quedar en `true` a la vez y abrir los dos
+  modales encimados.
+- La lista los muestra **juntos** con su marca de color; cada Excel toma **solo los
+  suyos** y el botón lleva su conteo. ⚠️ La marca de formato va en la fila de chips,
+  no en el encabezado de la tarjeta: allá ensanchaba la columna de la fecha y el
+  título pasaba a cuatro renglones a 375 px.
+- **`hooks/usePlacaPorDefecto.ts`** — la regla de la placa tiene tres caminos
+  descubiertos uno por uno (sesión → `users` fresco → único vehículo). Duplicarla
+  entre los dos formularios era garantizar que mañana solo se arregle en uno.
+- **TALLER existe solo en este formato** (el pie del papel lo nombra); el de IMECOL
+  no lo tiene y así debe quedarse.
+
+## Número de maquinaria: campo DEPENDIENTE de ESCOLTA (`3537512`)
+
+Aparece **solo al elegir ESCOLTA**: en un transporte de personal o un viaje al taller
+esa columna del papel va vacía, así que el campo estorbaba en tres cuartas partes de
+los servicios.
+
+🔴 **Cambiar el tipo BORRA lo escrito.** Esconder el campo no basta: si alguien
+escribe `34261`, cae en cuenta de que era un transporte y cambia el tipo, el valor
+seguiría en el estado y viajaría igual al guardado. La planilla saldría con una
+máquina que nadie escoltó y el error no se ve en pantalla porque el campo ya no está.
+
+Sin ese campo al lado, el tipo ocupa la fila entera: si no, todo lo de abajo se corre
+media casilla y «Lugar de inicio» queda emparejado con el tipo, separando origen de
+destino, que en el papel van juntos.
+
+⚠️ **Dos botones de Excel del mismo tamaño**: `.rep-export` lleva
+`margin-left:auto`, y con DOS botones el primero se comía el espacio libre y empujaba
+al segundo al renglón de abajo. El `auto` va en un grupo y adentro se reparten mitad y
+mitad, con **la misma clase** (son dos formatos igual de importantes); `min-width:
+180px` + `nowrap` para que «AgroMorales» no se parta en dos renglones. Medido:
+escritorio 180×42 en la misma línea; celular 297×42 apilados.
+
+## 🔴 El viaje de AgroMorales se llena en DOS FASES (5-sep-2026, `63d3d65`, mig. `20260905120000_flota_dos_fases`)
+
+El papel pide km **inicial** y km **final**, hora de **inicio** y hora **final**. Esos
+dos pares no se conocen al mismo tiempo: el conductor sale a las 5:35 y llega a las
+7:05. Pedirlos juntos obliga a llenar la planilla de memoria al final del día, y **de
+ahí salieron los ocho odómetros escritos donde iba la distancia.**
+
+| Fase | Pantalla | Qué pide | Estado |
+|---|---|---|---|
+| 1 · **Iniciar viaje** | `FlotaFormOpe22` | fecha, placa, tipo, maquinaria (si escolta), origen, destino, hora de inicio (viene con la de ahora), **km inicial** | `EN_CURSO` |
+| 2 · **Cerrar viaje** | `FlotaCerrarViaje` | hora final, tiempo de espera, **km final**, observación, foto, firma responsable | `REGISTRADO` |
+
+El **km total no se teclea: es la resta** contra el inicial que YA estaba guardado
+desde la salida. Ahí está el valor de partirlo: la resta se hace contra un número que
+nadie tuvo que recordar.
+
+- 🔴 **`REGISTRADO` sigue siendo el estado COMPLETO.** No se renombró a `CERRADO`
+  aunque suene mejor: los 37 servicios previos lo tienen y todos los reportes, el
+  Excel y la pantalla filtran por él. El estado nuevo es `EN_CURSO` = trabajo sin
+  terminar, no un error. `abierto_en` / `cerrado_en` son distintas de `created_at`
+  por la misma razón que en el kardex (cuándo ocurrió ≠ cuándo se tecleó).
+- 🔴 **El id lo pone EL TELÉFONO** (`crypto.randomUUID`). Con dos fases deja de ser
+  opcional: el cierre tiene que saber a qué viaje apunta, y eso no puede depender de
+  que el servidor haya respondido. Mismo patrón que `entregar_directo`.
+- 🔴 **El cierre lleva guard `.eq('estado','EN_CURSO')`.** Verificado contra
+  producción: abrir → 201; cerrar → 200; **reintentar el cierre → 0 filas** (no pisó
+  07:05 con 23:59 ni 239.000 con 999.999); **reintentar la apertura con el mismo id →
+  409**, sin viaje gemelo. Es lo que permite que una cola offline reintente sin
+  destruir el dato.
+- **Los viajes sin cerrar van ARRIBA de todo, en ámbar, con su botón al lado**: un
+  viaje abierto es una línea de planilla a medias; si hay que buscarlo en el
+  historial se queda abierto.
+- 🔴 **En el Excel un viaje sin cerrar sale IGUAL**, marcado «⚠ SIN CERRAR» en la
+  observación, y el pie dice cuántos son. Esconderlo dejaría una planilla que parece
+  completa y no lo está; excluirlo borraría un viaje que sí ocurrió.
+- **El último km cerrado de esa placa se muestra AL LADO, no relleno en el campo**:
+  rellenarlo haría que quien no leyó el tablero guarde el número anterior y el viaje
+  quede con cero km. Al lado, si escribe `1.482` donde iban `148.238`, la diferencia
+  salta. Avisa si queda por debajo del anterior o más de 2.000 km por encima.
+- ⚠️ **Cerrar sin km final NO se bloquea**: el odómetro se daña y a las 7 de la noche
+  exigirlo obliga a inventar un número, que es peor que una casilla vacía. Pide un
+  segundo toque (igual que km final < inicial).
+- ⚠️ **El formulario de IMECOL no se tocó: sigue siendo de una sola fase.**
+- ⏳ **Pendiente (ofrecido, sin respuesta del cliente)**: colgar las dos fases de la
+  cola offline (`enviarOEncolar` con `FLOTA_INICIO` / `FLOTA_CIERRE`). Hoy el viaje
+  se abre y se cierra en línea; los guards de arriba ya están listos para el reintento.

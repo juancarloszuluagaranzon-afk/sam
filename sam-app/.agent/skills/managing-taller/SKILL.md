@@ -433,3 +433,47 @@ son las dos corregidas a mano y por eso mandan sobre lo tecleado en campo.
 
 Las de lectura vieja suben arriba y se marcan. Las **5 sin ninguna lectura** salen
 aparte con su explicación. Y abrir la pantalla refresca el espejo local del aviso.
+
+
+## Las horas del mes salen del RANGO del horómetro (5-sep-2026, `187bf7c`)
+
+El «Consumo por máquina» ya no suma los tramos de `labor_sesiones`: las horas
+del mes son **el horómetro con el que arranca contra el que lo termina**, el
+mismo criterio del cierre manual. Sumar tramos solo cuenta lo que quedó dentro
+de una labor cerrada.
+
+🔴 **Máximo menos mínimo NO sirve.** Una sola lectura mala arruina el mes
+entero: en julio CASE1002 daba **54.999 h contra 172 reales** y el mes completo
+233.298 contra 4.669. La limpieza sale de una propiedad física — **un horómetro
+solo sube**: se recorren las lecturas en orden y se acepta una solo si sube
+respecto a la última buena y el avance cabe en el tiempo transcurrido (24 h por
+día, el mismo tope de `MAX_HORAS_ENTRE_LECTURAS`). La que no cumple se descarta
+y la serie sigue con la última buena.
+
+⚠️ **Si la serie se desploma, manda la suma.** En 4 de 20 máquinas las lecturas
+vienen tan sucias que la limpieza rechaza casi todo y el rango queda en 2 h para
+un mes de 298. La señal: **el rango cae por debajo de la MITAD de lo que suman
+sus propios tramos**, algo que físicamente no puede pasar porque los tramos van
+dentro del mes.
+
+El umbral 0,5 **se eligió midiendo, no a ojo**: 0,0 deja el total del mes en
+−11%, 0,7 y 1,0 en +10%, y 0,5 en +3%.
+
+**Validado contra el cierre manual de julio de 2026** — el único mes que lo
+tiene, y por eso es el patrón de oro:
+
+| | Método viejo (suma) | Rango limpio |
+|---|---|---|
+| Error medio | 30% | **24%** |
+| Dentro del 10% | 9/20 | **12/20** |
+
+Exactas: CASE902 263=263, VALTRA9904 230=230, VALTRA9901 243/242, PUMA2301
+361/362. Eso confirma que **el cierre manual ES el método de rango**.
+
+🔴 **Las máquinas que caen al respaldo salen NOMBRADAS en pantalla**
+(hoy: CASE1303, PUMA2101, VALTRA9903, CASE952). Un promedio que descarta
+máquinas sin decir cuáles es un promedio en el que no se puede confiar, y además
+nadie sabría a cuál irle a revisar el horómetro.
+
+⚠️ El cierre mensual de `equipo_horas_mes` **sigue mandando cuando existe**: es
+el dato que firma administración. Esto solo cambió el respaldo.

@@ -8832,6 +8832,38 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .dash-series__punto { width: 10px; height: 10px; border-radius: 3px; flex: none; }
 
+/* ── Insumos y materiales (tablero de Operacion general) ──────────────── */
+/* La miga del drill-down: siempre se puede volver al principio de un toque. */
+.dash-miga { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.82rem; color: var(--color-ink-mid, #5a5f57); }
+.dash-miga button {
+  background: none; border: 0; padding: 6px 0; cursor: pointer; font: inherit;
+  font-weight: 700; color: var(--color-brand, #1baf7a);
+}
+/* Tres tortas: una columna en celular, las que quepan en escritorio. */
+.dash-tres { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 12px; }
+.dash-tres h4 { margin: 0 0 4px; font-size: 0.86rem; color: var(--color-ink, #22261f); }
+/* El numero que une las dos mitades del tablero: lo hecho y lo que costo. */
+.dash-galha {
+  margin-top: 12px; padding: 14px 16px; border-radius: 14px;
+  background: var(--color-brand, #1baf7a); color: var(--color-ink-on-brand, #fff);
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px;
+}
+.dash-galha__num { font-size: 2rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.dash-galha__uni { font-weight: 700; opacity: .92; }
+.dash-galha__sub { flex: 1 0 100%; font-size: 0.82rem; opacity: .9; }
+.dash-galha__nota { margin: 8px 0 0; font-size: 0.78rem; line-height: 1.45; color: var(--color-ink-mid, #5a5f57); }
+/* Una fila por maquina con su labor al lado: sin la labor, la comparacion es injusta. */
+.dash-galha__fila {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: baseline;
+  width: 100%; padding: 9px 0; background: none; border: 0;
+  border-bottom: 1px solid var(--color-divider, #e6e9e1);
+  text-align: left; font: inherit; color: inherit; cursor: pointer; font-size: 0.86rem;
+}
+.dash-galha__fila:last-of-type { border-bottom: 0; }
+.dash-galha__fila b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dash-galha__fila small { color: var(--color-ink-mid, #5a5f57); font-size: 0.74rem; white-space: nowrap; }
+.dash-galha__fila span small { white-space: normal; }
+
 /* ── Tablero de movimientos de insumos ────────────────────────────────────── */
 .dash-titulo {
   margin: 22px 0 10px; font-size: 1rem; font-weight: 700;

@@ -8,6 +8,7 @@ import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../co
 import type { Assignment, InsumoKardex, Bodega } from '../domain/sam'
 import { agruparDespachos } from '../lib/despachos'
 import { DetalleDespacho } from '../components/DetalleDespacho'
+import { InsumosCard } from './InsumosCard'
 
 /**
  * Inicio del propietario — el tablero de la operación.
@@ -114,7 +115,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
   // para que el dueño pueda cuadrar contra el total de arriba.
   const [verOp, setVerOp] = useState(false)
   const [verHac, setVerHac] = useState(false)
-  const [verProd, setVerProd] = useState(false)
   const TOPE = 8
   // Ventana emergente de detalle: título + labores que lo componen.
   const [detalle, setDetalle] = useState<{ titulo: string; items: Assignment[] } | null>(null)
@@ -223,39 +223,8 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     return m
   }, [bodegas])
 
-  /** Total entregado por insumo (lo que salió a las máquinas). */
-  const insPorProducto = useMemo<Punto[]>(() => {
-    const m = new Map<string, number>()
-    insumosMovs.forEach((k) => m.set(k.insumoId, (m.get(k.insumoId) ?? 0) + k.cantidad))
-    return Array.from(m.entries())
-      .map(([id, v]) => ({
-        id,
-        label: insumoNombre.get(id)?.nombre ?? id,
-        valor: v,
-        sufijo: insumoNombre.get(id)?.unidad,
-      }))
-      .sort((a, b) => b.valor - a.valor)
-  }, [insumosMovs, insumoNombre])
 
-  /**
-   * Participación por CONCEPTO (el motivo del movimiento).
-   *
-   * Se cuentan ENTREGAS, no cantidades: sumar 40 ganchos con 23,95 galones da
-   * un "63,95" que no significa nada. Las entregas sí son comparables.
-   */
-  const insPorConcepto = useMemo<Punto[]>(() => {
-    const m = new Map<string, number>()
-    insumosMovs.forEach((k) => {
-      const c = (k.motivo ?? 'Otro').split('(')[0].trim()
-      m.set(c, (m.get(c) ?? 0) + 1)
-    })
-    return plegarOtros(Array.from(m.entries()).map(([k, v]) => ({ id: k, label: k, valor: v })))
-  }, [insumosMovs])
 
-  const maquinasAtendidas = useMemo(
-    () => new Set(insumosMovs.map((k) => k.equipoCodigo)).size,
-    [insumosMovs],
-  )
 
   /* ── Abrir detalle ── */
   const abrir = (titulo: string, items: Assignment[]) => setDetalle({ titulo, items })
@@ -382,54 +351,18 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
         <VerTodo datos={porHacienda} visto={TOPE} ver={verHac} onVer={setVerHac} unidad="ha" />
       </div>
 
-      {/* Insumos entregados: qué salió, por qué concepto y a qué máquinas */}
-      <div className="dash-card">
-        <div className="dash-card__head">
-          <h3>Insumos entregados</h3>
-          <button type="button" className="dash-card__link" onClick={() => setDetIns({ titulo: 'Todas las entregas', items: insumosMovs })}>
-            Ver todo →
-          </button>
-        </div>
-        {insumos.length === 0 ? (
-          /* El catálogo llega por su lado; sin él las barras mostrarían el UUID
-             crudo del insumo en la pantalla de Inicio del dueño. */
-          <p className="dash-vacio">Cargando insumos…</p>
-        ) : insumosMovs.length === 0 ? (
-          <p className="dash-vacio">Sin entregas de insumos en este periodo.</p>
-        ) : (
-          <>
-            <div className="dash-maq" style={{ gridTemplateColumns: '1fr 1fr' }}>
-              <div className="dash-maq__box"><strong>{insumosMovs.length}</strong><span>entregas</span></div>
-              <div className="dash-maq__box"><strong>{maquinasAtendidas}</strong><span>máquinas atendidas</span></div>
-            </div>
-
-            <p className="ins-res__lbl" style={{ marginTop: 12 }}>Por producto</p>
-            <BarrasH
-              datos={verProd ? insPorProducto : insPorProducto.slice(0, 6)}
-              unidad=""
-              color={SERIES[3]}
-              onPick={(p) => setDetIns({
-                titulo: insumoNombre.get(p.id)?.nombre ?? p.label,
-                items: insumosMovs.filter((k) => k.insumoId === p.id),
-              })}
-            />
-            <VerTodo datos={insPorProducto} visto={6} ver={verProd} onVer={setVerProd} unidad="" />
-
-            <p className="ins-res__lbl" style={{ marginTop: 12 }}>Por concepto (entregas)</p>
-            <BarrasH
-              datos={insPorConcepto}
-              unidad=""
-              color={SERIES[5]}
-              onPick={(p) => setDetIns({
-                titulo: p.label,
-                items: p.id === '__otros'
-                  ? insumosMovs.filter((k) => !insPorConcepto.some((c) => c.id !== '__otros' && c.id === (k.motivo ?? 'Otro').split('(')[0].trim()))
-                  : insumosMovs.filter((k) => (k.motivo ?? 'Otro').split('(')[0].trim() === p.id),
-              })}
-            />
-          </>
-        )}
-      </div>
+      {/* Insumos y materiales: tres tortas, gal/ha, y cada toque segrega un
+          nivel mas. La logica vive en lib/insumosDash.ts para poderla probar
+          contra datos reales sin entrar a la sesion. */}
+      <InsumosCard
+        movs={insumosMovs}
+        cerradas={cerradas}
+        catalogo={insumoNombre}
+        nombreMaq={(c) => equipoNombre.get(c) ?? c}
+        unSoloDia={periodo === 'HOY' || periodo === 'AYER'}
+        cargando={insumos.length === 0}
+        onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
+      />
 
       {/* Máquinas: pocos valores → fichas, no gráfico */}
       <div className="dash-card">

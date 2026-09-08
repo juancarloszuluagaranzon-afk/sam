@@ -62,15 +62,19 @@ export function Donut({
   total,
   unidad,
   onPick,
+  decimales,
 }: {
   datos: Punto[]
   total: number
   unidad: string
   onPick?: (p: Punto) => void
+  /** Decimales de la leyenda. 2 para hectareas; 0 cuando se cuentan cosas. */
+  decimales?: number
 }) {
   const suma = datos.reduce((t, d) => t + d.valor, 0)
   if (!Number.isFinite(suma) || suma <= 0) return <p className="dash-vacio">Sin datos en este periodo.</p>
 
+  const dec = decimales ?? 2
   const size = 190
   const cx = size / 2
   const cy = size / 2
@@ -99,7 +103,7 @@ export function Donut({
               className={onPick ? 'dash-arc is-tap' : 'dash-arc'}
               onClick={() => onPick?.(d)}
               role={onPick ? 'button' : undefined}
-              aria-label={`${d.label}: ${d.valor.toFixed(2)} ${d.sufijo ?? unidad}`}
+              aria-label={`${d.label}: ${d.valor.toFixed(dec)} ${d.sufijo ?? unidad}`}
             />
           )
         })}
@@ -117,7 +121,7 @@ export function Donut({
               <button type="button" onClick={() => onPick?.(d)} disabled={!onPick}>
                 <span className="dash-chip" style={{ background: d.id === '__otros' ? SERIE_OTROS : colorDe(i) }} />
                 <span className="dash-leyenda__lbl">{d.label}</span>
-                <span className="dash-leyenda__val">{d.valor.toFixed(2)} <small>{pct.toFixed(0)}%</small></span>
+                <span className="dash-leyenda__val">{d.valor.toFixed(dec)} <small>{pct.toFixed(0)}%</small></span>
               </button>
             </li>
           )

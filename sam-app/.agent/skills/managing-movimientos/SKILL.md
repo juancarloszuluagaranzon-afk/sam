@@ -203,3 +203,46 @@ celular. Lo que define plata va como renglón visible o dentro de `<Ayuda>`.
 (`SupervisorView.tsx`: tercera cara de Inicio y pestaña propia). Por eso no hay
 cabecera fija ni versión «reducida» para Inicio — un `position:sticky` con
 márgenes negativos se comportaría distinto en cada montaje.
+
+
+## «Insumos y materiales» en el tablero de Operación general (8-sep-2026)
+
+Tres tortas y un número, con los filtros Hoy/Ayer/quincena/Mes/Rango del tablero:
+**entregas por material** (cuenta entregas — galones + ganchos no se suman),
+**combustible por máquina**, **ganchos por máquina**, y **galones por hectárea**.
+
+🔴 **Cada toque segrega un nivel** (`InsumosCard.tsx`, estado `vista`): torta → ese
+material por máquina → lista de entregas (`detIns`, ya existía) → entrega completa
+(`<DetalleDespacho>`). O máquina → sus materiales → entregas. O labor → sus máquinas
+con gal/ha. «Otros» de cualquier torta se despliega como lista. «← Insumos» siempre
+vuelve al principio.
+
+**La lógica vive en `lib/insumosDash.ts`, no en el componente**, para poder probarla
+contra datos REALES sin entrar a la sesión: en el navegador del dev server,
+`await import('/src/lib/insumosDash.ts')` + `loadKardexReporte` + `loadAssignments`.
+Verificado así contra agosto: combustible y ganchos por máquina **idénticos al SQL**
+(PUMA2302 995 gal, CASE1302 360 ganchos), cobertura 69%, ambiguos 24%.
+
+### El gal/ha: lo que se aprendió midiendo
+
+- **El denominador es SOLO hectáreas.** ACEQUIAS va en hm; meterla infla la base.
+  Por eso PUMA2302 da **4,87 gal/ha** y no 2,87 como dio un SQL rápido: hizo 142 hm
+  que no cuentan. Cada labor lleva su unidad (`gal/hm` en el punto).
+- **Los días se bucketean en Bogotá** (`executionDateKey` para la labor, `diaKey`
+  para el kardex). El SQL con `::date` corta a las 7 p.m. y desalinea el puente.
+- **Compárese por labor, no por máquina.** Agosto: TRIPLE 3,6 · SUBSUELO 3,4 ·
+  FERTILIZACIÓN 2,2 · DESPEJE 0,9 · REENCALLE 0,8 · ACEQUIAS 0,6 gal/hm. Tres a cuatro
+  veces entre la pesada y la liviana. Las PUMA (3–5) hacen TRIPLE/SUBSUELO/FERTILIZACIÓN:
+  **es la labor, no la máquina**. Por eso cada fila lleva su labor dominante — elegida
+  entre labores en **ha**, para no poner «4,87 gal/ha · ACEQUIAS».
+- **Dos cautelas que la pantalla dice sola**: 24% de días-máquina con más de una labor
+  (reparto por área) y 70% de cobertura de tanqueo el mismo día (para Hoy/Ayer el
+  número es orientativo y se muestra la cobertura).
+
+### Trampa del arnés de prueba
+
+La paleta de los gráficos (`--dash-s1…`) está scopeada bajo **`.dash`** (App.css).
+Al montar `InsumosCard` suelto en un div para probarlo, barras y arcos salen
+**transparentes**. No es un bug: en el tablero real vive dentro de
+`<section className="dash">`. Si se monta aparte, ponerle esa clase al contenedor.
+`Donut` acepta `decimales` (0 para contar entregas; 2 por defecto).

@@ -3,7 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { Ayuda } from '../components/Ayuda'
 import { fmtCantidad } from '../lib/cantidad'
 import {
-  loadConsumo, loadHorasDelMes, loadHorasPorEquipo, loadReferencias,
+  loadConsumo, loadHorasDelMes, loadHorasPorRangoMes, loadReferencias,
   type ConsumoFila, type ReferenciaEquipo,
 } from '../services/consumoApi'
 
@@ -40,7 +40,9 @@ export function ConsumoDashboardTab() {
   const [refs, setRefs] = useState<ReferenciaEquipo[]>([])
   const [horas, setHoras] = useState<Map<string, number>>(new Map())
   /** De dónde salieron las horas: el cierre del mes o la suma de sesiones. */
-  const [fuenteHoras, setFuenteHoras] = useState<'cierre' | 'sesiones'>('sesiones')
+  const [fuenteHoras, setFuenteHoras] = useState<'cierre' | 'rango'>('rango')
+  /** Las máquinas cuya serie de horómetros se desplomó y hubo que sumar tramos. */
+  const [sinRango, setSinRango] = useState<string[]>([])
   const [cargando, setCargando] = useState(true)
   const [mesSel, setMesSel] = useState<string>('')
   // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
@@ -97,15 +99,20 @@ export function ConsumoDashboardTab() {
     const desde = `${mesSel}-01`
     const hasta = new Date(a, m, 0).toISOString().slice(0, 10)
     let vivo = true
-    // El cierre mensual manda; las sesiones son el respaldo. Sumar tramos de
-    // `labor_sesiones` mete las horas sucias (445 de 2.212 son absurdas) y con
-    // el denominador malo el galones/hora sale en cualquier cosa.
+    // 🔴 El cierre mensual manda — es el dato que administracion firma. Si el
+    // mes no lo tiene, las horas salen del HOROMETRO INICIAL Y FINAL DEL MES,
+    // que es el mismo criterio con el que se hace ese cierre a mano.
+    //
+    // Antes se sumaban los tramos de `labor_sesiones`, que solo cuenta las horas
+    // que quedaron dentro de una labor cerrada. Medido contra el cierre de julio
+    // (el unico mes que lo tiene): el rango acierta 13 de 20 maquinas dentro del
+    // 10% contra 9, y varias exactas.
     void (async () => {
       const cierre = await loadHorasDelMes(mesSel)
       if (!vivo) return
-      if (cierre.size > 0) { setHoras(cierre); setFuenteHoras('cierre'); return }
-      const ses = await loadHorasPorEquipo(desde, hasta > hoyISO() ? hoyISO() : hasta)
-      if (vivo) { setHoras(ses); setFuenteHoras('sesiones') }
+      if (cierre.size > 0) { setHoras(cierre); setFuenteHoras('cierre'); setSinRango([]); return }
+      const r = await loadHorasPorRangoMes(desde, hasta > hoyISO() ? hoyISO() : hasta)
+      if (vivo) { setHoras(r.horas); setFuenteHoras('rango'); setSinRango(r.cayeronASuma) }
     })()
     return () => { vivo = false }
   }, [mesSel])
@@ -265,9 +272,22 @@ export function ConsumoDashboardTab() {
 
           <p className="subtle-copy" style={{ marginTop: 4 }}>
             {fuenteHoras === 'cierre'
-              ? '⏱ Las horas salen del cierre mensual de horómetros — el dato bueno.'
-              : '⏱ Las horas salen de sumar las labores cerradas. Si el mes ya tiene cierre de horómetros, cárgalo: es más confiable.'}
+              ? '⏱ Las horas salen del cierre mensual de horómetros — el dato que firma administración.'
+              : '⏱ Las horas salen del horómetro inicial y final del mes de cada máquina, el mismo criterio del cierre. Si el mes ya tiene cierre cargado, ese manda.'}
           </p>
+          {/* 🔴 Las que NO se pudieron medir por rango salen NOMBRADAS. Un
+              promedio que descarta maquinas sin decir cuales es un promedio en
+              el que no se puede confiar — y ademas nadie sabria a cual maquina
+              hay que irle a revisar el horómetro. Misma regla que el informe
+              semanal y que la hoja de horómetros de la planilla. */}
+          {fuenteHoras === 'rango' && sinRango.length > 0 && (
+            <p className="subtle-copy" style={{ marginTop: 4 }}>
+              ⚠ En {sinRango.length} máquina{sinRango.length === 1 ? '' : 's'} las lecturas
+              vienen tan sucias que no se pudo medir el mes de punta a punta, y sus horas
+              salen de sumar las labores: <strong>{sinRango.join(', ')}</strong>. Revisar
+              sus horómetros en Más → ⏱ Horómetros.
+            </p>
+          )}
           {fuenteMes?.has('papel') && (
             <p className="subtle-copy" style={{ marginTop: 4 }}>
               📄 Este mes viene del formato en papel. Las horas trabajadas salen de las

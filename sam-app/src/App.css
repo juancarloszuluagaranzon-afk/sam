@@ -6179,7 +6179,15 @@ td.planilla-revisada {
 .dash-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
 .dash-card__head h3 { margin: 0; font-size: 1rem; }
 .dash-card__hint { font-size: 0.72rem; color: var(--color-ink-mid); }
-.dash-card__link { background: none; border: none; color: var(--color-brand); font-size: 0.8rem; font-weight: 700; cursor: pointer; padding: 0; }
+/* 🔴 Medía 19,2px de alto y es el que abre «Todas las entregas». El margen
+   negativo compensa el padding para que no mueva la maquetación: crece el
+   área que se toca, no el hueco que ocupa. */
+.dash-card__link {
+  background: none; border: none; color: var(--color-brand); font-size: 0.8rem;
+  font-weight: 700; cursor: pointer;
+  min-height: 40px; display: inline-flex; align-items: center;
+  padding: 8px 4px; margin: -8px -4px;
+}
 .dash-vacio { color: var(--color-ink-mid); font-size: 0.88rem; margin: 6px 0; }
 
 /* ── Tanqueo: dónde y a qué (tarjetas grandes, se usan con guante) ───────── */
@@ -6280,7 +6288,7 @@ td.planilla-revisada {
 .dash-leyenda button {
   display: flex; align-items: center; gap: 8px; width: 100%;
   background: none; border: none; color: inherit; cursor: pointer;
-  padding: 7px 4px; border-radius: 8px; text-align: left;
+  padding: 10px 4px; border-radius: 8px; text-align: left;
 }
 .dash-leyenda button:active { background: var(--color-bg-soft, #f2f5f0); }
 .dash-chip { width: 11px; height: 11px; border-radius: 3px; flex-shrink: 0; }
@@ -6291,12 +6299,23 @@ td.planilla-revisada {
 /* Barras horizontales */
 .dash-barras { display: flex; flex-direction: column; gap: 2px; }
 .dash-barra {
-  display: grid; grid-template-columns: minmax(0,1fr) 1.4fr auto; align-items: center; gap: 8px;
+  /* 🔴 `1.4fr` a la barra contra `1fr` al nombre dejaba 74px de etiqueta en
+     celular: «ACEITE TRANSMISION MOBIL 424» y «…MOBIL 15W40» salían las dos
+     como «ACEITE TR…», dos filas distintas con el mismo texto y las dos
+     tocables. El nombre manda; la barra es la comparación, no el dato. */
+  display: grid; grid-template-columns: minmax(0,1.6fr) 1fr auto; align-items: center; gap: 8px;
   background: none; border: none; color: inherit; cursor: pointer;
-  padding: 7px 4px; border-radius: 8px; text-align: left;
+  /* 11px y no 7: así llega a 42,8px de alto y mide IGUAL en las dos pantallas
+     que la muestran. Antes `.mov` la subía por su cuenta y `.dash` se quedaba
+     en 34,8px, por debajo del mínimo táctil. */
+  padding: 11px 4px; border-radius: 8px; text-align: left;
 }
 .dash-barra:active { background: var(--color-bg-soft, #f2f5f0); }
 .dash-barra__lbl { font-size: 0.84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 420px) {
+  .dash-barra { grid-template-columns: minmax(0,1fr) auto; }
+  .dash-barra__track { grid-column: 1 / -1; }
+}
 .dash-barra__track { height: 12px; border-radius: 999px; background: var(--color-bg-soft, #eef1ec); overflow: hidden; }
 .dash-barra__fill { display: block; height: 100%; border-radius: 999px; }
 .dash-barra__val { font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -6334,7 +6353,7 @@ td.planilla-revisada {
   padding: 10px 6px; text-align: center;
 }
 .dash-maq__box strong { display: block; font-size: 1.3rem; color: var(--color-brand); }
-.dash-maq__box span { font-size: 0.68rem; color: var(--color-ink-mid); }
+.dash-maq__box span { font-size: 0.75rem; color: var(--color-ink-mid); }
 .dash-maq__box.is-warn strong { color: #9a5a12; }
 .dash-maq__nota { margin: 10px 0 0; font-size: 0.78rem; color: #9a5a12; }
 
@@ -6364,6 +6383,30 @@ td.planilla-revisada {
 .dash-detalle__side small { font-size: 0.72rem; color: var(--color-ink-mid); }
 
 :root[data-theme="dark"] .dash-barra__track,
+/* 🔴 MODO OSCURO — cuatro contrastes medidos por debajo de norma (8-sep-2026).
+   Ninguno se ve en claro, y por eso llevaban tiempo ahí.
+   · `.dash-galha`: `--color-ink-on-brand` (#fff) se define SOLO en el tema
+     claro y nunca se redefine, pero el fondo de marca sí se aclara en oscuro
+     (#155b30 -> #2a9050). El blanco caía a 3,67:1 en «gal/ha» y 3,59:1 en el
+     subtítulo, contra los 4,5 que pide un texto normal. Se le devuelve el
+     verde oscuro y vuelve a 8:1. Los `opacity` solo empeoraban: fuera.
+   · `.dash-maq__box strong`: verde de marca sobre la caja translúcida = 2,98:1.
+   · `.dash-card__link` y `.dash-miga button`: 3,58:1 siendo texto normal.
+   · El separador de filas quedaba en 1,10:1, o sea la lista dejaba de leerse
+     como lista. */
+:root[data-theme="dark"] .dash-galha { background: #1f7a40; }
+:root[data-theme="dark"] .dash-galha__uni,
+:root[data-theme="dark"] .dash-galha__sub { opacity: 1; }
+/* Color literal a propósito: `--color-status-done` EXISTE y vale #155b30, el
+   verde oscuro de una etiqueta sobre fondo claro. Usarlo como variable con
+   respaldo dejaba la cifra en 1,96:1, peor que antes. Medido sobre el fondo
+   real compuesto de la caja —rgba(255,255,255,.06) sobre #232a35 = #303741—
+   este verde da 6,14:1. */
+:root[data-theme="dark"] .dash-maq__box strong { color: #4dd17d; }
+:root[data-theme="dark"] .dash-card__link,
+:root[data-theme="dark"] .dash-miga button { color: var(--color-brand-mid, #3aa860); }
+:root[data-theme="dark"] .dash-galha__fila { border-bottom-color: rgba(255,255,255,.18); }
+
 :root[data-theme="dark"] .dash-maq__box,
 :root[data-theme="dark"] .dash-acceso { background: rgba(255,255,255,.06); }
 
@@ -8849,8 +8892,10 @@ td.planilla-vacio:hover { background: #fde047; }
 /* La miga del drill-down: siempre se puede volver al principio de un toque. */
 .dash-miga { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.82rem; color: var(--color-ink-mid, #5a5f57); }
 .dash-miga button {
-  background: none; border: 0; padding: 6px 0; cursor: pointer; font: inherit;
+  background: none; border: 0; cursor: pointer; font: inherit;
   font-weight: 700; color: var(--color-brand, #1baf7a);
+  /* Es el ÚNICO camino de vuelta de todo el drill-down y medía 31,7px. */
+  min-height: 44px; display: inline-flex; align-items: center; padding: 8px 4px; margin: 0 -4px;
 }
 /* Tres tortas: una columna en celular, las que quepan en escritorio. */
 /* 🔴 Tres donuts en rejilla NO pueden llevar la leyenda al lado.
@@ -8885,7 +8930,7 @@ td.planilla-vacio:hover { background: #fde047; }
 /* Una fila por maquina con su labor al lado: sin la labor, la comparacion es injusta. */
 .dash-galha__fila {
   display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 8px; align-items: baseline;
-  width: 100%; padding: 9px 0; background: none; border: 0;
+  width: 100%; padding: 10px 0; background: none; border: 0;
   border-bottom: 1px solid var(--color-divider, #e6e9e1);
   text-align: left; font: inherit; color: inherit; cursor: pointer; font-size: 0.86rem;
 }
@@ -8902,6 +8947,9 @@ td.planilla-vacio:hover { background: #fde047; }
 .dash-galha__fila b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .dash-galha__fila small { color: var(--color-ink-mid, #5a5f57); font-size: 0.74rem; white-space: nowrap; }
 .dash-galha__fila span small { white-space: normal; }
+/* «RETROEXCAVADORAKOMATSUPC200» no tiene dónde partirse y se pintaba 142px
+   encima del gal/ha de su propia fila. */
+.dash-galha__fila > span { overflow-wrap: anywhere; }
 
 /* ── Tablero de movimientos de insumos ────────────────────────────────────── */
 .dash-titulo {

@@ -70,6 +70,14 @@ export function ConsumoEquiposTab() {
     return m
   }, [users])
 
+/** Corre una fecha `yyyy-mm-dd` los días que se le digan. Vacía sigue vacía. */
+function conMargen(dia: string, dias: number): string | undefined {
+  if (!dia) return undefined
+  const d = new Date(`${dia}T12:00:00`)
+  d.setDate(d.getDate() + dias)
+  return d.toISOString().slice(0, 10)
+}
+
   async function refresh() {
     setLoading(true)
     try {
@@ -78,7 +86,11 @@ export function ConsumoEquiposTab() {
       const [kx, cb, sol] = await Promise.all([
         loadKardexReporte({ desde: desde || undefined, hasta: hastaFin }),
         loadCombustibleExterno({ desde: desde || undefined, hasta: hasta || undefined, destino: 'MAQUINA' }),
-        loadSolicitudes({ limit: 800 }),
+        // Margen de 30 días a lado y lado: la fecha del kardex es la EFECTIVA y
+        // `entregado_en` es cuando se tecleó, así que un despacho corregido cae
+        // en el rango por una y fuera por la otra. Sin margen, su horómetro
+        // saldría vacío. Sin rango (el reporte recién abierto) se cae al tope.
+        loadSolicitudes({ desde: conMargen(desde, -30), hasta: conMargen(hasta, 30), limit: 3000 }),
       ])
       setMovimientos(kx)
       setTanqueos(cb)
@@ -127,6 +139,15 @@ export function ConsumoEquiposTab() {
     type Fila = {
       id: string; cuando: string; equipo: string; items: Item[]
       concepto: string; quien: string; recibio: string; nota: string
+      /**
+       * La lectura del horómetro al momento de la entrega o del tanqueo.
+       *
+       * 🔴 NO está en el kardex: vive en `insumos_solicitudes.horometro` para
+       * un despacho y en `combustible_externo.horometro` para un tanqueo. Por
+       * eso se resuelve aquí, con los mapas que la pantalla ya carga, y no en
+       * `loadKardexReporte`.
+       */
+      horometro?: number
       devuelto: boolean; pendiente: boolean
       mov?: InsumoKardex; tq?: CombustibleExterno
     }
@@ -145,6 +166,7 @@ export function ConsumoEquiposTab() {
         quien: g.cabeza.creadoPor ? (userName.get(g.cabeza.creadoPor) ?? g.cabeza.creadoPor) : '',
         recibio: e?.operarioNombre ?? (e ? (userName.get(e.operarioId) ?? '') : ''),
         nota: e?.nota ?? '',
+        horometro: e?.horometro,
         devuelto: g.devuelto,
         pendiente: false,
         mov: g.cabeza,
@@ -163,8 +185,11 @@ export function ConsumoEquiposTab() {
         quien: t.registradoNombre ?? '',
         // El tanqueo en bomba va directo a la máquina: no hay operario que reciba.
         recibio: '',
-        nota: [t.horometro != null ? `horómetro ${t.horometro}` : '', t.factura ? `tirilla ${t.factura}` : '', t.nota ?? '']
-          .filter(Boolean).join(' · '),
+        // El horómetro ya no viaja dentro de la nota: tiene su propio campo,
+        // que es lo que permite sacarlo como COLUMNA del Excel en vez de como
+        // texto suelto que nadie puede ordenar ni sumar.
+        nota: [t.factura ? `tirilla ${t.factura}` : '', t.nota ?? ''].filter(Boolean).join(' · '),
+        horometro: t.horometro,
         devuelto: false,
         pendiente: t.estado === 'PENDIENTE',
         tq: t,
@@ -177,7 +202,10 @@ export function ConsumoEquiposTab() {
         if (!q) return true
         const ins = f.items.map((i) => insumoInfo.get(i.insumoId)?.nombre ?? '').join(' ')
         const eq = equipoNombre.get(f.equipo) ?? f.equipo
-        return [eq, ins, f.concepto, f.quien, f.recibio, f.nota].some((v) => v.toLowerCase().includes(q))
+        // El horómetro entra en la búsqueda: salió de la nota, y sin esto
+        // buscar «1234» dejaría de encontrar la entrega de esa lectura.
+        const hor = f.horometro != null ? String(f.horometro) : ''
+        return [eq, ins, f.concepto, f.quien, f.recibio, f.nota, hor].some((v) => v.toLowerCase().includes(q))
       })
       .sort((a, b) => b.cuando.localeCompare(a.cuando))
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -245,6 +273,9 @@ export function ConsumoEquiposTab() {
       const detalle: Record<string, string | number>[] = movimientos.map((m) => {
         const info = insumoInfo.get(m.insumoId)
         const signo = m.tipo === 'SALIDA' ? -1 : m.tipo === 'AJUSTE' ? Math.sign(m.cantidad) || 1 : 1
+        // El kardex NO guarda el horómetro: se resuelve por la referencia,
+        // que apunta a la solicitud o al tanqueo según de dónde venga la fila.
+        const hor = entregaDe(m)?.horometro ?? tanqueoDe(m)?.horometro
         return {
           'Fecha': fmtFecha(m.createdAt),
           'Insumo': info?.nombre ?? m.insumoId,
@@ -253,6 +284,9 @@ export function ConsumoEquiposTab() {
           'Cantidad': m.tipo === 'AJUSTE' ? m.cantidad : signo * Math.abs(m.cantidad),
           'Saldo': m.saldo,
           'Máquina': m.equipoCodigo ? (equipoNombre.get(m.equipoCodigo) ?? m.equipoCodigo) : '',
+          // Va como NÚMERO, no como texto: así se puede ordenar y restar en
+          // Excel para sacar las horas entre una entrega y la siguiente.
+          'Horómetro': hor ?? '',
           'Origen': 'Bodega',
           'Motivo': m.motivo ?? '',
           'Registró': m.creadoPor ? (userName.get(m.creadoPor) ?? m.creadoPor) : '',
@@ -269,8 +303,11 @@ export function ConsumoEquiposTab() {
           'Cantidad': t.galones,
           'Saldo': '',
           'Máquina': t.equipoCodigo ? (equipoNombre.get(t.equipoCodigo) ?? t.equipoCodigo) : '',
+          'Horómetro': t.horometro ?? '',
           'Origen': 'Estación (directo a máquina)',
-          'Motivo': `${t.estacion ?? 'Bomba'}${t.horometro != null ? ` · horóm. ${t.horometro}` : ''}${t.valor ? ` · $${t.valor}` : ''}`,
+          // El horómetro salió de aquí: estaba metido en el texto del motivo,
+          // donde no se puede ordenar ni restar. Ahora tiene su columna.
+          'Motivo': `${t.estacion ?? 'Bomba'}${t.valor ? ` · $${t.valor}` : ''}`,
           'Registró': t.registradoNombre ?? '',
         })
       }
@@ -434,6 +471,7 @@ export function ConsumoEquiposTab() {
                   )}
                   <span className="subtle-copy">
                     {fmtFechaCorta(d.cuando)}{d.quien ? ` · entregó ${d.quien}` : ''}
+                    {d.horometro != null && ` · ⏱ ${d.horometro.toLocaleString('es-CO')} h`}
                     {' · '}<span className="consumo-maq__ver">ver detalle →</span>
                   </span>
                   {d.nota && <span className="subtle-copy">{d.nota}</span>}

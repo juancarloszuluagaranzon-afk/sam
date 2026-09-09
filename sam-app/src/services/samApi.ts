@@ -2688,6 +2688,17 @@ export async function loadSolicitudes(opts?: {
   operarioId?: string
   estados?: SolicitudEstado[]
   limit?: number
+  /**
+   * Acota por la fecha en que se ENTREGÓ. Existe para el reporte de insumos:
+   * sin esto solo llegaban las N más recientes, y en un rango de meses atrás el
+   * horómetro de la entrega salía vacío sin decir por qué.
+   *
+   * ⚠️ Se filtra por `entregado_en` y no por la fecha efectiva del kardex: son
+   * distintas cuando alguien corrige un despacho, así que el llamador debe
+   * pedir un margen a lado y lado del rango que va a mostrar.
+   */
+  desde?: string
+  hasta?: string
 }): Promise<SolicitudInsumo[]> {
   // `*` a propósito (no lista explícita): así la carga NO se rompe si una
   // migración de columna nueva (ej. confirmación fase 4) aún no se ha corrido.
@@ -2698,6 +2709,8 @@ export async function loadSolicitudes(opts?: {
     .limit(opts?.limit ?? 200)
   if (opts?.operarioId) query = query.eq('operario_id', opts.operarioId)
   if (opts?.estados && opts.estados.length) query = query.in('estado', opts.estados)
+  if (opts?.desde) query = query.gte('entregado_en', opts.desde)
+  if (opts?.hasta) query = query.lte('entregado_en', opts.hasta)
   try {
     const { data, error } = await query
     if (error || !data) throw error ?? new Error('empty')

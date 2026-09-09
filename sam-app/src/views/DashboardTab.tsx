@@ -1,13 +1,11 @@
 import { unidadDeLabor } from '../lib/texto'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadEquiposEstado, executionDateKey, loadKardexReporte, loadBodegas, type EquipoEstado } from '../services/samApi'
-import { fmtCantidad } from '../lib/cantidad'
-import { fmtFechaHora } from '../lib/fechas'
+import { loadEquiposEstado, executionDateKey, loadKardexReporte, type EquipoEstado } from '../services/samApi'
 import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../components/Charts'
-import type { Assignment, InsumoKardex, Bodega } from '../domain/sam'
-import { agruparDespachos } from '../lib/despachos'
-import { DetalleDespacho } from '../components/DetalleDespacho'
+import type { Assignment, InsumoKardex } from '../domain/sam'
+import { ModalEntregas } from '../components/ModalEntregas'
+import { PERIODOS, rangoDe, esUnSoloDia, type Periodo } from '../lib/periodos'
 import { InsumosCard } from './InsumosCard'
 
 /**
@@ -23,31 +21,6 @@ import { InsumosCard } from './InsumosCard'
  *  · Ranking de operarios/haciendas → barras horizontales (magnitud).
  *  · Evolución por día → columnas.
  */
-
-type Periodo = 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES' | 'RANGO'
-const PERIODOS: { value: Periodo; label: string }[] = [
-  { value: 'HOY', label: 'Hoy' },
-  { value: 'AYER', label: 'Ayer' },
-  { value: 'PRIMERA', label: '1ra quinc.' },
-  { value: 'SEGUNDA', label: '2da quinc.' },
-  { value: 'MES', label: 'Mes' },
-  { value: 'RANGO', label: 'Rango' },
-]
-
-function rangoDe(p: Periodo, hoy: string): { desde: string; hasta: string } {
-  if (p === 'AYER') {
-    const d = new Date(`${hoy}T12:00:00`)
-    d.setDate(d.getDate() - 1)
-    const ayer = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    return { desde: ayer, hasta: ayer }
-  }
-  const [y, m] = hoy.split('-')
-  const fin = `${y}-${m}-${String(new Date(Number(y), Number(m), 0).getDate()).padStart(2, '0')}`
-  if (p === 'PRIMERA') return { desde: `${y}-${m}-01`, hasta: `${y}-${m}-15` }
-  if (p === 'SEGUNDA') return { desde: `${y}-${m}-16`, hasta: fin }
-  if (p === 'MES') return { desde: `${y}-${m}-01`, hasta: fin }
-  return { desde: hoy, hasta: hoy }
-}
 
 /** Área que cuenta como ejecutada (solo labores cerradas: es lo que se paga). */
 function areaEjec(a: Assignment): number {
@@ -106,10 +79,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
   const [hasta, setHasta] = useState(() => rangoDe('HOY', todayKey).hasta)
   const [equipos, setEquipos] = useState<EquipoEstado[]>([])
   const [movs, setMovs] = useState<InsumoKardex[]>([])
-  const [bodegas, setBodegas] = useState<Bodega[]>([])
   // Detalle de insumos (entregas) en ventana emergente.
-  /** Despacho abierto desde el detalle de entregas. */
-  const [verDespacho, setVerDespacho] = useState<InsumoKardex | null>(null)
   const [detIns, setDetIns] = useState<{ titulo: string; items: InsumoKardex[] } | null>(null)
   // Los rankings muestran los primeros y ocultan la cola tras "Mostrar todos",
   // para que el dueño pueda cuadrar contra el total de arriba.
@@ -121,7 +91,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
 
   useEffect(() => {
     void loadEquiposEstado().then(setEquipos)
-    void loadBodegas().then(setBodegas)
   }, [])
 
   // Movimientos de insumos del periodo (para el indicador de entregas).
@@ -217,11 +186,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     sortedEquipment.forEach((e) => m.set(e.code, e.name))
     return m
   }, [sortedEquipment])
-  const bodegaNombre = useMemo(() => {
-    const m = new Map<string, string>()
-    bodegas.forEach((b) => m.set(b.id, b.nombre))
-    return m
-  }, [bodegas])
 
 
 
@@ -359,7 +323,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
         cerradas={cerradas}
         catalogo={insumoNombre}
         nombreMaq={(c) => equipoNombre.get(c) ?? c}
-        unSoloDia={periodo === 'HOY' || periodo === 'AYER'}
+        unSoloDia={esUnSoloDia(periodo)}
         cargando={insumos.length === 0}
         onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
       />
@@ -381,73 +345,11 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
         )}
       </div>
 
-      {/* Detalle de entregas de insumos */}
+      {/* Las entregas detrás del dato, y de ahí la entrega completa. El
+          mismo componente que usa el tablero de insumos: dos copias de
+          esta lista terminan contando distinto. */}
       {detIns && (
-        <div className="modal-overlay open" onClick={() => setDetIns(null)}>
-          <div className="modal-card dash-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="labor-detail-header">
-              <div><p className="eyebrow">Insumos entregados</p><h3>{detIns.titulo}</h3></div>
-              <button type="button" className="modal-close-btn" onClick={() => setDetIns(null)} aria-label="Cerrar">&#x2715;</button>
-            </div>
-            <p className="subtle-copy" style={{ marginTop: 0 }}>
-              {agruparDespachos(detIns.items).length} entrega{agruparDespachos(detIns.items).length === 1 ? '' : 's'}
-              {' · '}{detIns.items.length} ítem{detIns.items.length === 1 ? '' : 's'}
-            </p>
-            <div className="dash-detalle">
-              {/* El catálogo llega por el contexto compartido; sin esperarlo
-                  la lista muestra el UUID crudo del insumo. */}
-              {insumos.length === 0 ? (
-                <p className="muted-text">Cargando insumos…</p>
-              ) : detIns.items.length === 0 ? (
-                <p className="muted-text">Nada que mostrar.</p>
-              ) : (
-                agruparDespachos(detIns.items).map((g) => {
-                  const maq = g.cabeza.equipoCodigo ?? ''
-                  const bod = g.cabeza.bodegaId ? bodegaNombre.get(g.cabeza.bodegaId) : ''
-                  return (
-                    <button
-                      key={g.id}
-                      type="button"
-                      className="ent-row"
-                      onClick={() => setVerDespacho(g.cabeza)}
-                      aria-label={`Ver el detalle de la entrega a ${equipoNombre.get(maq) ?? maq}`}
-                    >
-                      <div className="ent-row__cab">
-                        <strong>🚜 {equipoNombre.get(maq) ?? maq}</strong>
-                        <span className="ent-row__hora">{fmtFechaHora(g.cuando)}</span>
-                      </div>
-                      <ul className="ent-row__items">
-                        {g.movs.map((m) => {
-                          const info = insumoNombre.get(m.insumoId)
-                          return (
-                            <li key={m.id}>
-                              {/* Cada insumo con SU unidad: no se suman entre sí. */}
-                              <span className="sol-card__qty">
-                                {fmtCantidad(m.cantidad, info?.unidad)} {info?.unidad ?? ''}
-                              </span>
-                              <span className="ent-row__ins">{info?.nombre ?? m.insumoId}</span>
-                            </li>
-                          )
-                        })}
-                      </ul>
-                      <span className="ent-row__pie">
-                        {g.cabeza.motivo ?? 'Entrega'}{bod ? ` · ${bod}` : ''}
-                        <span className="ent-row__ver" aria-hidden>ver detalle ›</span>
-                      </span>
-                    </button>
-                  )
-                })
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* La entrega completa: el mismo detalle que en Reportes, para que no
-          haya dos versiones de la misma verdad. Va después del listado, así
-          se pinta encima y al cerrarlo se vuelve a la lista. */}
-      {verDespacho && (
-        <DetalleDespacho mov={verDespacho} onClose={() => setVerDespacho(null)} />
+        <ModalEntregas titulo={detIns.titulo} items={detIns.items} onClose={() => setDetIns(null)} />
       )}
 
       {/* Ventana emergente con el detalle */}

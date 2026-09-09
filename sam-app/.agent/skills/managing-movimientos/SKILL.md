@@ -246,3 +246,45 @@ Al montar `InsumosCard` suelto en un div para probarlo, barras y arcos salen
 **transparentes**. No es un bug: en el tablero real vive dentro de
 `<section className="dash">`. Si se monta aparte, ponerle esa clase al contenedor.
 `Donut` acepta `decimales` (0 para contar entregas; 2 por defecto).
+
+## El tablero se llama «Insumos y materiales» (8-sep-2026)
+
+El cliente pidió el cambio de nombre y las tortas **sobre esta pantalla**, no sobre
+Operación general. Se le construyó primero en la cara equivocada porque su captura de
+referencia era la de Operación general; en realidad esa captura mostraba **los filtros
+que quería copiar**, no el destino. La frase que lo desambigua es «con los filtros que
+tiene el de operación general»: solo tiene sentido pedirlos para una pantalla que NO
+los tiene.
+
+- **`<h2>` = «Insumos y materiales»**, la píldora de la cara y la entrada de Más
+  también. ⚠️ El archivo (`MovimientosTab`), la tabla, el RPC
+  (`resumen_movimientos_insumos`) y las props **siguen diciendo «movimientos»**: es la
+  misma capa de traducción permanente que aval → aprobación. Renombrarlas era romper
+  producción para ganar una palabra.
+- **Los filtros salen de `lib/periodos`**, compartidos con Operación general: Hoy,
+  Ayer, 1ra quinc., 2da quinc., Mes y Rango. Antes eran Quincena / Mes / 30 días /
+  Otro. Copiarlos al otro archivo habría durado hasta que alguien corrigiera la
+  quincena en uno solo. ⚠️ Arranca en **Mes**, no en Hoy: con un solo día el ritmo por
+  hora se calcula sobre una jornada a medias y este tablero es de tendencia.
+- **La `<InsumosCard>` va debajo de los KPI del periodo**, antes de «Quién estuvo, día
+  por día». Las capas de arriba responden QUIÉN entregó; la tarjeta responde QUÉ salió.
+  Es el **mismo componente** que el de Operación general, no una copia.
+- **`<ModalEntregas>`** (`components/`) es la lista de entregas detrás de un dato, y de
+  ahí `<DetalleDespacho>`. Se sacó de `DashboardTab` cuando la segunda pantalla la
+  necesitó: es justo el sitio donde el dueño va a comprobar una cifra que le pareció
+  rara, y dos copias terminan contando distinto.
+
+### 🔴 La trampa que casi lo deja invisible
+
+`SERIES` son `var(--dash-s1)`… y esas variables vivían **solo bajo `.dash`**. Este
+tablero es `.mov`, así que sus gráficas se pintaban **transparentes** desde antes de
+este cambio, sin un error en consola. Medido en el navegador: dentro de `.mov`,
+`--dash-s1` devolvía vacío y el fondo resolvía `rgba(0, 0, 0, 0)`.
+
+El arreglo separa la paleta de la maquetación: `.dash, .mov { --dash-s1… }` y `.dash`
+se queda con su flex. **Al montar gráficas en una pantalla nueva, sumar su clase ahí** y
+comprobarlo midiendo, no mirando:
+
+```js
+getComputedStyle(el).backgroundColor  // 'rgba(0, 0, 0, 0)' = la paleta no llegó
+```

@@ -3,6 +3,12 @@ import { Ayuda } from '../components/Ayuda'
 import { BarrasH, Columnas, ColumnasApiladas, Leyenda, plegarOtros, colorDe, SERIES, type Punto, type Serie } from '../components/Charts'
 import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
+import { PERIODOS, rangoDe, esUnSoloDia, hoyBogota, type Periodo } from '../lib/periodos'
+import { useAppData } from '../context/AppDataContext'
+import { executionDateKey, loadKardexReporte } from '../services/samApi'
+import { ModalEntregas } from '../components/ModalEntregas'
+import { InsumosCard } from './InsumosCard'
+import type { InsumoKardex } from '../domain/sam'
 import {
   loadResumenMovimientos, indiceCalidad, ritmoPorHora, hhmm,
   cuadreCarro, esDeRuta, loadSolicitudesOperarios,
@@ -38,42 +44,6 @@ function primerNombre(completo: string): string {
   const n = partes[partes.length - 1] || completo
   return n.charAt(0) + n.slice(1).toLowerCase()
 }
-
-/** Primer día del mes actual y hoy, en zona Bogotá. */
-function rangoMesActual(): { desde: string; hasta: string } {
-  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
-  return { desde: `${hoy.slice(0, 7)}-01`, hasta: hoy }
-}
-
-/** Hoy en zona Bogotá (yyyy-mm-dd), sin depender del reloj del equipo. */
-function hoyBogota(): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
-}
-
-/** La quincena en curso: 1–15 o 16–fin de mes. Es como se paga. */
-function rangoQuincena(): { desde: string; hasta: string } {
-  const hoy = hoyBogota()
-  const [y, m, d] = hoy.split('-')
-  return Number(d) <= 15
-    ? { desde: `${y}-${m}-01`, hasta: hoy }
-    : { desde: `${y}-${m}-16`, hasta: hoy }
-}
-
-function rango30dias(): { desde: string; hasta: string } {
-  const hoy = hoyBogota()
-  const [y, m, d] = hoy.split('-').map(Number)
-  const atras = new Date(Date.UTC(y, m - 1, d - 29))
-  return { desde: atras.toISOString().slice(0, 10), hasta: hoy }
-}
-
-type Periodo = 'quincena' | 'mes' | 'd30' | 'otro'
-
-const PERIODOS: { id: Periodo; label: string }[] = [
-  { id: 'quincena', label: 'Quincena' },
-  { id: 'mes', label: 'Mes' },
-  { id: 'd30', label: '30 días' },
-  { id: 'otro', label: 'Otro' },
-]
 
 function diaCorto(iso: string): string {
   const [, m, d] = iso.split('-')
@@ -112,10 +82,15 @@ function Acordeon({ titulo, resumen, children }: {
 }
 
 export function MovimientosTab() {
-  const { desde: d0, hasta: h0 } = rangoMesActual()
-  const [periodo, setPeriodo] = useState<Periodo>('mes')
-  const [desde, setDesde] = useState(d0)
-  const [hasta, setHasta] = useState(h0)
+  const { assignments, insumos, sortedEquipment } = useAppData()
+  // El mes sigue siendo el arranque: con «Hoy» el ritmo por hora se
+  // calcula sobre una jornada a medias y el tablero es de tendencia.
+  const hoy = hoyBogota()
+  const [periodo, setPeriodo] = useState<Periodo>('MES')
+  const [desde, setDesde] = useState(() => rangoDe('MES', hoy).desde)
+  const [hasta, setHasta] = useState(() => rangoDe('MES', hoy).hasta)
+  const [movs, setMovs] = useState<InsumoKardex[]>([])
+  const [detIns, setDetIns] = useState<{ titulo: string; items: InsumoKardex[] } | null>(null)
   const [diaADia, setDiaADia] = useState(false)
   const [datos, setDatos] = useState<ResumenMovimientos | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -142,14 +117,40 @@ export function MovimientosTab() {
   }, [desde, hasta])
   useEffect(() => { void cargar() }, [cargar])
 
-  /** «Otro» no toca las fechas: deja las que haya y muestra los dos campos. */
+  /** «Rango» no toca las fechas: deja las que haya y muestra los dos campos. */
   function aplicarPeriodo(id: Periodo) {
     setPeriodo(id)
-    if (id === 'otro') return
-    const r = id === 'quincena' ? rangoQuincena() : id === 'd30' ? rango30dias() : rangoMesActual()
+    if (id === 'RANGO') return
+    const r = rangoDe(id, hoy)
     setDesde(r.desde)
     setHasta(r.hasta)
   }
+
+  // El kardex del mismo rango: es lo que alimenta las tortas y el gal/ha.
+  // Va aparte del RPC del tablero porque son dos preguntas distintas —
+  // quién entregó y qué se entregó— y una no debe esperar a la otra.
+  useEffect(() => {
+    void loadKardexReporte({ desde, hasta: `${hasta}T23:59:59` }).then(setMovs).catch(() => setMovs([]))
+  }, [desde, hasta])
+
+  /** Consumos: SALIDA con máquina. Surtir un carro no es consumo. */
+  const insumosMovs = useMemo(() => movs.filter((m) => m.tipo === 'SALIDA' && m.equipoCodigo), [movs])
+  /** Labores cerradas del rango: el denominador del gal/ha. */
+  const cerradas = useMemo(() => assignments.filter((a) => {
+    if (a.status !== 'COMPLETADA' && a.status !== 'PARCIAL') return false
+    const k = executionDateKey(a)
+    return !!k && k >= desde && k <= hasta
+  }), [assignments, desde, hasta])
+  const catalogoInsumos = useMemo(() => {
+    const m = new Map<string, { nombre: string; unidad: string }>()
+    insumos.forEach((i) => m.set(i.id, { nombre: i.nombre, unidad: i.unidad }))
+    return m
+  }, [insumos])
+  const nombreMaq = useMemo(() => {
+    const m = new Map<string, string>()
+    sortedEquipment.forEach((e) => m.set(e.code, e.name))
+    return (c: string) => m.get(c) ?? c
+  }, [sortedEquipment])
 
   const t = datos?.totales
   const despachadores = datos?.despachadores ?? []
@@ -286,7 +287,7 @@ export function MovimientosTab() {
   return (
     <section className="panel-card mov">
       <div className="panel-title split">
-        <h2>Movimientos de insumos</h2>
+        <h2>Insumos y materiales</h2>
         <div className="mov-titulo-acciones">
           <Ayuda>
             <p>Quién entrega insumos y combustible, cuánto y a quién.</p>
@@ -311,20 +312,22 @@ export function MovimientosTab() {
         </div>
       </div>
 
-      {/* Chips en vez de dos campos de fecha: el 95% de las veces se quiere la
-          quincena o el mes, y escribirlos a mano en un celular son ocho toques. */}
+      {/* Chips en vez de dos campos de fecha: escribirlos a mano en un celular
+          son ocho toques. Son LOS MISMOS de Operación general (`lib/periodos`),
+          porque el cliente pidió comparar las dos caras del tablero sin tener
+          que traducir «quincena» de una a la otra. */}
       <div className="mov-periodo">
         {PERIODOS.map((p) => (
           <button
-            key={p.id}
+            key={p.value}
             type="button"
-            aria-pressed={periodo === p.id}
-            onClick={() => aplicarPeriodo(p.id)}
+            aria-pressed={periodo === p.value}
+            onClick={() => aplicarPeriodo(p.value)}
           >
             {p.label}
           </button>
         ))}
-        {periodo === 'otro' && (
+        {periodo === 'RANGO' && (
           <div className="mov-periodo__rango">
             <label>Desde
               <input type="date" value={desde} max={hasta} onChange={(e) => setDesde(e.target.value)} />
@@ -489,6 +492,24 @@ export function MovimientosTab() {
               <span className="dash-kpi__pie">{t.conDiferencia} con diferencia</span>
             </div>
           </div>
+
+          {/* ── Qué se entregó ────────────────────────────────────────────
+              Las capas de arriba responden QUIÉN entregó; esta responde QUÉ
+              salió y a qué máquina, con el mismo filtro de fechas. Va aquí y no
+              al final porque el dueño llega a esta pantalla por el material
+              tanto como por la persona.
+
+              Es el MISMO componente que la tarjeta de Operación general, no una
+              copia: dos tableros del mismo hecho terminan dando dos verdades. */}
+          <InsumosCard
+            movs={insumosMovs}
+            cerradas={cerradas}
+            catalogo={catalogoInsumos}
+            nombreMaq={nombreMaq}
+            unSoloDia={esUnSoloDia(periodo)}
+            cargando={insumos.length === 0}
+            onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
+          />
 
           <h3 className="dash-titulo">Quién estuvo, día por día</h3>
           <div className="mov-tira">
@@ -701,6 +722,11 @@ export function MovimientosTab() {
       )}
 
       {/* ── Detalle de una persona ──────────────────────────────────────── */}
+      {/* Las entregas detrás de una porción de las tortas. */}
+      {detIns && (
+        <ModalEntregas titulo={detIns.titulo} items={detIns.items} onClose={() => setDetIns(null)} />
+      )}
+
       {detalle && (
         <div className="modal-overlay open" onClick={() => setDetalle(null)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>

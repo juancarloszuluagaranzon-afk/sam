@@ -6113,19 +6113,29 @@ td.planilla-revisada {
    Paleta categórica VALIDADA (guía de dataviz). Los pasos claros no alcanzan
    3:1 sobre el fondo oscuro, así que el modo oscuro tiene sus propios pasos
    (elegidos y validados para esa superficie, no un volteo automático). */
-.dash {
+/* 🔴 La PALETA va en su propio selector, separada de la maquetación de
+   `.dash`, porque la usan DOS tableros: Operación general (`.dash`) y el de
+   insumos (`.mov`). `SERIES` en Charts.tsx son `var(--dash-s1)`, así que una
+   gráfica montada fuera del selector no sale de otro color: sale TRANSPARENTE,
+   sin error en consola y sin que nadie se entere hasta que la mira un cliente.
+   Medido el 8-sep-2026: dentro de `.mov` el valor era vacío y las barras se
+   pintaban `rgba(0,0,0,0)`. Al montar gráficas en una pantalla nueva, sumar su
+   clase aquí. */
+.dash, .mov {
   --dash-s1: #2a78d6; --dash-s2: #eb6834; --dash-s3: #1baf7a;
   --dash-s4: #eda100; --dash-s5: #e87ba4; --dash-s6: #4a3aa7;
   --dash-otros: #898781;
+}
+.dash {
   display: flex; flex-direction: column; gap: 12px;
 }
 @media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) .dash {
+  :root:where(:not([data-theme="light"])) :is(.dash, .mov) {
     --dash-s1: #3987e5; --dash-s2: #d95926; --dash-s3: #199e70;
     --dash-s4: #c98500; --dash-s5: #d55181; --dash-s6: #9085e9;
   }
 }
-:root[data-theme="dark"] .dash {
+:root[data-theme="dark"] :is(.dash, .mov) {
   --dash-s1: #3987e5; --dash-s2: #d95926; --dash-s3: #199e70;
   --dash-s4: #c98500; --dash-s5: #d55181; --dash-s6: #9085e9;
 }

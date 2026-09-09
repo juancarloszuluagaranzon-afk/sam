@@ -1195,7 +1195,7 @@ export function SupervisorView({
                   >
                     <span className="more-sheet__icon">📦</span>
                     <div>
-                      <div className="more-sheet__label">Movimientos de insumos</div>
+                      <div className="more-sheet__label">Insumos y materiales</div>
                       <div className="more-sheet__desc">Quién entrega, qué entrega y a quién — con su calidad al lado</div>
                     </div>
                   </button>
@@ -2321,7 +2321,7 @@ export function SupervisorView({
                   terminan dando dos verdades. */}
               <button type="button" className={caraTablero === 'insumos' ? 'is-sel' : ''}
                       onClick={() => setCaraTablero('insumos')}>
-                📦 Movimientos
+                📦 Insumos y materiales
               </button>
             </div>
             {caraTablero === 'operacion' ? (
@@ -2329,7 +2329,7 @@ export function SupervisorView({
             ) : caraTablero === 'maquinaria' ? (
               <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
             ) : (
-              <PantallaSegura nombre="Movimientos de insumos"><MovimientosTab /></PantallaSegura>
+              <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
             )}
           </>
         ) : null}
@@ -2347,7 +2347,7 @@ export function SupervisorView({
           <PantallaSegura nombre="Horómetros"><HorometrosTab /></PantallaSegura>
         ) : null}
         {supervisorTab === 'movimientos' ? (
-          <PantallaSegura nombre="Movimientos de insumos"><MovimientosTab /></PantallaSegura>
+          <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'insumosresumen' ? (

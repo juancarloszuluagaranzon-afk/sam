@@ -8864,7 +8864,11 @@ td.planilla-vacio:hover { background: #fde047; }
    ancho, que es lo único que se comporta igual de 320px a 2560px.
    `min-width:0` en las celdas porque el mínimo automático de un item de grid
    es su contenido, y sin eso la celda se niega a encogerse. */
-.dash-tres { display: grid; gap: 14px 18px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 12px; }
+/* `min(260px, 100%)`: en un celular de 320px el interior de la tarjeta mide
+   263px y la pista pedía 260. Tres píxeles de holgura, o sea cualquier padding
+   que se le sume a `.dash-card` mañana la desborda. Con `min()` la pista nunca
+   puede ser más ancha que su contenedor. */
+.dash-tres { display: grid; gap: 14px 18px; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); margin-top: 12px; }
 .dash-tres > * { min-width: 0; }
 .dash-tres .dash-donut { flex-direction: column; align-items: center; gap: 10px; }
 .dash-tres h4 { margin: 0 0 4px; font-size: 0.86rem; color: var(--color-ink, #22261f); }
@@ -8880,10 +8884,19 @@ td.planilla-vacio:hover { background: #fde047; }
 .dash-galha__nota { margin: 8px 0 0; font-size: 0.78rem; line-height: 1.45; color: var(--color-ink-mid, #5a5f57); }
 /* Una fila por maquina con su labor al lado: sin la labor, la comparacion es injusta. */
 .dash-galha__fila {
-  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: baseline;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 8px; align-items: baseline;
   width: 100%; padding: 9px 0; background: none; border: 0;
   border-bottom: 1px solid var(--color-divider, #e6e9e1);
   text-align: left; font: inherit; color: inherit; cursor: pointer; font-size: 0.86rem;
+}
+/* En celular las tres columnas dejan 82px para el nombre de la máquina, y el
+   día que los valores crezcan («12.345 gal · 1.234 ha») la pista `1fr` tiende a
+   cero y el nombre se vuelve una columna de letras. Por debajo de 520px el
+   detalle en gris baja a su propio renglón: el nombre y el gal/ha —que es lo
+   que se compara— se quedan arriba, juntos. */
+@media (max-width: 520px) {
+  .dash-galha__fila { grid-template-columns: minmax(0, 1fr) auto; }
+  .dash-galha__fila > small { grid-column: 1 / -1; }
 }
 .dash-galha__fila:last-of-type { border-bottom: 0; }
 .dash-galha__fila b { font-variant-numeric: tabular-nums; white-space: nowrap; }

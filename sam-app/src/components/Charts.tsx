@@ -144,7 +144,9 @@ export function Donut({
             <li key={d.id}>
               <button type="button" onClick={() => onPick?.(d)} disabled={!onPick}>
                 <span className="dash-chip" style={{ background: d.id === '__otros' ? SERIE_OTROS : colorDe(i) }} />
-                <span className="dash-leyenda__lbl">{d.label}</span>
+                {/* La etiqueta se recorta con puntos suspensivos cuando no cabe;
+                    sin `title` el nombre completo no se puede leer en ningún lado. */}
+                <span className="dash-leyenda__lbl" title={d.label}>{d.label}</span>
                 <span className="dash-leyenda__val">{nfGrafico(d.valor, dec)} <small>{pct.toFixed(0)}%</small></span>
               </button>
             </li>
@@ -188,7 +190,7 @@ export function BarrasH({
           disabled={!onPick}
           aria-label={`${d.label}: ${nfGrafico(d.valor, 2)} ${unidad}`}
         >
-          <span className="dash-barra__lbl">{d.label}</span>
+          <span className="dash-barra__lbl" title={d.label}>{d.label}</span>
           <span className="dash-barra__track">
             <span className="dash-barra__fill" style={{ width: `${Math.max((d.valor / max) * 100, 2)}%`, background: color }} />
           </span>

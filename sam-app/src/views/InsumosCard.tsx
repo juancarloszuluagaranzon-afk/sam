@@ -230,7 +230,6 @@ export function InsumosCard({
   const pctCobertura = galha.cobertura.total > 0
     ? Math.round((galha.cobertura.conTanqueo / galha.cobertura.total) * 100) : 0
   const filasMaq = galha.porMaquina.filter((r) => r.ratio != null)
-  const TOPE = 8
 
   return (
     <div className="dash-card">
@@ -260,34 +259,20 @@ export function InsumosCard({
               {unSoloDia && ` · cobertura ${pctCobertura}%`}
             </span>
           </div>
+          {/* Una línea, no un párrafo. El detalle que se recorta no se pierde:
+              la cobertura viaja en el subtítulo del número y los días con varias
+              labores salen al entrar a la labor. Tres renglones de advertencia
+              encima de un dato es lo que hace que nadie lea ninguno. */}
           <p className="dash-galha__nota">
             {unSoloDia
-              ? `Un tanqueo alimenta varios días: en un solo día este número es orientativo (${pctCobertura}% de las máquinas que trabajaron tanquearon hoy). En la quincena se promedia solo.`
-              : 'Compárese por labor y no por máquina: TRIPLE y SUBSUELO gastan tres a cuatro veces más por hectárea que DESPEJE, y una máquina que hace lo primero siempre va a parecer peor.'}
-            {galha.ambiguos.varias > 0 && (
-              <> En {galha.ambiguos.varias} de {galha.ambiguos.total} días-máquina hubo más de una labor; ahí el combustible se repartió por área.</>
-            )}
+              ? `En un solo día es orientativo: un tanqueo alimenta varios (cobertura ${pctCobertura}%).`
+              : 'Compárese por labor, no por máquina: TRIPLE gasta tres a cuatro veces más que DESPEJE.'}
           </p>
-
-          {galha.porLabor.length > 0 && (
-            <>
-              <p className="ins-res__lbl" style={{ marginTop: 12 }}>Galones por hectárea, por labor</p>
-              <BarrasH
-                datos={galha.porLabor.map((l) => ({
-                  id: l.labor, label: l.labor, valor: l.ratio,
-                  // ACEQUIAS va en hectómetros: su unidad viaja en el punto.
-                  sufijo: l.unidad === 'ha' ? undefined : `gal/${l.unidad}`,
-                }))}
-                unidad="gal/ha"
-                color={SERIES[0]}
-                onPick={(p) => setVista({ nivel: 'labor', labor: p.id })}
-              />
-            </>
-          )}
         </>
       )}
 
-      {/* ── Las tres tortas ───────────────────────────────────────────────── */}
+      {/* ── Qué salió ─────────────────────────────────────────────────────── */}
+      <p className="ins-res__lbl" style={{ marginTop: 14 }}>Qué salió y a qué máquina</p>
       <div className="dash-tres">
         <div>
           <h4>Entregas por material</h4>
@@ -303,11 +288,36 @@ export function InsumosCard({
         </div>
       </div>
 
-      {/* ── Máquina por máquina, cada una con su labor ────────────────────── */}
+      {/* ── Galones por hectárea ───────────────────────────────────────────
+          Estaba DOS veces en la vista inicial: aquí por labor y más arriba una
+          lista de ocho máquinas. Es el mismo indicador partido en dos sitios, y
+          por eso la pantalla se sentía saturada. Ahora es UNA sección: la labor
+          de primeras, que es donde está el hallazgo —la máquina que hace TRIPLE
+          siempre va a parecer peor—, y las máquinas plegadas detrás de un
+          botón, para el que quiera bajar a ese nivel. */}
+      {galha.porLabor.length > 0 && (
+        <>
+          <p className="ins-res__lbl" style={{ marginTop: 18 }}>Galones por hectárea, por labor</p>
+          <BarrasH
+            datos={galha.porLabor.map((l) => ({
+              id: l.labor, label: l.labor, valor: l.ratio,
+              // ACEQUIAS va en hectómetros: su unidad viaja en el punto.
+              sufijo: l.unidad === 'ha' ? undefined : `gal/${l.unidad}`,
+            }))}
+            unidad="gal/ha"
+            color={SERIES[0]}
+            onPick={(p) => setVista({ nivel: 'labor', labor: p.id })}
+          />
+        </>
+      )}
+
       {filasMaq.length > 0 && (
         <>
-          <p className="ins-res__lbl" style={{ marginTop: 14 }}>Máquinas · gal/ha con su labor principal</p>
-          {(verMaq ? filasMaq : filasMaq.slice(0, TOPE)).map((r) => (
+          <button type="button" className="dash-card__link" style={{ marginTop: 10 }}
+                  onClick={() => setVerMaq((v) => !v)}>
+            {verMaq ? 'Ocultar el detalle por máquina' : `Ver las ${filasMaq.length} máquinas, una por una →`}
+          </button>
+          {verMaq && filasMaq.map((r) => (
             <button key={r.maquina} type="button" className="dash-galha__fila"
                     onClick={() => setVista({ nivel: 'maquina', maquina: r.maquina })}>
               <span>{nombreMaq(r.maquina)}<small> · {r.laborDominante || 'sin labor'}</small></span>
@@ -315,11 +325,6 @@ export function InsumosCard({
               <small>{nf(r.gal, 0)} gal · {nf(r.ha, 0)} ha</small>
             </button>
           ))}
-          {filasMaq.length > TOPE && (
-            <button type="button" className="dash-card__link" style={{ marginTop: 8 }} onClick={() => setVerMaq((v) => !v)}>
-              {verMaq ? 'Mostrar menos' : `Mostrar las ${filasMaq.length}`}
-            </button>
-          )}
         </>
       )}
     </div>

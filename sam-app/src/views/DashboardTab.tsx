@@ -1,12 +1,10 @@
 import { unidadDeLabor } from '../lib/texto'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadEquiposEstado, executionDateKey, loadKardexReporte, type EquipoEstado } from '../services/samApi'
+import { loadEquiposEstado, executionDateKey, type EquipoEstado } from '../services/samApi'
 import { Donut, BarrasH, Columnas, plegarOtros, SERIES, type Punto } from '../components/Charts'
-import type { Assignment, InsumoKardex } from '../domain/sam'
-import { ModalEntregas } from '../components/ModalEntregas'
-import { PERIODOS, rangoDe, esUnSoloDia, type Periodo } from '../lib/periodos'
-import { InsumosCard } from './InsumosCard'
+import type { Assignment } from '../domain/sam'
+import { PERIODOS, rangoDe, type Periodo } from '../lib/periodos'
 
 /**
  * Inicio del propietario — el tablero de la operación.
@@ -72,15 +70,12 @@ function VerTodo({
 }
 
 export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
-  const { assignments, users, insumos, sortedEquipment, todayKey, operatorStatusMap } = useAppData()
+  const { assignments, users, todayKey, operatorStatusMap } = useAppData()
 
   const [periodo, setPeriodo] = useState<Periodo>('HOY')
   const [desde, setDesde] = useState(() => rangoDe('HOY', todayKey).desde)
   const [hasta, setHasta] = useState(() => rangoDe('HOY', todayKey).hasta)
   const [equipos, setEquipos] = useState<EquipoEstado[]>([])
-  const [movs, setMovs] = useState<InsumoKardex[]>([])
-  // Detalle de insumos (entregas) en ventana emergente.
-  const [detIns, setDetIns] = useState<{ titulo: string; items: InsumoKardex[] } | null>(null)
   // Los rankings muestran los primeros y ocultan la cola tras "Mostrar todos",
   // para que el dueño pueda cuadrar contra el total de arriba.
   const [verOp, setVerOp] = useState(false)
@@ -92,11 +87,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
   useEffect(() => {
     void loadEquiposEstado().then(setEquipos)
   }, [])
-
-  // Movimientos de insumos del periodo (para el indicador de entregas).
-  useEffect(() => {
-    void loadKardexReporte({ desde, hasta: `${hasta}T23:59:59` }).then(setMovs)
-  }, [desde, hasta])
 
   function elegir(p: Periodo) {
     setPeriodo(p)
@@ -168,27 +158,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => ({ id: k, label: fmtDia(k), valor: v }))
   }, [cerradas])
-
-  // ── Insumos entregados en el periodo ──
-  // Entregas = SALIDA con máquina. El CONCEPTO sale del motivo del movimiento
-  // (Despacho de solicitud, Entrega directa, Traslado a satélite, Carga en
-  // estación…), así el dueño ve por qué se movió cada galón.
-  const insumosMovs = useMemo(() => movs.filter((m) => m.tipo === 'SALIDA' && m.equipoCodigo), [movs])
-
-  const insumoNombre = useMemo(() => {
-    const m = new Map<string, { nombre: string; unidad: string }>()
-    insumos.forEach((i) => m.set(i.id, { nombre: i.nombre, unidad: i.unidad }))
-    return m
-  }, [insumos])
-  /** El código crudo (CASE1301) no es como la gente llama la máquina. */
-  const equipoNombre = useMemo(() => {
-    const m = new Map<string, string>()
-    sortedEquipment.forEach((e) => m.set(e.code, e.name))
-    return m
-  }, [sortedEquipment])
-
-
-
 
   /* ── Abrir detalle ── */
   const abrir = (titulo: string, items: Assignment[]) => setDetalle({ titulo, items })
@@ -315,19 +284,11 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
         <VerTodo datos={porHacienda} visto={TOPE} ver={verHac} onVer={setVerHac} unidad="ha" />
       </div>
 
-      {/* Insumos y materiales: tres tortas, gal/ha, y cada toque segrega un
-          nivel mas. La logica vive en lib/insumosDash.ts para poderla probar
-          contra datos reales sin entrar a la sesion. */}
-      <InsumosCard
-        movs={insumosMovs}
-        cerradas={cerradas}
-        catalogo={insumoNombre}
-        nombreMaq={(c) => equipoNombre.get(c) ?? c}
-        unSoloDia={esUnSoloDia(periodo)}
-        cargando={insumos.length === 0}
-        onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
-      />
-
+      {/* ⚠️ Insumos NO va aquí. Vive en su propia cara del tablero
+          («📦 Insumos y materiales»), por decisión del cliente: esta pantalla
+          es la de LABORES —hectáreas, operarios, haciendas, máquinas— y la de
+          allá es la del material. La misma tarjeta en las dos obliga a
+          preguntarse cuál es la buena. */}
       {/* Máquinas: pocos valores → fichas, no gráfico */}
       <div className="dash-card">
         <div className="dash-card__head">
@@ -344,13 +305,6 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
           <p className="dash-maq__nota">🔧 En taller: {maq.mant.map((e) => e.name).join(', ')}</p>
         )}
       </div>
-
-      {/* Las entregas detrás del dato, y de ahí la entrega completa. El
-          mismo componente que usa el tablero de insumos: dos copias de
-          esta lista terminan contando distinto. */}
-      {detIns && (
-        <ModalEntregas titulo={detIns.titulo} items={detIns.items} onClose={() => setDetIns(null)} />
-      )}
 
       {/* Ventana emergente con el detalle */}
       {detalle && (

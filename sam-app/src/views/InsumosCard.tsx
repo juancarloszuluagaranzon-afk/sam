@@ -44,7 +44,7 @@ type Vista =
 const nf = (n: number, d = 2) => n.toLocaleString('es-CO', { minimumFractionDigits: d, maximumFractionDigits: d })
 
 export function InsumosCard({
-  movs, cerradas, catalogo, nombreMaq, unSoloDia, cargando, onVerEntregas,
+  movs, cerradas, catalogo, nombreMaq, unSoloDia, cargando, onVerEntregas, compacta,
 }: {
   /** Solo los consumos: SALIDA con máquina. */
   movs: InsumoKardex[]
@@ -56,6 +56,12 @@ export function InsumosCard({
   cargando: boolean
   /** Abre la lista de entregas (y de ahí la entrega completa). */
   onVerEntregas: (titulo: string, items: InsumoKardex[]) => void
+  /**
+   * Sin las tres cajas de resumen. Para el host que YA tiene su propia fila
+   * de KPI justo arriba (el tablero de insumos): dos filas de cifras
+   * seguidas es lo que el cliente llamó «saturado».
+   */
+  compacta?: boolean
 }) {
   const [vista, setVista] = useState<Vista>({ nivel: 'inicio' })
   const [verMaq, setVerMaq] = useState(false)
@@ -235,11 +241,13 @@ export function InsumosCard({
         </button>
       </div>
 
-      <div className="dash-maq" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
-        <div className="dash-maq__box"><strong>{movs.length}</strong><span>entregas</span></div>
-        <div className="dash-maq__box"><strong>{maquinasAtendidas}</strong><span>máquinas</span></div>
-        <div className="dash-maq__box"><strong>{material.length}</strong><span>materiales</span></div>
-      </div>
+      {!compacta && (
+        <div className="dash-maq" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="dash-maq__box"><strong>{movs.length}</strong><span>entregas</span></div>
+          <div className="dash-maq__box"><strong>{maquinasAtendidas}</strong><span>máquinas</span></div>
+          <div className="dash-maq__box"><strong>{material.length}</strong><span>materiales</span></div>
+        </div>
+      )}
 
       {/* ── El número que une las dos mitades del tablero ─────────────────── */}
       {galha.global != null && (

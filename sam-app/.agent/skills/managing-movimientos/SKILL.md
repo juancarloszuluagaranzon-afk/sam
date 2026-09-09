@@ -343,3 +343,26 @@ for (const w of [320, 360, 860, 900, 1280, 1850]) {
 ```
 ⚠️ Comparar solo celdas con el mismo `top`: cuando la rejilla reflowa a una columna, la
 «vecina» está debajo y cualquier comprobación ingenua da un falso positivo.
+
+## «Se ve muy saturado» (8-sep-2026, tarde)
+
+Después de meter la `<InsumosCard>` al tablero de insumos, el cliente abrió el acordeón
+«Qué se entrega y a quién» y mandó captura: *«revisa todo esto, se ve muy saturado»*.
+Tenía razón, y la causa era **duplicación**, no densidad: el acordeón traía cuatro
+gráficas de barras —material en galones, material en unidades, operarios, máquina por
+combustible— y **tres de las cuatro eran la misma pregunta que las tortas de arriba**, con
+otra forma. «Máquinas por combustible» era exactamente el mismo dato que el donut.
+
+Lo que se hizo:
+
+- **El acordeón quedó solo con «A quién se entrega»** (operarios con más entregas), que es lo
+  único que la tarjeta no tiene. Las otras tres barras se borraron con sus `useMemo`.
+- **La tarjeta bajó** de entre los KPI y la tira de días a **después** de la tira. Partía
+  la historia de las personas en dos y ponía dos filas de cifras seguidas. Ahora la
+  pantalla habla primero de PERSONAS (quién, cuánto, qué días) y después de MATERIAL.
+- **`<InsumosCard compacta>`**: sin sus tres cajas de resumen, porque los KPI del tablero
+  ya dicen entregas y galones justo arriba. Operación general la sigue usando completa.
+
+🔴 **Regla que deja**: antes de montar un componente compartido en una pantalla, buscar
+qué de esa pantalla ya responde lo mismo, y quitarlo. Dos formas del mismo dato en la
+misma vista no son «más información»: son ruido, y el cliente lo llama saturado.

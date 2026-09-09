@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ayuda } from '../components/Ayuda'
-import { BarrasH, Columnas, ColumnasApiladas, Leyenda, plegarOtros, colorDe, SERIES, type Punto, type Serie } from '../components/Charts'
+import { BarrasH, Columnas, ColumnasApiladas, Leyenda, colorDe, SERIES, type Punto, type Serie } from '../components/Charts'
 import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 import { PERIODOS, rangoDe, esUnSoloDia, hoyBogota, type Periodo } from '../lib/periodos'
@@ -202,26 +202,9 @@ export function MovimientosTab() {
     return { pctTemprano: pct(temprano, total), nocturnas: noche }
   }, [datos])
 
-  // Los insumos se parten POR UNIDAD: galones y unidades no se suman jamás.
-  const insumosGalon = useMemo(
-    () => plegarOtros((datos?.insumos ?? []).filter((i) => /^gal/i.test(i.unidad))
-      .map((i) => ({ id: i.nombre, label: i.nombre, valor: i.cantidad, sufijo: 'gal' })), 5),
-    [datos],
-  )
-  const insumosUnidad = useMemo(
-    () => plegarOtros((datos?.insumos ?? []).filter((i) => !/^gal/i.test(i.unidad))
-      .map((i) => ({ id: i.nombre, label: i.nombre, valor: i.cantidad, sufijo: i.unidad })), 5),
-    [datos],
-  )
-
   const topOperarios: Punto[] = useMemo(
     () => (datos?.operarios ?? []).slice(0, 8)
       .map((o) => ({ id: o.id, label: o.nombre, valor: o.entregas })),
-    [datos],
-  )
-  const topMaquinas: Punto[] = useMemo(
-    () => (datos?.maquinas ?? []).filter((m) => m.galones > 0).slice(0, 8)
-      .map((m) => ({ id: m.codigo, label: m.codigo, valor: m.galones, sufijo: 'gal' })),
     [datos],
   )
 
@@ -493,24 +476,6 @@ export function MovimientosTab() {
             </div>
           </div>
 
-          {/* ── Qué se entregó ────────────────────────────────────────────
-              Las capas de arriba responden QUIÉN entregó; esta responde QUÉ
-              salió y a qué máquina, con el mismo filtro de fechas. Va aquí y no
-              al final porque el dueño llega a esta pantalla por el material
-              tanto como por la persona.
-
-              Es el MISMO componente que la tarjeta de Operación general, no una
-              copia: dos tableros del mismo hecho terminan dando dos verdades. */}
-          <InsumosCard
-            movs={insumosMovs}
-            cerradas={cerradas}
-            catalogo={catalogoInsumos}
-            nombreMaq={nombreMaq}
-            unSoloDia={esUnSoloDia(periodo)}
-            cargando={insumos.length === 0}
-            onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
-          />
-
           <h3 className="dash-titulo">Quién estuvo, día por día</h3>
           <div className="mov-tira">
             {despachadores.map((d, i) => (
@@ -547,28 +512,36 @@ export function MovimientosTab() {
             </button>
           </div>
 
+          {/* ── Qué se entregó ────────────────────────────────────────────
+              Hasta aquí la pantalla habló de PERSONAS: quién entregó, cuánto,
+              qué días. De aquí en adelante habla del MATERIAL: qué salió, a
+              qué máquina, cuánto por hectárea. Estaba metida entre los KPI y
+              la tira de días, partiendo la historia de las personas en dos y
+              poniendo dos filas de cifras seguidas — «saturado», dijo el
+              cliente. Va `compacta` porque los KPI de arriba ya cuentan.
+
+              Es el MISMO componente que la tarjeta de Operación general, no una
+              copia: dos tableros del mismo hecho terminan dando dos verdades. */}
+          <InsumosCard
+            compacta
+            movs={insumosMovs}
+            cerradas={cerradas}
+            catalogo={catalogoInsumos}
+            nombreMaq={nombreMaq}
+            unSoloDia={esUnSoloDia(periodo)}
+            cargando={insumos.length === 0}
+            onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
+          />
+
           {/* ── CAPA 3: lo que se abre a propósito ───────────────────────── */}
-          <Acordeon titulo="Qué se entrega y a quién" resumen={`${n0(t.galones)} gal`}>
-            <div className="mov-dos">
-              <div>
-                <p className="eyebrow">Combustible y aceites (galones)</p>
-                <BarrasH datos={insumosGalon} unidad="gal" />
-              </div>
-              <div>
-                <p className="eyebrow">Repuestos y materiales (unidades)</p>
-                <BarrasH datos={insumosUnidad} unidad="unidad" color={SERIES[1]} />
-              </div>
-            </div>
-            <div className="mov-dos">
-              <div>
-                <p className="eyebrow">Operarios con más entregas</p>
-                <BarrasH datos={topOperarios} unidad="entregas" color={SERIES[2]} />
-              </div>
-              <div>
-                <p className="eyebrow">Máquinas por combustible</p>
-                <BarrasH datos={topMaquinas} unidad="gal" color={SERIES[3]} />
-              </div>
-            </div>
+          {/* Antes aquí había cuatro gráficas de barras: qué material, por
+             unidad, y qué máquina por combustible. Las tres primeras eran la
+             MISMA pregunta que las tortas de arriba, con otra forma; la última
+             era exactamente el mismo dato. Queda solo lo que la tarjeta no
+             tiene: a QUIÉN se le entrega. */}
+          <Acordeon titulo="A quién se entrega" resumen={`${t.operarios} operarios`}>
+            <p className="eyebrow">Operarios con más entregas</p>
+            <BarrasH datos={topOperarios} unidad="entregas" color={SERIES[2]} />
           </Acordeon>
 
           <Acordeon titulo="A qué hora se entrega" resumen={`${pctTemprano}% antes de 8`}>

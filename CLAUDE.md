@@ -190,6 +190,26 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   entregado. Ese cero es deliberado: lo pedido sigue siendo cero porque el operario no
   lo pidió, y la diferencia entre lo que se solicita y lo que de verdad hace falta en
   campo es justamente el dato interesante. **No igualar las dos cifras.**
+- **🔴 Una regla de gráfico escrita para UN gráfico se rompe al meterlo en rejilla.**
+  `@media (min-width: 860px)` ponía el donut en horizontal —svg a la izquierda, leyenda a la
+  derecha— y estaba bien mientras hubo **un** donut ocupando el ancho entero de la tarjeta. Al
+  poner **tres** en `.dash-tres`, la columna es un tercio y la leyenda no cabe: **no se recorta,
+  se sale y se dibuja encima del donut vecino**. Medido el 8-sep-2026 con datos reales: hasta
+  **206 px** fuera de su columna, roto en TODO el rango de 860 a 1600 px, o sea justo donde el
+  dueño trabaja. En celular no se veía, porque ahí apila. La corrección va **acotada al
+  contenedor** (`.dash-tres .dash-donut { flex-direction: column }`), no tocando la regla de
+  860, que sigue siendo correcta para el caso que la motivó.
+  ⚠️ **`min-width: 0` en la etiqueta NO alcanza**: `.dash-leyenda__lbl` es `flex: 1 1 0%`, y un
+  item flexible con base 0 **propaga su max-content al min-content del contenedor**. Por eso el
+  `text-overflow: ellipsis` no dispara — lo que desborda es la caja de arriba, no el texto. El
+  `min-width: 0` hay que ponerlo en el **contenedor** (`.dash-leyenda`) y en las **celdas**
+  (`.dash-tres > *`). Y la pista mínima va con `minmax(min(260px, 100%), 1fr)`, o en un celular
+  de 320 px pide más ancho del que hay.
+- **🔴 Los números de las gráficas se escriben con `nfGrafico`, no con `toFixed`.**
+  `toFixed` imprime `2347` y `1197.0`: punto decimal inglés, sin separador de miles. Y eso
+  quedaba a cuarenta píxeles de `2.347 gal` y `2.041,3 ha`, que sí pasaban por
+  `toLocaleString('es-CO')`. Las dos cifras estaban bien; lo que estaba mal era que se vieran
+  distintas, y **eso es lo que el cliente lee como descuido**.
 - **🔴 La paleta de los gráficos está SCOPEADA, y fuera de su selector las series salen
   TRANSPARENTES.** `SERIES` en `components/Charts` son `var(--dash-s1)`…, y esas variables se
   definen en `App.css` sobre **`.dash, .mov`**. Una gráfica montada en una pantalla con otra

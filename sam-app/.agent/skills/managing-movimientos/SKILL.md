@@ -288,3 +288,58 @@ comprobarlo midiendo, no mirando:
 ```js
 getComputedStyle(el).backgroundColor  // 'rgba(0, 0, 0, 0)' = la paleta no llegó
 ```
+
+## Revisión de diseño del bloque de tortas (8-sep-2026)
+
+El cliente mandó una captura con la leyenda de la primera torta **escrita encima de
+la segunda** y una frase que conviene recordar: *«no me puedo dar el lujo de que las
+cosas queden mal»*. Se revisó con tres agentes en paralelo (layout, visualización de
+datos, responsive) y se midió todo en el navegador con datos reales.
+
+### Lo que estaba roto y ya está corregido
+
+| Defecto | Medida | Corrección |
+|---|---|---|
+| La leyenda se salía de su columna y pisaba el donut vecino | hasta **206 px** fuera, en todo el rango **860–1600 px** | dentro de `.dash-tres` el donut se queda apilado; `min-width: 0` en celdas y en `.dash-leyenda` |
+| La pista de la rejilla no cabía en un celular de 320 px | 3 px de holgura | `minmax(min(260px, 100%), 1fr)` |
+| Dos formatos numéricos en la misma tarjeta | `2347` junto a `2.347 gal` | `nfGrafico()` con `toLocaleString('es-CO')` en donut, barras y columnas |
+| Una etiqueta recortada no se podía leer entera | — | `title` con el nombre completo |
+| El arco no acusaba recibo del mouse en escritorio | — | `<title>` de SVG + `:hover` dentro de `@media (hover: hover)` |
+| La fila de gal/ha exprimía el nombre de la máquina | **82 px** a 320 px | por debajo de 520 px el detalle en gris baja a su renglón |
+
+🔴 **La trampa técnica que vale la pena recordar**: `.dash-leyenda__lbl` es `flex: 1 1 0%`,
+y **un item flexible con base 0 propaga su max-content al min-content del contenedor**.
+Por eso el `ellipsis` de la etiqueta no dispara y por eso `min-width: 0` en la etiqueta no
+sirve de nada: lo que desborda es el `<ul>`, una caja más arriba. El `min-width: 0` va en el
+**contenedor** y en las **celdas de la rejilla**.
+
+### Lo que la revisión recomienda y NO se hizo, porque lo pidió el cliente así
+
+El agente de visualización argumenta —bien— que **«Combustible por máquina» y «Ganchos por
+máquina» deberían ser barras, no tortas**: en las dos, «Otros» pesa ~50 %, las cinco máquinas
+nombradas quedan en 14/12/10/7/6 % (comparar ángulos parecidos es justo lo que la dona no
+sabe hacer) y son 21 máquinas, muy por encima de las ~7 clases de color que aguanta un
+gráfico categórico. **Pero el cliente pidió tres tortas, explícitamente.** Se le presenta la
+recomendación; no se cambia sin su visto bueno.
+
+Otras recomendaciones pendientes de decisión: unificar la jerarquía de cifras (hoy compiten
+cinco tamaños), quitar `tabular-nums` de `.dash-galha__num`, y vigilar que en modo oscuro
+`--dash-s6` y `--dash-s1` cierran el anillo con ΔE 1,9 en protanopia — solo se pintan juntos
+cuando hay exactamente 6 categorías sin «Otros».
+
+### Cómo se midió (repetible)
+
+Montar el componente suelto contra datos reales y **medir**, no mirar:
+
+```js
+// en el dev server, sin entrar a la sesión
+const { InsumosCard } = await import('/src/views/InsumosCard.tsx')
+// ...montar dentro de un contenedor con la clase del host real...
+for (const w of [320, 360, 860, 900, 1280, 1850]) {
+  seccion.style.width = w + 'px'
+  // comparar el borde derecho del TEXTO contra el de su celda,
+  // y contra el borde izquierdo de la celda vecina de la MISMA fila
+}
+```
+⚠️ Comparar solo celdas con el mismo `top`: cuando la rejilla reflowa a una columna, la
+«vecina» está debajo y cualquier comprobación ingenua da un falso positivo.

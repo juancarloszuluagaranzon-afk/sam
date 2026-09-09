@@ -6273,7 +6273,7 @@ td.planilla-revisada {
 .dash-arc { transition: opacity .15s; }
 .dash-arc.is-tap { cursor: pointer; }
 .dash-arc.is-tap:active { opacity: .65; }
-.dash-leyenda { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 2px; }
+.dash-leyenda { list-style: none; margin: 0; padding: 0; width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .dash-leyenda button {
   display: flex; align-items: center; gap: 8px; width: 100%;
   background: none; border: none; color: inherit; cursor: pointer;
@@ -8850,7 +8850,20 @@ td.planilla-vacio:hover { background: #fde047; }
   font-weight: 700; color: var(--color-brand, #1baf7a);
 }
 /* Tres tortas: una columna en celular, las que quepan en escritorio. */
-.dash-tres { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 12px; }
+/* 🔴 Tres donuts en rejilla NO pueden llevar la leyenda al lado.
+   La regla de 860px pone el donut en horizontal —svg a la izquierda, leyenda a
+   la derecha— y se escribió cuando había UN donut ocupando el ancho entero de
+   la tarjeta. Con tres en rejilla la columna es un tercio del ancho y la
+   leyenda no cabe: no se recorta, se SALE y se dibuja encima del donut vecino.
+   Medido el 8-sep-2026 con datos reales: hasta 206px fuera de su columna, y
+   pisando a la de al lado en TODO el rango de 860px a 1600px.
+   Dentro de la rejilla el donut se queda apilado sobre su leyenda a cualquier
+   ancho, que es lo único que se comporta igual de 320px a 2560px.
+   `min-width:0` en las celdas porque el mínimo automático de un item de grid
+   es su contenido, y sin eso la celda se niega a encogerse. */
+.dash-tres { display: grid; gap: 14px 18px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); margin-top: 12px; }
+.dash-tres > * { min-width: 0; }
+.dash-tres .dash-donut { flex-direction: column; align-items: center; gap: 10px; }
 .dash-tres h4 { margin: 0 0 4px; font-size: 0.86rem; color: var(--color-ink, #22261f); }
 /* El numero que une las dos mitades del tablero: lo hecho y lo que costo. */
 .dash-galha {

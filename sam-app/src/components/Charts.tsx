@@ -24,6 +24,25 @@ export const SERIES = [
 ] as const
 export const SERIE_OTROS = 'var(--dash-otros)'
 
+/**
+ * 🔴 Los números de las gráficas se escriben en ESPAÑOL, como el resto del app.
+ *
+ * `toFixed` imprime `2347` y `1197.0`: punto decimal inglés y sin separador de
+ * miles. Y eso quedaba a cuarenta píxeles de `2.347 gal` y `2.041,3 ha`, que sí
+ * pasan por `toLocaleString`. Dos formatos numéricos en la misma tarjeta es
+ * exactamente lo que un cliente lee como descuido, aunque las dos cifras estén
+ * bien. Detectado el 8-sep-2026 revisando el diseño.
+ *
+ * Sanea la entrada por la misma razón que `BarrasH`: un dato malo no puede
+ * tumbar la pantalla que lo rodea.
+ */
+export function nfGrafico(n: number, dec: number): string {
+  return (Number(n) || 0).toLocaleString('es-CO', {
+    minimumFractionDigits: dec,
+    maximumFractionDigits: dec,
+  })
+}
+
 export interface Punto {
   id: string
   label: string
@@ -103,12 +122,17 @@ export function Donut({
               className={onPick ? 'dash-arc is-tap' : 'dash-arc'}
               onClick={() => onPick?.(d)}
               role={onPick ? 'button' : undefined}
-              aria-label={`${d.label}: ${d.valor.toFixed(dec)} ${d.sufijo ?? unidad}`}
-            />
+              aria-label={`${d.label}: ${nfGrafico(d.valor, dec)} ${d.sufijo ?? unidad}`}
+            >
+              {/* En el celular el dedo tapa el arco y para eso está la leyenda;
+                  en escritorio, pasar el mouse por encima no decía NADA. Un
+                  `<title>` de SVG lo resuelve sin librería ni chunk nuevo. */}
+              <title>{`${d.label}: ${nfGrafico(d.valor, dec)} ${d.sufijo ?? unidad}`}</title>
+            </path>
           )
         })}
         <text x={cx} y={cy - 4} textAnchor="middle" className="dash-donut__num">
-          {total.toFixed(total >= 100 ? 0 : 1)}
+          {nfGrafico(total, total >= 100 ? 0 : 1)}
         </text>
         <text x={cx} y={cy + 14} textAnchor="middle" className="dash-donut__uni">{unidad}</text>
       </svg>
@@ -121,7 +145,7 @@ export function Donut({
               <button type="button" onClick={() => onPick?.(d)} disabled={!onPick}>
                 <span className="dash-chip" style={{ background: d.id === '__otros' ? SERIE_OTROS : colorDe(i) }} />
                 <span className="dash-leyenda__lbl">{d.label}</span>
-                <span className="dash-leyenda__val">{d.valor.toFixed(dec)} <small>{pct.toFixed(0)}%</small></span>
+                <span className="dash-leyenda__val">{nfGrafico(d.valor, dec)} <small>{pct.toFixed(0)}%</small></span>
               </button>
             </li>
           )
@@ -162,7 +186,7 @@ export function BarrasH({
           className="dash-barra"
           onClick={() => onPick?.(d)}
           disabled={!onPick}
-          aria-label={`${d.label}: ${d.valor.toFixed(2)} ${unidad}`}
+          aria-label={`${d.label}: ${nfGrafico(d.valor, 2)} ${unidad}`}
         >
           <span className="dash-barra__lbl">{d.label}</span>
           <span className="dash-barra__track">
@@ -171,7 +195,7 @@ export function BarrasH({
           <span className="dash-barra__val">
             {/* Los enteros van sin decimales: "3 entregas" y "40 unidad",
                 no "3.00" ni "40.00". */}
-            {Number.isInteger(d.valor) ? d.valor : d.valor.toFixed(d.valor >= 100 ? 0 : 2)}
+            {nfGrafico(d.valor, Number.isInteger(d.valor) ? 0 : d.valor >= 100 ? 0 : 2)}
             {d.sufijo && <small> {d.sufijo}</small>}
           </span>
         </button>
@@ -211,7 +235,7 @@ export function Columnas({
         // se lee el área sin ensanchar las barras ni pisar la etiqueta del día.
         // Si la columna es muy corta no cabe, y el número sale encima en tinta.
         const dentro = pct >= 32
-        const num = d.valor.toFixed(d.valor >= 100 ? 0 : 1)
+        const num = nfGrafico(d.valor, d.valor >= 100 ? 0 : 1)
         return (
           <button
             key={d.id}
@@ -219,8 +243,8 @@ export function Columnas({
             className="dash-col"
             onClick={() => onPick?.(d)}
             disabled={!onPick}
-            aria-label={`${d.label}: ${d.valor.toFixed(2)}`}
-            title={`${d.label}: ${d.valor.toFixed(2)}`}
+            aria-label={`${d.label}: ${nfGrafico(d.valor, 2)}`}
+            title={`${d.label}: ${nfGrafico(d.valor, 2)}`}
           >
             <span className="dash-col__wrap">
               {!dentro && <span className="dash-col__num is-fuera">{num}</span>}

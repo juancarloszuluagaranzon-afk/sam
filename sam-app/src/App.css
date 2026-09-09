@@ -6273,6 +6273,9 @@ td.planilla-revisada {
 .dash-arc { transition: opacity .15s; }
 .dash-arc.is-tap { cursor: pointer; }
 .dash-arc.is-tap:active { opacity: .65; }
+/* En escritorio el arco tiene que acusar recibo del mouse: sin esto parece
+   un dibujo y nadie descubre que se puede tocar para abrir el detalle. */
+@media (hover: hover) { .dash-arc.is-tap:hover { opacity: .85; } }
 .dash-leyenda { list-style: none; margin: 0; padding: 0; width: 100%; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .dash-leyenda button {
   display: flex; align-items: center; gap: 8px; width: 100%;

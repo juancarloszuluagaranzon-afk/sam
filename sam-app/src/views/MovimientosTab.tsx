@@ -45,11 +45,6 @@ function primerNombre(completo: string): string {
   return n.charAt(0) + n.slice(1).toLowerCase()
 }
 
-function diaCorto(iso: string): string {
-  const [, m, d] = iso.split('-')
-  return `${Number(d)}/${Number(m)}`
-}
-
 /**
  * Una sección que se abre a propósito, con su cifra de resumen en el título.
  *

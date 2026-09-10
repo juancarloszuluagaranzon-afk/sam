@@ -177,36 +177,6 @@ export function MovimientosTab() {
     [datos],
   )
 
-  /**
-   * El hallazgo, CALCULADO del periodo cargado.
-   *
-   * 🔴 Este párrafo tenía los números de agosto escritos a mano. Servía ese mes
-   * y mentía en cuanto alguien cambiaba las fechas — la peor clase de error,
-   * porque suena bien y nadie vuelve a revisarlo.
-   *
-   * Compara a los dos de RUTA con más y menos entregas. Solo dice algo si el
-   * volumen difiere de verdad (1,5× o más) y el ritmo por hora casi no (menos del
-   * 15%): ahí la diferencia fue presencia y hay que decirlo. Si no se cumple, no
-   * se inventa una conclusión.
-   */
-  const hallazgo = useMemo(() => {
-    const ruta = (datos?.despachadores ?? []).filter(esDeRuta)
-      .map((d) => ({ d, ritmo: ritmoPorHora(d, datos?.jornadas ?? []) }))
-      .filter((x): x is { d: Despachador; ritmo: number } => x.ritmo != null)
-    if (ruta.length < 2) return null
-    const orden = [...ruta].sort((a, b) => b.d.entregas - a.d.entregas)
-    const alto = orden[0]
-    const bajo = orden[orden.length - 1]
-    const veces = bajo.d.entregas > 0 ? alto.d.entregas / bajo.d.entregas : 0
-    const brecha = Math.abs(alto.ritmo - bajo.ritmo) / Math.max(alto.ritmo, bajo.ritmo)
-    if (veces < 1.5 || brecha > 0.15) return null
-    return {
-      alto, bajo, veces,
-      jA: (datos?.jornadas ?? []).find((j) => j.id === alto.d.id),
-      jB: (datos?.jornadas ?? []).find((j) => j.id === bajo.d.id),
-    }
-  }, [datos])
-
   const sol = datos?.solicitudes ?? {}
   const adopcion = pct(sol.operariosQuePidieron ?? 0, datos?.operariosActivos ?? 0)
 
@@ -290,35 +260,6 @@ export function MovimientosTab() {
 
       {!cargando && t && t.entregas > 0 && (
         <>
-          {/* ── CAPA 1: el veredicto, las tres filas y el freno ──────────── */}
-          <div className="mov-veredicto">
-            {hallazgo ? (
-              <>
-                <p>
-                  <b>{primerNombre(hallazgo.alto.d.nombre)} entregó{' '}
-                  {n1(hallazgo.veces)} veces más que {primerNombre(hallazgo.bajo.d.nombre)},
-                  pero por hora van casi igual</b> — {n1(hallazgo.alto.ritmo)} y{' '}
-                  {n1(hallazgo.bajo.ritmo)}. La diferencia es presencia, no ritmo.
-                </p>
-                <p className="mov-veredicto__pie">
-                  El «por hora» se mide entre la primera y la última entrega del día:
-                  sirve para comparar, no para pagar.
-                </p>
-              </>
-            ) : (
-              <>
-                <p>
-                  <b>Este periodo los totales y el ritmo por hora cuentan la misma
-                  historia.</b> Comparar los totales no engaña.
-                </p>
-                <p className="mov-veredicto__pie">
-                  Mire igual el registro antes de decidir: el volumen sin él no dice si
-                  el trabajo quedó probado.
-                </p>
-              </>
-            )}
-          </div>
-
           {/* Una fila por persona. Volumen, presencia y ritmo en la misma línea
               —el veredicto afirma los tres— y debajo la calidad del registro,
               para que ninguna de las dos cosas obligue a abrir un modal. */}

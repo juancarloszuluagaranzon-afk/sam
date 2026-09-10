@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ayuda } from '../components/Ayuda'
-import { BarrasH, Columnas, ColumnasApiladas, Leyenda, colorDe, SERIES, type Punto, type Serie } from '../components/Charts'
+import { BarrasH, Columnas, colorDe, SERIES, type Punto } from '../components/Charts'
 import { fmtFechaHora } from '../lib/fechas'
 import { fmtCantidad } from '../lib/cantidad'
 import { PERIODOS, rangoDe, esUnSoloDia, hoyBogota, type Periodo } from '../lib/periodos'
@@ -91,7 +91,6 @@ export function MovimientosTab() {
   const [hasta, setHasta] = useState(() => rangoDe('MES', hoy).hasta)
   const [movs, setMovs] = useState<InsumoKardex[]>([])
   const [detIns, setDetIns] = useState<{ titulo: string; items: InsumoKardex[] } | null>(null)
-  const [diaADia, setDiaADia] = useState(false)
   const [datos, setDatos] = useState<ResumenMovimientos | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
@@ -154,31 +153,6 @@ export function MovimientosTab() {
 
   const t = datos?.totales
   const despachadores = datos?.despachadores ?? []
-
-  // Color fijo por PERSONA según su posición en la lista, no según quién va
-  // ganando: si el orden repintara, el mismo tono sería Genaro un día y
-  // Castañeda otro, y el ojo aprende el color antes que la leyenda.
-  const seriesDespachadores: Serie[] = useMemo(
-    () => despachadores.map((d, i) => ({
-      id: d.id,
-      label: d.nombre.split(/\s+/).slice(0, 2).join(' '),
-      color: colorDe(i),
-    })),
-    [despachadores],
-  )
-
-  const dias = useMemo(() => {
-    if (!datos) return []
-    const porDia = new Map<string, Record<string, number>>()
-    for (const r of datos.porDia) {
-      const v = porDia.get(r.dia) ?? {}
-      v[r.quien] = (v[r.quien] ?? 0) + r.entregas
-      porDia.set(r.dia, v)
-    }
-    return [...porDia.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dia, valores]) => ({ id: dia, label: diaCorto(dia), valores }))
-  }, [datos])
 
   const horas: Punto[] = useMemo(
     () => (datos?.porHora ?? []).map((h) => ({
@@ -251,21 +225,6 @@ export function MovimientosTab() {
       hayCuadre: desc.length > 0,
     }
   }, [despachadores, datos, t])
-
-  /**
-   * La tira de presencia: una fila por persona, una casilla por día.
-   *
-   * Reemplaza arriba a las 31 columnas apiladas —que siguen existiendo, a un
-   * toque— porque apilar borra justo lo que sostiene el veredicto: quién estuvo
-   * qué días. Un hueco en la fila se ve sin leer ningún número.
-   */
-  const tira = useMemo(() => {
-    let max = 0
-    for (const dia of dias) for (const d of despachadores) {
-      max = Math.max(max, dia.valores[d.id] ?? 0)
-    }
-    return { max: max || 1 }
-  }, [dias, despachadores])
 
   return (
     <section className="panel-card mov">
@@ -476,42 +435,6 @@ export function MovimientosTab() {
             </div>
           </div>
 
-          <h3 className="dash-titulo">Quién estuvo, día por día</h3>
-          <div className="mov-tira">
-            {despachadores.map((d, i) => (
-              <div key={d.id} className="mov-tira__fila">
-                <span className="mov-tira__nom">{primerNombre(d.nombre)}</span>
-                <span className="mov-tira__dias">
-                  {dias.map((dia) => {
-                    const v = dia.valores[d.id] ?? 0
-                    return (
-                      <span
-                        key={dia.id}
-                        className="mov-tira__dia"
-                        title={`${dia.label}: ${v}`}
-                        style={v > 0 ? {
-                          background: colorDe(i),
-                          opacity: 0.35 + 0.65 * (v / tira.max),
-                        } : undefined}
-                      />
-                    )
-                  })}
-                </span>
-              </div>
-            ))}
-            {dias.length > 0 && (
-              <div className="mov-tira__esc">
-                <span>{dias[0].label}</span>
-                <span>{dias[dias.length - 1].label}</span>
-              </div>
-            )}
-          </div>
-          <div className="mov-tira__pie">
-            <button type="button" className="inline-button" onClick={() => setDiaADia(true)}>
-              Ver día a día
-            </button>
-          </div>
-
           {/* ── Qué se entregó ────────────────────────────────────────────
               Hasta aquí la pantalla habló de PERSONAS: quién entregó, cuánto,
               qué días. De aquí en adelante habla del MATERIAL: qué salió, a
@@ -674,24 +597,6 @@ export function MovimientosTab() {
         <p className="subtle-copy mov-sello">
           Corte del {fmtFechaHora(datos.corteEn)} · periodo {datos.desde} a {datos.hasta}.
         </p>
-      )}
-
-      {/* La serie diaria completa que pidió el cliente: sigue existiendo, pero
-          dentro de un modal, donde el gesto lateral no le compite al scroll. */}
-      {diaADia && (
-        <div className="modal-overlay open" onClick={() => setDiaADia(false)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="labor-detail-header">
-              <div>
-                <p className="eyebrow">Entregas por día</p>
-                <h3>{datos?.desde} a {datos?.hasta}</h3>
-              </div>
-              <button type="button" className="modal-close-btn" onClick={() => setDiaADia(false)} aria-label="Cerrar">✕</button>
-            </div>
-            <ColumnasApiladas dias={dias} series={seriesDespachadores} />
-            <Leyenda series={seriesDespachadores} />
-          </div>
-        </div>
       )}
 
       {/* ── Detalle de una persona ──────────────────────────────────────── */}

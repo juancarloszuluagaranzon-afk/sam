@@ -8890,6 +8890,11 @@ td.planilla-vacio:hover { background: #fde047; }
 
 /* ── Insumos y materiales (tablero de Operacion general) ──────────────── */
 /* La miga del drill-down: siempre se puede volver al principio de un toque. */
+/* Panel de la ventana emergente de un nivel de la tarjeta de insumos. La
+   `.dash-card` de adentro pone fondo y borde; esto solo la acota y la deja
+   desplazarse cuando la lista es larga. */
+.dash-modal-nivel { width: min(760px, calc(100vw - 24px)); max-height: 90vh; overflow: auto; }
+.dash-modal-nivel > .dash-card { margin: 0; }
 .dash-miga { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 0.82rem; color: var(--color-ink-mid, #5a5f57); }
 .dash-miga button {
   background: none; border: 0; cursor: pointer; font: inherit;

@@ -95,13 +95,19 @@ export function InsumosCard({
 
   const volver = () => setVista({ nivel: 'inicio' })
 
+  /**
+   * Cabecera de un nivel de detalle. Es la de una VENTANA EMERGENTE: el nivel ya
+   * no reemplaza la tarjeta, se abre encima y se cierra con la ✕ o tocando
+   * afuera. La tarjeta con las tres tortas sigue ahí debajo, así que no hay
+   * que «volver» a ningún lado.
+   */
   const cabecera = (titulo: string, miga: string) => (
-    <div className="dash-card__head">
-      <h3>{titulo}</h3>
-      <div className="dash-miga">
-        <button type="button" onClick={volver}>← Insumos</button>
-        <span>› {miga}</span>
+    <div className="labor-detail-header">
+      <div>
+        <p className="eyebrow">{titulo}</p>
+        <h3>{miga}</h3>
       </div>
+      <button type="button" className="modal-close-btn" onClick={volver} aria-label="Cerrar">&#x2715;</button>
     </div>
   )
 
@@ -122,6 +128,14 @@ export function InsumosCard({
     )
   }
 
+  /**
+   * El nivel abierto, si hay uno. Antes cada `if` era un `return` del
+   * componente entero y la tarjeta desaparecía mientras se miraba el
+   * detalle; el cliente pidió que «donde se presione se abra una pantalla
+   * emergente». Los niveles quedan iguales por dentro: solo cambió dónde se
+   * dibujan.
+   */
+  const detalle = (() => {
   /* ── Nivel 2: un material, por máquina ─────────────────────────────────── */
   if (vista.nivel === 'material') {
     const info = catalogo.get(vista.insumoId)
@@ -226,12 +240,16 @@ export function InsumosCard({
     )
   }
 
+  return null
+  })()
+
   /* ── Nivel 1 ───────────────────────────────────────────────────────────── */
   const pctCobertura = galha.cobertura.total > 0
     ? Math.round((galha.cobertura.conTanqueo / galha.cobertura.total) * 100) : 0
   const filasMaq = galha.porMaquina.filter((r) => r.ratio != null)
 
   return (
+    <>
     <div className="dash-card">
       <div className="dash-card__head">
         <h3>Insumos y materiales</h3>
@@ -328,6 +346,16 @@ export function InsumosCard({
         </>
       )}
     </div>
+
+    {/* El nivel de detalle, como ventana emergente encima de la tarjeta. La
+        tarjeta de detalle ES el panel de la ventana: mismo fondo y borde que el
+        resto del tablero, sin una segunda caja alrededor. */}
+    {detalle && (
+      <div className="modal-overlay open" onClick={volver}>
+        <div className="dash-modal-nivel" onClick={(e) => e.stopPropagation()}>{detalle}</div>
+      </div>
+    )}
+    </>
   )
 }
 

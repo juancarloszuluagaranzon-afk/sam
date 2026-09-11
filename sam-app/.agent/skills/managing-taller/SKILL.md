@@ -477,3 +477,73 @@ nadie sabría a cuál irle a revisar el horómetro.
 
 ⚠️ El cierre mensual de `equipo_horas_mes` **sigue mandando cuando existe**: es
 el dato que firma administración. Esto solo cambió el respaldo.
+
+## Asistencia y horas extras (10-sep-2026)
+
+El cliente pidió «control biométrico del ingreso y la salida de los mecánicos… para
+efecto de horas extras». Se decidió con él: **cada quien marca en SU celular** y el
+módulo **suma horas sin liquidar plata**.
+
+### Por qué el celular propio y no una tablet en el taller
+
+🔴 **El lector de una tablet compartida NO distingue a una persona de otra.** Cualquier
+huella registrada en ese aparato desbloquea cualquier credencial que viva ahí. La huella
+solo sirve como prueba de identidad en el teléfono personal. Si algún día se pone un
+punto fijo, la prueba tiene que ser otra: foto del rostro al marcar, o un lector
+multiusuario de hardware.
+
+### La ley, que es la mitad del trabajo
+
+Verificada contra la norma vigente el 10-sep-2026, **no de memoria**:
+
+| Qué | Valor | De dónde |
+|---|---|---|
+| Jornada nocturna | **7:00 p.m. a 6:00 a.m.** | Ley 2466 de 2025 art. 11, desde el 25-dic-2025 |
+| Jornada semanal | **42 horas** | Ley 2101 de 2021, último escalón el 15-jul-2026 |
+| Dominical y festivo | **+90%** | Ley 2466, desde el 1-jul-2026 |
+| Extra diurna / nocturna | +25% / +75% | CST |
+| Recargo nocturno | +35% | CST |
+
+⚠️ **El nocturno arrancaba a las 9 p.m. hasta diciembre de 2025.** Es el dato que más
+plata mueve y el más fácil de equivocar de memoria. Por eso todo eso vive en la tabla
+`taller_config` y se edita desde ⚙ Jornada: ya cambió dos veces en dos años.
+
+**Los 18 festivos se CALCULAN**, no se listan (`festivosColombia()`): fijos, los que
+corre la Ley Emiliani al lunes, y los que cuelgan de la Pascua. Una lista escrita a mano
+para 2026 miente en 2027 y nadie vuelve a revisarla.
+
+### Lo que protege el dato, que aquí decide un pago
+
+- **El cliente solo LEE.** Todo lo que escribe pasa por `security definer`. Comprobado:
+  el `insert` directo a `taller_marcaciones` responde **401**. Con un insert abierto,
+  cualquiera con el anon_key se regala una jornada de extras.
+- **Dos fechas, como en el kardex**: `marcado_en` (cuándo ocurrió) y `registrado_en`
+  (cuándo llegó). Sin señal se marca igual y sube después; la brecha se ve.
+- **El id lo pone el teléfono** → reintentar no duplica. Comprobado: devuelve
+  `repetida: true`.
+- **La hora del teléfono se acota**: del futuro o de hace más de dos días la reemplaza la
+  del servidor y queda `hora_corregida`. Comprobado.
+- **Nada se borra.** Anular deja motivo y autor.
+- 🔴 **Una entrada sin salida no se cierra sola.** Sale arriba en rojo y esas horas **no
+  se cuentan**. Cerrarla a ojo daría un reporte cuadrado y falso, que es el peor
+  resultado posible cuando de ahí sale un pago.
+
+### Lo que NO prueba (dicho en el código, no escondido)
+
+La firma de WebAuthn **no se verifica en el servidor**. Alguien con la consola del
+navegador podría saltarse el lector. Se guarda la llave pública desde ahora porque el
+camino para cerrarlo es una función de borde. Mientras tanto el cerco es la credencial
+registrada, la hora del servidor, la ubicación y la marca de «fuera del taller».
+
+### Verificado contra producción
+
+Migración aplicada y una semana sembrada, leída por el camino completo (API → `emparejar`
+→ `clasificar`): mecánico A 22 h ordinarias + 4 extra diurnas; mecánico B 1 h diurna +
+7 h nocturnas del turno que cruza medianoche + 8 h de domingo; la entrada sin salida
+detectada y excluida. Datos de prueba borrados.
+
+### Falta para usarlo
+
+1. **Crear a los mecánicos como usuarios con rol `taller`.** Hoy no hay ninguno.
+2. **Cargar la ubicación del taller** en `taller_sitios`. Sin eso la ubicación se guarda
+   pero no se puede decir quién marcó desde afuera; la pantalla lo avisa.

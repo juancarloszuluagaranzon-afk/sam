@@ -6299,11 +6299,22 @@ td.planilla-revisada {
 /* Barras horizontales */
 .dash-barras { display: flex; flex-direction: column; gap: 2px; }
 .dash-barra {
-  /* 🔴 `1.4fr` a la barra contra `1fr` al nombre dejaba 74px de etiqueta en
-     celular: «ACEITE TRANSMISION MOBIL 424» y «…MOBIL 15W40» salían las dos
-     como «ACEITE TR…», dos filas distintas con el mismo texto y las dos
-     tocables. El nombre manda; la barra es la comparación, no el dato. */
-  display: grid; grid-template-columns: minmax(0,1.6fr) 1fr auto; align-items: center; gap: 8px;
+  /* 🔴 Columnas EXPLÍCITAS, no fraccionarias, o la lista sale torcida.
+     Con la tercera pista en `auto`, cada fila es su propia rejilla y el ancho
+     del número corre el arranque de la barra fila por fila. Medido con las
+     ocho labores del gal/ha: TRES arranques distintos y 15px de diferencia
+     entre «3 gal/ha» y «0,93 gal/hm». No es un fallo que se note leyendo el
+     CSS; se ve en cuanto hay una fila con sufijo distinto.
+     · `14em` al nombre: cabe una labor o un material, y si es más largo se
+       recorta con puntos suspensivos. Antes era `1.6fr`, que en escritorio
+       dejaba medio ancho de tarjeta en blanco entre el nombre y la barra.
+       Sigue teniendo mínimo 0, así que en celular encoge en vez de desbordar.
+     · `6.8em` al valor, FIJO: es lo que mide «0,93 gal/hm», el más largo.
+     ⚠️ Se intentó antes con `subgrid` en `.dash-barras`. Alinea perfecto, pero
+     las pistas intrínsecas del contenedor no se dejaron dimensionar por las
+     filas y la columna del nombre colapsó a 0px. */
+  display: grid; grid-template-columns: minmax(0, 14em) minmax(80px, 1fr) 6.8em;
+  align-items: center; gap: 8px;
   background: none; border: none; color: inherit; cursor: pointer;
   /* 11px y no 7: así llega a 42,8px de alto y mide IGUAL en las dos pantallas
      que la muestran. Antes `.mov` la subía por su cuenta y `.dash` se quedaba
@@ -6313,12 +6324,14 @@ td.planilla-revisada {
 .dash-barra:active { background: var(--color-bg-soft, #f2f5f0); }
 .dash-barra__lbl { font-size: 0.84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 420px) {
-  .dash-barra { grid-template-columns: minmax(0,1fr) auto; }
+  .dash-barra { grid-template-columns: minmax(0,1fr) 6.8em; }
   .dash-barra__track { grid-column: 1 / -1; }
 }
 .dash-barra__track { height: 12px; border-radius: 999px; background: var(--color-bg-soft, #eef1ec); overflow: hidden; }
 .dash-barra__fill { display: block; height: 100%; border-radius: 999px; }
-.dash-barra__val { font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* La columna del valor es fija: sin alinear a la derecha los números bailan
+   dentro de ella y se pierde justo lo que se venía a arreglar. */
+.dash-barra__val { font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 
 /* Columnas por día */
 .dash-cols { display: flex; align-items: flex-end; gap: 4px; height: 170px; overflow-x: auto; padding-bottom: 2px; }

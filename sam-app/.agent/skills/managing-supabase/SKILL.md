@@ -281,6 +281,23 @@ select table_name, grantee from information_schema.role_table_grants
  where table_name = 'mi_tabla';
 ```
 
+### El rol existe en la base y no lleva a ninguna parte (11-sep-2026)
+
+El checklist de arriba **no termina en `mapRole`**. Hay una segunda puerta que falla
+igual de callada: **la ruta en `App.tsx`**.
+
+El rol `taller` vivió meses con todo en orden —`mapRole` lo devolvía, el CHECK lo
+aceptaba, el módulo estaba completo— y **sin un `if` para él en `App.tsx`**. Quien
+entraba con ese rol caía al final de la cadena, donde está el operario: Activas, Campo
+e Historial. Sin error y sin aviso.
+
+Por qué nadie lo vio: **no había un solo usuario con ese rol**. El módulo de taller se
+abría desde el menú «Más» del dueño, así que la ruta nunca hizo falta. Apareció el día
+que se creó el primer usuario `taller` de verdad, para probar la asistencia.
+
+🔴 **Al agregar un rol, PROBARLO ENTRANDO CON ÉL.** Leer el código no sirve: las dos
+capas —`mapRole` y la ruta— fallan devolviendo la pantalla de otro, no un error.
+
 ### 2b. Una COLUMNA nueva tampoco hereda el GRANT, si la tabla lo tiene por columnas (4-sep-2026, `8d51ab7`)
 
 `app_usuarios` **no** tiene `grant select` sobre la tabla entera: lo tiene sobre una

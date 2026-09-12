@@ -392,7 +392,14 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   `App.tsx`, su vista, labels, **tres** sitios de ImpersonationBar, el selector de
   usuarios, `manualesDe()` y la migración del CHECK. 🔴 **Olvidar `mapRole` no da
   error**: el rol desconocido cae a `operador` y la persona entra a la pantalla
-  equivocada. ⚠️ Postgres no *amplía* un CHECK — hay que leer el vigente y
+  equivocada.
+  🔴 **Y la RUTA en `App.tsx` falla igual de callada, un escalón más abajo.** El rol
+  `taller` existió meses con su `mapRole` correcto, su CHECK en la base y su módulo
+  completo, pero **sin un `if` en `App.tsx`**: quien entraba con ese rol caía en la
+  vista del OPERARIO. No se notó porque no había un solo usuario `taller` — el módulo
+  se abría desde el menú «Más» del dueño. Se descubrió el 11-sep-2026 al crear el
+  primero de verdad. **Al agregar un rol, probarlo ENTRANDO con él**, no leyendo el
+  código: las dos capas fallan sin decir nada. ⚠️ Postgres no *amplía* un CHECK — hay que leer el vigente y
   reescribirlo completo, o se borran roles que ya existen.
 - **🔴 Combustible: nadie se mete una entrada a mano.** El supervisor de insumos NO ve
   Inventario (`InsumosModule` le filtra la pestaña): si pudiera hacer "+ Entrada" el

@@ -191,7 +191,13 @@ export async function marcar(input: {
   id: string
   usuarioId: string
   tipo: 'ENTRADA' | 'SALIDA'
-  ocurrioEn: string
+  /**
+   * Cuándo ocurrió. 🔴 Va en `null` cuando se está marcando EN VIVO: ahí manda
+   * el reloj del servidor, que es el único igual para todos. Solo se manda una
+   * hora cuando la marcación venía guardada sin señal, que es el único caso en
+   * que el reloj del teléfono es la mejor fuente que hay.
+   */
+  ocurrioEn: string | null
   metodo?: 'HUELLA' | 'PIN' | 'MANUAL'
   credencialId?: string | null
   lat?: number | null
@@ -204,7 +210,7 @@ export async function marcar(input: {
     p_id: input.id,
     p_usuario_id: input.usuarioId,
     p_tipo: input.tipo,
-    p_ocurrio_en: input.ocurrioEn,
+    p_ocurrio_en: input.ocurrioEn ?? null,
     p_metodo: input.metodo ?? 'HUELLA',
     p_credencial_id: input.credencialId ?? null,
     p_lat: input.lat ?? null,
@@ -303,7 +309,13 @@ export async function marcarOEncolar(
     return { enviada: false }
   }
   try {
-    const respuesta = await marcar(input)
+    // 🔴 EN VIVO manda el reloj del SERVIDOR, no el del teléfono. Medido el
+    // 11-sep-2026 con el primer usuario de prueba: el equipo iba 76 segundos
+    // adelantado y la marcación quedó con esa hora. Con veinte mecánicos son
+    // veinte relojes distintos, y aquí de esa hora sale un pago. El reloj del
+    // teléfono solo se usa cuando NO hay señal, que es el único momento en que
+    // es la mejor fuente disponible.
+    const respuesta = await marcar({ ...input, ocurrioEn: null })
     return { enviada: true, respuesta }
   } catch (err) {
     if (esFalloDeRed(err)) {

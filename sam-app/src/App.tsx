@@ -8,6 +8,7 @@ import { InsumosView } from './views/InsumosView'
 import { AnalistaView } from './views/AnalistaView'
 import { FlotaView } from './views/FlotaView'
 import { MaderaView } from './views/MaderaView'
+import { TallerView } from './views/TallerView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
@@ -535,6 +536,22 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <MaderaView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  // Rol Taller → el módulo de taller, con «Mi jornada» de primera.
+  //
+  // 🔴 Esta ruta FALTABA. El rol existía en la base y `mapRole` lo devolvía
+  // bien, pero sin este `if` la persona caía en la vista del OPERARIO —
+  // Activas, Campo, Historial— sin un solo error. Se descubrió el 11-sep-2026
+  // al crear el primer usuario `taller` de verdad.
+  if (session.role === 'taller') {
+    return (
+      <>
+        {impersonationBar}
+        {syncErrorBanner}
+        <TallerView onLogout={() => saveSession(null)} />
       </>
     )
   }

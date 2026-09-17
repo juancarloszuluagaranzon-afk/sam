@@ -100,8 +100,23 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
   )
   const cerrados = useMemo(() => lista.filter((s) => s.estado !== 'EN_CURSO'), [lista])
 
-  const deImecol = useMemo(() => lista.filter((s) => s.formato !== 'AGROMORALES'), [lista])
-  const deAgromorales = useMemo(() => lista.filter((s) => s.formato === 'AGROMORALES'), [lista])
+  /**
+   * Lo que va a la planilla: SOLO lo efectivo.
+   *
+   * 🔴 Un servicio ANULADO no puede imprimirse en el formato que se le entrega
+   * a IMECOL. Anular significa que el viaje no ocurrió; si sale en la planilla,
+   * el documento afirma un servicio que la empresa ya declaró inexistente, y
+   * quien lo recibe no tiene cómo saberlo. En la PANTALLA sí se sigue viendo,
+   * tachado y con su marca: ahí el anulado es historia y hay que poder
+   * auditarlo. En el papel es una mentira.
+   *
+   * ⚠️ El que está EN_CURSO sí sale, marcado «⚠ SIN CERRAR». Es distinto: ese
+   * viaje SÍ ocurrió y le faltan los datos de llegada. Esconderlo dejaría una
+   * planilla que parece completa y no lo está.
+   */
+  const efectivos = useMemo(() => lista.filter((s) => s.estado !== 'ANULADO'), [lista])
+  const deImecol = useMemo(() => efectivos.filter((s) => s.formato !== 'AGROMORALES'), [efectivos])
+  const deAgromorales = useMemo(() => efectivos.filter((s) => s.formato === 'AGROMORALES'), [efectivos])
 
   async function exportarExcel() {
     if (deImecol.length === 0) { setError('No hay servicios de IMECOL en el rango elegido.'); return }

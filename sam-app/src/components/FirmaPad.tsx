@@ -44,7 +44,7 @@ export const FirmaPad = forwardRef<FirmaPadHandle, Props>(function FirmaPad(
     canvas.height = Math.round(alto * dpr)
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.scale(dpr, dpr)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, ancho, alto)
     ctx.lineWidth = 2.2
@@ -87,28 +87,83 @@ export const FirmaPad = forwardRef<FirmaPadHandle, Props>(function FirmaPad(
     try { canvasRef.current?.releasePointerCapture(e.pointerId) } catch { /* ok */ }
   }
 
+  /**
+   * 🔴 La escala se FIJA, no se acumula.
+   *
+   * Antes esto hacía `save()` → `setTransform(identidad)` → `restore()` →
+   * `scale(dpr)`. El `restore()` ya devolvía la matriz a `scale(dpr)`, así que
+   * el `scale(dpr)` de después la MULTIPLICABA: cada toque a «Limpiar» duplicaba
+   * la escala. En un celular con densidad 2 pasaba de 2 a 4, y todo lo que se
+   * firmara después se dibujaba al doble de coordenadas — fuera del lienzo.
+   *
+   * El resultado era una firma en blanco GUARDADA COMO BUENA. Medido el
+   * 17-sep-2026 sobre las firmas reales de flota: dos de un conductor con CERO
+   * píxeles oscuros, y la de otro conductor correcta. El conductor firmaba, no
+   * le gustaba, limpiaba, volvía a firmar, y a partir de ahí no quedaba nada.
+   *
+   * `setTransform` fija la matriz en vez de componerla. No hay forma de que se
+   * vuelva a acumular.
+   */
+  function fijarEscala(ctx: CanvasRenderingContext2D) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2)
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+  }
+
   function limpiar() {
     const canvas = canvasRef.current
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
-    const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    ctx.save()
     ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
-    ctx.restore()
-    ctx.scale(dpr, dpr)
+    fijarEscala(ctx)
     setVacia(true)
     onCambio?.(false)
   }
 
+  /**
+   * ¿Hay trazo de verdad en el lienzo?
+   *
+   * 🔴 Se miran los PÍXELES, no la bandera. `vacia` solo dice que hubo un
+   * movimiento del dedo, y con la escala dañada hubo movimientos que no
+   * pintaron nada: la firma salió en blanco y se guardó igual, porque el código
+   * preguntaba por la bandera. Una firma es un comprobante; si no hay tinta, no
+   * hay comprobante.
+   *
+   * El umbral de 30 píxeles descarta el toque accidental sin descartar una
+   * firma corta. Si el navegador no deja leer el lienzo, se asume que SÍ hay
+   * firma: mejor guardar una dudosa que perder una buena.
+   */
+  function tieneTinta(canvas: HTMLCanvasElement): boolean {
+    try {
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) return true
+      const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+      let oscuros = 0
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i] < 200 || d[i + 1] < 200 || d[i + 2] < 200) {
+          oscuros++
+          if (oscuros > 30) return true
+        }
+      }
+      return false
+    } catch {
+      return true
+    }
+  }
+
   useImperativeHandle(ref, () => ({
-    estaVacia: () => vacia,
+    estaVacia: () => {
+      const canvas = canvasRef.current
+      return !canvas || !tieneTinta(canvas)
+    },
     limpiar,
     exportar: () =>
       new Promise<File | null>((resolve) => {
         const canvas = canvasRef.current
-        if (!canvas || vacia) { resolve(null); return }
+        // Sin tinta no se sube nada. Una firma en blanco guardada como buena es
+        // peor que ninguna: el comprobante existe y no prueba nada.
+        if (!canvas || vacia || !tieneTinta(canvas)) { resolve(null); return }
         canvas.toBlob(
           (blob) => {
             if (!blob) { resolve(null); return }

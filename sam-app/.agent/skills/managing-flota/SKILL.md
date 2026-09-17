@@ -279,3 +279,56 @@ nadie tuvo que recordar.
 - ⏳ **Pendiente (ofrecido, sin respuesta del cliente)**: colgar las dos fases de la
   cola offline (`enviarOEncolar` con `FLOTA_INICIO` / `FLOTA_CIERRE`). Hoy el viaje
   se abre y se cierra en línea; los guards de arriba ya están listos para el reintento.
+
+## 🔴 La firma se salía del recuadro al limpiar (17-sep-2026)
+
+*«No está dejando firmar»* y *«cuando se le da limpiar la firma no queda
+encuadrada»*: la misma falla, y se pudo medir.
+
+`limpiar()` en `<FirmaPad>` hacía `save()` → `setTransform(identidad)` →
+`restore()` → `scale(dpr)`. El `restore()` **ya** devolvía la matriz a
+`scale(dpr)`, así que el `scale(dpr)` siguiente la **multiplicaba**. Cada toque a
+«Limpiar» duplicaba la escala: medido, de 1,5 a 2,25; en un celular con densidad
+2, de 2 a 4. Todo lo firmado después se dibujaba al doble de coordenadas y caía
+fuera del lienzo.
+
+**La escala se FIJA, nunca se compone**: `setTransform(dpr, 0, 0, dpr, 0, 0)`.
+Con `scale()` sobre una matriz que ya viene escalada no hay forma de saber, al
+leer el código, cuántas veces se aplicó.
+
+### El segundo defecto, que es el que dejó pasar al primero
+
+`exportar()` preguntaba por la bandera `vacia`, no por los píxeles. La bandera
+solo dice que **hubo un movimiento del dedo**, y con la escala dañada hubo
+movimientos que no pintaron nada: se subió un JPEG en blanco **guardado como si
+fuera una firma**.
+
+🔴 **Una firma se valida mirando la TINTA, no la intención.** `tieneTinta()` lee
+el lienzo y corta en 30 píxeles oscuros — descarta el toque accidental sin
+descartar una firma corta. Si el navegador no deja leer el lienzo, se asume que
+sí hay firma: mejor guardar una dudosa que perder una buena.
+
+⚠️ **Daño medido**: de las 55 firmas guardadas, **10 estaban completamente en
+blanco** (cero píxeles oscuros), 5 de Julián y 5 de Camilo, entre el 1 y el 17
+de septiembre. Esos servicios muestran el chip «Firma» y detrás no hay nada.
+Quedaron sin tocar a la espera de decisión del cliente.
+
+**Cómo se revisan** (repetible):
+```python
+# bajar cada firma_url y contar píxeles oscuros
+im = Image.open(io.BytesIO(datos)).convert('L')
+oscuros = sum(1 for v in im.getdata() if v < 200)   # 0 = comprobante vacío
+```
+
+## La planilla lleva lo EFECTIVO, no lo anulado (17-sep-2026)
+
+Los servicios `ANULADO` estaban entrando a las dos exportaciones. Anular
+significa que el viaje **no ocurrió**; impreso en el formato que se le entrega a
+IMECOL, el documento afirma un servicio que la empresa ya declaró inexistente y
+quien lo recibe no tiene cómo saberlo.
+
+- **En la pantalla sí se siguen viendo**, tachados y con su marca: ahí el
+  anulado es historia y hay que poder auditarlo.
+- ⚠️ **El `EN_CURSO` SÍ sale**, marcado «⚠ SIN CERRAR». Es distinto: ese viaje
+  ocurrió y le faltan los datos de llegada. Esconderlo dejaría una planilla que
+  parece completa y no lo está.

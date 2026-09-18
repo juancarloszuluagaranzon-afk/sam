@@ -44,3 +44,20 @@ python .agent/skills/capturing-gotchas/scripts/capture_gotcha.py \
 ## Gotchas de este mismo skill
 
 - **[2026-04-09]** Si el skill destino no existe todavía, créalo antes de intentar añadir la gotcha — el script falla si el path no existe
+
+## Un componente que funciona suelto es una hipótesis (17-sep-2026)
+
+El pad de firma se arregló y se probó **montándolo solo** en el navegador: perfecto.
+El cliente: *«esto sigue sin funcionar, pruébalo primero antes de decirme que ya
+está»*. Dentro del formulario real había dos fallas que el componente aislado no podía
+mostrar, y el flujo completo destapó una tercera de dos meses de antigüedad.
+
+**Antes de decir «ya está»:**
+1. Entrar con un usuario **del rol que lo usa** (`U058` es el de pruebas; se le cambia
+   el rol por unos minutos y se le devuelve).
+2. En **modo celular**, que es donde vive el cliente.
+3. Hacer **el flujo completo** en la pantalla real, incluido el paso exacto que falló.
+4. **Medir donde queda guardado**: la fila en la base, el archivo en el servidor. No
+   la pantalla.
+5. **En producción**, después del deploy, otra vez.
+6. Borrar la prueba.

@@ -332,3 +332,67 @@ quien lo recibe no tiene cómo saberlo.
 - ⚠️ **El `EN_CURSO` SÍ sale**, marcado «⚠ SIN CERRAR». Es distinto: ese viaje
   ocurrió y le faltan los datos de llegada. Esconderlo dejaría una planilla que
   parece completa y no lo está.
+
+## IMECOL también se firma al TERMINAR (17-sep-2026, `9f054df`)
+
+Pedido del cliente: *«queremos que solo se firme al terminar el servicio»*. AgroMorales
+ya lo hacía (dos fases desde el 5-sep). El que firmaba al registrar era **IMECOL**: el
+pasajero firmaba **antes de subirse al carro**, y el comprobante afirmaba un servicio
+prestado que todavía no había salido.
+
+IMECOL pasó a la **misma mecánica**, sin inventar otra:
+
+| Paso | Pantalla | Pide | Estado |
+|---|---|---|---|
+| **Iniciar servicio** | `FlotaForm` | fecha, placa, tipo, pasajero, origen, destino, hora de salida, km inicial, observación | `EN_CURSO` |
+| **✍️ Terminar y firmar** | `FlotaCerrarViaje` | hora final, espera, km final, observación (trae la de la salida), foto, **firma** | `REGISTRADO` |
+
+`FlotaCerrarViaje` sirve a los dos formatos y cambia encabezado, etiqueta y botón según
+`viaje.formato`. El Excel de IMECOL marca los abiertos con «⚠ SIN TERMINAR · SIN FIRMA»
+y el pie cuenta cuántos son.
+
+### 🔴 El mapeo que convertía EN_CURSO en REGISTRADO (dos meses sin verse)
+
+`mapFlota` hacía `estado === 'ANULADO' ? 'ANULADO' : 'REGISTRADO'`. Es de **julio**, de
+cuando solo existían esos dos estados, y quedó igual cuando el 5-sep se agregó
+`EN_CURSO`. La base guardaba bien el viaje abierto; la app lo leía como registrado:
+**no salía arriba, no tenía botón de cerrar, el Excel no lo marcaba**.
+
+Consecuencia: **el cierre en dos fases de AgroMorales nunca funcionó en pantalla.** Se
+había verificado contra la base (201/200/409), no en la app. Camilo tenía dos viajes
+atascados —LA MESETA → ZARZA del 7-sep y MIRAFLORES → LA VIRGINIA del 11-sep— que la
+app le mostraba como terminados.
+
+🔴 **Un estado nuevo en el dominio obliga a revisar el MAPEO.** TypeScript no avisa
+cuando un mapeo simplemente nunca produce uno de los valores del tipo.
+
+### El cierre no borra lo que no viene
+
+`cerrarFlotaServicio` escribía `null` en todo lo que el cierre no traía: **borraba la
+observación anotada al salir**. Con AgroMorales no se notaba (su salida no pide
+observación); con IMECOL, que sí, se perdía. Ahora solo toca lo que trae, y la pantalla
+de cerrar **precarga** la observación de la salida para completarla.
+
+### Cómo se probó (y cómo se prueba otra vez)
+
+Con `U058` puesto temporalmente como `conductor`, en modo celular, **en producción**:
+iniciar (sin firma) → aparece arriba → terminar firmando con «Limpiar» en medio →
+leer la fila (`REGISTRADO`, 20.000→20.055 = 55 km, observación conservada) →
+descargar la firma del servidor y contar tinta (**5.059 px**; las malas tenían 0) →
+borrar el servicio y devolver el rol.
+
+## El lienzo de firma, endurecido (17-sep-2026, `f320356`)
+
+El arreglo de la escala (`setTransform`) se había probado con el componente **suelto**
+y el cliente reclamó: *«esto sigue sin funcionar, pruébalo primero»*. En el formulario
+real aparecieron dos fragilidades más:
+
+- **`setPointerCapture` tira `NotFoundError`** en algunos Android/WebView cuando el
+  puntero ya no está «activo». La excepción cortaba `onDown` **antes** de
+  `dibujando = true`: sin tinta y sin aviso. Va en `try/catch`: la captura es ayuda, no
+  requisito.
+- **El recuadro cambia de ancho después de montar** (gira el celular, aparece la barra
+  de scroll, el teclado encoge la vista) y el navegador **estira** el mapa de bits
+  viejo: la tinta deja de caer bajo el dedo. `sincronizarTamano()` corre al montar, en
+  un `ResizeObserver` y al tocar; y como cambiar `canvas.width` **borra** el lienzo,
+  copia lo firmado y lo repinta escalado.

@@ -165,6 +165,13 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 ## Detalles que muerden
 
+- **🔴 Una suerte se identifica por INGENIO + código de hacienda + suerte.** Ni el código ni el
+  nombre de hacienda son únicos: medido el 18-sep-2026 sobre 17.584 suertes activas, código+suerte
+  choca 19 veces y nombre+suerte 473 (tres «VALPARAISO» con suerte 010: la 3104 de Riopaila tiene
+  16,32 ha y la de Pichichí 5,22 — el tope de área tomó la de Pichichí y no dejó registrar un
+  DESPEJE de 14,50 ha). Cada labor guarda su **`ingenio_id`** (lo llena un trigger al crearla) y
+  toda búsqueda de la fila del maestro para una labor va por **`filaMaestro()`** de
+  `lib/areaSuerte.ts`, nunca con un `maestro.find` a mano.
 - **🔴 El detalle de una entrega va con `<DetalleDespacho>`** (`src/components/`): quién
   recibió, quién entregó, horómetro, nota, evidencia y el aval del operario. Se abre
   desde Reportes (lista, detalle de máquina, detalle de insumo) e Inicio, así que vive

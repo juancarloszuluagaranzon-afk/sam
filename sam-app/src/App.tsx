@@ -17,6 +17,7 @@ import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
 import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getAssignmentIngenioId } from './services/samApi'
 import { db } from './lib/db'
+import { filaMaestro } from './lib/areaSuerte'
 
 export type ReportPeriod = 'CUSTOM' | 'HOY' | 'AYER' | 'PRIMERA' | 'SEGUNDA' | 'MES'
 
@@ -185,10 +186,8 @@ function AppContent() {
       if (operatorFilter !== 'TODOS' && assignment.operatorId !== operatorFilter) return false
       if (haciendaFilter !== 'TODAS' && assignment.haciendaCode !== haciendaFilter) return false
       if (ingenioFilter !== 'TODOS') {
-        const row = maestro.find(
-          (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
-        )
-        if (!row || row.ingenio_id !== ingenioFilter) return false
+        const ingenio = assignment.ingenioId ?? filaMaestro(maestro, assignment)?.ingenio_id
+        if (ingenio !== ingenioFilter) return false
       }
       // Busqueda libre por hacienda, suerte, labor u operario. Se aplica
       // de ultimo para acotar el resultado ya filtrado por los selects.
@@ -211,8 +210,8 @@ function AppContent() {
     const codes = new Map<string, string>()
     assignments.forEach((a) => {
       if (ingenioFilter !== 'TODOS') {
-        const row = maestro.find((r) => r.haciendaCode === a.haciendaCode)
-        if (!row || row.ingenio_id !== ingenioFilter) return
+        const ingenio = a.ingenioId ?? filaMaestro(maestro, a)?.ingenio_id
+        if (ingenio !== ingenioFilter) return
       }
       if (!codes.has(a.haciendaCode)) codes.set(a.haciendaCode, a.haciendaName)
     })

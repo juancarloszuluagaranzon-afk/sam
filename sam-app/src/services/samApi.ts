@@ -47,6 +47,7 @@ import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
 import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
 import { redondear2 } from '../lib/cantidad'
+import { filaMaestro } from '../lib/areaSuerte'
 
 type Source = 'supabase' | 'fallback' | 'cache'
 
@@ -105,12 +106,11 @@ function normalizeZone(value: string | null | undefined): Zone | null {
 // si la suerte no esta en el maestro (caso raro pero posible: suerte vieja
 // que fue removida o asignacion creada en campo libre con un codigo manual).
 export function getIngenioName(
-  assignment: { haciendaCode: string; suerte: string },
+  assignment: { haciendaCode: string; suerte: string; haciendaName?: string; ingenioId?: string | null },
   maestro: MaestroRow[],
 ): string | null {
-  const row = maestro.find(
-    (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
-  )
+  if (assignment.ingenioId) return ingenioNombre(assignment.ingenioId)
+  const row = filaMaestro(maestro, assignment)
   if (!row) return null
   return ingenioNombre(row.ingenio_id)
 }
@@ -118,12 +118,11 @@ export function getIngenioName(
 // Devuelve el ingenio_id crudo (ej 'pichichi') para filtrar por ID; útil cuando
 // el selector usa el id como value y necesitamos comparar contra las filas.
 export function getAssignmentIngenioId(
-  assignment: { haciendaCode: string; suerte: string },
+  assignment: { haciendaCode: string; suerte: string; haciendaName?: string; ingenioId?: string | null },
   maestro: MaestroRow[],
 ): string | null {
-  const row = maestro.find(
-    (r) => r.haciendaCode === assignment.haciendaCode && r.suerte === assignment.suerte,
-  )
+  if (assignment.ingenioId) return assignment.ingenioId
+  const row = filaMaestro(maestro, assignment)
   return row ? row.ingenio_id : null
 }
 
@@ -165,6 +164,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     updatedAt: row.updated_at ? String(row.updated_at) : undefined,
     editadoPor: row.editado_por ? String(row.editado_por) : undefined,
     facturaNumero: row.factura_numero ? String(row.factura_numero) : null,
+    ingenioId: row.ingenio_id ? String(row.ingenio_id) : null,
   }
 }
 
@@ -174,7 +174,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
 // ⚠️ Solo columnas YA MIGRADAS en producción — agregar aquí una columna que no
 // exista en la BD rompe TODO el sync (lección factura_numero/42703).
 const ASSIGNMENT_COLS =
-  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero'
+  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id'
 
 function mapAssignmentPayload(input: CreateAssignmentInput) {
   return {

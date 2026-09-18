@@ -62,6 +62,7 @@ import { TarifasTab } from './TarifasTab'
 import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
+import { filaMaestro } from '../lib/areaSuerte'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
@@ -656,8 +657,8 @@ export function SupervisorView({
       if (operatorFilter !== 'TODOS' && a.operatorId !== operatorFilter) return false
       if (haciendaFilter !== 'TODAS' && a.haciendaCode !== haciendaFilter) return false
       if (ingenioFilter !== 'TODOS') {
-        const row = maestro.find((r) => r.haciendaCode === a.haciendaCode && r.suerte === a.suerte)
-        if (!row || row.ingenio_id !== ingenioFilter) return false
+        const ingenio = a.ingenioId ?? filaMaestro(maestro, a)?.ingenio_id
+        if (ingenio !== ingenioFilter) return false
       }
       if (q) {
         const haystack = `${a.haciendaName} ${a.suerte} ${a.labor} ${a.operatorName}`.toLowerCase()

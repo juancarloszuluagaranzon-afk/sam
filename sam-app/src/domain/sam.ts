@@ -122,6 +122,10 @@ export interface Assignment {
   editadoPor?: string
   // Facturación: N° de factura asignado por administración (null = sin facturar).
   facturaNumero?: string | null
+  // Ingenio de la suerte (`asignaciones.ingenio_id`, lo pone un trigger al crear).
+  // Con haciendaCode + suerte identifica la suerte sin ambigüedad entre ingenios
+  // (ver `lib/areaSuerte`). null/undefined = recién creada o sin suerte en el maestro.
+  ingenioId?: string | null
 }
 
 export interface DashboardMetrics {

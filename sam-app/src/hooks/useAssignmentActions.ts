@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { areaOficialSuerte as areaOficialDeSuerte } from '../lib/areaSuerte'
 import { useAppData } from '../context/AppDataContext'
 import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
@@ -34,8 +35,8 @@ export function useAssignmentActions() {
    * programó 3,10 + 3,72 — el máximo daba 3,72 y el tope quedaba en la mitad
    * del área real, impidiendo registrar lo que de verdad se hizo.
    *
-   * ⚠️ Se busca por NOMBRE de hacienda, no por código: hay códigos compartidos
-   * entre haciendas distintas (ver `project_maestro_codigo_compartido`).
+   * ⚠️ Se busca por CÓDIGO + NOMBRE de hacienda: ninguno de los dos es único
+   * solo (ver `lib/areaSuerte`).
    */
   /**
    * 🔴 El tope del maestro NO aplica a las labores que se miden en HECTÓMETROS.
@@ -51,14 +52,8 @@ export function useAssignmentActions() {
     return unidadDeLabor(a.labor) === 'ha'
   }
 
-  function areaOficialSuerte(a: Assignment): number | null {
-    const suerte = a.suerte.trim().toUpperCase()
-    const hacienda = a.haciendaName.trim().toUpperCase()
-    const fila = maestro.find(
-      (m) => m.suerte.trim().toUpperCase() === suerte && m.haciendaName.trim().toUpperCase() === hacienda,
-    )
-    return fila && fila.area > 0 ? fila.area : null
-  }
+  // La búsqueda vive en `lib/areaSuerte` (llave código + nombre de hacienda).
+  const areaOficialSuerte = (a: Assignment) => areaOficialDeSuerte(maestro, a)  // usa a.ingenioId
 
   const [finishDrafts, setFinishDrafts] = useState<Record<string, FinishDraft>>({})
   const [startEquipmentDrafts, setStartEquipmentDrafts] = useState<Record<string, string>>({})

@@ -130,8 +130,12 @@ export function useAssignmentForm(options?: Options) {
   }, [maestro, assignmentForm.ingenioId])
 
   const assignmentSuertes = useMemo(
-    () => maestro.filter((row) => row.haciendaCode === assignmentForm.haciendaCode),
-    [maestro, assignmentForm.haciendaCode],
+    // 🔴 Dentro del ingenio elegido: hay códigos de hacienda repetidos entre
+    // ingenios (1214 = ABEJONES en Riopaila y PRAGA en Carmelita). Ver `lib/areaSuerte`.
+    () => maestro.filter(
+      (row) => row.haciendaCode === assignmentForm.haciendaCode && (!assignmentForm.ingenioId || row.ingenio_id === assignmentForm.ingenioId),
+    ),
+    [maestro, assignmentForm.haciendaCode, assignmentForm.ingenioId],
   )
 
   async function refreshAssignments() {
@@ -209,7 +213,10 @@ export function useAssignmentForm(options?: Options) {
     const maestroRows = assignmentSuertesList
       .map((suerte) =>
         maestro.find(
-          (row) => row.haciendaCode === assignmentForm.haciendaCode && row.suerte === suerte,
+          (row) =>
+            row.haciendaCode === assignmentForm.haciendaCode &&
+            row.suerte === suerte &&
+            (!assignmentForm.ingenioId || row.ingenio_id === assignmentForm.ingenioId),
         ),
       )
       .filter((row): row is NonNullable<typeof row> => row !== undefined)

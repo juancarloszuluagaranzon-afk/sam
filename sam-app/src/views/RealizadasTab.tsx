@@ -5,6 +5,7 @@ import SearchableSelect from '../components/SearchableSelect'
 import { executionDateKey, formatTime } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 import type { Assignment } from '../domain/sam'
+import { filaMaestro } from '../lib/areaSuerte'
 
 // Una tarjeta = un "corte": misma suerte + labor dentro del MISMO CICLO
 // (ventana de ~21 días, isSameCycle). Todos los parciales de ese corte —de uno
@@ -137,9 +138,7 @@ export function RealizadasTab() {
     const build = (rows: Assignment[]) => {
       const rep = rows[0]
       const executed = rows.reduce((s, r) => s + ((r.executedArea ?? 0) > 0 ? r.executedArea : r.area), 0)
-      const maestroRow = maestro.find(
-        (m) => m.haciendaCode === rep.haciendaCode && m.suerte === rep.suerte,
-      )
+      const maestroRow = filaMaestro(maestro, rep)
       const asignada = maestroRow?.area ?? Math.max(...rows.map((r) => r.area))
       const operators = Array.from(new Set(rows.map((r) => r.operatorName).filter(Boolean)))
       const dates = rows.map((r) => executionDateKey(r))

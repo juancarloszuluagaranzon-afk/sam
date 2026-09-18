@@ -123,8 +123,12 @@ export function useFreeFieldForm(options?: Options) {
   }, [maestro, freeFieldForm.ingenioId])
 
   const freeFieldSuertes = useMemo(
-    () => maestro.filter((row) => row.haciendaCode === freeFieldForm.haciendaCode),
-    [maestro, freeFieldForm.haciendaCode],
+    // 🔴 Dentro del ingenio elegido: hay códigos de hacienda repetidos entre
+    // ingenios (1214 = ABEJONES en Riopaila y PRAGA en Carmelita). Ver `lib/areaSuerte`.
+    () => maestro.filter(
+      (row) => row.haciendaCode === freeFieldForm.haciendaCode && (!freeFieldForm.ingenioId || row.ingenio_id === freeFieldForm.ingenioId),
+    ),
+    [maestro, freeFieldForm.haciendaCode, freeFieldForm.ingenioId],
   )
 
   async function refreshAssignments() {
@@ -186,7 +190,10 @@ export function useFreeFieldForm(options?: Options) {
     const maestroRows = freeFieldSuertesList
       .map((suerte) =>
         maestro.find(
-          (row) => row.haciendaCode === freeFieldForm.haciendaCode && row.suerte === suerte,
+          (row) =>
+            row.haciendaCode === freeFieldForm.haciendaCode &&
+            row.suerte === suerte &&
+            (!freeFieldForm.ingenioId || row.ingenio_id === freeFieldForm.ingenioId),
         ),
       )
       .filter((row): row is NonNullable<typeof row> => row !== undefined)

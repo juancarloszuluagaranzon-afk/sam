@@ -217,7 +217,12 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           s.horaSalidaOrigen ?? '', s.horaLlegadaDestino ?? '', s.horaSalidaDestino ?? '',
           s.horaLlegadaOrigen ?? '', s.horaEspera ?? '',
           // Cero peajes es casilla VACIA: un 0 impreso se lee como dato contado.
-          s.numPeajes || '', s.otrosGastos || '', s.totalKm ?? 0, s.observacion ?? '',
+          s.numPeajes || '', s.otrosGastos || '', s.totalKm ?? 0,
+          // 🔴 Un servicio SIN TERMINAR sale igual, pero marcado: no tiene
+          // llegada ni firma, y esconderlo dejaría una planilla que parece
+          // completa. Mismo criterio que el F-OPE-22.
+          (s.estado === 'EN_CURSO' ? '⚠ SIN TERMINAR · SIN FIRMA' : '') +
+            (s.estado === 'EN_CURSO' && s.observacion ? ' · ' : '') + (s.observacion ?? ''),
         ]
         valores.forEach((v, c) => {
           const cel = ws.getCell(f, c + 1)
@@ -253,7 +258,10 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       const filaObs = filaTotal + 2
       ws.mergeCells(filaObs, 1, filaObs + 1, 16)
       const obs = ws.getCell(filaObs, 1)
-      obs.value = 'OBSERVACION: ' + deImecol.map((s) => s.observacion).filter(Boolean).join(' - ')
+      const sinTerminar = deImecol.filter((s) => s.estado === 'EN_CURSO').length
+      obs.value = (sinTerminar > 0
+        ? `⚠ ${sinTerminar} SERVICIO${sinTerminar === 1 ? '' : 'S'} SIN TERMINAR NI FIRMAR. `
+        : '') + 'OBSERVACION: ' + deImecol.map((s) => s.observacion).filter(Boolean).join(' - ')
       obs.font = { size: 9 }
       obs.alignment = { vertical: 'top', wrapText: true }
       obs.border = marco
@@ -387,7 +395,7 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
                 {esAdmin && s.conductorNombre ? ` · ${s.conductorNombre}` : ''}
               </span>
               <button type="button" className="primary-button" onClick={() => setCerrando(s)} disabled={busy}>
-                Cerrar viaje
+                {s.formato === 'AGROMORALES' ? 'Cerrar viaje' : '✍️ Terminar y firmar'}
               </button>
             </div>
           ))}

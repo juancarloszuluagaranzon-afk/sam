@@ -1,16 +1,18 @@
-import { useRef, useState, type ChangeEvent } from 'react'
+import { useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { createFlotaServicio, uploadImagenFlota } from '../services/samApi'
-import { FirmaPad, type FirmaPadHandle } from '../components/FirmaPad'
+import { createFlotaServicio } from '../services/samApi'
 import { CampoPlaca, recordarPlaca } from '../components/CampoPlaca'
 import { aMayus } from '../lib/texto'
 import { usePlacaPorDefecto } from '../hooks/usePlacaPorDefecto'
 
 /**
- * Formulario de registro de un SERVICIO de escolta (formato CDA-F-68), pensado
- * para llenarse desde el celular del conductor. Incluye comprobante: FIRMA del
- * pasajero/responsable + FOTO de evidencia (ambas se suben ya comprimidas y
- * livianas). Reutilizable por la vista del conductor y por administración.
+ * INICIO de un servicio de escolta (formato CDA-F-68 de IMECOL), pensado para
+ * llenarse desde el celular del conductor al SALIR.
+ *
+ * 🔴 Aquí NO se firma. La firma del pasajero/responsable y la foto de
+ * evidencia son comprobantes de un servicio PRESTADO, así que se piden al
+ * terminarlo, en `FlotaCerrarViaje` — decisión del cliente, 17-sep-2026. Antes
+ * se firmaba al registrar y el pasajero firmaba antes de subirse al carro.
  */
 
 function hoyISO(): string {
@@ -19,11 +21,6 @@ function hoyISO(): string {
 }
 
 const TIPOS = ['ESCOLTA', 'TRANSPORTE', 'DISPONIBILIDAD', 'OTRO']
-
-/** Un odómetro va en cientos de miles: sin separador de miles no se lee. */
-function n0(v: number) {
-  return Number.isFinite(v) ? new Intl.NumberFormat('es-CO', { maximumFractionDigits: 2 }).format(v) : '—'
-}
 
 /** Campos que NO se tocan: fechas, horas y números. El resto va en mayúscula. */
 const CRUDOS = new Set(['fecha', 'tipoServicio', 'horaSalidaOrigen', 'horaLlegadaDestino',
@@ -98,46 +95,30 @@ export function FlotaForm({
   const set = (k: keyof typeof f, v: string) =>
     setF((prev) => ({ ...prev, [k]: CRUDOS.has(k) ? v : aMayus(v) }))
 
-  /**
-   * 🔴 El total NO se recalcula dentro del `set`: se deriva al dibujar.
-   *
-   * Guardarlo en el estado obligaría a acordarse de recalcularlo en cada sitio
-   * que toque una lectura, y el día que se olvide uno la planilla sale con un
-   * total que no corresponde a sus propios kilómetros. Derivado no se puede
-   * desincronizar.
-   */
-  const kmCalculado = kmDelServicio(f.kmInicial, f.kmFinal)
-  const kmParaGuardar = kmCalculado ?? (f.totalKm ? Number(f.totalKm) : undefined)
-  const kmAlReves = kmCalculado != null && kmCalculado < 0
-
-  const firmaRef = useRef<FirmaPadHandle>(null)
-  const [hayFirma, setHayFirma] = useState(false)
-  const fotoRef = useRef<HTMLInputElement>(null)
-  const [foto, setFoto] = useState<File | null>(null)
-  const [fotoPreview, setFotoPreview] = useState<string>('')
-
-  function onFoto(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    if (!file.type.startsWith('image/')) { setError('Selecciona una imagen.'); return }
-    setFoto(file)
-    setFotoPreview(URL.createObjectURL(file))
-  }
+  // 🔴 La firma, la foto, la llegada y el km final ya NO se piden aquí: se
+  // piden al TERMINAR el servicio (`FlotaCerrarViaje`). Ver el comentario
+  // de `guardar()`.
 
   async function guardar() {
     if (!f.origen.trim() || !f.destino.trim()) { setError('Origen y destino son obligatorios.'); return }
     setBusy(true); setError('')
     try {
-      const tmpId = `${conductorId ?? 'x'}-${Date.now()}`
-      let firmaUrl: string | undefined
-      let evidenciaUrl: string | undefined
-
-      const firmaFile = await firmaRef.current?.exportar()
-      if (firmaFile) firmaUrl = await uploadImagenFlota(tmpId, firmaFile, 'firma')
-      if (foto) evidenciaUrl = await uploadImagenFlota(tmpId, foto, 'evidencia')
-
+      // 🔴 El servicio se ABRE aquí y se CIERRA al terminar, con la firma.
+      //
+      // El cliente pidió que se firme SOLO al terminar el servicio (17-sep-2026).
+      // Pedir la firma al registrar hacía que el pasajero firmara ANTES de
+      // viajar: el comprobante decía que el servicio se prestó cuando todavía
+      // no había salido el carro. Es la misma mecánica de dos fases que ya usa
+      // AgroMorales, sin inventar otra:
+      //   · el id lo pone el TELÉFONO, para que el cierre sepa a qué servicio
+      //     apunta aunque el servidor no haya respondido;
+      //   · nace EN_CURSO y sale arriba, en ámbar, con su botón de terminar;
+      //   · el cierre lleva guard `.eq('estado','EN_CURSO')`: reintentar no pisa.
       await createFlotaServicio({
+        id: crypto.randomUUID(),
+        estado: 'EN_CURSO',
+        abiertoEn: new Date().toISOString(),
+        formato: 'IMECOL',
         fecha: f.fecha,
         vehiculo: f.vehiculo.trim() || undefined,
         tipoServicio: f.tipoServicio,
@@ -147,24 +128,18 @@ export function FlotaForm({
         origen: f.origen.trim(),
         destino: f.destino.trim(),
         horaSalidaOrigen: f.horaSalidaOrigen || undefined,
-        horaLlegadaDestino: f.horaLlegadaDestino || undefined,
         horaSalidaDestino: f.horaSalidaDestino || undefined,
         horaLlegadaOrigen: f.horaLlegadaOrigen || undefined,
         horaEspera: f.horaEspera || undefined,
         numPeajes: f.numPeajes ? Number(f.numPeajes) : undefined,
         otrosGastos: f.otrosGastos ? Number(f.otrosGastos) : undefined,
         kmInicial: f.kmInicial ? Number(f.kmInicial) : undefined,
-        kmFinal: f.kmFinal ? Number(f.kmFinal) : undefined,
-        totalKm: kmParaGuardar,
         observacion: f.observacion.trim() || undefined,
         conductorId,
         conductorNombre,
-        firmaUrl,
-        firmaNombre: f.firmaNombre.trim() || undefined,
-        evidenciaUrl,
       })
       recordarPlaca(f.vehiculo)
-      setInfo('Servicio registrado.')
+      setInfo('Servicio iniciado. Al terminar, tócalo arriba para firmar.')
       onSaved()
       onClose()
     } catch (err) {
@@ -177,7 +152,7 @@ export function FlotaForm({
     <div className="modal-overlay open" onClick={() => { if (!busy) onClose() }}>
       <div className="modal-card flota-form" onClick={(e) => e.stopPropagation()}>
         <div className="labor-detail-header">
-          <div><p className="eyebrow">Flota · Escolta</p><h3>Registrar servicio</h3></div>
+          <div><p className="eyebrow">Flota · Escolta</p><h3>Iniciar servicio</h3></div>
           <button type="button" className="modal-close-btn" onClick={onClose} disabled={busy} aria-label="Cerrar">&#x2715;</button>
         </div>
 
@@ -195,33 +170,9 @@ export function FlotaForm({
           <label>Origen <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.origen} onChange={(e) => set('origen', e.target.value)} disabled={busy} /></label>
           <label>Destino <span style={{ color: '#b3261e' }}>*</span><input type="text" autoCapitalize="characters" value={f.destino} onChange={(e) => set('destino', e.target.value)} disabled={busy} /></label>
           <label>Hora salida origen<input type="time" value={f.horaSalidaOrigen} onChange={(e) => set('horaSalidaOrigen', e.target.value)} disabled={busy} /></label>
-          <label>Hora llegada destino<input type="time" value={f.horaLlegadaDestino} onChange={(e) => set('horaLlegadaDestino', e.target.value)} disabled={busy} /></label>
           <label>Km inicial<input type="number" min={0} step="any" inputMode="numeric"
             value={f.kmInicial} onChange={(e) => set('kmInicial', e.target.value)} disabled={busy} /></label>
-          <label>Km final<input type="number" min={0} step="any" inputMode="numeric"
-            value={f.kmFinal} onChange={(e) => set('kmFinal', e.target.value)} disabled={busy} /></label>
-          {/* Con las dos lecturas el total NO se teclea: es la resta, y se
-              muestra la operación completa para que se pueda comprobar contra el
-              tablero del carro sin abrir una calculadora. */}
-          {kmCalculado == null ? (
-            <label>Km del servicio <span className="field-optional">(si no pudo leer el odómetro)</span>
-              <input type="number" min={0} step="any" value={f.totalKm}
-                     onChange={(e) => set('totalKm', e.target.value)} disabled={busy} /></label>
-          ) : (
-            <div className="flota-km">
-              <span className="flota-km__lbl">Km del servicio</span>
-              <b className={kmAlReves ? 'flota-km__mal' : 'flota-km__val'}>{n0(kmCalculado)}</b>
-              <small>{n0(Number(f.kmFinal))} − {n0(Number(f.kmInicial))}</small>
-            </div>
-          )}
         </div>
-
-        {kmAlReves && (
-          <p className="flota-km__aviso">
-            ⚠ El kilómetro final es <strong>menor</strong> que el inicial. Revisa las dos
-            lecturas: así la planilla saldría con kilómetros en negativo.
-          </p>
-        )}
 
         {/* Los siete que en el papel van siempre en blanco. Plegados, no
             borrados: el dia que haya un peaje hay que poder anotarlo. */}
@@ -246,33 +197,18 @@ export function FlotaForm({
           <textarea rows={2} autoCapitalize="characters" value={f.observacion} onChange={(e) => set('observacion', e.target.value)} disabled={busy} />
         </label>
 
-        {/* Comprobante: foto de evidencia (liviana) */}
-        <div className="flota-comprobante">
-          <span className="flota-comprobante__lbl">📷 Foto de evidencia <span className="field-optional">(se guarda liviana)</span></span>
-          <div className="flota-foto-row">
-            {fotoPreview && <img src={fotoPreview} alt="evidencia" className="flota-foto-thumb" />}
-            <button type="button" className="inline-button" onClick={() => fotoRef.current?.click()} disabled={busy}>
-              {foto ? 'Cambiar foto' : '📷 Tomar foto'}
-            </button>
-            {foto && <button type="button" className="inline-button" onClick={() => { setFoto(null); setFotoPreview('') }} disabled={busy}>Quitar</button>}
-            <input ref={fotoRef} type="file" accept="image/*" capture="environment" hidden onChange={onFoto} />
-          </div>
-        </div>
-
-        {/* Comprobante: firma del pasajero/responsable */}
-        <div className="flota-comprobante">
-          <span className="flota-comprobante__lbl">✍️ Firma del pasajero / responsable</span>
-          <input type="text" className="flota-firma-nombre" placeholder="Nombre de quien firma" autoCapitalize="characters" value={f.firmaNombre} onChange={(e) => set('firmaNombre', e.target.value)} disabled={busy} />
-          <FirmaPad ref={firmaRef} onCambio={setHayFirma} disabled={busy} />
-        </div>
+        {/* La foto y la firma son COMPROBANTES del servicio prestado: se
+            piden al terminarlo, no al salir. */}
+        <p className="subtle-copy" style={{ marginTop: 10 }}>
+          ✍️ La <strong>firma</strong> y la <strong>foto</strong> se piden al <strong>terminar</strong> el servicio.
+        </p>
 
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void guardar()} disabled={busy}>
-            {busy ? 'Guardando…' : 'Registrar servicio'}
+            {busy ? 'Guardando…' : 'Iniciar servicio'}
           </button>
         </div>
-        {!hayFirma && <p className="subtle-copy" style={{ margin: '6px 0 0', textAlign: 'right' }}>Tip: pide la firma del responsable como comprobante.</p>}
       </div>
     </div>
   )

@@ -3499,7 +3499,17 @@ function mapFlota(row: Record<string, unknown>): FlotaServicio {
     firmaUrl: s(row.firma_url),
     firmaNombre: s(row.firma_nombre),
     evidenciaUrl: s(row.evidencia_url),
-    estado: estado === 'ANULADO' ? 'ANULADO' : 'REGISTRADO',
+    // 🔴 EN_CURSO se LEE, no se convierte. Esta línea es de julio, de cuando
+    // solo existían REGISTRADO y ANULADO, y quedó así cuando el 5-sep se
+    // agregaron las dos fases: todo lo que no fuera anulado salía como
+    // «registrado». La base guardaba bien el viaje abierto, pero la app nunca
+    // lo veía abierto — no aparecía arriba, no tenía botón de cerrar y el
+    // Excel no lo marcaba. Se descubrió el 17-sep-2026 probando la firma al
+    // final: Camilo tenía dos viajes abiertos desde el 7 y el 11 de septiembre
+    // que la app le mostraba como terminados y que no había forma de cerrar.
+    // Lección: un estado nuevo en el dominio obliga a revisar el MAPEO, porque
+    // TypeScript no avisa si el mapeo nunca lo produce.
+    estado: estado === 'ANULADO' ? 'ANULADO' : estado === 'EN_CURSO' ? 'EN_CURSO' : 'REGISTRADO',
   }
 }
 
@@ -3601,14 +3611,18 @@ export async function cerrarFlotaServicio(id: string, input: {
       estado: 'REGISTRADO',
       cerrado_en: new Date().toISOString(),
       hora_llegada_destino: input.horaFinal ?? null,
-      hora_espera: input.tiempoEspera ?? null,
-      km_final: input.kmFinal ?? null,
+      // 🔴 Lo que NO viene en el cierre NO se toca. Antes se escribía `null`,
+      // y eso BORRABA lo que se había anotado al salir: la observación, la
+      // hora de espera. Con AgroMorales no se notaba porque su salida no
+      // pide observación; con IMECOL, que sí la pide, se perdía al cerrar.
+      ...(input.tiempoEspera ? { hora_espera: input.tiempoEspera } : {}),
+      ...(input.kmFinal != null ? { km_final: input.kmFinal } : {}),
       ...(total != null ? { total_km: total } : {}),
-      observacion: input.observacion ?? null,
+      ...(input.observacion ? { observacion: input.observacion } : {}),
       // La firma y la foto solo se pisan si vienen: un cierre sin foto no puede
       // borrar la que se haya subido al abrir.
       ...(input.firmaUrl ? { firma_url: input.firmaUrl } : {}),
-      firma_nombre: input.firmaNombre ?? null,
+      ...(input.firmaNombre ? { firma_nombre: input.firmaNombre } : {}),
       ...(input.evidenciaUrl ? { evidencia_url: input.evidenciaUrl } : {}),
     })
     .eq('id', id)

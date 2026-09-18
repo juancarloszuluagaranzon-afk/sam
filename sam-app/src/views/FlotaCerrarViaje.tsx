@@ -41,7 +41,9 @@ export function FlotaCerrarViaje({
   const [horaFinal, setHoraFinal] = useState(ahoraHHMM())
   const [tiempoEspera, setTiempoEspera] = useState('')
   const [kmFinal, setKmFinal] = useState('')
-  const [observacion, setObservacion] = useState('')
+  // La observación que se escribió al salir se trae, para completarla y
+  // no borrarla: el cierre la reescribe entera.
+  const [observacion, setObservacion] = useState(viaje.observacion ?? '')
   const [firmaNombre, setFirmaNombre] = useState('')
 
   const firmaRef = useRef<FirmaPadHandle>(null)
@@ -58,6 +60,7 @@ export function FlotaCerrarViaje({
     setFotoPreview(URL.createObjectURL(file))
   }
 
+  const esImecol = viaje.formato !== 'AGROMORALES'
   const ini = viaje.kmInicial
   const fin = kmFinal.trim() === '' ? null : Number(kmFinal)
   const total = ini != null && fin != null && Number.isFinite(fin)
@@ -94,7 +97,7 @@ export function FlotaCerrarViaje({
         firmaNombre: firmaNombre.trim() || undefined,
         evidenciaUrl,
       })
-      setInfo('Viaje cerrado. Ya cuenta para la planilla.')
+      setInfo(esImecol ? 'Servicio terminado y firmado. Ya cuenta para la planilla.' : 'Viaje cerrado. Ya cuenta para la planilla.')
       onSaved()
       onClose()
     } catch (err) {
@@ -108,8 +111,8 @@ export function FlotaCerrarViaje({
       <div className="modal-card flota-form" onClick={(e) => e.stopPropagation()}>
         <div className="labor-detail-header">
           <div>
-            <p className="eyebrow">AgroMorales · F-OPE-22</p>
-            <h3>Cerrar viaje</h3>
+            <p className="eyebrow">{esImecol ? 'IMECOL · CDA-F-68' : 'AgroMorales · F-OPE-22'}</p>
+            <h3>{esImecol ? 'Terminar servicio' : 'Cerrar viaje'}</h3>
           </div>
           <button type="button" className="modal-close-btn" onClick={onClose} disabled={busy} aria-label="Cerrar">&#x2715;</button>
         </div>
@@ -183,7 +186,7 @@ export function FlotaCerrarViaje({
             nombre CON la cédula («MAURICIO CH 600486»): con el nombre solo, un
             apellido repetido no distingue a nadie. */}
         <div className="flota-comprobante">
-          <span className="flota-comprobante__lbl">✍️ Firma responsable</span>
+          <span className="flota-comprobante__lbl">✍️ {esImecol ? 'Firma del pasajero / responsable' : 'Firma responsable'}</span>
           <input type="text" className="flota-firma-nombre" placeholder="Nombre y cédula de quien recibe"
                  autoCapitalize="characters" value={firmaNombre}
                  onChange={(e) => setFirmaNombre(aMayus(e.target.value))} disabled={busy} />
@@ -193,7 +196,7 @@ export function FlotaCerrarViaje({
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void cerrar()} disabled={busy}>
-            {busy ? 'Cerrando…' : 'Cerrar viaje'}
+            {busy ? 'Cerrando…' : esImecol ? 'Terminar servicio' : 'Cerrar viaje'}
           </button>
         </div>
       </div>

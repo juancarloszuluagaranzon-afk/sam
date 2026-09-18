@@ -34,23 +34,65 @@ export const FirmaPad = forwardRef<FirmaPadHandle, Props>(function FirmaPad(
   const ultimo = useRef<{ x: number; y: number } | null>(null)
   const [vacia, setVacia] = useState(true)
 
-  // Prepara el canvas a la resolución real del dispositivo (nítido en móvil).
-  useEffect(() => {
+  /**
+   * Ajusta el mapa de bits del lienzo a su tamaño EN PANTALLA de este momento.
+   *
+   * 🔴 Existe porque el tamaño en pantalla puede cambiar DESPUÉS de montar:
+   * el celular gira, aparece la barra de scroll del formulario, el teclado
+   * encoge la vista. Si el mapa de bits se queda con el tamaño viejo, el
+   * navegador lo estira para llenar el recuadro, y la tinta deja de caer bajo
+   * el dedo — «la firma no queda encuadrada». Se llama al montar, cada vez que
+   * el recuadro cambia de tamaño, y al tocar el lienzo antes de dibujar.
+   *
+   * ⚠️ Cambiar `canvas.width` BORRA el lienzo. Por eso la firma que ya había se
+   * copia antes y se vuelve a pintar escalada al tamaño nuevo: girar el
+   * celular a mitad de firma no puede hacer perder lo firmado.
+   */
+  function sincronizarTamano() {
     const canvas = canvasRef.current
     if (!canvas) return
     const dpr = Math.min(window.devicePixelRatio || 1, 2)
-    const ancho = canvas.clientWidth
-    canvas.width = Math.round(ancho * dpr)
-    canvas.height = Math.round(alto * dpr)
+    const anchoCss = canvas.clientWidth
+    // Sin ancho todavía (el formulario aún no se ha dibujado): no se toca nada.
+    // Dimensionar a cero dejaría un lienzo donde no cabe ni un punto.
+    if (anchoCss <= 0) return
+    const w = Math.round(anchoCss * dpr)
+    const h = Math.round(alto * dpr)
+    if (canvas.width === w && canvas.height === h) return
+
+    let copia: HTMLCanvasElement | null = null
+    if (canvas.width > 0 && canvas.height > 0) {
+      copia = document.createElement('canvas')
+      copia.width = canvas.width
+      copia.height = canvas.height
+      copia.getContext('2d')?.drawImage(canvas, 0, 0)
+    }
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, ancho, alto)
+    ctx.fillRect(0, 0, w, h)
+    if (copia) ctx.drawImage(copia, 0, 0, w, h)
+    fijarEscala(ctx)
     ctx.lineWidth = 2.2
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
     ctx.strokeStyle = '#111111'
+  }
+
+  // Prepara el lienzo a la resolución real del aparato (nítido en móvil) y lo
+  // mantiene al día si el recuadro cambia de tamaño.
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    sincronizarTamano()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(() => sincronizarTamano())
+    ro.observe(canvas)
+    return () => ro.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [alto])
 
   function posicion(e: React.PointerEvent<HTMLCanvasElement>) {
@@ -62,7 +104,13 @@ export const FirmaPad = forwardRef<FirmaPadHandle, Props>(function FirmaPad(
   function onDown(e: React.PointerEvent<HTMLCanvasElement>) {
     if (disabled) return
     e.preventDefault()
-    canvasRef.current?.setPointerCapture(e.pointerId)
+    sincronizarTamano()
+    // 🔴 La captura del dedo es una AYUDA, no un requisito. Si el navegador la
+    // rechaza —pasa en algunos Android y WebView cuando el puntero ya no está
+    // «activo» al llegar el evento— tira `NotFoundError`, y antes esa excepción
+    // cortaba la función ANTES de `dibujando = true`: no se dibujaba nada y no
+    // se avisaba. Se detectó al probar el formulario real el 17-sep-2026.
+    try { canvasRef.current?.setPointerCapture(e.pointerId) } catch { /* se firma igual */ }
     dibujando.current = true
     ultimo.current = posicion(e)
   }

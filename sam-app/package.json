@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.101.1",
+    "@vladmandic/face-api": "^1.7.15",
     "dexie": "^4.4.2",
     "exceljs": "^4.4.0",
     "leaflet": "^1.9.4",

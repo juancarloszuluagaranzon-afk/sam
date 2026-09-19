@@ -9339,3 +9339,44 @@ td.planilla-vacio:hover { background: #fde047; }
    y texto, no un rojo de fondo: es «revisar», no «error». */
 .dash-galh--ojo { box-shadow: inset 0 0 0 1.5px #b86e00; }
 :root[data-theme="dark"] .dash-galh--ojo { box-shadow: inset 0 0 0 1.5px #f0a53a; }
+
+/* ─── Marcar con la cara (`components/CamaraRostro`, taller) ──────────────── */
+.rostro-camara { max-width: 440px; }
+.rostro-camara__marco {
+  position: relative; width: 100%; aspect-ratio: 3 / 4; max-height: 60vh; margin: 10px auto 0;
+  border-radius: 16px; overflow: hidden; background: #111;
+}
+/* Espejo: la persona se ve como en un espejo, que es lo natural al encuadrarse. */
+.rostro-camara__video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+.rostro-camara__guia {
+  position: absolute; inset: 12% 20%; border: 3px dashed rgba(255, 255, 255, 0.75); border-radius: 50%;
+  pointer-events: none;
+}
+.rostro-camara__barra { height: 8px; border-radius: 999px; background: var(--color-bg-soft, #eef1ec); overflow: hidden; margin: 10px 0 4px; }
+.rostro-camara__barra span { display: block; height: 100%; background: var(--color-brand, #1f7a40); transition: width 0.25s ease; }
+.rostro-camara__acciones { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.rostro-camara__acciones > button { min-height: 48px; }
+.rostro-consentimiento { font-size: 0.9rem; line-height: 1.45; }
+.rostro-consentimiento ul { padding-left: 18px; margin: 8px 0 0; }
+.rostro-consentimiento li { margin-bottom: 6px; }
+
+/* Bandejas del jefe: caras por aprobar y marcaciones por revisar. */
+.rostro-bandeja { margin: 12px 0 18px; padding: 12px; border-radius: 14px; border: 1.5px solid #b86e00; background: rgba(237, 161, 0, 0.07); }
+.rostro-fila { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(0, 0, 0, 0.08); }
+.rostro-fila:last-child { border-bottom: 0; }
+.rostro-fila__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rostro-fila__txt strong { overflow-wrap: anywhere; }
+.rostro-fila__txt small { color: var(--color-ink-mid, #5a5f57); font-size: 0.78rem; }
+.rostro-fila__acc { display: flex; flex-direction: column; gap: 6px; }
+.rostro-fila__acc > button { min-height: 40px; }
+.rostro-par { display: flex; gap: 6px; }
+.rostro-foto { width: 64px; height: 80px; border-radius: 10px; object-fit: cover; background: var(--color-bg-soft, #eef1ec); display: grid; place-items: center; font-size: 0.66rem; color: var(--color-ink-mid, #5a5f57); text-align: center; }
+.rostro-foto--ref { outline: 2px solid var(--color-brand, #1f7a40); outline-offset: -2px; }
+@media (max-width: 460px) {
+  .rostro-fila { grid-template-columns: auto minmax(0, 1fr); }
+  .rostro-fila__acc { grid-column: 1 / -1; flex-direction: row; }
+  .rostro-fila__acc > button { flex: 1; }
+}
+:root[data-theme="dark"] .rostro-bandeja { border-color: #f0a53a; background: rgba(240, 165, 58, 0.08); }
+:root[data-theme="dark"] .rostro-fila { border-bottom-color: rgba(255, 255, 255, 0.14); }
+:root[data-theme="dark"] .rostro-foto { background: rgba(255, 255, 255, 0.07); }

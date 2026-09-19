@@ -18,7 +18,7 @@ import { CONFIG_POR_DEFECTO } from '../lib/horasExtra'
 
 export interface MarcacionFila extends Marcacion {
   registradoEn: string
-  metodo: 'HUELLA' | 'PIN' | 'MANUAL'
+  metodo: 'HUELLA' | 'PIN' | 'MANUAL' | 'ROSTRO'
   credencialId?: string
   lat?: number
   lng?: number
@@ -31,6 +31,16 @@ export interface MarcacionFila extends Marcacion {
   anulada: boolean
   anuladaPor?: string
   motivo?: string
+  /**
+   * 🔴 Lo que el celular no pudo probar (cara dudosa, fuera del taller, sin
+   * verificar…) NO se paga solo: espera a que el jefe lo acepte o lo anule.
+   */
+  requiereRevision: boolean
+  revisionMotivo?: string
+  revisadoPor?: string
+  revisadoEn?: string
+  distanciaRostro?: number
+  pruebasVida?: string
 }
 
 function mapFila(r: Record<string, unknown>): MarcacionFila {
@@ -40,7 +50,7 @@ function mapFila(r: Record<string, unknown>): MarcacionFila {
     tipo: String(r.tipo) === 'SALIDA' ? 'SALIDA' : 'ENTRADA',
     marcadoEn: String(r.marcado_en),
     registradoEn: String(r.registrado_en ?? r.marcado_en),
-    metodo: (['HUELLA', 'PIN', 'MANUAL'] as const).find((m) => m === r.metodo) ?? 'HUELLA',
+    metodo: (['HUELLA', 'PIN', 'MANUAL', 'ROSTRO'] as const).find((m) => m === r.metodo) ?? 'HUELLA',
     credencialId: r.credencial_id ? String(r.credencial_id) : undefined,
     lat: r.lat == null ? undefined : Number(r.lat),
     lng: r.lng == null ? undefined : Number(r.lng),
@@ -53,6 +63,12 @@ function mapFila(r: Record<string, unknown>): MarcacionFila {
     anulada: Boolean(r.anulada),
     anuladaPor: r.anulada_por ? String(r.anulada_por) : undefined,
     motivo: r.motivo ? String(r.motivo) : undefined,
+    requiereRevision: Boolean(r.requiere_revision),
+    revisionMotivo: r.revision_motivo ? String(r.revision_motivo) : undefined,
+    revisadoPor: r.revisado_por ? String(r.revisado_por) : undefined,
+    revisadoEn: r.revisado_en ? String(r.revisado_en) : undefined,
+    distanciaRostro: r.distancia_rostro == null ? undefined : Number(r.distancia_rostro),
+    pruebasVida: r.pruebas_vida ? String(r.pruebas_vida) : undefined,
   }
 }
 
@@ -174,6 +190,11 @@ export interface RespuestaMarcar {
   horaCorregida?: boolean
   dentroDelSitio?: boolean | null
   distanciaM?: number | null
+  /** OK = cuenta · POR_REVISAR = la revisa el jefe · NO_COINCIDE = no se registró. */
+  resultado: 'OK' | 'POR_REVISAR' | 'NO_COINCIDE'
+  requiereRevision: boolean
+  revisionMotivo?: string
+  distanciaRostro?: number | null
 }
 
 /**
@@ -198,13 +219,19 @@ export async function marcar(input: {
    * que el reloj del teléfono es la mejor fuente que hay.
    */
   ocurrioEn: string | null
-  metodo?: 'HUELLA' | 'PIN' | 'MANUAL'
+  metodo?: 'HUELLA' | 'PIN' | 'MANUAL' | 'ROSTRO'
   credencialId?: string | null
   lat?: number | null
   lng?: number | null
   precisionM?: number | null
   dispositivo?: string | null
   nota?: string | null
+  /** Con la cara: los 128 números de la selfie. Los compara el SERVIDOR. */
+  descriptor?: number[] | null
+  fotoMini?: string | null
+  pruebasVida?: string | null
+  /** La cara no se parece y la persona pide dejarla para revisión del jefe. */
+  forzarRevision?: boolean
 }): Promise<RespuestaMarcar> {
   const { data, error } = await supabase.rpc('taller_marcar', {
     p_id: input.id,
@@ -218,10 +245,20 @@ export async function marcar(input: {
     p_precision_m: input.precisionM ?? null,
     p_dispositivo: input.dispositivo ?? null,
     p_nota: input.nota ?? null,
+    p_descriptor: input.descriptor ?? null,
+    p_foto_mini: input.fotoMini ?? null,
+    p_pruebas_vida: input.pruebasVida ?? null,
+    p_forzar_revision: input.forzarRevision ?? false,
   })
   if (error) throw error
   const r = (data ?? {}) as Record<string, unknown>
+  const resultado: RespuestaMarcar['resultado'] =
+    r.resultado === 'NO_COINCIDE' ? 'NO_COINCIDE' : r.requiere_revision ? 'POR_REVISAR' : 'OK'
   return {
+    resultado,
+    requiereRevision: Boolean(r.requiere_revision),
+    revisionMotivo: r.revision_motivo ? String(r.revision_motivo) : undefined,
+    distanciaRostro: r.distancia == null ? null : Number(r.distancia),
     ok: Boolean(r.ok),
     repetida: Boolean(r.repetida),
     id: String(r.id ?? input.id),
@@ -334,7 +371,10 @@ export async function sincronizarMarcaciones(): Promise<{ subidas: number; queda
   let subidas = 0
   for (const p of cola) {
     try {
-      await marcar(p)
+      // 🔴 Lo que subió tarde con la cara va con `forzarRevision`: si el servidor
+      // no reconoce la cara, la persona ya no está ahí para intentar de nuevo, y
+      // sin esto la marcación se perdería. Queda para que la revise el jefe.
+      await marcar({ ...p, forzarRevision: p.metodo === 'ROSTRO' ? true : p.forzarRevision })
       subidas++
     } catch (err) {
       // Un rechazo del servidor NO se reintenta para siempre: se descarta y se
@@ -345,4 +385,118 @@ export async function sincronizarMarcaciones(): Promise<{ subidas: number; queda
   }
   escribirCola(quedan)
   return { subidas, quedan: quedan.length }
+}
+
+/* ─────────────────────────────── La cara ──────────────────────────────── */
+
+export interface RostroRegistrado {
+  id: string
+  usuarioId: string
+  estado: 'PENDIENTE' | 'APROBADO' | 'RECHAZADO'
+  foto?: string
+  creadoEn: string
+  consentimientoEn?: string
+  revisadoPor?: string
+  revisadoEn?: string
+  motivo?: string
+}
+
+// 🔴 Nunca `select('*')` aquí: la tabla tiene los descriptores y el cliente NO
+// tiene permiso sobre esa columna (grant por columnas). Un `*` respondería error.
+const COLS_ROSTRO = 'id,usuario_id,estado,foto_mini,creado_en,consentimiento_en,revisado_por,revisado_en,motivo'
+
+function mapRostro(r: Record<string, unknown>): RostroRegistrado {
+  const e = String(r.estado)
+  return {
+    id: String(r.id),
+    usuarioId: String(r.usuario_id),
+    estado: e === 'APROBADO' ? 'APROBADO' : e === 'RECHAZADO' ? 'RECHAZADO' : 'PENDIENTE',
+    foto: r.foto_mini ? String(r.foto_mini) : undefined,
+    creadoEn: String(r.creado_en),
+    consentimientoEn: r.consentimiento_en ? String(r.consentimiento_en) : undefined,
+    revisadoPor: r.revisado_por ? String(r.revisado_por) : undefined,
+    revisadoEn: r.revisado_en ? String(r.revisado_en) : undefined,
+    motivo: r.motivo ? String(r.motivo) : undefined,
+  }
+}
+
+/** La cara vigente de una persona (la última activa), o null. */
+export async function loadMiRostro(usuarioId: string): Promise<RostroRegistrado | null> {
+  const { data, error } = await supabase
+    .from('taller_rostros').select(COLS_ROSTRO)
+    .eq('usuario_id', usuarioId).eq('activo', true)
+    .order('creado_en', { ascending: false }).limit(1)
+  if (error || !data || data.length === 0) return null
+  return mapRostro(data[0] as Record<string, unknown>)
+}
+
+/** Todas las caras vigentes (para el jefe). */
+export async function loadRostros(): Promise<RostroRegistrado[]> {
+  const { data, error } = await supabase
+    .from('taller_rostros').select(COLS_ROSTRO).eq('activo', true)
+    .order('creado_en', { ascending: false })
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapRostro)
+}
+
+/**
+ * Registra la cara. Solo con señal: el servidor revisa que la misma cara no
+ * esté ya en otra cuenta. Nace PENDIENTE hasta que el jefe la apruebe.
+ */
+export async function enrolarRostro(input: {
+  usuarioId: string
+  descriptores: number[][]
+  foto: string | null
+  consentimiento: boolean
+  version: string
+}): Promise<void> {
+  const { error } = await supabase.rpc('taller_enrolar_rostro', {
+    p_usuario_id: input.usuarioId,
+    p_descriptores: input.descriptores,
+    p_foto_mini: input.foto,
+    p_consentimiento: input.consentimiento,
+    p_version: input.version,
+  })
+  if (error) throw error
+}
+
+/** La autorización vigente, tal como la guarda el servidor. */
+export interface Consentimiento { version: string; titulo: string; parrafos: string[] }
+
+export async function loadConsentimiento(): Promise<Consentimiento> {
+  const { data, error } = await supabase.rpc('taller_consentimiento_vigente')
+  if (error || !data) throw error ?? new Error('Sin autorización vigente')
+  const d = data as { version: string; titulo: string; parrafos: string[] }
+  return { version: String(d.version), titulo: String(d.titulo), parrafos: (d.parrafos ?? []).map(String) }
+}
+
+/** El titular retira su autorización: la plantilla se suprime (Ley 1581). */
+export async function revocarRostro(usuarioId: string): Promise<void> {
+  const { error } = await supabase.rpc('taller_revocar_rostro', { p_usuario_id: usuarioId })
+  if (error) throw error
+}
+
+export async function revisarRostro(id: string, aprobar: boolean, quien: string, motivo?: string): Promise<void> {
+  const { error } = await supabase.rpc('taller_revisar_rostro', {
+    p_id: id, p_aprobar: aprobar, p_quien: quien, p_motivo: motivo ?? null,
+  })
+  if (error) throw error
+}
+
+/** Aceptar la deja contar; rechazar la anula (con motivo). */
+export async function revisarMarcacion(id: string, aceptar: boolean, quien: string, motivo?: string): Promise<void> {
+  const { error } = await supabase.rpc('taller_revisar_marcacion', {
+    p_id: id, p_aceptar: aceptar, p_quien: quien, p_motivo: motivo ?? null,
+  })
+  if (error) throw error
+}
+
+/** Fotos de evidencia de unas marcaciones (se piden solo las que se van a mostrar). */
+export async function loadFotosMarcacion(ids: string[]): Promise<Map<string, string>> {
+  const m = new Map<string, string>()
+  if (ids.length === 0) return m
+  const { data, error } = await supabase.from('taller_marcacion_fotos').select('marcacion_id,foto_mini').in('marcacion_id', ids)
+  if (error || !data) return m
+  for (const r of data as { marcacion_id: string; foto_mini: string }[]) m.set(String(r.marcacion_id), r.foto_mini)
+  return m
 }

@@ -93,6 +93,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // La librería del reconocimiento facial (~330 KB comprimida) solo la usa
+        // el taller: fuera del precache, se guarda la primera vez que se abre la
+        // cámara (ver `modelos-rostro` abajo).
+        globIgnores: ['**/face-api*.js'],
         // Los manuales son páginas propias, no rutas de la app. Sin esto el
         // service worker se queda con la navegación y a quien tiene la PWA
         // instalada le abre el aplicativo en vez del manual — que es justo lo
@@ -108,6 +112,19 @@ export default defineConfig({
         // usa la descarga offline (src/lib/mapaOffline.ts) → el mapa descargado
         // funciona 100% sin señal y navegar online va llenando la caché.
         runtimeCaching: [
+          {
+            // Modelos del reconocimiento facial del taller (~7 MB). NO van en el
+            // precache (los bajarían los 50 usuarios al instalar): se guardan la
+            // primera vez que un mecánico abre la cámara y después funcionan sin
+            // señal. Mismo criterio que AgroControl.
+            urlPattern: ({ url }) => url.pathname.startsWith('/models/faceapi/') || /\/assets\/face-api[^/]*\.js$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'modelos-rostro',
+              expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365, purgeOnQuotaError: true },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
           {
             urlPattern: ({ url }) =>
               url.hostname === 'api.mapview.surcoapp.tech' &&

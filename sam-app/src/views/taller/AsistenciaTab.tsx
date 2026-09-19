@@ -5,7 +5,8 @@ import { fmtFechaHora } from '../../lib/fechas'
 import { PERIODOS, rangoDe, hoyBogota, type Periodo } from '../../lib/periodos'
 import {
   loadMarcaciones, loadConfigHoras, guardarConfigHoras, anularMarcacion, loadSitios,
-  type MarcacionFila, type Sitio,
+  loadRostros, revisarRostro, revisarMarcacion, loadFotosMarcacion,
+  type MarcacionFila, type Sitio, type RostroRegistrado,
 } from '../../services/asistenciaApi'
 import {
   emparejar, clasificar, totalizar, hhmm, FRANJAS, esFestivo, enBogota,
@@ -37,6 +38,8 @@ export function AsistenciaTab() {
   const [sitios, setSitios] = useState<Sitio[]>([])
   const [cargando, setCargando] = useState(true)
   const [verConfig, setVerConfig] = useState(false)
+  const [rostros, setRostros] = useState<RostroRegistrado[]>([])
+  const [fotos, setFotos] = useState<Map<string, string>>(new Map())
 
   const nombreDe = useMemo(() => {
     const m = new Map<string, string>()
@@ -47,12 +50,13 @@ export function AsistenciaTab() {
   const cargar = useCallback(async () => {
     setCargando(true)
     try {
-      const [ms, c, s] = await Promise.all([
+      const [ms, c, s, ro] = await Promise.all([
         loadMarcaciones({ desde: `${desde}T00:00:00-05:00`, hasta: `${hasta}T23:59:59-05:00` }),
         loadConfigHoras(),
         loadSitios(),
+        loadRostros(),
       ])
-      setMarcas(ms); setCfg(c); setSitios(s)
+      setMarcas(ms); setCfg(c); setSitios(s); setRostros(ro)
     } finally { setCargando(false) }
   }, [desde, hasta])
   useEffect(() => { void cargar() }, [cargar])
@@ -64,7 +68,23 @@ export function AsistenciaTab() {
     setDesde(r.desde); setHasta(r.hasta)
   }
 
-  const { sesiones, sueltas } = useMemo(() => emparejar(marcas), [marcas])
+  // 🔴 Lo «por revisar» NO entra a las horas hasta que el jefe lo acepte (regla
+  // de AgroControl, su 0049): lo que el celular no pudo probar no se paga solo.
+  const porRevisar = useMemo(() => marcas.filter((m) => m.requiereRevision), [marcas])
+  const cuentan = useMemo(() => marcas.filter((m) => !m.requiereRevision), [marcas])
+  const carasPendientes = useMemo(() => rostros.filter((r) => r.estado === 'PENDIENTE'), [rostros])
+  const caraDe = useMemo(() => {
+    const m = new Map<string, RostroRegistrado>()
+    for (const r of rostros) if (!m.has(r.usuarioId)) m.set(r.usuarioId, r)
+    return m
+  }, [rostros])
+  useEffect(() => {
+    let vivo = true
+    void loadFotosMarcacion(porRevisar.slice(0, 60).map((m) => m.id)).then((f) => { if (vivo) setFotos(f) })
+    return () => { vivo = false }
+  }, [porRevisar])
+
+  const { sesiones, sueltas } = useMemo(() => emparejar(cuentan), [cuentan])
   const dias = useMemo(() => clasificar(sesiones, cfg), [sesiones, cfg])
   const totales = useMemo(() => totalizar(dias), [dias])
 
@@ -80,7 +100,7 @@ export function AsistenciaTab() {
 
   const fueraDelSitio = useMemo(() => marcas.filter((m) => m.dentroDelSitio === false), [marcas])
   const horasCorregidas = useMemo(() => marcas.filter((m) => m.horaCorregida), [marcas])
-  const sinHuella = useMemo(() => marcas.filter((m) => m.metodo !== 'HUELLA'), [marcas])
+  const sinHuella = useMemo(() => marcas.filter((m) => m.metodo !== 'HUELLA' && m.metodo !== 'ROSTRO'), [marcas])
 
   const filas = useMemo(
     () => [...totales.entries()]
@@ -118,6 +138,9 @@ export function AsistenciaTab() {
         'Distancia (m)': m.distanciaM ?? '',
         'Hora corregida': m.horaCorregida ? 'Sí' : '',
         'Aparato': m.dispositivo ?? '',
+        'Por revisar (no cuenta)': m.requiereRevision ? 'Sí' : '',
+        'Motivo': m.revisionMotivo ?? '',
+        'Revisada por': m.revisadoPor ? nombreDe(m.revisadoPor) : '',
       }))), 'Marcaciones')
       // Hoja 4 — lo que hay que resolver ANTES de pagar.
       utils.book_append_sheet(wb, utils.json_to_sheet(sueltas.map((s) => ({
@@ -129,6 +152,34 @@ export function AsistenciaTab() {
     } catch (e) {
       setError(`No se pudo generar el Excel. (${(e as Error)?.message ?? 'error'})`)
     }
+  }
+
+  async function decidirCara(r: RostroRegistrado, aprobar: boolean) {
+    let motivo: string | undefined
+    if (!aprobar) {
+      const x = window.prompt(`Rechazar la cara registrada de ${nombreDe(r.usuarioId)}.\n\n¿Por qué? (se le muestra para que se registre de nuevo)`)
+      if (!x?.trim()) return
+      motivo = x.trim()
+    }
+    try {
+      await revisarRostro(r.id, aprobar, session?.id ?? '', motivo)
+      setInfo(aprobar ? 'Cara aprobada: sus marcaciones con la cara ya cuentan solas.' : 'Cara rechazada. Tendrá que registrarla de nuevo.')
+      await cargar()
+    } catch (e) { setError(`No se pudo guardar. (${(e as Error)?.message ?? 'error'})`) }
+  }
+
+  async function decidirMarcacion(m: MarcacionFila, aceptar: boolean) {
+    let motivo: string | undefined
+    if (!aceptar) {
+      const x = window.prompt(`Anular la ${m.tipo.toLowerCase()} de ${nombreDe(m.usuarioId)} del ${fmtFechaHora(m.marcadoEn)}.\n\nNo se borra: queda anulada con el motivo. ¿Por qué?`)
+      if (!x?.trim()) return
+      motivo = x.trim()
+    }
+    try {
+      await revisarMarcacion(m.id, aceptar, session?.id ?? '', motivo)
+      setInfo(aceptar ? 'Marcación aceptada: ya cuenta en las horas.' : 'Marcación anulada. Queda el rastro.')
+      await cargar()
+    } catch (e) { setError(`No se pudo guardar. (${(e as Error)?.message ?? 'error'})`) }
   }
 
   async function anular(m: MarcacionFila) {
@@ -153,7 +204,11 @@ export function AsistenciaTab() {
         <h2>Asistencia y horas extras</h2>
         <div className="mov-titulo-acciones">
           <Ayuda>
-            <p>Las horas que los mecánicos marcaron con su huella, repartidas en las franjas que la ley paga distinto.</p>
+            <p>Las horas que los mecánicos marcaron con su cara (o su huella), repartidas en las franjas que la ley paga distinto.</p>
+            <p>
+              🔴 <strong>Lo dudoso no se paga solo.</strong> Una marcación con parecido dudoso, fuera del taller o sin
+              verificar queda <strong>por revisar</strong>: no entra a las horas hasta que la aceptes viendo la foto.
+            </p>
             <p>
               🔴 <strong>Aquí no hay pesos.</strong> El módulo entrega horas; la liquidación la hace
               nómina con el salario de cada quien. Los porcentajes se muestran como referencia.
@@ -204,6 +259,54 @@ export function AsistenciaTab() {
 
       {cargando && <p className="muted-text">Cargando marcaciones…</p>}
 
+      {/* ── Caras por aprobar: sin esto, cualquiera registra su cara en la cuenta de otro. ── */}
+      {carasPendientes.length > 0 && (
+        <div className="rostro-bandeja">
+          <h3 className="dash-titulo">📷 Caras por aprobar ({carasPendientes.length})</h3>
+          <p className="subtle-copy">Mira la foto: ¿es la persona de esa cuenta? Hasta que la apruebes, sus marcaciones quedan por revisar.</p>
+          {carasPendientes.map((r) => (
+            <div key={r.id} className="rostro-fila">
+              {r.foto ? <img src={r.foto} alt={`Cara registrada de ${nombreDe(r.usuarioId)}`} className="rostro-foto" /> : <span className="rostro-foto rostro-foto--sin">sin foto</span>}
+              <div className="rostro-fila__txt">
+                <strong>{nombreDe(r.usuarioId)}</strong>
+                <small>Registrada el {fmtFechaHora(r.creadoEn)}{r.consentimientoEn ? ' · con autorización de datos' : ''}</small>
+              </div>
+              <div className="rostro-fila__acc">
+                <button type="button" className="primary-button" onClick={() => void decidirCara(r, true)}>Aprobar</button>
+                <button type="button" className="inline-button" onClick={() => void decidirCara(r, false)}>Rechazar</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Marcaciones por revisar: NO cuentan hasta aceptarlas. ── */}
+      {porRevisar.length > 0 && (
+        <div className="rostro-bandeja">
+          <h3 className="dash-titulo">⏳ Marcaciones por revisar ({porRevisar.length})</h3>
+          <p className="subtle-copy">No cuentan en las horas hasta que las aceptes. Compara la foto de la marcación con la cara registrada.</p>
+          {porRevisar.slice(0, 60).map((m) => {
+            const cara = caraDe.get(m.usuarioId)
+            return (
+              <div key={m.id} className="rostro-fila">
+                <div className="rostro-par">
+                  {fotos.get(m.id) ? <img src={fotos.get(m.id)} alt="Foto de la marcación" className="rostro-foto" /> : <span className="rostro-foto rostro-foto--sin">sin foto</span>}
+                  {cara?.foto ? <img src={cara.foto} alt="Cara registrada" className="rostro-foto rostro-foto--ref" /> : <span className="rostro-foto rostro-foto--sin">sin registro</span>}
+                </div>
+                <div className="rostro-fila__txt">
+                  <strong>{m.tipo === 'ENTRADA' ? '🟢' : '🔴'} {nombreDe(m.usuarioId)} · {fmtFechaHora(m.marcadoEn)}</strong>
+                  <small>{m.revisionMotivo ?? 'por revisar'}</small>
+                </div>
+                <div className="rostro-fila__acc">
+                  <button type="button" className="primary-button" onClick={() => void decidirMarcacion(m, true)}>Aceptar</button>
+                  <button type="button" className="inline-button" onClick={() => void decidirMarcacion(m, false)}>Anular</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {!cargando && marcas.length === 0 && (
         <p className="dash-vacio">Nadie ha marcado en este periodo.</p>
       )}
@@ -211,7 +314,7 @@ export function AsistenciaTab() {
       {!cargando && marcas.length > 0 && (
         <>
           {/* Lo que hay que resolver antes de pagar, primero. */}
-          {(sueltas.length > 0 || fueraDelSitio.length > 0 || horasCorregidas.length > 0) && (
+          {(sueltas.length > 0 || fueraDelSitio.length > 0 || horasCorregidas.length > 0 || porRevisar.length > 0) && (
             <div className="mov-freno">
               <strong>⚠ Revisar antes de pagar</strong>
               <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
@@ -224,7 +327,8 @@ export function AsistenciaTab() {
                 )}
                 {fueraDelSitio.length > 0 && <li><strong>{fueraDelSitio.length}</strong> marcación(es) hechas fuera del taller.</li>}
                 {horasCorregidas.length > 0 && <li><strong>{horasCorregidas.length}</strong> con la hora del teléfono corregida por el servidor.</li>}
-                {sinHuella.length > 0 && <li><strong>{sinHuella.length}</strong> sin huella (respaldo o anotadas a mano).</li>}
+                {porRevisar.length > 0 && <li><strong>{porRevisar.length}</strong> por revisar (arriba): <strong>no se cuentan</strong> hasta aceptarlas.</li>}
+                {sinHuella.length > 0 && <li><strong>{sinHuella.length}</strong> sin verificar a la persona (respaldo o anotadas a mano).</li>}
               </ul>
             </div>
           )}
@@ -302,7 +406,9 @@ export function AsistenciaTab() {
                     <span className="ent-row__hora">{fmtFechaHora(m.marcadoEn)}</span>
                   </div>
                   <span className="ent-row__pie">
-                    {m.metodo === 'HUELLA' ? 'con huella' : m.metodo === 'PIN' ? '⚠ sin huella' : 'anotada a mano'}
+                    {m.metodo === 'ROSTRO' ? 'con la cara' : m.metodo === 'HUELLA' ? 'con huella' : m.metodo === 'PIN' ? '⚠ sin verificar' : 'anotada a mano'}
+                    {m.requiereRevision && ' · ⏳ por revisar'}
+                    {!m.requiereRevision && m.revisadoPor && ` · ✓ aceptada por ${nombreDe(m.revisadoPor)}`}
                     {esFestivo(b.dia) && ' · festivo'}
                     {m.dentroDelSitio === false && ` · ⚠ a ${m.distanciaM ?? '?'} m del taller`}
                     {m.horaCorregida && ' · ⚠ hora corregida'}

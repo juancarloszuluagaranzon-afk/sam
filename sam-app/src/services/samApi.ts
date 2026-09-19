@@ -48,6 +48,7 @@ import { supabase } from '../lib/supabase'
 import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
 import { redondear2 } from '../lib/cantidad'
 import { filaMaestro } from '../lib/areaSuerte'
+import type { Lectura } from '../lib/consumoHora'
 
 type Source = 'supabase' | 'fallback' | 'cache'
 
@@ -2682,6 +2683,56 @@ export async function loadKardexReporte(opts?: { desde?: string; hasta?: string;
   const { data, error } = await query
   if (error || !data) return []
   return data.map(mapKardex)
+}
+
+/**
+ * Lecturas de horómetro de las ENTREGAS y los TANQUEOS de un periodo, para el
+ * combustible por hora (`lib/consumoHora`). Consulta liviana a propósito: solo
+ * máquina, horómetro y cuándo — `loadSolicitudes` trae cada entrega con todos
+ * sus ítems y la guarda en el celular, y aquí no hace falta nada de eso.
+ * `desde`/`hasta` son días (`YYYY-MM-DD`) en hora de Colombia.
+ */
+export async function loadLecturasHorometro(desde: string, hasta: string): Promise<Lectura[]> {
+  const [ent, tq] = await Promise.all([
+    supabase
+      .from('insumos_solicitudes')
+      .select('equipo_codigo,horometro,entregado_en,created_at,estado,operario_nombre')
+      .not('equipo_codigo', 'is', null)
+      .not('horometro', 'is', null)
+      .neq('estado', 'CANCELADA')
+      .gte('entregado_en', `${desde}T00:00:00-05:00`)
+      .lte('entregado_en', `${hasta}T23:59:59-05:00`)
+      .limit(5000),
+    supabase
+      .from('combustible_externo')
+      .select('equipo_codigo,horometro,created_at,fecha,estado,operario_nombre')
+      .not('equipo_codigo', 'is', null)
+      .not('horometro', 'is', null)
+      .neq('estado', 'RECHAZADO')
+      .gte('fecha', desde)
+      .lte('fecha', hasta)
+      .limit(5000),
+  ])
+  const out: Lectura[] = []
+  for (const r of (ent.data ?? []) as Record<string, unknown>[]) {
+    out.push({
+      maquina: String(r.equipo_codigo),
+      cuando: String(r.entregado_en ?? r.created_at),
+      horometro: Number(r.horometro) || 0,
+      fuente: 'Entrega',
+      detalle: String(r.operario_nombre ?? ''),
+    })
+  }
+  for (const r of (tq.data ?? []) as Record<string, unknown>[]) {
+    out.push({
+      maquina: String(r.equipo_codigo),
+      cuando: String(r.created_at ?? `${r.fecha}T12:00:00-05:00`),
+      horometro: Number(r.horometro) || 0,
+      fuente: 'Tanqueo',
+      detalle: String(r.operario_nombre ?? ''),
+    })
+  }
+  return out
 }
 
 export async function loadSolicitudes(opts?: {

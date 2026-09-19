@@ -165,6 +165,15 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
 
 ## Detalles que muerden
 
+- **🔴 Combustible por hora de máquina = horómetro FINAL − INICIAL del periodo, de TODAS las fuentes.**
+  `views/ConsumoHoraCard` (en «Insumos y materiales», bajo las tortas; usa el filtro de periodo de la
+  pantalla) + `lib/consumoHora.ts`. Las lecturas salen de cierres de labor, entregas y tanqueos, porque
+  un operario puede cerrar con 0 (William Domínguez: 32 de 33 cierres) y el horómetro sí quedó en la
+  entrega. Filtros, en orden: ceros y pares imposibles → magnitud dominante → a más de 24 h/día de la
+  mediana → **el horómetro no retrocede** (cadena más larga en el tiempo, margen 12 h). Cruce contra el
+  horómetro de tanqueo **en las mismas fechas** (primer a último tanqueo): ⚠ si se separan >25%. Los
+  galones son los de `combustiblePorMaquina` (los mismos de la torta). Y `equipo_horometro_v` lee también
+  las ENTREGAS desde el 18-sep-2026 (la PUMA 2302 marcaba 16 días quieta).
 - **🔴 Una suerte se identifica por INGENIO + código de hacienda + suerte.** Ni el código ni el
   nombre de hacienda son únicos: medido el 18-sep-2026 sobre 17.584 suertes activas, código+suerte
   choca 19 veces y nombre+suerte 473 (tres «VALPARAISO» con suerte 010: la 3104 de Riopaila tiene

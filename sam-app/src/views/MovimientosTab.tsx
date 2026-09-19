@@ -8,6 +8,7 @@ import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, loadKardexReporte } from '../services/samApi'
 import { ModalEntregas } from '../components/ModalEntregas'
 import { InsumosCard } from './InsumosCard'
+import { ConsumoHoraCard } from './ConsumoHoraCard'
 import type { InsumoKardex } from '../domain/sam'
 import {
   loadResumenMovimientos, indiceCalidad, ritmoPorHora, hhmm,
@@ -390,6 +391,19 @@ export function MovimientosTab() {
             unSoloDia={esUnSoloDia(periodo)}
             cargando={insumos.length === 0}
             onVerEntregas={(titulo, items) => setDetIns({ titulo, items })}
+          />
+
+          {/* Combustible por hora de máquina: una barra por máquina y su gal/h,
+              con el horómetro inicial y final del periodo (pedido 18-sep-2026).
+              Usa el MISMO filtro de periodo de arriba. */}
+          <ConsumoHoraCard
+            movs={insumosMovs}
+            cerradas={cerradas}
+            catalogo={catalogoInsumos}
+            nombreMaq={nombreMaq}
+            desde={desde}
+            hasta={hasta}
+            unSoloDia={esUnSoloDia(periodo)}
           />
 
           {/* ── CAPA 3: lo que se abre a propósito ───────────────────────── */}

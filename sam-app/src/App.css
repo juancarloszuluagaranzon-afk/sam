@@ -9288,3 +9288,54 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .dash-kpi--alerta strong { color: #b3261e; }
 .modal-card--alto { max-height: 88vh; overflow-y: auto; }
+
+/* ─── Combustible por hora de máquina (`views/ConsumoHoraCard`) ─────────────
+   Misma barra de `.dash-barra` (alineada con las demás del tablero) más una
+   cuarta columna: la etiqueta de gal/h. En celular la barra baja a su propia
+   fila, igual que las otras. */
+.dash-barra--galh { grid-template-columns: minmax(0, 12em) minmax(60px, 1fr) 5.2em 6.8em; }
+@media (max-width: 420px) {
+  /* Dos renglones: nombre · galones · gal/h arriba, la barra abajo. Sin la
+     ubicación explícita la grilla lo partía en TRES (nombre solo, barra, y
+     abajo galones con la etiqueta): 95 px por máquina en el celular. */
+  /* Anchos FIJOS para galones y gal/h: con `auto` cada fila medía lo suyo y las
+     cifras quedaban corridas de una máquina a otra (medido: 177 a 202 px). */
+  .dash-barra--galh { grid-template-columns: minmax(0, 1fr) 4.4em 6.6em; }
+  .dash-barra--galh .dash-barra__lbl { grid-column: 1; grid-row: 1; }
+  .dash-barra--galh .dash-barra__val { grid-column: 2; grid-row: 1; }
+  .dash-barra--galh .dash-galh { grid-column: 3; grid-row: 1; }
+  .dash-barra--galh .dash-barra__track { grid-column: 1 / -1; grid-row: 2; }
+}
+.dash-galh {
+  justify-self: end; font-size: 0.78rem; font-weight: 800; font-variant-numeric: tabular-nums;
+  white-space: nowrap; padding: 3px 8px; border-radius: 999px;
+  background: var(--color-bg-soft, #eef1ec); color: var(--color-ink, #1f2a1f);
+}
+.dash-galh--sin { font-weight: 600; color: var(--color-ink-mid, #5a5f57); background: transparent; border: 1px dashed currentColor; }
+.dash-galh__resumen { margin: 0 0 8px; font-size: 0.88rem; color: var(--color-ink-mid, #5a5f57); }
+.dash-galh__resumen strong { color: var(--color-ink, #1f2a1f); font-size: 1rem; }
+.dash-galh__lecturas, .dash-galh__cruce { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.dash-galh__lectura, .dash-galh__cruce > div {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  padding: 10px; border-radius: 12px; background: var(--color-bg-soft, #f2f5f0);
+}
+.dash-galh__lectura strong, .dash-galh__cruce strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
+.dash-galh__lectura small, .dash-galh__cruce small, .dash-galh__cruce span { color: var(--color-ink-mid, #5a5f57); font-size: 0.76rem; overflow-wrap: anywhere; }
+.dash-galh__desc { display: flex; flex-direction: column; margin-top: 6px; max-height: 260px; overflow: auto; }
+.dash-galh__descfila {
+  display: grid; grid-template-columns: 5.5em minmax(0, 1fr); gap: 2px 10px;
+  padding: 7px 2px; border-bottom: 1px solid rgba(0, 0, 0, 0.08); font-size: 0.8rem;
+}
+.dash-galh__descfila b { font-variant-numeric: tabular-nums; }
+.dash-galh__descfila span { overflow-wrap: anywhere; }
+.dash-galh__descfila small { grid-column: 2; color: var(--color-ink-mid, #5a5f57); font-style: italic; }
+:root[data-theme="dark"] .dash-galh,
+:root[data-theme="dark"] .dash-galh__lectura,
+:root[data-theme="dark"] .dash-galh__cruce > div { background: rgba(255, 255, 255, 0.07); color: inherit; }
+:root[data-theme="dark"] .dash-galh--sin { background: transparent; }
+:root[data-theme="dark"] .dash-galh__resumen strong { color: inherit; }
+:root[data-theme="dark"] .dash-galh__descfila { border-bottom-color: rgba(255, 255, 255, 0.14); }
+/* ⚠ cuando las horas de todas las lecturas y las del tanqueo no cuadran. Borde
+   y texto, no un rojo de fondo: es «revisar», no «error». */
+.dash-galh--ojo { box-shadow: inset 0 0 0 1.5px #b86e00; }
+:root[data-theme="dark"] .dash-galh--ojo { box-shadow: inset 0 0 0 1.5px #f0a53a; }

@@ -366,3 +366,46 @@ Lo que se hizo:
 🔴 **Regla que deja**: antes de montar un componente compartido en una pantalla, buscar
 qué de esa pantalla ya responde lo mismo, y quitarlo. Dos formas del mismo dato en la
 misma vista no son «más información»: son ruido, y el cliente lo llama saturado.
+
+## Combustible por hora de máquina (18-sep-2026, commit `ea90ee7`)
+
+Pedido: *«una barra por máquina con el consumo de combustible y una etiqueta con el consumo
+por hora; importante siempre tomar el horómetro inicial del día o el periodo trabajado, así
+como el final»*. Y después: *«revisa también contra horómetros de tanqueo»*.
+
+`views/ConsumoHoraCard` (bajo las tortas de «Insumos y materiales», con el MISMO filtro de
+periodo de la pantalla) + `lib/consumoHora.ts`. Los galones salen de
+`combustiblePorMaquina` — los mismos de la torta, porque dos números distintos del mismo
+hecho obligan a preguntar cuál es el bueno.
+
+**horas = horómetro FINAL − INICIAL del periodo**, con las lecturas de TODAS las fuentes
+(cierre de labor, entrega y tanqueo). 🔴 Solo con labores no alcanza: la PUMA 2302 gastó 496
+galones y su operario cierra con horómetro **0** (32 de 33 cierres del mes); sus lecturas
+buenas estaban en las entregas.
+
+**Limpieza de lecturas, en orden** (cada regla salió de un caso real):
+1. ceros y pares imposibles de una labor (final &lt; inicial, o más de 24 h);
+2. **magnitud dominante** (el «2» de la CASE 951 contra sus 5.719 h);
+3. a más de 24 h × día de la **mediana** (la CASE 901 tenía un 12.946 entre lecturas de 10.6xx);
+4. **el horómetro no retrocede**: cadena más larga en el tiempo, margen 12 h (la CASE 1303
+   tomaba 3.650 de un cierre del 14-sep cuando ya iba en 3.955 → daba 342 h en 18 días).
+
+**Cruce con el tanqueo:** las mismas cuentas solo con los horómetros anotados al tanquear o
+entregar, comparadas **en las mismas fechas** (del primer al último tanqueo) y ⚠ si se
+separan más del 25%. Comparar el periodo entero contra la ventana de tanqueos marcaba
+máquinas sanas (la CASE 1101 trabajó antes del primer tanqueo y después del último).
+
+Medido 1–18 sep 2026: flota **1,86 gal/h**; PUMA 2302 5,37 · PUMA 2301 3,99 · CASE y VALTRA
+1–2. Para UN día el número es orientativo (el tanqueo de hoy alimenta mañana) y la tarjeta lo
+dice. La FIAT sale «sin horas»: recibió 103 gal y no tiene ninguna lectura.
+
+⚠️ **En celular, una fila de barra con cuatro columnas hay que ubicarla a mano**: con
+`auto auto` la grilla la partió en TRES renglones (95 px por máquina) y las cifras quedaban
+corridas entre filas (177 a 202 px). Va `grid-row`/`grid-column` explícitos y anchos FIJOS
+para las dos columnas de cifras (`.dash-barra--galh`, medido con `getBoundingClientRect`).
+
+También: `equipo_horometro_v` lee ahora el horómetro de las **entregas**
+(`20260918140000_horometro_lee_entregas.sql`). Antes leía labores, tanqueos y órdenes, y por
+eso la pantalla de Horómetros mostraba la PUMA 2302 quieta 16 días. ⚠️ Siguen atascadas las
+máquinas con **lectura manual vieja** (la manual manda siempre: PUMA 2101 del 4-ago, VALTRA
+9902 del 20-ago) — pendiente de decisión del cliente.

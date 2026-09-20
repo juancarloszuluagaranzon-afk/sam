@@ -160,6 +160,15 @@ function dayKey(value: string | null | undefined) {
 ```
 
 ## Gotchas
+
+- **[2026-09-18]** En plpgsql, `v_texto[] || 'literal'` → *malformed array literal*: el literal se
+  interpreta como arreglo. Usar `array_append(v, 'x'::text)`.
+- **[2026-09-18]** Un `.sql` grande no cabe como argumento de comando en Windows (*el nombre del
+  archivo o la extensión es demasiado largo*): subirlo con `MAP LECTOR/_deploy/put_b64.py`,
+  `docker cp` y `psql -f`. El helper `scratchpad/sql.py` sirve solo para SQL corto.
+- **[2026-09-18]** Probar una migración: `begin;` + migración + pruebas + `rollback;` en UNA
+  corrida. Si algo falla, la transacción se aborta sola y producción queda intacta — verificarlo
+  después (`select count(*) from information_schema.tables where table_name in (…)`).
 - **[2026-07-08→14] Migraciones nuevas (todas idempotentes, anon_key/RLS abierta salvo nota).**
   - **`20260708120000_ingenios_catalogo`**: tabla `ingenios` (slug PK). El cliente la corre en Studio; el código NO se rompe sin ella (fallback a semilla en `src/data/ingenios.ts`).
   - **`20260708130000_retention_ciclo_vida`**: función `public.sam_run_retention()` (SECURITY DEFINER, `GRANT EXECUTE anon`) → Nivel 1 cancela PENDIENTE/EN_PROCESO con `area_realizada=0` +3d; Nivel 2 borra CANCELADA con `area_realizada=0` +3d. NUNCA toca COMPLETADA/PARCIAL ni EN_PROCESO con área. La dispara owner/admin 1×/día desde el cliente (`runRetention`, throttle `sam-retention-last`) + opcional pg_cron. **Las rechazadas (CANCELADA con area>0) NO se purgan** → quedan como auditoría.

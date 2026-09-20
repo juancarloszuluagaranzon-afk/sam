@@ -547,3 +547,58 @@ detectada y excluida. Datos de prueba borrados.
 1. **Crear a los mecánicos como usuarios con rol `taller`.** Hoy no hay ninguno.
 2. **Cargar la ubicación del taller** en `taller_sitios`. Sin eso la ubicación se guarda
    pero no se puede decir quién marcó desde afuera; la pantalla lo avisa.
+
+## Marcar con la CARA (18-sep-2026, commit `1e0f0cd`)
+
+Pedido textual: *«quiero algo que sea con la cara, ya que los dedos normalmente están
+sucios»*. El cliente eligió (`AskUserQuestion`) que cada mecánico marque en **SU celular**,
+no en una tablet fija. Es un porte de **AgroControl** (jornales, CONTRATO 3/4, migraciones
+0044–0050), revisado a fondo antes de copiar.
+
+**Las piezas**
+
+| Qué | Dónde |
+|---|---|
+| Motor (face-api dlib, 128 números), prueba de vida, foto mini | `src/lib/rostro.ts` |
+| Cámara con guía y captura automática | `src/components/CamaraRostro.tsx` |
+| Registro, marcación, aprobación y revisión | `src/services/asistenciaApi.ts` |
+| Pantalla del mecánico / del jefe | `views/taller/MiJornadaTab.tsx` · `AsistenciaTab.tsx` |
+| Base: plantillas, fotos, decisión y revisión | `supabase/migrations/20260918160000_taller_rostro.sql` |
+| 24 pruebas con caras sintéticas | `supabase/pruebas_taller_rostro.sql` |
+
+**🔴 El celular NO decide.** Solo saca los 128 números y hace la prueba de vida; la
+comparación contra la plantilla la hace `taller_marcar` en el servidor. El cliente **no
+puede leer las plantillas**: `grant select` por COLUMNAS sobre `taller_rostros`, todo menos
+`descriptores` (mismo criterio que `pin_hash` en `app_usuarios`).
+
+**🔴 Lo que el celular no puede probar NO se paga solo** (regla 0049 de AgroControl). Va a
+`requiere_revision` —y NO entra a las horas hasta que el jefe lo acepte viendo la foto—:
+parecido dudoso (0,45–0,52), cara sin aprobar, captura idéntica a una muestra guardada
+(&lt;0,06 = reenvío), sin prueba de vida completa, sin foto, fuera del taller, sin ubicación,
+subió tarde (&gt;15 min entre la hora del celular y la llegada) y `PIN` (sin verificar).
+Si la cara **no se parece** (≥0,52) la marcación NO se registra: la persona intenta otra vez
+o pide dejarla para el jefe (`p_forzar_revision`). **Nunca se bloquea marcar.**
+⚠️ La cola offline reintenta con `forzarRevision` en las de ROSTRO: la persona ya no está
+ahí para repetir la selfie, y sin eso la marcación se perdería.
+
+**Umbrales** (AgroControl, medidos sobre 22 caras y 83 variaciones): 0,45 verifica · 0,52
+zona gris · 0,40 duplicado al registrar. ⚠️ El margen con impostores es de **0,005**: la zona
+gris **nunca verifica sola**. Fuente única: el SQL de la migración (el TS solo orienta la UI).
+
+**Registro (una sola vez).** Autorización Ley 1581 **con el texto y la versión del servidor**
+(`taller_consentimiento_vigente`; se guarda el texto oficial y la versión aceptada, no lo que
+mande el celular), cinco muestras con prueba de vida, foto para que el jefe compare, y el
+servidor rechaza: muestras idénticas (una foto quieta), dispersas (dos personas) y la misma
+cara en otra cuenta. Nace **PENDIENTE**: hasta que el jefe la apruebe, las marcaciones quedan
+por revisar. **Retirar la autorización SUPRIME la plantilla** (`taller_revocar_rostro`).
+
+**Quién aprueba:** solo `owner`/`administracion` (`taller_es_jefe`), y **nadie lo suyo**.
+
+**Descarga:** los modelos (7 MB) y la librería (330 KB comprimida) están FUERA del precache
+(`globIgnores` + `runtimeCaching` `modelos-rostro` en `vite.config.ts`): los baja solo quien
+abre la cámara, no los 50 usuarios. Medido: cargar el motor 225 ms; primera detección ~3 s
+(compila shaders), las siguientes **34 ms**.
+
+⚠️ **Sin probar con una cara real**: el navegador del agente no tiene cámara. Lo probado es
+la base (24 casos), el motor en el navegador y una marcación real por PostgREST con `U058`
+(quedó «por revisar» y se anuló). La primera prueba con cara la hace el cliente.

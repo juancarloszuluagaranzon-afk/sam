@@ -61,3 +61,22 @@ mostrar, y el flujo completo destapó una tercera de dos meses de antigüedad.
    la pantalla.
 5. **En producción**, después del deploy, otra vez.
 6. Borrar la prueba.
+
+## Un push que Vercel no recibió (18-sep-2026)
+
+`git push` con todo en orden —el commit en GitHub, el mismo autor de siempre— y producción
+siguió con el bundle viejo **17 minutos**. La causa no estaba en el código: GitHub **no tenía
+ningún estado de Vercel** para ese commit, ni «pendiente». El aviso no llegó.
+
+**Cómo verlo sin entrar a Vercel** (el proyecto de SAM no está en la sesión de `npx vercel` de
+este equipo, solo los de AgroControl):
+```bash
+curl -s "https://api.github.com/repos/<owner>/<repo>/commits/<sha>/status"   # statuses[].state
+curl -s "https://<app>.vercel.app/" | grep -o '/assets/index-[^"]*\.js'      # ¿cambió el bundle?
+```
+Un commit desplegado muestra `success` («Deployment has completed»); sin estado = Vercel ni se
+enteró. Un commit vacío (`git commit --allow-empty`) re-dispara el aviso; si tampoco llega, lo
+tiene que mirar el dueño del proyecto en su tablero.
+
+🔴 **No decir «ya está desplegado» por haber hecho push.** Confirmar que el bundle servido trae
+el cambio (buscar una cadena nueva del código en el `index-*.js` de producción).

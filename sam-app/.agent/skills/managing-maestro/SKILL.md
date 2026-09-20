@@ -130,3 +130,37 @@ El channel `asignaciones-changes` en `useSync.ts` propaga solo `asignaciones`, N
 - **[2026-05-29]** `createMaestroRow` lanza `new Error('DUPLICATE')` cuando el server responde con error 23505 (UNIQUE constraint). El llamador debe traducir ese error a un mensaje accionable: *"Otro usuario ya creó esa suerte. Cierra este modal y selecciónala del listado."* No mostrar el error técnico.
 
 - **[2026-05-29]** El datalist del input "Código de hacienda" filtra por `ingenio_id` actual. Si una hacienda existe en otro ingenio pero no en el actual (caso raro), el sistema la trata como hacienda nueva para este ingenio. Es semánticamente correcto — cada ingenio tiene su propio universo de haciendas.
+
+## La suerte se identifica por INGENIO + código + suerte (18-sep-2026, commit `2652d61`)
+
+Caso: un DESPEJE de **14,50 ha** en VALPARAISO **3104-010** (Riopaila, 16,32 ha) no se dejaba
+guardar: *«el área ejecutada no puede superar el área de la suerte 010 (5,22 ha)»*. Hay **tres**
+haciendas llamadas «VALPARAISO» con suerte 010 y el tope tomó la de Pichichí.
+
+Medido ese día sobre **17.584 suertes activas**:
+
+| Llave | Choques |
+|---|---|
+| código de hacienda + suerte | **19** (el `1` de Mayagüez; 1214 = ABEJONES en Riopaila y PRAGA en Carmelita…) |
+| nombre de hacienda + suerte | **473** (tres «VALPARAISO» 010) |
+| **ingenio + código + suerte** | **0** ← ya es el índice único `ux_maestro_ingenio_hacienda_suerte` |
+
+🔴 **Cada labor guarda su ingenio** (`asignaciones.ingenio_id`, migración
+`20260918120000_asignaciones_ingenio_id.sql`): lo llena un trigger al crearla o al cambiarle la
+suerte, buscando por código+nombre+suerte (solo si hay UNA), así lo llenan todos los caminos
+—formularios, cola sin señal, registro rápido— incluidas las PWA viejas en caché. Relleno de
+4.376 labores; 73 quedaron en null porque su suerte no está activa.
+
+🔴 **Toda búsqueda de la fila del maestro para una labor va por `filaMaestro()`**
+(`lib/areaSuerte.ts`): ingenio+código+suerte → código+nombre+suerte → si los candidatos se
+contradicen, `null` (mejor no saber que tomar la suerte de otro ingenio). Nunca un
+`maestro.find` a mano. Con datos reales el tope cambió en **87 labores**, y en **51** la
+búsqueda vieja podía bloquear un área correcta (LA ADRIANA 1064-020 tenía tope de 1,58 ha en
+una suerte de 44,64).
+
+⚠️ El trigger de la base `asignaciones_cap_area` YA buscaba bien (código+nombre+suerte). El
+error era solo del cliente — y dependía del ORDEN en que cada celular cargaba el maestro, por
+eso a unos les pasaba y a otros no.
+
+⚠️ Los formularios de asignar y de tomar en campo filtran la suerte **por el ingenio elegido**;
+sin eso, con un código compartido salían suertes de otro ingenio.

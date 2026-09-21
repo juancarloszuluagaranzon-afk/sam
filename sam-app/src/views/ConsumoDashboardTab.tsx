@@ -9,6 +9,7 @@ import {
 import { loadSemaforos } from '../services/samApi'
 import { NIVEL, describirRango, nivelDe, rangoDe, type RangoSemaforo } from '../lib/semaforo'
 import { GraficaGalHora } from './GraficaGalHora'
+import { PERIODOS, rangoDe as rangoDePeriodo, hoyBogota, type Periodo } from '../lib/periodos'
 
 /**
  * Tablero de consumo para el dueño.
@@ -38,6 +39,22 @@ function etiquetaMes(mes: string): string {
   return `${MES_NOMBRE[Number(m) - 1] ?? m} ${a.slice(2)}`
 }
 
+/**
+ * El rango de un periodo. «Hoy» y «Ayer» son fechas reales; las quincenas y el
+ * mes son del MES ELEGIDO en las barras de arriba (así «1ra quinc.» de agosto se
+ * puede mirar sin salir de la pantalla). El final nunca pasa de hoy.
+ */
+function rangoPeriodo(p: Periodo, mes: string): { desde: string; hasta: string } {
+  const hoy = hoyBogota()
+  const r = p === 'HOY' || p === 'AYER' ? rangoDePeriodo(p, hoy) : rangoDePeriodo(p, `${mes}-15`)
+  return { desde: r.desde, hasta: r.hasta > hoy ? hoy : r.hasta }
+}
+
+function fmtDia(iso: string): string {
+  const [, m, d] = iso.split('-')
+  return `${Number(d)} ${MES_NOMBRE[Number(m) - 1] ?? m}`
+}
+
 function hoyISO(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -63,14 +80,27 @@ export function ConsumoDashboardTab() {
   const [filas, setFilas] = useState<ConsumoFila[]>([])
   const [refs, setRefs] = useState<ReferenciaEquipo[]>([])
   const [horas, setHoras] = useState<Map<string, number>>(new Map())
-  /** De dónde salieron las horas: el cierre del mes o la suma de sesiones. */
-  const [fuenteHoras, setFuenteHoras] = useState<'cierre' | 'rango'>('rango')
   /** Las máquinas cuya serie de horómetros se desplomó y hubo que sumar tramos. */
   const [sinRango, setSinRango] = useState<string[]>([])
   /** Horómetro inicial y final del mes de cada máquina (para la gráfica). */
   const [extremos, setExtremos] = useState<Map<string, { inicial: number; final: number }>>(new Map())
   const [cargando, setCargando] = useState(true)
   const [mesSel, setMesSel] = useState<string>('')
+  // Filtros de periodo — los MISMOS de Operación general e Insumos y materiales
+  // (lib/periodos). Pedido del cliente con captura (21-sep-2026): «ponle estos
+  // filtros». Las cifras, la gráfica y la tabla de abajo siguen al periodo.
+  const [periodo, setPeriodo] = useState<Periodo>('MES')
+  const [desde, setDesde] = useState('')
+  const [hasta, setHasta] = useState('')
+  function aplicarPeriodo(p: Periodo, mes = mesSel) {
+    setPeriodo(p)
+    if (p === 'RANGO') return // deja las fechas que haya y muestra los dos campos
+    const r = rangoPeriodo(p, mes)
+    setDesde(r.desde)
+    setHasta(r.hasta)
+    // «Hoy» y «Ayer» pueden caer en otro mes: la barra elegida lo acompaña.
+    if (r.desde.slice(0, 7) !== mes) setMesSel(r.desde.slice(0, 7))
+  }
   // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
   // cinco y en celular no cabe una sexta sin volverse ilegible.
   // Abre en GANCHOS: lo pidió el cliente (21-sep-2026, «déjalo predeterminado en
@@ -125,15 +155,20 @@ export function ConsumoDashboardTab() {
 
   // Por defecto, el último mes con datos.
   useEffect(() => {
-    if (!mesSel && meses.length) setMesSel(meses[meses.length - 1].mes)
+    if (!mesSel && meses.length) {
+      const ultimo = meses[meses.length - 1].mes
+      setMesSel(ultimo)
+      const r = rangoPeriodo('MES', ultimo)
+      setDesde(r.desde)
+      setHasta(r.hasta)
+    }
   }, [meses, mesSel])
 
-  // Las horas del mes elegido, para el galones/hora.
+  // Las horas del periodo elegido, para el galones/hora.
   useEffect(() => {
-    if (!mesSel) return
-    const [a, m] = mesSel.split('-').map(Number)
-    const desde = `${mesSel}-01`
-    const hasta = new Date(a, m, 0).toISOString().slice(0, 10)
+    if (!desde || !hasta || desde > hasta) return
+    // El cierre mensual solo aplica cuando se mira el MES entero.
+    const mesEntero = periodo === 'MES' ? mesSel : null
     let vivo = true
     // 🔴 El cierre mensual manda — es el dato que administracion firma. Si el
     // mes no lo tiene, las horas salen del HOROMETRO INICIAL Y FINAL DEL MES,
@@ -145,19 +180,28 @@ export function ConsumoDashboardTab() {
     // 10% contra 9, y varias exactas.
     void (async () => {
       const [cierre, r] = await Promise.all([
-        loadHorasDelMes(mesSel),
+        mesEntero ? loadHorasDelMes(mesEntero) : Promise.resolve(new Map<string, number>()),
         // Aunque el mes tenga cierre, las lecturas dan el horómetro inicial y final.
         loadHorasPorRangoMes(desde, hasta > hoyISO() ? hoyISO() : hasta),
       ])
       if (!vivo) return
       setExtremos(r.extremos)
-      if (cierre.size > 0) { setHoras(cierre); setFuenteHoras('cierre'); setSinRango([]); return }
-      setHoras(r.horas); setFuenteHoras('rango'); setSinRango(r.cayeronASuma)
+      if (cierre.size > 0) { setHoras(cierre); setSinRango([]); return }
+      setHoras(r.horas); setSinRango(r.cayeronASuma)
     })()
     return () => { vivo = false }
-  }, [mesSel])
+  }, [desde, hasta, periodo, mesSel])
 
-  const delMes = useMemo(() => filas.filter((f) => f.fecha.startsWith(mesSel)), [filas, mesSel])
+  const delMes = useMemo(
+    () => filas.filter((f) => { const d = f.fecha.slice(0, 10); return d >= desde && d <= hasta }),
+    [filas, desde, hasta],
+  )
+  const etiquetaPeriodo = periodo === 'HOY' ? `Hoy · ${fmtDia(desde)}`
+    : periodo === 'AYER' ? `Ayer · ${fmtDia(desde)}`
+    : periodo === 'PRIMERA' ? `1ra quinc. · ${etiquetaMes(mesSel)}`
+    : periodo === 'SEGUNDA' ? `2da quinc. · ${etiquetaMes(mesSel)}`
+    : periodo === 'RANGO' ? `${fmtDia(desde)} a ${fmtDia(hasta)}`
+    : etiquetaMes(mesSel)
 
   /** Una fila por máquina: lo que gastó, cuánto trabajó, y cómo va contra su referencia. */
   const porMaquina = useMemo(() => {
@@ -248,8 +292,8 @@ export function ConsumoDashboardTab() {
         'Gan/hora': m.ganHora ?? '', 'Ref. gan/h 2025': m.refGan ?? '',
         'Desv. ganchos %': m.desvGan ?? '',
         'Semáforo ganchos/h': m.gan > 0 ? textoSemaforo(m.ganHora, rangoDe(rangos, 'ganchos_hora', m.nombre), m.horasIncompletas) : '',
-      }))), `Máquinas ${etiquetaMes(mesSel)}`)
-      writeFile(wb, `consumo-${mesSel}.xlsx`)
+      }))), 'Máquinas')
+      writeFile(wb, `consumo-${desde}-a-${hasta}.xlsx`)
       setInfo('Tablero descargado.')
     } catch { setError('No se pudo generar el Excel.') } finally { setBusy(false) }
   }
@@ -282,7 +326,7 @@ export function ConsumoDashboardTab() {
             {meses.map((m) => (
               <button key={m.mes} type="button"
                       className={`cons-mes${m.mes === mesSel ? ' is-sel' : ''}`}
-                      onClick={() => setMesSel(m.mes)}>
+                      onClick={() => { setMesSel(m.mes); aplicarPeriodo('MES', m.mes) }}>
                 <span className="cons-mes__barra">
                   <span className="cons-mes__fill" style={{ height: `${(m.gal / maxGal) * 100}%` }} />
                 </span>
@@ -297,10 +341,29 @@ export function ConsumoDashboardTab() {
 
           {/* ── El mes elegido ─────────────────────────────────────────────── */}
           <div className="panel-title split" style={{ marginTop: 20 }}>
-            <h3 style={{ margin: 0 }}>{etiquetaMes(mesSel)}</h3>
+            <h3 style={{ margin: 0 }}>{etiquetaPeriodo}</h3>
             <button type="button" className="primary-button" onClick={() => void exportar()} disabled={busy}>
               ⬇ Excel
             </button>
+          </div>
+
+          <div className="mov-periodo">
+            {PERIODOS.map((p) => (
+              <button key={p.value} type="button" aria-pressed={periodo === p.value}
+                      onClick={() => aplicarPeriodo(p.value)}>
+                {p.label}
+              </button>
+            ))}
+            {periodo === 'RANGO' && (
+              <div className="mov-periodo__rango">
+                <label>Desde
+                  <input type="date" value={desde} max={hasta} onChange={(e) => setDesde(e.target.value)} />
+                </label>
+                <label>Hasta
+                  <input type="date" value={hasta} min={desde} max={hoyBogota()} onChange={(e) => setHasta(e.target.value)} />
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="mural-kpi">
@@ -318,7 +381,6 @@ export function ConsumoDashboardTab() {
           {/* La gráfica que dibujó el cliente: barra = galones, encima gal/h con
               su semáforo, y debajo máquina · horómetro inicial · final · horas. */}
           <GraficaGalHora
-            horasDeCierre={fuenteHoras === 'cierre'}
             columnas={porMaquina.map((m) => {
               const rango = rangoDe(rangos, 'gal_hora', m.nombre)
               return {
@@ -331,24 +393,10 @@ export function ConsumoDashboardTab() {
             })}
           />
 
-          <p className="subtle-copy" style={{ marginTop: 4 }}>
-            {fuenteHoras === 'cierre'
-              ? '⏱ Las horas salen del cierre mensual de horómetros — el dato que firma administración.'
-              : '⏱ Las horas salen del horómetro inicial y final del mes de cada máquina, el mismo criterio del cierre. Si el mes ya tiene cierre cargado, ese manda.'}
-          </p>
-          {/* 🔴 Las que NO se pudieron medir por rango salen NOMBRADAS. Un
-              promedio que descarta maquinas sin decir cuales es un promedio en
-              el que no se puede confiar — y ademas nadie sabria a cual maquina
-              hay que irle a revisar el horómetro. Misma regla que el informe
-              semanal y que la hoja de horómetros de la planilla. */}
-          {fuenteHoras === 'rango' && sinRango.length > 0 && (
-            <p className="subtle-copy" style={{ marginTop: 4 }}>
-              ⚠ En {sinRango.length} máquina{sinRango.length === 1 ? '' : 's'} las lecturas
-              vienen tan sucias que no se pudo medir el mes de punta a punta, y sus horas
-              salen de sumar las labores: <strong>{sinRango.join(', ')}</strong>. Revisar
-              sus horómetros en Más → ⏱ Horómetros.
-            </p>
-          )}
+          {/* Las notas de de dónde salen las horas y de las máquinas con el horómetro
+              sucio se QUITARON a pedido del cliente (21-sep-2026, «quita estos
+              comentarios»). Lo sucio sigue marcado donde se mira: «Σ» en la casilla de
+              horas de la gráfica, con la explicación al pasar el dedo. */}
           {fuenteMes?.has('papel') && (
             <p className="subtle-copy" style={{ marginTop: 4 }}>
               📄 Este mes viene del formato en papel. Las horas trabajadas salen de las

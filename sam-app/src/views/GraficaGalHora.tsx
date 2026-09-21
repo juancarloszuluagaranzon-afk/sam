@@ -41,7 +41,7 @@ const SUCIO = 'Las lecturas de este horómetro vienen sucias: no hay un inicial 
 const n1 = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 1 })
 const n2 = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 
-export function GraficaGalHora({ columnas, horasDeCierre }: { columnas: ColumnaGalHora[]; horasDeCierre: boolean }) {
+export function GraficaGalHora({ columnas }: { columnas: ColumnaGalHora[] }) {
   const cols = columnas.filter((c) => c.galones > 0)
   if (cols.length === 0) return null
   const max = Math.max(...cols.map((c) => c.galones), 0.0001)
@@ -100,13 +100,6 @@ export function GraficaGalHora({ columnas, horasDeCierre }: { columnas: ColumnaG
           ))}
         </div>
       </div>
-      <p className="ggh__nota">
-        {horasDeCierre
-          ? 'Las horas son las del cierre mensual que firma administración; el horómetro inicial y final es lo que registró la app.'
-          : 'Horas = horómetro final − inicial del mes.'}
-        {cols.some((c) => c.porSuma) && ' Σ = el horómetro no se pudo leer de punta a punta: sus horas son la suma de las labores y sus lecturas no se muestran (revisar en Más → Horómetros).'}
-        {' '}El color de los gal/h es el semáforo de cada máquina (✓ dentro · ▲ medio · ⚠ alto · ▽ debajo del rango).
-      </p>
     </div>
   )
 }

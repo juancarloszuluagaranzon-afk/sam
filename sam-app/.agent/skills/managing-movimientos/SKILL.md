@@ -491,6 +491,20 @@ Pedido: *«semáforos en el análisis de combustible y ganchos»*, con esta tabl
   con `max-content` 22 máquinas pedían 2.094 px en un monitor de 1.440 — ahora caben en 1.377
   y en celular la rejilla se desliza con los rótulos quietos. El Excel del tablero suma las
   columnas «Horómetro inicial» y «Horómetro final».
+- **Eficiencia maquinaria, ajustes del mismo 21-sep** (tres pedidos con captura):
+  1. «Máquina por máquina» **abre en Ganchos** («déjalo predeterminado en ganchos»).
+  2. **Se quitaron las notas** («quita estos comentarios»): la de debajo de la gráfica, «⏱ Las
+     horas salen del horómetro…» y «⚠ En N máquinas las lecturas vienen tan sucias…». Lo
+     sucio sigue marcado con «Σ» en la casilla de horas, con la explicación al pasar el dedo.
+     No volver a ponerlas sin que las pida.
+  3. **Filtros de periodo** («ponle estos filtros»): Hoy · Ayer · 1ra quinc. · 2da quinc. ·
+     Mes · Rango, los mismos de `lib/periodos` y con la misma barra `.mov-periodo`, entre el
+     título/Excel y las cuatro cifras. Hoy y Ayer son fechas reales; quincenas y Mes son del
+     **mes elegido en las barras** (tocar agosto y luego «1ra quinc.» = 1–15 ago). Cifras,
+     gráfica y tabla siguen al periodo. El cierre mensual de horas solo aplica con «Mes»; en
+     cualquier otro periodo las horas salen de las lecturas del rango. Medido: 1ra (3.932,5
+     gal) + 2da quinc. (1.092,9) = mes (5.025,2); ganchos 1.440 + 440 = 1.880. El papel
+     (mar–jul) viene por día, así que las quincenas también sirven para esos meses.
 - Para mirar la tarjeta sin sesión: montarla en un archivo temporal dentro de un contenedor
   **`.mov`** — fuera de él `--dash-s1` no existe y las barras salen vacías (no es un error de
   la tarjeta).

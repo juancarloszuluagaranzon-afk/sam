@@ -15,7 +15,7 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { BotonManual } from '../components/BotonManual'
 import { DictateButton } from '../components/DictateButton'
-import { isoDesdeHora, fmtFechaHora } from '../lib/fechas'
+import { isoDesdeHora, fmtFechaHora, fmtHora } from '../lib/fechas'
 import { MiPlanilla } from '../components/MiPlanilla'
 import { PantallaSegura } from '../components/PantallaSegura'
 import { ReportarView, AcuseCaso } from './ReportarView'
@@ -1600,8 +1600,18 @@ export function OperatorView({
                       ) : (
                         <span className="kind-badge libre">Campo</span>
                       )}{' '}
-                      - {formatArea(assignment.area, assignment.labor)}
-                      {progress.hasProgress && (
+                      {/* Un servicio por horas no tiene cantidad programada: «0.00 h»
+                          confundía. Se dice qué es, desde cuándo y para quién. */}
+                      {esPorHoras(assignment.labor) ? (
+                        <>
+                          · ⏱ por horas
+                          {assignment.startedAt ? ` · desde las ${fmtHora(assignment.startedAt)}` : ''}
+                          {assignment.administradorEncargado ? ` · ${assignment.administradorEncargado}` : ''}
+                        </>
+                      ) : (
+                        <>- {formatArea(assignment.area, assignment.labor)}</>
+                      )}
+                      {!esPorHoras(assignment.labor) && progress.hasProgress && (
                         <>
                           {' · '}
                           <span className="partial-inline">
@@ -1634,7 +1644,7 @@ export function OperatorView({
                       <div>
                         <strong>{a.haciendaName} - {a.suerte}</strong>
                         <span className="subtle-copy">
-                          {a.labor} - {formatArea(a.area, a.labor)}
+                          {a.labor} - {esPorHoras(a.labor) ? '⏱ servicio por horas' : formatArea(a.area, a.labor)}
                           {getSuerteProgress(a, assignments).hasProgress && (
                             <> · <strong style={{ color: 'var(--color-status-progress)' }}>
                               Falta {formatArea(getSuerteProgress(a, assignments).remaining, a.labor)}

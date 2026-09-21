@@ -494,36 +494,35 @@ real —incluido el paso que falló— y **medir el resultado donde queda guarda
 fila en la base, el archivo en el servidor). Un componente que funciona aislado es una
 hipótesis, no una verificación. Ver `capturing-gotchas`.
 
-## 🟡 En curso al 21-sep-2026 — leer antes de seguir
+## ✅ Cerrado el 21-sep-2026 (commit `6029b5a`) — y lo que queda abierto
 
-**OFICIOS VARIOS por horas + candado de hm está ESCRITO Y PROBADO pero SIN DESPLEGAR.**
-El código vive solo en el disco del PC de Iván (17 archivos modificados + 4 nuevos, sin
-commit). Si abres esto desde GitHub o desde el celular, **no está ahí**.
+- **Oficios varios por horas** publicado y la labor **encendida** (`activa=true`). Ver
+  `managing-assignments` → «Servicios POR HORAS».
+- **Hm y horas solo los corrige administración**: trigger `trg_asignaciones_cantidad_solo_admin`
+  + pantalla. Y al cerrar ya no se recortan los hm al área de la suerte.
+- 🔴 **La sincronización tenía dos agujeros, los dos cerrados:**
+  1. `asignaciones.updated_at` **nunca se movía al editar** (solo `default now()`): cierres,
+     aprobaciones y correcciones no llegaban a las pantallas abiertas hasta volver a abrir
+     la app. Trigger `trg_asignaciones_updated_at` (migración `20260921120000`).
+  2. La marca del delta era la hora del APARATO: uno adelantado (el PC de la oficina, 72 s)
+     no veía lo de los demás. Ahora sale de la hora del servidor (`marcaDeServidor`).
+  Ver `capturing-gotchas`.
+- **ID de suerte visible**: `PIC-1001-010` (prefijo del ingenio). `idSuerte()` en
+  `data/ingenios.ts`, `getIdSuerte()` en samApi. Ver `managing-maestro`.
+- **Semáforos de gal/h y ganchos/h** en «Combustible por hora de máquina», rangos en la tabla
+  `semaforo_consumo`. Ver `managing-movimientos`.
+- **Carlos Castillo (U009)**: con los datos actuales planilla, historial y Reporte cuadran
+  al centavo en las tres últimas quincenas. Causa más probable del descuadre que vieron: el
+  agujero 1 de arriba. Ver `managing-assignments` → «Turnos que cruzan la medianoche».
 
-- ✅ En producción YA: las dos migraciones (`20260919120000_oficios_varios_horas.sql`,
-  `20260919130000_cantidad_hm_horas_solo_admin.sql`). OFICIOS VARIOS quedó con
-  **`activa=false`** a propósito: la app publicada no sabe de horas.
-- ⏭️ Falta, en orden: commit + push → confirmar el bundle (`capturing-gotchas`) →
-  `update labores_catalogo set activa=true where nombre='OFICIOS VARIOS'` → probar
-  en celular con U058 el flujo completo en pantalla (regla del 17-sep) → avisar versión.
-- 🔴 **Hallazgo sin arreglar: la sincronización por cambios se ciega en un aparato con el
-  reloj adelantado** (este PC va 72 s adelante del servidor, que sí está en hora).
-  Ver `capturing-gotchas` → «Un reloj adelantado deja la sync ciega». Arreglarlo ANTES
-  de desplegar horas: afecta a todas las labores, no solo a estas.
-- ⏳ **Pedidos del cliente sin atender (21-sep):**
-  1. «Carlos Castillo: no coincide la planilla con el historial en el reporte» — sin
-     revisar. Primero descartar el reloj de arriba (caché viejo en un solo aparato);
-     luego comparar criterio: la planilla va por **fecha de ejecución** y
-     `areaDelDia`, el historial puede ir por fecha de asignación.
-  2. «Id diferenciador por suerte, en diferentes ingenios existen las mismas suertes»
-     — la llave **ingenio + código + suerte** ya está en la base desde el 18-sep
-     (`asignaciones.ingenio_id`, `filaMaestro()`). Que lo vuelva a pedir dice que
-     **en alguna pantalla no se ve**: buscar dónde se elige o se muestra una suerte
-     sin su ingenio.
-  3. **Semáforos de gal/hora y de ganchos por máquina** — la tabla del cliente está
-     copiada tal cual en `managing-movimientos` → «Semáforos». Sin construir.
-  4. ACEQUIAS: ✅ hecho (candado). Queda la decisión sobre las **13 ACEQUIAS
-     recortadas** al área de la suerte (ver `managing-assignments`): no se tocan sin un sí.
+⏳ **Abierto, espera al cliente:**
+1. **PUMA**: la tabla trae dos rangos («5 A 6 / 4 A ,5»). Se usa 4 a 4,5 hasta que digan
+   qué los distingue — es una fila de `semaforo_consumo`, se cambia sin publicar.
+2. **13 ACEQUIAS recortadas** (ago–sep, todas aprobadas, ninguna facturada): el número real
+   no quedó guardado en ningún lado. Se le entregó a Carlos David un Excel con la lista para
+   corregirlas con cada operario (solo administración puede).
+3. ¿Un turno de noche (empieza 11 p.m., termina 1 a.m.) cuenta el día que EMPEZÓ o el que
+   TERMINÓ? Hoy, el que terminó. 28 labores de 10 operarios en septiembre.
 
 ## Cómo trabaja el usuario
 

@@ -81,28 +81,37 @@ tiene que mirar el dueño del proyecto en su tablero.
 🔴 **No decir «ya está desplegado» por haber hecho push.** Confirmar que el bundle servido trae
 el cambio (buscar una cadena nueva del código en el `index-*.js` de producción).
 
-## ⏰ Un reloj adelantado deja la sync ciega (hallado 21-sep-2026) · 🔴 SIN ARREGLAR
+## ⏰ La sincronización por cambios tenía DOS agujeros (hallados y cerrados el 21-sep-2026)
 
-Probando OFICIOS VARIOS, una labor recién creada **no aparecía** en `loadAssignments()`.
-Causa: el **reloj de este PC va 72 s adelante** del servidor (el servidor está bien: NTP
-sincronizado y coincide con la hora de Google al segundo).
+Probando oficios varios, una labor recién creada **no aparecía** en `loadAssignments()`.
+Tirando de ese hilo salieron dos fallas, independientes, que se sumaban:
 
-`loadAssignments` guarda como marca `assignments_last_sync = new Date()` —**la hora del
-aparato**— y el delta pide `updated_at >= marca − 10 s`, comparando contra la hora del
-**servidor**. Con el aparato adelantado más de esos 10 s, todo lo que otros escribieron
-entre dos consultas queda **antes** de la marca: el delta vuelve vacío siempre y la
-pantalla solo se entera con una sincronización completa. No da error; simplemente no
-llegan los cambios de los demás.
+**1. `asignaciones.updated_at` no se movía al editar.** La columna solo tenía `default now()`:
+se llenaba al crear y nunca más (de 1.151 labores en 30 días, 4 con un `updated_at` distinto
+del de creación). El delta pide `updated_at >= marca`, así que un **cierre, una aprobación o una
+corrección** hechos en un aparato no llegaban a los demás. El aviso de tiempo real SÍ llegaba,
+pero la recarga que dispara es ese mismo delta y volvía vacía. Solo se veía al reabrir la app
+(que hace bajada completa): un supervisor con la app abierta toda la jornada no veía cerrar a
+sus operarios. → Trigger `trg_asignaciones_updated_at` (migración `20260921120000`), solo si
+algo cambió de verdad.
 
-- **Arreglo** (en `services/samApi.ts`, `loadAssignments`): la marca debe salir del
-  **servidor**, no del aparato — el mayor `updated_at`/`created_at` de las filas recibidas
-  (y si no llegó ninguna, dejar la marca como estaba). Revisar las otras tablas que
-  sincronizan igual (buscar `last_sync`).
-- **Cómo medirlo**:
-  ```bash
-  date -u '+%H:%M:%S'; curl -sI https://www.google.com | grep -i '^date:'
-  ```
-  en el PC y en el VPS (`timedatectl` dice si hay NTP).
-- Los celulares suelen tomar la hora de la red, pero **no todos**: uno con la hora puesta a
-  mano repite el problema. Y cualquier caso de «a mí no me sale lo que el otro registró»
-  debe empezar por aquí.
+**2. La marca era la hora del APARATO.** `assignments_last_sync = new Date()` y el delta pedía
+`updated_at >= marca − 10 s` contra la hora del SERVIDOR. Este PC iba **72 s adelante** (el
+servidor está bien: NTP y coincide con Google al segundo): todo lo ajeno quedaba antes de la
+marca. → La marca sale del mayor `updated_at`/`created_at` recibido (`marcaDeServidor`), en una
+llave nueva (`assignments_marca`) para que cada aparato haga una bajada completa al actualizar.
+
+⚠️ Al arreglar el 2 apareció un tercero: con la marca quieta, el margen de 10 s re-trae
+**siempre** la última fila escrita, y `changed` salía en `true` cada 30 s — la app entera se
+redibujaba sin motivo (lo que se siente como «el celular se puso lento»). Ahora solo cuenta
+como cambio una fila que no estaba o cuyo `updatedAt` es otro.
+
+**Cómo probarlo** (en el navegador, sin sesión): crear una labor, borrarla de Dexie para
+simular que la hizo otro aparato, y llamar `loadAssignments()`; luego editarla directo con
+`supabase.from(...).update` y volver a llamar. Ojo: la propia pestaña recibe el aviso de tiempo
+real y aplica el cambio antes, así que `changed` puede salir `false` aunque todo funcione —
+llamar justo después de escribir, antes de los 500 ms del debounce.
+
+**Cómo medir un reloj:** `date -u '+%H:%M:%S'; curl -sI https://www.google.com | grep -i '^date:'`
+en el aparato y en el VPS (`timedatectl`). Cualquier «a mí no me sale lo que el otro registró»
+empieza por aquí.

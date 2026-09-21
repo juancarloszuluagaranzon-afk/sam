@@ -107,7 +107,12 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
     })
   }, [assignments, desde, hasta])
 
-  const cerradas = useMemo(() => enRango.filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL'), [enRango])
+  // Este tablero es de HECTÁREAS: un servicio por horas (oficios varios) no entra en
+  // sus gráficos. Antes salía «OFICIOS VARIOS · 0,00 ha» en la dona de labores.
+  const cerradas = useMemo(
+    () => enRango.filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && unidadDeLabor(a.labor) !== 'h'),
+    [enRango],
+  )
   const totalHa = useMemo(() => cerradas.reduce((t, a) => t + areaEjec(a), 0), [cerradas])
   const enProceso = useMemo(() => assignments.filter((a) => a.status === 'EN_PROCESO'), [assignments])
 

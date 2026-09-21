@@ -164,3 +164,18 @@ eso a unos les pasaba y a otros no.
 
 ⚠️ Los formularios de asignar y de tomar en campo filtran la suerte **por el ingenio elegido**;
 sin eso, con un código compartido salían suertes de otro ingenio.
+
+## ID de suerte visible: `PIC-1001-010` (21-sep-2026)
+
+El cliente volvió a pedir *«id diferenciador por suerte, en diferentes ingenios existen las
+mismas suertes»*. Por dentro ya estaba resuelto (llave ingenio + código + suerte), pero en
+pantalla y en el Excel «1001-010» se leía igual para Pichichí y Carmelita: **971 códigos de
+hacienda se repiten entre ingenios**.
+
+`idSuerte(ingenioId, hacienda, suerte)` en `data/ingenios.ts` → prefijo de 3 letras del ingenio
+(RIS, PIC, MAY, SCA, RIO, LUC, CAR, PRO; fijos porque salen en Excel que la gente archiva) + código
++ suerte. `getIdSuerte(a, maestro)` en samApi para una labor. Sale en el Reporte (pantalla y
+Excel, columna «ID suerte»), en el detalle de la labor y en el Maestro. «??» = no se sabe el
+ingenio (medido: 0 de 756 labores de septiembre). Comprobado: **0 repetidos** en las 17.565
+suertes del maestro.
+

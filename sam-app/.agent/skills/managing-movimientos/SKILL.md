@@ -410,11 +410,10 @@ eso la pantalla de Horómetros mostraba la PUMA 2302 quieta 16 días. ⚠️ Sig
 máquinas con **lectura manual vieja** (la manual manda siempre: PUMA 2101 del 4-ago, VALTRA
 9902 del 20-ago) — pendiente de decisión del cliente.
 
-## 🟡 Semáforos de gal/hora y de ganchos por máquina — PEDIDO del 21-sep-2026, sin construir
+## ✅ Semáforos de gal/hora y ganchos/hora por máquina (21-sep-2026, commit `6029b5a`)
 
-El cliente mandó la tabla (captura de Excel) pidiendo *«semáforos en el análisis de
-combustible y ganchos»*. Copiada **tal cual** — los errores de tecleo son suyos y se
-confirman, no se adivinan:
+Pedido: *«semáforos en el análisis de combustible y ganchos»*, con esta tabla del cliente
+(copiada tal cual):
 
 | Máquina | MÍNIMO (verde) | MEDIO (naranja) |
 |---|---|---|
@@ -431,22 +430,33 @@ confirman, no se adivinan:
 | GANCHOS | 0,7 a 1,1 | 1,11 a 1,4 |
 | GANCHOS | «40 DE 0 A 45 HR» | «80 DE 45,1 A 90» |
 
-**Por confirmar con el cliente antes de construir:**
-- Por encima del naranja = **rojo** (no lo dice la tabla).
-- PUMA trae **dos rangos** separados por «/»: ¿por tipo de labor (pesada / liviana)? Y
-  «4 A ,5» parece «4 a 4,5».
-- VALTRA 99xx naranja es un solo número «1.70»: ¿1,51 a 1,70?
-- FIAT no tiene valores: sin semáforo, y decirlo en pantalla, no pintarlo de verde.
-- GANCHOS, fila 1: ¿ganchos por hora? Fila 2: ¿40 ganchos para 0–45 h de trabajo y 80
-  para 45,1–90 h? Son dos lecturas distintas del mismo insumo.
+### Qué mide cada rango — comprobado, no supuesto
 
-**Cómo construirlo cuando se confirme:**
-- Los rangos van en una **FILA de la base** (por máquina, con su régimen), no en el código
-  — mismo principio que `taller_config` («la ley va en una fila»): el cliente los va a
-  ajustar.
-- Dónde: las barras de `ConsumoHoraCard` (gal/hora por máquina, ya con horómetro inicial y
-  final del periodo) y la torta de ganchos por máquina de `InsumosCard`.
-- El color **nunca solo**: ícono + etiqueta («✓ dentro», «▲ medio», «⚠ alto»), por
-  daltonismo y por impresión (regla de dataviz). Una máquina sin horas confiables en el
-  periodo **no lleva semáforo**: pintar un gal/hora que salió de un horómetro malo es
-  inventar un juicio.
+- **Galones por HORA** de horómetro, no por hectárea. Con septiembre 1–20: los CASE 9xx dieron
+  1,16–1,36 gal/h (tabla 1,2 a 1,5) y 0,77–0,86 gal/ha — el gal/ha queda debajo de TODOS los
+  rangos.
+- **Ganchos por HORA** de máquina. La segunda fila de GANCHOS («40 de 0 a 45 h / 80 de 45,1 a
+  90») es la misma cuenta dicha de otra forma: 40/45 = 80/90 = 0,89 por hora, dentro del verde.
+  En septiembre dieron 0,53–1,37.
+- ≤ verde_max = ✓ verde · ≤ naranja_max = ▲ medio · más = ⚠ alto. **Debajo de verde_min es
+  «▽ debajo del rango»**, no verde: casi siempre es un tanqueo o una entrega sin registrar, o un
+  horómetro que corrió de más. En septiembre salieron **10 de 21** máquinas debajo — dice más
+  del registro de combustible que de las máquinas.
+- **PUMA**: la tabla trae dos rangos. Se usa **4 a 4,5** (lo que gastan hoy: 3,5–5 gal/h) con
+  la nota en la fila, hasta que el cliente diga qué los distingue. VALTRA 99xx: naranja «1.70»
+  se leyó 1,51 a 1,70. FIAT sin fila → sin semáforo (no se pinta verde lo que no tiene rango).
+
+### Dónde vive
+
+- Tabla **`semaforo_consumo`** (indicador, maquina, verde_min, verde_max, naranja_max, nota) —
+  migración `20260921130000`. `maquina` = nombre como lo escribe el cliente, se compara en
+  mayúsculas; `'*'` = todas (así va ganchos). **Cambiar un rango = un UPDATE, sin publicar.**
+- `lib/semaforo.ts` (nivel, símbolo, texto) y `views/ConsumoHoraCard.tsx`: la etiqueta de gal/h
+  toma color + símbolo; los ganchos/h van en su propia etiqueta solo en máquinas que recibieron
+  ganchos; arriba, la cuenta por nivel; al tocar, el rango y la nota.
+- El aviso de horómetro de tanqueo descuadrado pasó de «⚠» a **«≠»**: ⚠ ahora es «alto».
+- 🔴 En celular los ganchos van en un **tercer renglón**: puestos al lado, la barra se encogía
+  de ~290 a 110 px. Medido en 375 px de ancho.
+- Para mirar la tarjeta sin sesión: montarla en un archivo temporal dentro de un contenedor
+  **`.mov`** — fuera de él `--dash-s1` no existe y las barras salen vacías (no es un error de
+  la tarjeta).

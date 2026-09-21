@@ -697,7 +697,7 @@ columna de ceros a quien no la usa es ruido.
 ⚠️ **El Resumen y el Reporte todavía suman ha con hm.** Al tocar cualquier total que
 cruce labores, separarlo igual. (Las HORAS sí salen aparte en todos — ver abajo.)
 
-## ⏱ Servicios POR HORAS — OFICIOS VARIOS (19/21-sep-2026) · 🟡 sin desplegar
+## ⏱ Servicios POR HORAS — OFICIOS VARIOS (19/21-sep-2026) · ✅ publicado `6029b5a`
 
 Pedido por voz: *«montar la lógica para control de máquinas cuando prestan servicio de
 oficios varios, que es por horas… esta parte no la va a programar el supervisor (Alfredo,
@@ -756,7 +756,16 @@ difieren más de max(1 h, 35 % del reloj) → sale para revisar.
 rechazado al programar; administración crea con área 0 e ingenio `pichichi`; cierra en
 **6,8 h por horómetro** frente a 7,5 de reloj; el supervisor no puede corregir las horas y
 administración sí; cuenta en la planilla como `'h'`; no mueve las ha del día. Borrada.
-**Falta**: el flujo en pantalla en celular (regla del 17-sep) y desplegar.
+Publicado en `6029b5a` y la labor encendida el 21-sep. **Probado en pantalla** (local, mismo
+código): Carlos David programa con el campo de administrador; U058 en celular abre la tarjeta,
+escribe el horómetro final, el aviso dice «Por horómetro: 5,4 h — son las que cuentan» y al
+Finalizar la fila queda COMPLETADA · 5,4 · `'h'` · aprobación PENDIENTE; la Planilla la muestra
+en «Horas serv.» y el Excel en su fila «↳ horas» y en la hoja «Servicios por horas».
+Eso destapó dos detalles que el cálculo no mostraba (corregidos en el commit siguiente):
+- La tarjeta del operario decía **«PROG. - 0.00 h»** → ahora «⏱ por horas · desde las 7:12 ·
+  ADMINISTRADOR», y la hoja de cierre «⏱ servicio por horas».
+- En Inicio, la dona «Participación por labor» (hectáreas) mostraba **«OFICIOS VARIOS · 0,00
+  ha»** → el tablero de Inicio deja fuera las labores por horas.
 
 ## 🔒 Hectómetros y horas: solo ADMINISTRACIÓN los corrige (21-sep-2026)
 
@@ -784,3 +793,20 @@ administra, no quien programa.
 **13 de 55** cierres de ACEQUIAS desde agosto quedaron recortados (6 en septiembre,
 editados por U002). Arreglado en el cliente (`tieneTopeDeArea`: solo ha). 🔴 **Los datos
 viejos NO se corrigieron**: reescribir historia necesita un sí explícito del cliente.
+
+## Turnos que cruzan la medianoche — el caso Carlos Castillo (21-sep-2026)
+
+Reclamo: *«Carlos Castillo: no coincide la planilla con el historial en el reporte»*. Medido
+con los datos de hoy: planilla, historial (modal) y KPI del Reporte **cuadran al centavo** en
+las tres últimas quincenas (182,91 · 152,47 · 50,99 ha). Todas las pantallas fechan igual:
+`executionDateKey` = día en que se CERRÓ.
+
+Lo que sí distingue a U009: **trabaja de noche**. 3 labores de septiembre empezaron antes de
+medianoche y cerraron después (3111-150: 18-sep 11:53 p.m. → 19-sep 1:39 a.m.): la planilla las
+pone en el día 19, y el Excel del Reporte trae además «Fecha asignación» = 18. En la flota: 28
+labores de 10 operarios en septiembre. ⚠️ Qué día cuenta un turno nocturno es decisión del
+cliente — **no cambiar `executionDateKey` sin su sí**: mueve quincenas, Resumen y facturación.
+
+Causa más probable del descuadre que vieron: `updated_at` no se movía al editar y las pantallas
+abiertas no recibían correcciones (ver `capturing-gotchas`), arreglado el mismo día.
+

@@ -703,7 +703,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
             'Horas por horómetro', 'HORAS QUE CUENTAN', 'Salieron de', 'Estado', 'Revisar'],
           ...servicios.map(({ a, hs }) => [
             executionDateKey(a), (a.operatorName || '').trim(), a.equipmentName || a.equipmentCode || '', a.labor,
-            a.haciendaName, a.suerte, a.administradorEncargado ?? '',
+            a.haciendaName.trim(), a.suerte, a.administradorEncargado ?? '',
             fmtHora(a.startedAt), fmtHora(a.finishedAt), hs.porReloj ?? '',
             a.horometroInicial ?? '', a.horometroFinal ?? '', hs.porHorometro ?? '',
             a.status === 'EN_PROCESO' ? '' : Number((a.executedArea ?? 0).toFixed(2)),

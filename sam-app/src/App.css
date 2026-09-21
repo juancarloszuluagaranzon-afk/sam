@@ -8487,6 +8487,16 @@ td.planilla-vacio:hover { background: #fde047; }
   color: var(--color-status-cancel); font-weight: 700;
   background: var(--color-status-cancel-bg); border-radius: 6px; padding: 2px 6px;
 }
+/* Semáforo del cliente en la tabla máquina por máquina (21-sep-2026): la etiqueta
+   con símbolo + palabra y, debajo, el rango contra el que se midió. */
+.cons-sem { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.cons-sem .dash-galh { justify-self: auto; }
+.cons-sem small { text-align: right; line-height: 1.3; }
+.cons-sem__corto { display: none; }
+@media (max-width: 620px) {
+  .cons-sem__largo { display: none; }
+  .cons-sem__corto { display: inline; white-space: nowrap; }
+}
 @media (max-width: 620px) {
   .mural-kpi { grid-template-columns: repeat(2, 1fr); }
   .cons-fila { grid-template-columns: 1.4fr 0.7fr 0.6fr 0.7fr 1fr; font-size: 0.78rem; }

@@ -6,6 +6,8 @@ import {
   loadConsumo, loadHorasDelMes, loadHorasPorRangoMes, loadReferencias,
   type ConsumoFila, type ReferenciaEquipo,
 } from '../services/consumoApi'
+import { loadSemaforos } from '../services/samApi'
+import { NIVEL, describirRango, nivelDe, rangoDe, type RangoSemaforo } from '../lib/semaforo'
 
 /**
  * Tablero de consumo para el dueño.
@@ -17,8 +19,15 @@ import {
  *
  * El número que de verdad se mira es **galones por hora**, no galones: una
  * máquina que gasta más porque trabajó más no es un problema. Y se compara
- * contra la referencia 2025 de ESA máquina —del Excel de maquinaria—, no contra
- * el promedio de la flota: un tractor de 90 HP y uno de 241 no son comparables.
+ * contra el rango de ESA máquina, no contra el promedio de la flota: un tractor
+ * de 90 HP y uno de 241 no son comparables.
+ *
+ * 🔴 Desde el 21-sep-2026 la columna de comparación es el SEMÁFORO del cliente
+ * (tabla `semaforo_consumo`, la misma de «Combustible por hora de máquina» en
+ * Insumos y materiales): ✓ dentro · ▲ medio · ⚠ alto · ▽ debajo del rango. Lo pidió
+ * con captura: «esto también hazlo con la misma lógica de semáforos». Antes era un
+ * «▼20% de 5,27» contra la referencia 2025 del Excel de maquinaria — esa referencia
+ * sigue en el Excel y al pasar el dedo por el semáforo, pero ya no decide el color.
  */
 
 const MES_NOMBRE = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
@@ -31,6 +40,20 @@ function etiquetaMes(mes: string): string {
 function hoyISO(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const fmtN = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
+
+/** La columna es angosta en celular: la palabra corta; la larga va en el Excel. */
+const CORTO = { bajo: 'debajo', verde: 'dentro', naranja: 'medio', rojo: 'alto' } as const
+
+/** Para el Excel: «▲ medio (✓ 1,2 a 1,5 · ▲ hasta 1,7 · ⚠ más de 1,7)». */
+function textoSemaforo(valor: number | null, rango: RangoSemaforo | null, horasIncompletas: boolean): string {
+  if (horasIncompletas) return 'faltan horas'
+  if (valor == null) return 'sin horas'
+  if (!rango) return 'sin rango'
+  const n = nivelDe(valor, rango)
+  return n ? `${NIVEL[n].icono} ${NIVEL[n].texto} (${describirRango(rango)})` : ''
 }
 
 export function ConsumoDashboardTab() {
@@ -48,6 +71,14 @@ export function ConsumoDashboardTab() {
   // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
   // cinco y en celular no cabe una sexta sin volverse ilegible.
   const [medida, setMedida] = useState<'COMBUSTIBLE' | 'GANCHOS'>('COMBUSTIBLE')
+  // Rangos del semáforo (los ajusta el cliente en la base, sin publicar versión).
+  // Si no cargan, la columna dice «sin rango»: nunca se inventa un verde.
+  const [rangos, setRangos] = useState<RangoSemaforo[]>([])
+  useEffect(() => {
+    let vivo = true
+    loadSemaforos().then((r) => { if (vivo) setRangos(r) }).catch(() => { /* sin semáforo */ })
+    return () => { vivo = false }
+  }, [])
 
   const equipoNombre = useMemo(() => {
     const m = new Map<string, string>()
@@ -173,7 +204,7 @@ export function ConsumoDashboardTab() {
   const visibles = useMemo(
     () => (medida === 'COMBUSTIBLE'
       ? porMaquina
-      : porMaquina.filter((m) => m.usaGanchos && m.gan > 0).sort((a, b) => b.gan - a.gan)),
+      : porMaquina.filter((m) => m.gan > 0).sort((a, b) => b.gan - a.gan)),
     [porMaquina, medida],
   )
   const esGan = medida === 'GANCHOS'
@@ -201,8 +232,10 @@ export function ConsumoDashboardTab() {
         'Máquina': m.nombre, 'Combustible(gal)': m.gal, 'Ganchos': m.gan,
         'Horas': m.horas || '',
         'Gal/hora': m.galHora ?? '', 'Ref. gal/h 2025': m.ref ?? '', 'Desv. gal %': m.desv ?? '',
+        'Semáforo gal/h': textoSemaforo(m.galHora, rangoDe(rangos, 'gal_hora', m.nombre), m.horasIncompletas),
         'Gan/hora': m.ganHora ?? '', 'Ref. gan/h 2025': m.refGan ?? '',
         'Desv. ganchos %': m.desvGan ?? '',
+        'Semáforo ganchos/h': m.gan > 0 ? textoSemaforo(m.ganHora, rangoDe(rangos, 'ganchos_hora', m.nombre), m.horasIncompletas) : '',
       }))), `Máquinas ${etiquetaMes(mesSel)}`)
       writeFile(wb, `consumo-${mesSel}.xlsx`)
       setInfo('Tablero descargado.')
@@ -317,12 +350,18 @@ export function ConsumoDashboardTab() {
           <div className="cons-tabla">
             <div className="cons-fila cons-fila--cab">
               <span>Máquina</span><span>{esGan ? 'Ganchos' : 'Galones'}</span><span>Horas</span>
-              <span>{esGan ? 'Gan/hora' : 'Gal/hora'}</span><span>vs 2025</span>
+              <span>{esGan ? 'Gan/hora' : 'Gal/hora'}</span><span>Semáforo</span>
             </div>
             {visibles.map((m) => {
               const porHora = esGan ? m.ganHora : m.galHora
               const referencia = esGan ? m.refGan : m.ref
               const desviacion = esGan ? m.desvGan : m.desv
+              const rango = rangoDe(rangos, esGan ? 'ganchos_hora' : 'gal_hora', m.nombre)
+              const nivel = m.horasIncompletas ? null : nivelDe(porHora, rango)
+              // La referencia 2025 no se pierde: queda al pasar el dedo y en el Excel.
+              const ref2025 = referencia == null ? '' : desviacion == null
+                ? `Referencia 2025: ${referencia}`
+                : `Referencia 2025: ${referencia} (${desviacion > 0 ? '▲' : '▼'}${Math.abs(desviacion)}%)`
               return (
                 <div key={m.codigo} className="cons-fila">
                   <span className="cons-fila__maq">
@@ -333,11 +372,20 @@ export function ConsumoDashboardTab() {
                   <span>{(esGan ? m.gan : m.gal).toLocaleString('es-CO')}</span>
                   <span>{m.horas || '—'}</span>
                   <span><strong>{porHora ?? '—'}</strong></span>
-                  <span className={desviacion == null ? '' : Math.abs(desviacion) >= 20 ? 'cons-mal' : 'cons-bien'}>
-                    {referencia == null ? <small>{esGan ? 'no usa ganchos' : 'sin referencia'}</small>
-                      : m.horasIncompletas ? <small>⏱ faltan horas (≈{m.horasEsperadas})</small>
-                      : desviacion == null ? <small>ref. {referencia}</small>
-                      : <>{desviacion > 0 ? '▲' : '▼'}{Math.abs(desviacion)}% <small>de {referencia}</small></>}
+                  <span className="cons-sem" title={[rango ? describirRango(rango) : '', ref2025].filter(Boolean).join(' · ')}>
+                    {/* ⏱ primero: con horas de menos el gal/h sale inflado, y pintarlo
+                        de rojo sería acusar a la máquina de lo que falló en el registro. */}
+                    {m.horasIncompletas ? <small>⏱ faltan horas (≈{m.horasEsperadas})</small>
+                      : porHora == null ? <small>sin horas</small>
+                      : !rango ? <small>sin rango</small>
+                      : nivel && (
+                        <>
+                          <span className={`dash-galh dash-galh--${nivel}`}>{NIVEL[nivel].icono} {CORTO[nivel]}</span>
+                          <small className="cons-sem__largo">{describirRango(rango)}</small>
+                          {/* En celular solo la franja verde: el rango entero partía la fila en tres renglones. */}
+                          <small className="cons-sem__corto">✓ {rango.verdeMin != null ? `${fmtN(rango.verdeMin)}–` : 'hasta '}{fmtN(rango.verdeMax)}</small>
+                        </>
+                      )}
                   </span>
                 </div>
               )

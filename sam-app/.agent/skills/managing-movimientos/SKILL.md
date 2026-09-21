@@ -468,6 +468,17 @@ Pedido: *«semáforos en el análisis de combustible y ganchos»*, con esta tabl
 - El aviso de horómetro de tanqueo descuadrado pasó de «⚠» a **«≠»**: ⚠ ahora es «alto».
 - 🔴 En celular los ganchos van en un **tercer renglón**: puestos al lado, la barra se encogía
   de ~290 a 110 px. Medido en 375 px de ancho.
+- **También en «Eficiencia maquinaria»** (`ConsumoDashboardTab`, tabla «Máquina por máquina»,
+  21-sep-2026, pedido con captura: «esto también hazlo con la misma lógica de semáforos»): la
+  columna «vs 2025» pasó a «Semáforo», para combustible (gal/h) y ganchos (ganchos/h). La
+  referencia 2025 queda en el `title` y en el Excel, que además trae «Semáforo gal/h» y
+  «Semáforo ganchos/h». Se conserva el freno de antes: si las horas están incompletas (menos
+  del 60 % de las que implica la referencia) sale «⏱ faltan horas» y NO un color. En celular
+  solo la franja verde («✓ 1,2–1,5»): el rango entero partía la fila en tres renglones. En
+  ganchos ahora salen todas las máquinas que recibieron ganchos (antes solo las que tenían
+  referencia 2025). Medido en septiembre: PUMA 2302 da 5,17 gal/h → «⚠ alto» con el rango
+  4–4,5 que se usa hoy; con el otro rango de la tabla (5–6) sería verde → la pregunta de las
+  PUMA sigue abierta y aquí se nota.
 - Para mirar la tarjeta sin sesión: montarla en un archivo temporal dentro de un contenedor
   **`.mov`** — fuera de él `--dash-s1` no existe y las barras salen vacías (no es un error de
   la tarjeta).

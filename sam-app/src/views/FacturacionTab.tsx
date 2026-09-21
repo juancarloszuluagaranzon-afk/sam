@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, setFacturaBulk } from '../services/samApi'
 import {
@@ -44,9 +45,20 @@ export function FacturacionTab() {
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
 
-  const haFacturada = realizadas.filter((a) => conFactura(a.facturaNumero)).reduce((s, a) => s + haDe(a), 0)
-  const haSinFacturar = realizadas.filter((a) => !conFactura(a.facturaNumero)).reduce((s, a) => s + haDe(a), 0)
-  const haSel = shown.filter((a) => selected.has(a.id)).reduce((s, a) => s + haDe(a), 0)
+  // 🔴 Las HORAS de servicio se facturan, pero no son hectáreas: van en su propia
+  // cuenta. (Los hectómetros siguen sumando con las hectáreas, como en el resto.)
+  const enHoras = (a: { labor: string }) => esPorHoras(a.labor)
+  const suma = (lista: typeof realizadas, horas: boolean) =>
+    lista.filter((a) => enHoras(a) === horas).reduce((s, a) => s + haDe(a), 0)
+  const facturadas = realizadas.filter((a) => conFactura(a.facturaNumero))
+  const sinFacturar = realizadas.filter((a) => !conFactura(a.facturaNumero))
+  const seleccion = shown.filter((a) => selected.has(a.id))
+  const haFacturada = suma(facturadas, false)
+  const haSinFacturar = suma(sinFacturar, false)
+  const haSel = suma(seleccion, false)
+  const hFacturada = suma(facturadas, true)
+  const hSinFacturar = suma(sinFacturar, true)
+  const hSel = suma(seleccion, true)
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -99,7 +111,8 @@ export function FacturacionTab() {
       <div className="panel-title split">
         <h2>Facturación</h2>
         <span className="subtle-copy">
-          Sin facturar: <strong>{haSinFacturar.toFixed(2)} ha</strong> · Facturada: <strong>{haFacturada.toFixed(2)} ha</strong>
+          Sin facturar: <strong>{haSinFacturar.toFixed(2)} ha</strong>{hSinFacturar > 0 && <> + <strong>{hSinFacturar.toFixed(2)} h</strong></>}
+          {' '}· Facturada: <strong>{haFacturada.toFixed(2)} ha</strong>{hFacturada > 0 && <> + <strong>{hFacturada.toFixed(2)} h</strong></>}
         </span>
       </div>
       <Ayuda>
@@ -140,7 +153,7 @@ export function FacturacionTab() {
       {/* Barra de asignación en lote */}
       {selected.size > 0 && (
         <div className="factura-bulk-bar">
-          <span><strong>{selected.size}</strong> seleccionada(s) · {haSel.toFixed(2)} ha</span>
+          <span><strong>{selected.size}</strong> seleccionada(s) · {haSel.toFixed(2)} ha{hSel > 0 ? ` + ${hSel.toFixed(2)} h` : ''}</span>
           <input
             type="text"
             value={facturaInput}
@@ -178,7 +191,7 @@ export function FacturacionTab() {
                 <td>{a.haciendaName} · {a.suerte}</td>
                 <td>{a.labor}</td>
                 <td>{a.operatorName || '—'}</td>
-                <td className="num"><strong>{haDe(a).toFixed(2)}</strong></td>
+                <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
                 <td>
                   {conFactura(a.facturaNumero)
                     ? <span className="factura-chip">{a.facturaNumero}</span>

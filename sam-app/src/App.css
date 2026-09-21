@@ -9293,7 +9293,7 @@ td.planilla-vacio:hover { background: #fde047; }
    Misma barra de `.dash-barra` (alineada con las demás del tablero) más una
    cuarta columna: la etiqueta de gal/h. En celular la barra baja a su propia
    fila, igual que las otras. */
-.dash-barra--galh { grid-template-columns: minmax(0, 12em) minmax(60px, 1fr) 5.2em 6.8em; }
+.dash-barra--galh { grid-template-columns: minmax(0, 12em) minmax(60px, 1fr) 5.2em 7.4em 9em; }
 @media (max-width: 420px) {
   /* Dos renglones: nombre · galones · gal/h arriba, la barra abajo. Sin la
      ubicación explícita la grilla lo partía en TRES (nombre solo, barra, y
@@ -9304,7 +9304,12 @@ td.planilla-vacio:hover { background: #fde047; }
   .dash-barra--galh .dash-barra__lbl { grid-column: 1; grid-row: 1; }
   .dash-barra--galh .dash-barra__val { grid-column: 2; grid-row: 1; }
   .dash-barra--galh .dash-galh { grid-column: 3; grid-row: 1; }
+  /* La barra conserva todo el ancho; los ganchos por hora van en un tercer
+     renglón SOLO en las máquinas que los reciben (ponerlos al lado de la barra
+     la encogía de ~290 a 110 px en un celular de 375). */
   .dash-barra--galh .dash-barra__track { grid-column: 1 / -1; grid-row: 2; }
+  .dash-barra--galh .dash-gch { grid-column: 1 / -1; grid-row: 3; justify-self: end; }
+  .dash-barra--galh .dash-gch--vacio { display: none; }
 }
 .dash-galh {
   justify-self: end; font-size: 0.78rem; font-weight: 800; font-variant-numeric: tabular-nums;
@@ -9380,3 +9385,23 @@ td.planilla-vacio:hover { background: #fde047; }
 :root[data-theme="dark"] .rostro-bandeja { border-color: #f0a53a; background: rgba(240, 165, 58, 0.08); }
 :root[data-theme="dark"] .rostro-fila { border-bottom-color: rgba(255, 255, 255, 0.14); }
 :root[data-theme="dark"] .rostro-foto { background: rgba(255, 255, 255, 0.07); }
+
+/* ── Semáforo de gal/hora y ganchos/hora (21-sep-2026) ─────────────────────
+   Color + símbolo + palabra (el color nunca va solo). Rangos en la tabla
+   `semaforo_consumo`; ver lib/semaforo.ts. */
+.dash-galh--verde   { background: var(--color-status-done-bg);     color: var(--color-status-done); }
+.dash-galh--naranja { background: var(--color-status-progress-bg); color: var(--color-status-progress); }
+.dash-galh--rojo    { background: var(--color-status-cancel-bg);   color: var(--color-status-cancel); }
+.dash-galh--bajo    { background: transparent; color: var(--color-ink-mid, #5a5f57); border: 1px solid currentColor; }
+:root[data-theme="dark"] .dash-galh.dash-galh--verde   { background: var(--color-status-done-bg);     color: var(--color-status-done); }
+:root[data-theme="dark"] .dash-galh.dash-galh--naranja { background: var(--color-status-progress-bg); color: var(--color-status-progress); }
+:root[data-theme="dark"] .dash-galh.dash-galh--rojo    { background: var(--color-status-cancel-bg);   color: var(--color-status-cancel); }
+:root[data-theme="dark"] .dash-galh.dash-galh--bajo    { background: transparent; color: inherit; }
+.dash-gch small { font-weight: 600; opacity: .85; }
+.dash-gch--vacio { display: block; }
+.dash-sem__resumen { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+.dash-sem__resumen .dash-galh { justify-self: auto; }
+.dash-sem__ok { font-size: 0.78rem; color: var(--color-ink-mid, #5a5f57); }
+.dash-sem__detalle { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; }
+.dash-sem__detalle p { margin: 0; line-height: 1.6; }
+.dash-sem__detalle small { color: var(--color-ink-mid, #5a5f57); }

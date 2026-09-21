@@ -1,5 +1,5 @@
 import { LOCAL_MAESTRO } from '../data/constants'
-import { ingenioNombre, slugIngenio } from '../data/ingenios'
+import { ingenioNombre, idSuerte, slugIngenio } from '../data/ingenios'
 import { DESTINO_LABEL } from '../domain/sam'
 import type {
   ValorCatalogo,
@@ -48,6 +48,8 @@ import { supabase } from '../lib/supabase'
 import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
 import { redondear2 } from '../lib/cantidad'
 import { filaMaestro } from '../lib/areaSuerte'
+import { esPorHoras } from '../lib/texto'
+import type { RangoSemaforo } from '../lib/semaforo'
 import type { Lectura } from '../lib/consumoHora'
 
 type Source = 'supabase' | 'fallback' | 'cache'
@@ -127,6 +129,14 @@ export function getAssignmentIngenioId(
   return row ? row.ingenio_id : null
 }
 
+/** ID visible de la suerte de una labor (`PIC-1001-010`). Ver `idSuerte`. */
+export function getIdSuerte(
+  assignment: { haciendaCode: string; suerte: string; haciendaName?: string; ingenioId?: string | null },
+  maestro: MaestroRow[],
+): string {
+  return idSuerte(getAssignmentIngenioId(assignment, maestro), assignment.haciendaCode, assignment.suerte)
+}
+
 function mapAssignment(row: Record<string, unknown>): Assignment {
   const suerteCode = String(row.suerte_codigo ?? '')
   const parts = suerteCode.includes('-') ? suerteCode.split('-') : []
@@ -166,6 +176,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     editadoPor: row.editado_por ? String(row.editado_por) : undefined,
     facturaNumero: row.factura_numero ? String(row.factura_numero) : null,
     ingenioId: row.ingenio_id ? String(row.ingenio_id) : null,
+    administradorEncargado: row.administrador_encargado ? String(row.administrador_encargado) : null,
   }
 }
 
@@ -175,7 +186,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
 // ⚠️ Solo columnas YA MIGRADAS en producción — agregar aquí una columna que no
 // exista en la BD rompe TODO el sync (lección factura_numero/42703).
 const ASSIGNMENT_COLS =
-  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id'
+  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id,administrador_encargado'
 
 function mapAssignmentPayload(input: CreateAssignmentInput) {
   return {
@@ -202,6 +213,8 @@ function mapAssignmentPayload(input: CreateAssignmentInput) {
     cliente: input.cliente,
     aprobacion: input.approval ?? 'APROBADA',
     zona: input.zone ?? null,
+    // Solo se manda cuando viene: una labor que no es por horas no toca la columna.
+    ...(input.administradorEncargado ? { administrador_encargado: input.administradorEncargado } : {}),
   }
 }
 
@@ -631,6 +644,41 @@ async function getPendingOutboxIds(): Promise<Set<string>> {
   return ids
 }
 
+/**
+ * Hasta dónde ya se bajó, EN HORA DEL SERVIDOR: el mayor `updated_at`/`created_at`
+ * de las filas recibidas.
+ *
+ * 🔴 Antes la marca era `new Date()` —la hora del APARATO— y el delta pedía
+ * `updated_at >= marca − 10 s` contra la hora del SERVIDOR. Un aparato con el
+ * reloj adelantado más de esos 10 s dejaba cada cambio ajeno ANTES de su marca: el
+ * delta volvía vacío siempre y lo que registraban los demás no aparecía hasta una
+ * bajada completa. Medido el 21-sep-2026: el PC de la oficina iba 72 s adelante, y
+ * una labor recién creada no salía en su lista. Sin error, sin aviso.
+ *
+ * Con la marca en hora del servidor, el reloj del aparato deja de importar. Los
+ * 10 s de margen se quedan: cubren una transacción que empezó antes y confirmó
+ * después de otra que ya se leyó.
+ *
+ * La llave es NUEVA a propósito (`assignments_marca`): cada aparato que traía una
+ * marca sacada de su propio reloj hace UNA bajada completa al actualizar y recoge
+ * lo que se le hubiera escapado. `assignments_last_sync` sigue existiendo solo
+ * para mostrar «última sincronización» en Diagnóstico.
+ */
+const LLAVE_MARCA = 'assignments_marca'
+
+function marcaDeServidor(rows: unknown[], anterior?: string | null): string | null {
+  let max = anterior ? new Date(anterior).getTime() : NaN
+  for (const r of rows) {
+    const o = r as { updated_at?: unknown; created_at?: unknown }
+    for (const v of [o.updated_at, o.created_at]) {
+      if (typeof v !== 'string') continue
+      const ms = new Date(v).getTime()
+      if (!isNaN(ms) && (isNaN(max) || ms > max)) max = ms
+    }
+  }
+  return isNaN(max) ? null : new Date(max).toISOString()
+}
+
 export async function loadAssignments(): Promise<{
   data: Assignment[]
   source: Source
@@ -652,6 +700,7 @@ export async function loadAssignments(): Promise<{
 }> {
   const cached = await db.assignments.toArray()
   const lastSync = (await db.meta.get('assignments_last_sync'))?.value
+  const marca = (await db.meta.get(LLAVE_MARCA))?.value
   const now = new Date().toISOString()
 
   try {
@@ -665,8 +714,10 @@ export async function loadAssignments(): Promise<{
     // Postgres vs JS, (b) skew de reloj entre cliente y servidor, (c)
     // latencia entre el UPDATE y la lectura. Costa pocos rows duplicados
     // en cada delta (bulkPut es idempotente sobre primary key).
-    if (lastSync && cached.length > 0) {
-      const sinceTime = new Date(new Date(lastSync).getTime() - 10000).toISOString()
+    // Borrar `assignments_last_sync` (Diagnóstico, cerrar sesión) sigue forzando la
+    // bajada completa, igual que antes.
+    if (lastSync && marca && cached.length > 0) {
+      const sinceTime = new Date(new Date(marca).getTime() - 10000).toISOString()
       const { data, error } = await supabase
         .from('asignaciones')
         .select(ASSIGNMENT_COLS)
@@ -689,14 +740,25 @@ export async function loadAssignments(): Promise<{
         const pendingIds = await getPendingOutboxIds()
         const safeDeltas =
           pendingIds.size > 0 ? deltas.filter((d) => !pendingIds.has(d.id)) : deltas
-        if (safeDeltas.length > 0) {
-          await db.assignments.bulkPut(safeDeltas)
+        // El margen de 10 s re-trae SIEMPRE la última fila escrita aunque nadie haya
+        // tocado nada. Cambio = fila que no estaba o cuya versión del servidor es otra;
+        // si no, `changed` saldría en true cada 30 s y la app entera se redibujaría.
+        const cachedById = new Map(cached.map((c) => [c.id, c]))
+        const nuevas = safeDeltas.filter((d) => {
+          const c = cachedById.get(d.id)
+          return !c || c.updatedAt !== d.updatedAt
+        })
+        if (nuevas.length > 0) {
+          await db.assignments.bulkPut(nuevas)
         }
         const all = await db.assignments.toArray()
         all.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
         void db.meta.put({ key: 'assignments_last_sync', value: now })
+        // Sin filas nuevas la marca NO se mueve: avanzarla a «ahora» es justo el error.
+        const nueva = marcaDeServidor(rawDelta, marca)
+        if (nueva && nueva !== marca) void db.meta.put({ key: LLAVE_MARCA, value: nueva })
         // El delta vacio es el caso NORMAL: nada que avisar.
-        return { data: all, source: 'supabase', error: null, changed: safeDeltas.length > 0 }
+        return { data: all, source: 'supabase', error: null, changed: nuevas.length > 0 }
       }
       // rawDelta.length >= 1000 → posible cap; continúa al full sync abajo.
     }
@@ -748,6 +810,8 @@ export async function loadAssignments(): Promise<{
         await db.assignments.bulkPut(localPendingRows)
       }
       await db.meta.put({ key: 'assignments_last_sync', value: now })
+      const nueva = marcaDeServidor(rawRows)
+      if (nueva) await db.meta.put({ key: LLAVE_MARCA, value: nueva })
     } catch {
       // No bloqueamos el retorno por fallos de escritura local: el caller
       // igual recibe los datos. La proxima sincronizacion intentara escribir
@@ -1082,7 +1146,11 @@ function mapLabor(row: Record<string, unknown>): Labor {
     activa: row.activa == null ? true : Boolean(row.activa),
     tipo: tipo === 'MANUAL' ? 'MANUAL' : 'MECANIZADA',
     metaHaDia: row.meta_ha_dia == null ? null : Number(row.meta_ha_dia),
-    unidad: String(row.unidad ?? 'ha').toLowerCase() === 'hm' ? 'hm' : 'ha',
+    unidad: (() => {
+      const u = String(row.unidad ?? 'ha').toLowerCase()
+      return u === 'hm' ? 'hm' : u === 'h' ? 'h' : 'ha'
+    })(),
+    soloAdministracion: row.solo_administracion === true,
   }
 }
 
@@ -1123,12 +1191,17 @@ export async function createLabor(
 
 export async function updateLabor(
   id: string,
-  patch: { nombre?: string; activa?: boolean; tipo?: LaborTipo; metaHaDia?: number | null },
+  patch: {
+    nombre?: string; activa?: boolean; tipo?: LaborTipo; metaHaDia?: number | null
+    unidad?: 'ha' | 'hm' | 'h'; soloAdministracion?: boolean
+  },
 ): Promise<Labor> {
   const payload: Record<string, unknown> = { updated_at: new Date().toISOString() }
   if (patch.nombre !== undefined) payload.nombre = patch.nombre.trim().toUpperCase()
   if (patch.activa !== undefined) payload.activa = patch.activa
   if (patch.tipo !== undefined) payload.tipo = patch.tipo
+  if (patch.unidad !== undefined) payload.unidad = patch.unidad
+  if (patch.soloAdministracion !== undefined) payload.solo_administracion = patch.soloAdministracion
   if (patch.metaHaDia !== undefined) payload.meta_ha_dia = patch.metaHaDia
 
   const { data, error } = await supabase
@@ -2670,6 +2743,22 @@ export async function entregarDirecto(input: {
  * máquina). Filtra por rango de fechas si se pasa. Se une a `insumos` para el
  * nombre/unidad sin depender del contexto.
  */
+/** Rangos del semáforo de gal/hora y ganchos/hora (tabla `semaforo_consumo`). */
+export async function loadSemaforos(): Promise<RangoSemaforo[]> {
+  const { data, error } = await supabase
+    .from('semaforo_consumo')
+    .select('indicador,maquina,verde_min,verde_max,naranja_max,nota')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => ({
+    indicador: r.indicador as RangoSemaforo['indicador'],
+    maquina: String(r.maquina),
+    verdeMin: r.verde_min == null ? null : Number(r.verde_min),
+    verdeMax: Number(r.verde_max),
+    naranjaMax: Number(r.naranja_max),
+    nota: r.nota ? String(r.nota) : null,
+  }))
+}
+
 export async function loadKardexReporte(opts?: { desde?: string; hasta?: string; limit?: number }): Promise<InsumoKardex[]> {
   let query = supabase
     .from('insumos_kardex')
@@ -3862,6 +3951,11 @@ export interface RegistrarLaborInput {
   cliente: 'ingenios' | 'proveedores'
   zone: Zone | null
   notes?: string
+  // Servicio por horas: cuándo empezó y terminó DE VERDAD (no «ahora»), y quién
+  // lo recibió. Sin estos dos instantes no hay horas por reloj.
+  startedAt?: string | null
+  finishedAt?: string | null
+  administradorEncargado?: string | null
 }
 
 /**
@@ -3885,8 +3979,9 @@ export async function registrarLaborRealizada(input: RegistrarLaborInput) {
     area_asignada: input.area,
     area_realizada: input.area,
     estado: 'COMPLETADA',
-    fecha_inicio: now,
-    fecha_fin: now,
+    fecha_inicio: input.startedAt ?? now,
+    fecha_fin: input.finishedAt ?? now,
+    ...(input.administradorEncargado ? { administrador_encargado: input.administradorEncargado } : {}),
     horometro_inicial: input.horometroInicial,
     horometro_final: input.horometroFinal,
     tipo_area: 'NETA',
@@ -4001,6 +4096,7 @@ export async function updateAssignment(
   }
   if (input.horometroInicial !== undefined) payload.horometro_inicial = input.horometroInicial
   if (input.horometroFinal !== undefined) payload.horometro_final = input.horometroFinal
+  if (input.administradorEncargado !== undefined) payload.administrador_encargado = input.administradorEncargado || null
   if (input.approval !== undefined) payload.aprobacion = input.approval
   if (input.approvedBy !== undefined) payload.aprobada_por = input.approvedBy
   if (input.approvedAt !== undefined) payload.aprobada_en = input.approvedAt
@@ -4050,9 +4146,12 @@ export function summarizeAssignments(
   targetDate: string,
 ): DashboardMetrics {
   // Include assignments created today OR completed/parcial today (prior-day carryovers).
+  // 🔴 Las labores POR HORAS (oficios varios) quedan por fuera: `area` y
+  // `executedArea` ahí son horas, y sumarlas daría «hectáreas» que no existen.
   const relevant = assignments.filter(
     (a) =>
       a.status !== 'CANCELADA' &&
+      !esPorHoras(a.labor) &&
       (a.dateKey === targetDate ||
         ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') &&
           dayKey(a.finishedAt) === targetDate)),

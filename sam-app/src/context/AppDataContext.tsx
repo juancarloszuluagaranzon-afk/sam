@@ -1,6 +1,7 @@
 import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useSync } from '../hooks/useSync'
 import { db } from '../lib/db'
+import { registrarUnidades } from '../lib/texto'
 import type { Assignment, Empresa, Ingenio, Equipment, Insumo, Labor, MaestroRow, Motivacion, Tercero, UserProfile, Zona } from '../domain/sam'
 import { loadNovedadTipos, type NovedadTipoCat } from '../services/novedadTiposApi'
 import { WORKFLOW } from '../data/constants'
@@ -322,21 +323,36 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   )
   const metrics = useMemo(() => summarizeAssignments(assignments, todayKey), [assignments, todayKey])
 
+  // La unidad de cada labor (ha / hm / h) sale del catálogo: se registra para
+  // que `unidadDeLabor(nombre)` la sepa en todas las pantallas. Va en un
+  // `useMemo` y no en un efecto A PROPÓSITO: tiene que quedar registrada ANTES
+  // de que se dibujen las pantallas de este mismo render, o la primera pintura
+  // después de cargar el catálogo saldría con la unidad vieja.
+  useMemo(() => registrarUnidades(labores), [labores])
+
   // Nombres de labores ACTIVAS, alfabético. Si el catálogo aún no cargó (primer
   // arranque sin caché, o antes de correr la migración), cae a WORKFLOW para no
   // dejar los selectores vacíos.
+  //
+  // 🔴 Las labores `soloAdministracion` (OFICIOS VARIOS, servicio por horas)
+  // solo se le ofrecen al dueño y a administración: las administra Carlos David,
+  // no los supervisores. La base además lo exige al insertar.
+  const puedeAdministrar = session?.role === 'owner' || session?.role === 'administracion'
   const activeLabores = useMemo(() => {
-    const names = labores.filter((l) => l.activa).map((l) => l.nombre)
+    const names = labores
+      .filter((l) => l.activa && (puedeAdministrar || !l.soloAdministracion))
+      .map((l) => l.nombre)
     const base = names.length ? names : [...WORKFLOW]
     return base.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
-  }, [labores])
+  }, [labores, puedeAdministrar])
 
   // Activas Y mecanizadas, para el operario de tractor. Si el catálogo aún no
   // cargó cae a WORKFLOW (que es todo mecanizado salvo REPIQUE; aceptable como
   // fallback transitorio hasta el primer sync).
   const fieldLabores = useMemo(() => {
     // tipo ausente (caché vieja) se trata como mecanizada → no se oculta por error.
-    const loaded = labores.filter((l) => l.activa && l.tipo !== 'MANUAL').map((l) => l.nombre)
+    // …y las de solo administración tampoco se toman en campo.
+    const loaded = labores.filter((l) => l.activa && l.tipo !== 'MANUAL' && !l.soloAdministracion).map((l) => l.nombre)
     const base = labores.length ? loaded : [...WORKFLOW]
     return base.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }))
   }, [labores])

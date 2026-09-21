@@ -23,6 +23,8 @@ import { PERIODOS, rangoDe, type Periodo } from '../lib/periodos'
 /** Área que cuenta como ejecutada (solo labores cerradas: es lo que se paga). */
 function areaEjec(a: Assignment): number {
   if (a.status !== 'COMPLETADA' && a.status !== 'PARCIAL') return 0
+  // Un servicio por horas no aporta hectáreas: su número son horas.
+  if (unidadDeLabor(a.labor) === 'h') return 0
   return a.executedArea > 0 ? a.executedArea : a.area
 }
 

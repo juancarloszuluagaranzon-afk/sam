@@ -3,12 +3,13 @@ import type { Assignment, InsumoKardex } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 import { nfGrafico, SERIES } from '../components/Charts'
 import { fmtFechaHora } from '../lib/fechas'
-import { combustiblePorMaquina, type Catalogo } from '../lib/insumosDash'
+import { combustiblePorMaquina, ganchosPorMaquina, type Catalogo } from '../lib/insumosDash'
+import { NIVEL, describirRango, nivelDe, rangoDe, type NivelSemaforo, type RangoSemaforo } from '../lib/semaforo'
 import {
   consumoPorHora, diasDelRango, lecturasDeLabores,
   type FilaConsumoHora, type Lectura,
 } from '../lib/consumoHora'
-import { loadLecturasHorometro } from '../services/samApi'
+import { loadLecturasHorometro, loadSemaforos } from '../services/samApi'
 
 /**
  * Combustible por hora de máquina: una barra por máquina con los galones del
@@ -37,6 +38,14 @@ export function ConsumoHoraCard({
 }) {
   const [otras, setOtras] = useState<Lectura[] | null>(null)
   const [ver, setVer] = useState<FilaConsumoHora | null>(null)
+  // Rangos del semáforo: vienen de la base (el cliente los ajusta). Si no cargan,
+  // la gráfica sigue igual que antes, sin colores — nunca inventa un verde.
+  const [rangos, setRangos] = useState<RangoSemaforo[]>([])
+  useEffect(() => {
+    let vivo = true
+    loadSemaforos().then((r) => { if (vivo) setRangos(r) }).catch(() => { /* sin semáforo */ })
+    return () => { vivo = false }
+  }, [])
 
   useEffect(() => {
     let vivo = true
@@ -59,6 +68,33 @@ export function ConsumoHoraCard({
       nombreMaq,
     })
   }, [movs, catalogo, nombreMaq, cerradas, otras, desde, hasta])
+
+  /** Ganchos entregados a cada máquina en el periodo (unidades). */
+  const ganchos = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const p of ganchosPorMaquina(movs, catalogo, nombreMaq)) m.set(p.id, p.valor)
+    return m
+  }, [movs, catalogo, nombreMaq])
+
+  /** Semáforo de cada máquina: gal/h y ganchos/h, cada uno contra su rango. */
+  const semaforo = useMemo(() => {
+    const m = new Map<string, {
+      gal: NivelSemaforo | null; rangoGal: RangoSemaforo | null
+      ganchos: number; ganchosHora: number | null; gch: NivelSemaforo | null; rangoGch: RangoSemaforo | null
+    }>()
+    for (const f of filas) {
+      const rangoGal = rangoDe(rangos, 'gal_hora', f.nombre)
+      const g = ganchos.get(f.maquina) ?? 0
+      const ganchosHora = g > 0 && f.horas != null && f.horas > 0 ? Math.round((g / f.horas) * 100) / 100 : null
+      const rangoGch = g > 0 ? rangoDe(rangos, 'ganchos_hora', f.nombre) : null
+      m.set(f.maquina, {
+        gal: nivelDe(f.galPorHora, rangoGal), rangoGal,
+        ganchos: g, ganchosHora, gch: nivelDe(ganchosHora, rangoGch), rangoGch,
+      })
+    }
+    return m
+  }, [filas, rangos, ganchos])
+  const cuenta = (n: NivelSemaforo) => [...semaforo.values()].filter((s) => s.gal === n).length
 
   // Promedio de la flota SOLO con las máquinas que tienen horas: sumar galones
   // de una máquina sin horómetro inflaría el gal/hora de todas.
@@ -99,8 +135,16 @@ export function ConsumoHoraCard({
               {conHoras.length < filas.length && ` · ${filas.length - conHoras.length} sin horas`}
             </p>
           )}
+          {rangos.length > 0 && (cuenta('rojo') + cuenta('naranja') + cuenta('bajo')) > 0 && (
+            <p className="dash-sem__resumen">
+              {cuenta('rojo') > 0 && <span className="dash-galh dash-galh--rojo">{NIVEL.rojo.icono} {cuenta('rojo')} alto</span>}
+              {cuenta('naranja') > 0 && <span className="dash-galh dash-galh--naranja">{NIVEL.naranja.icono} {cuenta('naranja')} medio</span>}
+              {cuenta('bajo') > 0 && <span className="dash-galh dash-galh--bajo">{NIVEL.bajo.icono} {cuenta('bajo')} debajo del rango</span>}
+              <span className="dash-sem__ok">{NIVEL.verde.icono} {cuenta('verde')} dentro</span>
+            </p>
+          )}
           <div className="dash-barras">
-            {filas.map((f) => (
+            {filas.map((f) => { const s = semaforo.get(f.maquina); return (
               <button
                 key={f.maquina}
                 type="button"
@@ -117,18 +161,35 @@ export function ConsumoHoraCard({
                   <span className="dash-galh dash-galh--sin">…</span>
                 ) : f.galPorHora != null ? (
                   <span
-                    className={`dash-galh${f.cruceTanqueo.discrepa ? ' dash-galh--ojo' : ''}`}
-                    title={f.cruceTanqueo.discrepa
-                      ? `Entre tanqueos: ${nfGrafico(f.cruceTanqueo.horasMismasFechas ?? 0, 1)} h con todas las lecturas y ${nfGrafico(f.cruceTanqueo.horas ?? 0, 1)} h al tanquear: revisar`
-                      : `${nfGrafico(f.horas ?? 0, 1)} h de horómetro`}
+                    className={`dash-galh${s?.gal ? ` dash-galh--${s.gal}` : ''}${f.cruceTanqueo.discrepa ? ' dash-galh--ojo' : ''}`}
+                    title={[
+                      s?.gal && s.rangoGal ? `${NIVEL[s.gal].texto} (${describirRango(s.rangoGal)})` : 'sin rango para esta máquina',
+                      f.cruceTanqueo.discrepa
+                        ? `entre tanqueos: ${nfGrafico(f.cruceTanqueo.horasMismasFechas ?? 0, 1)} h con todas las lecturas y ${nfGrafico(f.cruceTanqueo.horas ?? 0, 1)} h al tanquear: revisar`
+                        : `${nfGrafico(f.horas ?? 0, 1)} h de horómetro`,
+                    ].join(' · ')}
                   >
-                    {f.cruceTanqueo.discrepa && '⚠ '}{nfGrafico(f.galPorHora, 2)} gal/h
+                    {/* ≠ = el horómetro de tanqueo no cuadra (antes era ⚠, que ahora es «alto»). */}
+                    {f.cruceTanqueo.discrepa && '≠ '}{s?.gal && `${NIVEL[s.gal].icono} `}{nfGrafico(f.galPorHora, 2)} gal/h
                   </span>
                 ) : (
                   <span className="dash-galh dash-galh--sin" title={f.problema ?? ''}>sin horas</span>
                 )}
+                {/* Ganchos por hora: solo si la máquina recibió ganchos en el periodo. */}
+                {s && s.ganchos > 0 ? (
+                  s.ganchosHora != null ? (
+                    <span
+                      className={`dash-galh dash-gch${s.gch ? ` dash-galh--${s.gch}` : ''}`}
+                      title={`${nfGrafico(s.ganchos, 0)} ganchos en ${nfGrafico(f.horas ?? 0, 1)} h${s.gch && s.rangoGch ? ` · ${NIVEL[s.gch].texto} (${describirRango(s.rangoGch)})` : ''}`}
+                    >
+                      {s.gch && `${NIVEL[s.gch].icono} `}{nfGrafico(s.ganchosHora, 2)}<small> ganchos/h</small>
+                    </span>
+                  ) : (
+                    <span className="dash-galh dash-gch dash-galh--sin" title="Sin horas: no hay contra qué dividir">{nfGrafico(s.ganchos, 0)}<small> ganchos</small></span>
+                  )
+                ) : <span className="dash-gch dash-gch--vacio" aria-hidden="true" />}
               </button>
-            ))}
+            ) })}
           </div>
           {unSoloDia && (
             <p className="dash-galha__nota">Un solo día: orientativo, el tanqueo de hoy alimenta también mañana.</p>
@@ -153,6 +214,32 @@ export function ConsumoHoraCard({
               <div className="dash-kpi"><span className="dash-kpi__val">{ver.usadas}</span><span className="dash-kpi__lbl">lecturas usadas</span></div>
             </div>
             {ver.problema && <p className="mov-alerta">⚠ {ver.problema}.</p>}
+            {(() => {
+              const s = semaforo.get(ver.maquina)
+              if (!s) return null
+              return (
+                <div className="dash-sem__detalle">
+                  <p>
+                    <strong>Galones por hora:</strong>{' '}
+                    {s.gal ? <span className={`dash-galh dash-galh--${s.gal}`}>{NIVEL[s.gal].icono} {NIVEL[s.gal].texto}</span>
+                      : ver.galPorHora == null ? 'sin horas, sin semáforo' : 'sin rango para esta máquina'}
+                    {s.rangoGal && <small> · {describirRango(s.rangoGal)} gal/h</small>}
+                    {s.rangoGal?.nota && <small> · {s.rangoGal.nota}</small>}
+                  </p>
+                  {s.ganchos > 0 && (
+                    <p>
+                      <strong>Ganchos:</strong> {nfGrafico(s.ganchos, 0)} en el periodo
+                      {s.ganchosHora != null && <> · {nfGrafico(s.ganchosHora, 2)} por hora </>}
+                      {s.gch && <span className={`dash-galh dash-galh--${s.gch}`}>{NIVEL[s.gch].icono} {NIVEL[s.gch].texto}</span>}
+                      {s.rangoGch && <small> · {describirRango(s.rangoGch)} por hora</small>}
+                    </p>
+                  )}
+                  {s.gal === 'bajo' && (
+                    <p className="dash-galha__nota">Debajo del rango casi siempre es un registro que falta —un tanqueo o una entrega sin anotar— o un horómetro que corrió de más. Revisar antes de celebrar.</p>
+                  )}
+                </div>
+              )
+            })()}
             <div className="dash-galh__lecturas">
               <LecturaFila titulo="Horómetro inicial" l={ver.inicial} />
               <LecturaFila titulo="Horómetro final" l={ver.final} />

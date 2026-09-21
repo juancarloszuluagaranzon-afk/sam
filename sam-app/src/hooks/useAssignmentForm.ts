@@ -3,6 +3,8 @@ import { useAppData } from '../context/AppDataContext'
 import type { Assignment, UpdateAssignmentInput, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import type { AssignmentFormState } from '../views/SupervisorView'
+import { esPorHoras, aMayus } from '../lib/texto'
+import { recordarValor } from '../components/CampoPlaca'
 import { createAssignment as apiCreateAssignment, loadAssignments, updateAssignment } from '../services/samApi'
 import { findReusableAssignment, isSameCycle } from '../utils/suerteCycle'
 
@@ -95,6 +97,7 @@ const EMPTY_FORM: AssignmentFormState = {
   ingenioId: '',
   supervisorId: '',
   zone: '',
+  administradorEncargado: '',
 }
 
 interface Options {
@@ -195,6 +198,20 @@ export function useAssignmentForm(options?: Options) {
     }
     const zone: Zone = assignmentForm.zone
 
+    // 🔴 Servicio POR HORAS (OFICIOS VARIOS). No tiene nada que ver con el área
+    // de la suerte: no hay «restante», no hay «completa», no nace con hectáreas
+    // planificadas (nace en 0 y las horas salen al cerrar), y NO reusa una línea
+    // pendiente — dos máquinas pueden estar de oficios varios en la misma
+    // hacienda el mismo día, y reusar le pisaría el servicio a la otra.
+    const porHoras = esPorHoras(assignmentForm.labor)
+    if (porHoras && assignmentSuertesList.length !== 1) {
+      setError('Un servicio por horas se programa en UNA sola suerte: donde va a trabajar la máquina.')
+      return
+    }
+    const administradorEncargado = porHoras
+      ? aMayus(assignmentForm.administradorEncargado.trim()) || null
+      : undefined
+
     const operator2 = assignmentForm.operatorId2
       ? operators.find((item) => item.id === assignmentForm.operatorId2)
       : null
@@ -231,7 +248,7 @@ export function useAssignmentForm(options?: Options) {
           todayKey,
         ) === 0,
     )
-    if (suertesCompletas.length > 0) {
+    if (!porHoras && suertesCompletas.length > 0) {
       setError(
         `La labor "${assignmentForm.labor}" ya está completamente ejecutada en: ${suertesCompletas.map((r) => r.suerte).join(', ')}. Solo se puede programar si hay área pendiente.`,
       )
@@ -276,8 +293,8 @@ export function useAssignmentForm(options?: Options) {
       const steps = pairs.flatMap(([op, eq]) =>
         maestroRows.map((maestroRow) => {
           const suerteCode = `${maestroRow.haciendaCode}-${maestroRow.suerte}`
-          const area = getRemainingArea(assignments, suerteCode, assignmentForm.labor, maestroRow.area, todayKey)
-          const reusable = findReusableAssignment(assignments, suerteCode, assignmentForm.labor, usedReusableIds)
+          const area = porHoras ? 0 : getRemainingArea(assignments, suerteCode, assignmentForm.labor, maestroRow.area, todayKey)
+          const reusable = porHoras ? undefined : findReusableAssignment(assignments, suerteCode, assignmentForm.labor, usedReusableIds)
           if (reusable) usedReusableIds.add(reusable.id)
           return { op, eq, maestroRow, suerteCode, area, reusable }
         }),
@@ -347,6 +364,7 @@ export function useAssignmentForm(options?: Options) {
               initialStatus: 'PENDIENTE',
               approval: 'APROBADA',
               zone,
+              administradorEncargado,
             }
             const local: Assignment = {
               id: tempId,
@@ -376,6 +394,7 @@ export function useAssignmentForm(options?: Options) {
               approvedBy: session.id,
               approvedAt: now,
               zone,
+              administradorEncargado: administradorEncargado ?? null,
             }
             await db.outbox.add({ type: 'CREATE', createInput, tempId, queuedAt: now, status: 'pending' })
             await db.assignments.put(local)
@@ -430,6 +449,7 @@ export function useAssignmentForm(options?: Options) {
               initialStatus: 'PENDIENTE',
               approval: 'APROBADA',
               zone,
+              administradorEncargado,
             })
           }),
         )
@@ -441,6 +461,7 @@ export function useAssignmentForm(options?: Options) {
         )
       }
 
+      if (administradorEncargado) recordarValor('ADMIN_ENCARGADO', administradorEncargado)
       setAssignmentForm(EMPTY_FORM)
       setAssignmentSuertesList([])
       options?.onAssignmentCreated?.()

@@ -1,4 +1,6 @@
 import { unidadDeLabor } from '../lib/texto'
+import { horasDeServicio } from '../lib/horasServicio'
+import { fmtHora } from '../lib/fechas'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
@@ -365,17 +367,23 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
        * planilla con la que se paga.
        */
       perDayHm: Record<string, number>
+      /**
+       * HORAS de servicio (OFICIOS VARIOS y cualquier labor por horas). Tercera
+       * unidad, tercer cubo: ni se suma con las hectáreas ni con los hectómetros.
+       */
+      perDayH: Record<string, number>
       // true si ese día hay alguna labor EN_PROCESO (aún sin cerrar) → se pinta naranja.
       perDayProceso: Record<string, boolean>
       total: number
       totalHm: number
+      totalH: number
     }
     const map = new Map<string, Row>()
     // 1) Sembrar TODOS los operarios del catálogo (rol operador) con fila vacía.
     //    .trim() defensivo: algunos nombres en BD traen espacios/NBSP al inicio
     //    que rompían el orden alfabético (quedaban arriba de todo).
     for (const o of operators) {
-      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, perDayHm: {}, perDayProceso: {}, total: 0, totalHm: 0 })
+      map.set(o.id, { id: o.id, name: o.name.trim(), perDay: {}, perDayHm: {}, perDayH: {}, perDayProceso: {}, total: 0, totalHm: 0, totalH: 0 })
     }
     // Avance ya CERRADO (executedArea) por suerte+labor, para estimar el restante
     // de las labores EN_PROCESO sin duplicar lo ya hecho en días anteriores.
@@ -392,14 +400,18 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       const key = id && map.has(id) ? id : id || `name:${name.trim().toUpperCase()}`
       let row = map.get(key)
       if (!row) {
-        row = { id: id || key, name, perDay: {}, perDayHm: {}, perDayProceso: {}, total: 0, totalHm: 0 }
+        row = { id: id || key, name, perDay: {}, perDayHm: {}, perDayH: {}, perDayProceso: {}, total: 0, totalHm: 0, totalH: 0 }
         map.set(key, row)
       }
       // Área real del día — misma regla que ve el operario en su pantalla.
       const { area: val, enProceso } = areaDelDia(a, cerradoBySuerte)
       if (enProceso) row.perDayProceso[dk] = true
       // Cada unidad a su columna. Mezclarlas era el error de fondo.
-      if (unidadDeLabor(a.labor) === 'hm') {
+      const unidad = unidadDeLabor(a.labor)
+      if (unidad === 'h') {
+        row.perDayH[dk] = (row.perDayH[dk] ?? 0) + val
+        row.totalH += val
+      } else if (unidad === 'hm') {
         row.perDayHm[dk] = (row.perDayHm[dk] ?? 0) + val
         row.totalHm += val
       } else {
@@ -462,6 +474,16 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     }
   }, [assignments, planillaMonth, planillaQuincena, todayKey])
 
+  /** Los servicios por horas del periodo, uno por uno, con sus DOS medidas. */
+  const servicios = useMemo(() => {
+    return assignments
+      .filter((a) => cuentaEnPlanilla(a) && unidadDeLabor(a.labor) === 'h'
+        && matchesSummaryFilter(executionDateKey(a), planillaMonth, planillaQuincena, todayKey))
+      .map((a) => ({ a, hs: horasDeServicio(a) }))
+      .sort((x, y) => executionDateKey(x.a).localeCompare(executionDateKey(y.a))
+        || (x.a.operatorName || '').localeCompare(y.a.operatorName || '', 'es'))
+  }, [assignments, planillaMonth, planillaQuincena, todayKey])
+
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase()
     return rows.filter(
@@ -519,17 +541,21 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
   const dayTotals = useMemo(() => {
     const t: Record<string, number> = {}
     const tHm: Record<string, number> = {}
+    const tH: Record<string, number> = {}
     let grand = 0
     let grandHm = 0
+    let grandH = 0
     for (const r of filteredRows) {
       for (const d of days) {
         t[d.key] = (t[d.key] ?? 0) + (r.perDay[d.key] ?? 0)
         tHm[d.key] = (tHm[d.key] ?? 0) + (r.perDayHm[d.key] ?? 0)
+        tH[d.key] = (tH[d.key] ?? 0) + (r.perDayH[d.key] ?? 0)
       }
       grand += r.total
       grandHm += r.totalHm
+      grandH += r.totalH
     }
-    return { t, tHm, grand, grandHm }
+    return { t, tHm, tH, grand, grandHm, grandH }
   }, [filteredRows, days])
 
   const quincenaLabel = planillaQuincena === 'SEGUNDA' ? '2da quincena (16-fin)' : '1ra quincena (1-15)'
@@ -555,41 +581,70 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       // que era justo el problema entre ha y hm.
       const horasDe = (nombre: string) =>
         horometros.filas.find((f) => f.nombre === nombre.trim())?.total ?? 0
-      const header = ['Operario', ...days.map((d) => `${d.weekday}${d.day}`),
-        'Total', 'Total ha', 'Total hm', 'Total horas']
-      const body = filteredRows.map((r) => [
-        r.name,
-        ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
-        // El total de siempre, y enseguida de qué está hecho. El Excel de la
-        // planilla es con el que se liquida, así que lleva las tres.
-        Number((r.total + r.totalHm).toFixed(2)),
-        Number(r.total.toFixed(2)),
-        r.totalHm > 0 ? Number(r.totalHm.toFixed(2)) : '',
-        horasDe(r.name) > 0 ? Number(horasDe(r.name).toFixed(2)) : '',
-      ])
-      const footer = [
-        'Total',
+      // 🔴 UNA FILA POR UNIDAD. Antes las casillas de los días solo escribían
+      // hectáreas: el día que un operario hizo ACEQUIAS salía VACÍO en el Excel
+      // (los hectómetros solo aparecían sumados al final, en «Total hm»), y lo
+      // reportaron así: «no se ve cuando la descargan». En pantalla sí se veía.
+      // Ahora cada operario lleva su fila de hectáreas y, DEBAJO y solo si tiene,
+      // la de hectómetros y la de horas de servicio. Números de verdad en cada
+      // casilla —no un texto «5,2 + 12 hm»—, para que nómina pueda sumar y
+      // aplicar una tarifa por fila.
+      const header = ['Operario', 'Unidad', ...days.map((d) => `${d.weekday}${d.day}`),
+        'Total', 'Total ha', 'Total hm', 'Total horas servicio', 'Horas máquina (horómetro)']
+      const body: (string | number)[][] = []
+      for (const r of filteredRows) {
+        body.push([
+          r.name, 'ha',
+          ...days.map((d) => cellFor(r.id || r.name, d.key, r.perDay[d.key] ?? 0)),
+          // El total de siempre (ha + hm, decisión del cliente), y de qué está
+          // hecho. Las HORAS no entran en «Total»: son tiempo, no terreno.
+          Number((r.total + r.totalHm).toFixed(2)),
+          Number(r.total.toFixed(2)),
+          r.totalHm > 0 ? Number(r.totalHm.toFixed(2)) : '',
+          r.totalH > 0 ? Number(r.totalH.toFixed(2)) : '',
+          horasDe(r.name) > 0 ? Number(horasDe(r.name).toFixed(2)) : '',
+        ])
+        if (r.totalHm > 0) {
+          body.push([`   ↳ ${r.name}`, 'hm', ...days.map((d) => cell(r.perDayHm[d.key] ?? 0)),
+            '', '', Number(r.totalHm.toFixed(2)), '', ''])
+        }
+        if (r.totalH > 0) {
+          body.push([`   ↳ ${r.name}`, 'horas', ...days.map((d) => cell(r.perDayH[d.key] ?? 0)),
+            '', '', '', Number(r.totalH.toFixed(2)), ''])
+        }
+      }
+      const footer: (string | number)[][] = [[
+        'Total', 'ha',
         ...days.map((d) => cell(dayTotals.t[d.key] ?? 0)),
         Number((dayTotals.grand + dayTotals.grandHm).toFixed(2)),
         Number(dayTotals.grand.toFixed(2)),
         dayTotals.grandHm > 0 ? Number(dayTotals.grandHm.toFixed(2)) : '',
+        dayTotals.grandH > 0 ? Number(dayTotals.grandH.toFixed(2)) : '',
         Number(horometros.filas.reduce((s, f) => s + f.total, 0).toFixed(2)),
-      ]
+      ]]
+      if (dayTotals.grandHm > 0) {
+        footer.push(['Total', 'hm', ...days.map((d) => cell(dayTotals.tHm[d.key] ?? 0)),
+          '', '', Number(dayTotals.grandHm.toFixed(2)), '', ''])
+      }
+      if (dayTotals.grandH > 0) {
+        footer.push(['Total', 'horas', ...days.map((d) => cell(dayTotals.tH[d.key] ?? 0)),
+          '', '', '', Number(dayTotals.grandH.toFixed(2)), ''])
+      }
       const aoa = [
         [`Planilla quincenal · ${monthLabel} · ${quincenaLabel}`],
         [horometros.conProblema > 0
-          ? `Hectáreas abiertas por operario y día · ⚠ ${horometros.conProblema} lectura${horometros.conProblema === 1 ? '' : 's'} de horómetro sin usar (ver hoja «Horómetros detalle»)`
-          : 'Hectáreas abiertas por operario y día'],
+          ? `Por operario y día, una fila por unidad (ha · hm · horas de servicio) · ⚠ ${horometros.conProblema} lectura${horometros.conProblema === 1 ? '' : 's'} de horómetro sin usar (ver hoja «Horómetros detalle»)`
+          : 'Por operario y día, una fila por unidad (ha · hm · horas de servicio)'],
         [],
         header,
         ...body,
-        footer,
+        ...footer,
       ]
       const ws = utils.aoa_to_sheet(aoa)
       // Un ancho por cada columna de total: eran cuatro y solo se declaraba
       // uno, asi que «Total horas» salia cortado.
-      ws['!cols'] = [{ wch: 24 }, ...days.map(() => ({ wch: 6 })),
-        { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 11 }]
+      ws['!cols'] = [{ wch: 30 }, { wch: 7 }, ...days.map(() => ({ wch: 6 })),
+        { wch: 9 }, { wch: 9 }, { wch: 9 }, { wch: 18 }, { wch: 22 }]
       const wb = utils.book_new()
       utils.book_append_sheet(wb, ws, 'Planilla')
 
@@ -637,6 +692,34 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       wsDet['!cols'] = [{ wch: 11 }, { wch: 30 }, { wch: 13 }, { wch: 22 },
         { wch: 16 }, { wch: 15 }, { wch: 8 }, { wch: 30 }]
       utils.book_append_sheet(wb, wsDet, 'Horómetros detalle')
+
+      // ── Hoja 4: los servicios por horas, uno por uno ─────────────────
+      // Lo que administración necesita para cobrar y para auditar: quién recibió
+      // el servicio, las DOS medidas (reloj y horómetro) y cuál de las dos contó.
+      if (servicios.length > 0) {
+        const aoaServ = [
+          ['Día', 'Operario', 'Máquina', 'Labor', 'Hacienda', 'Suerte', 'Administrador encargado',
+            'Hora de inicio', 'Hora final', 'Horas por reloj', 'Horómetro inicial', 'Horómetro final',
+            'Horas por horómetro', 'HORAS QUE CUENTAN', 'Salieron de', 'Estado', 'Revisar'],
+          ...servicios.map(({ a, hs }) => [
+            executionDateKey(a), (a.operatorName || '').trim(), a.equipmentName || a.equipmentCode || '', a.labor,
+            a.haciendaName, a.suerte, a.administradorEncargado ?? '',
+            fmtHora(a.startedAt), fmtHora(a.finishedAt), hs.porReloj ?? '',
+            a.horometroInicial ?? '', a.horometroFinal ?? '', hs.porHorometro ?? '',
+            a.status === 'EN_PROCESO' ? '' : Number((a.executedArea ?? 0).toFixed(2)),
+            a.status === 'EN_PROCESO' ? '' : hs.porHorometro != null && Math.abs((a.executedArea ?? 0) - hs.porHorometro) < 0.011 ? 'horómetro'
+              : hs.porReloj != null && Math.abs((a.executedArea ?? 0) - hs.porReloj) < 0.011 ? 'reloj' : 'corregidas a mano',
+            a.status === 'EN_PROCESO' ? 'EN CURSO' : a.approval === 'APROBADA' ? 'APROBADO' : 'POR APROBAR',
+            [hs.problemaHorometro ? `horómetro: ${hs.problemaHorometro}` : '',
+              hs.seSeparan ? 'reloj y horómetro se separan mucho' : '',
+              !a.administradorEncargado ? 'sin administrador encargado' : ''].filter(Boolean).join(' · '),
+          ]),
+        ]
+        const wsServ = utils.aoa_to_sheet(aoaServ)
+        wsServ['!cols'] = [{ wch: 11 }, { wch: 28 }, { wch: 13 }, { wch: 16 }, { wch: 22 }, { wch: 8 }, { wch: 26 },
+          { wch: 12 }, { wch: 10 }, { wch: 13 }, { wch: 15 }, { wch: 14 }, { wch: 17 }, { wch: 18 }, { wch: 16 }, { wch: 13 }, { wch: 44 }]
+        utils.book_append_sheet(wb, wsServ, 'Servicios por horas')
+      }
 
       writeFile(wb, `planilla-${planillaMonth}-${planillaQuincena.toLowerCase()}.xlsx`)
       setInfo('Planilla exportada a Excel.')
@@ -784,6 +867,7 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                 <th className="planilla-total-col">Total</th>
                 <th className="planilla-total-col">Total ha</th>
                 <th className="planilla-total-col">Total hm</th>
+                <th className="planilla-total-col">Horas serv.</th>
               </tr>
             </thead>
             <tbody>
@@ -804,15 +888,17 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                       // unidad al lado. Sumarlos con las hectáreas daba un número sin
                       // significado, y pasaba en 8 de los 17 días con acequias.
                       const vHm = r.perDayHm[d.key] ?? 0
+                      // …y las HORAS de servicio igual: tercer renglón, con su unidad.
+                      const vH = r.perDayH[d.key] ?? 0
                       const hl = revisadas.get(`${rowKey}|${d.key}`)
                       const nov = novedades.get(`${rowKey}|${d.key}`)
                       const proceso = r.perDayProceso[d.key]
-                      const numClass = (v > 0 || vHm > 0) && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
-                      const canDetail = !markMode && (v > 0 || vHm > 0) && !nov
+                      const numClass = (v > 0 || vHm > 0 || vH > 0) && !nov ? (proceso ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
+                      const canDetail = !markMode && (v > 0 || vHm > 0 || vH > 0 || !!proceso) && !nov
                       // Casilla VACÍA hasta el día de hoy (sin área, sin novedad y sin
                       // resaltado manual) → se pinta amarillo como "falta por registrar".
                       // Clic (fuera de modo resaltar) abre la novedad de ese día (default F).
-                      const vacio = v <= 0 && vHm <= 0 && !nov && !hl && d.key <= todayKey
+                      const vacio = v <= 0 && vHm <= 0 && vH <= 0 && !proceso && !nov && !hl && d.key <= todayKey
                       return (
                         <td
                           key={d.key}
@@ -846,6 +932,14 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                                 {vHm > 0 && (
                                   <span className="planilla-hm">{vHm.toFixed(2)} hm</span>
                                 )}
+                                {vH > 0 && (
+                                  <span className="planilla-hm">{vH.toFixed(2)} h</span>
+                                )}
+                                {/* Servicio por horas EN CURSO: todavía no tiene horas,
+                                    pero el día no está vacío. */}
+                                {proceso && v <= 0 && vHm <= 0 && vH <= 0 && (
+                                  <span className="planilla-hm">⏱ en curso</span>
+                                )}
                               </>
                             )}
                         </td>
@@ -858,6 +952,7 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                     <td className="planilla-total-col">{(r.total + r.totalHm).toFixed(2)}</td>
                     <td className="planilla-total-col">{r.total.toFixed(2)}</td>
                     <td className="planilla-total-col">{r.totalHm > 0 ? r.totalHm.toFixed(2) : ''}</td>
+                    <td className="planilla-total-col">{r.totalH > 0 ? `${r.totalH.toFixed(2)} h` : ''}</td>
                   </tr>
                 )
               })}
@@ -871,11 +966,15 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                     {(dayTotals.tHm[d.key] ?? 0) > 0 && (
                       <span className="planilla-hm">{(dayTotals.tHm[d.key] ?? 0).toFixed(2)} hm</span>
                     )}
+                    {(dayTotals.tH[d.key] ?? 0) > 0 && (
+                      <span className="planilla-hm">{(dayTotals.tH[d.key] ?? 0).toFixed(2)} h</span>
+                    )}
                   </td>
                 ))}
                 <td className="planilla-total-col planilla-foot">{(dayTotals.grand + dayTotals.grandHm).toFixed(2)}</td>
                 <td className="planilla-total-col planilla-foot">{dayTotals.grand.toFixed(2)}</td>
                 <td className="planilla-total-col planilla-foot">{dayTotals.grandHm > 0 ? dayTotals.grandHm.toFixed(2) : ''}</td>
+                <td className="planilla-total-col planilla-foot">{dayTotals.grandH > 0 ? `${dayTotals.grandH.toFixed(2)} h` : ''}</td>
               </tr>
             </tfoot>
           </table>

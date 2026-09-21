@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { unidadDeLabor } from '../lib/texto'
 import type { Assignment } from '../domain/sam'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, loadOperarioNovedades, novLetter, type NovedadTipo } from '../services/samApi'
@@ -49,27 +50,37 @@ export function MiPlanilla({ assignments, operatorId }: {
     return m
   }, [novedadTipos])
 
-  const { porDia, enProceso, total } = useMemo(() => {
+  // 🔴 TRES unidades, tres cubos (igual que la Planilla de la oficina): hectáreas,
+  // hectómetros (ACEQUIAS) y horas de servicio (OFICIOS VARIOS). Antes era un solo
+  // número sin unidad: 12 hm de acequia se leían como 12 hectáreas, y el operario
+  // no tenía cómo ver de qué estaba hecho su total.
+  const { porDia, porDiaHm, porDiaH, enProceso, total, totalHm, totalH } = useMemo(() => {
     // ⚠️ El avance cerrado se arma con TODAS las asignaciones que tenga cargadas,
     // no solo con las suyas: una suerte la avanzan varios entre todos y filtrarlo
     // por operario le mostraria mas de lo que la planilla le paga.
     const cerrado = avanceCerradoPorSuerte(assignments)
     const dias = new Set<string>()
     const pd: Record<string, number> = {}
+    const pdHm: Record<string, number> = {}
+    const pdH: Record<string, number> = {}
     const ep: Record<string, boolean> = {}
     let t = 0
+    let tHm = 0
+    let tH = 0
     for (const a of assignments) {
       if (!cuentaEnPlanilla(a)) continue
       if ((a.operatorId || '') !== operatorId) continue
       const dk = executionDateKey(a)
       if (!dk.startsWith(mes)) continue
       const { area, enProceso } = areaDelDia(a, cerrado)
-      pd[dk] = (pd[dk] ?? 0) + area
+      const unidad = unidadDeLabor(a.labor)
+      if (unidad === 'h') { pdH[dk] = (pdH[dk] ?? 0) + area; tH += area }
+      else if (unidad === 'hm') { pdHm[dk] = (pdHm[dk] ?? 0) + area; tHm += area }
+      else { pd[dk] = (pd[dk] ?? 0) + area; t += area }
       if (enProceso) ep[dk] = true
-      t += area
       dias.add(dk)
     }
-    return { porDia: pd, enProceso: ep, total: t }
+    return { porDia: pd, porDiaHm: pdHm, porDiaH: pdH, enProceso: ep, total: t, totalHm: tHm, totalH: tH }
   }, [assignments, operatorId, mes])
 
   const nombreMes = new Date(`${mes}-01T12:00:00`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' })
@@ -78,7 +89,11 @@ export function MiPlanilla({ assignments, operatorId }: {
     <section className="panel-card">
       <div className="panel-title split">
         <h2>🗓️ Mi planilla de {nombreMes}</h2>
-        <strong className="planilla-total-col">{total > 0 ? total.toFixed(2) : '0.00'}</strong>
+        <strong className="planilla-total-col">
+          {total > 0 ? total.toFixed(2) : '0.00'} ha
+          {totalHm > 0 && <span className="planilla-hm">{totalHm.toFixed(2)} hm</span>}
+          {totalH > 0 && <span className="planilla-hm">{totalH.toFixed(2)} h</span>}
+        </strong>
       </div>
 
       <Ayuda>
@@ -111,17 +126,29 @@ export function MiPlanilla({ assignments, operatorId }: {
             <tr>
               {dias.map((d) => {
                 const v = porDia[d.key] ?? 0
+                const vHm = porDiaHm[d.key] ?? 0
+                const vH = porDiaH[d.key] ?? 0
                 const nov = novedades.get(d.key)
-                const num = v > 0 ? (enProceso[d.key] ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
+                const num = (v > 0 || vHm > 0 || vH > 0) ? (enProceso[d.key] ? ' planilla-num--proceso' : ' planilla-num--terminada') : ''
                 return (
                   <td key={d.key}
                       className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${num}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}`}
                       title={nov ? (novedadTipos.find((n) => n.codigo === nov)?.nombre ?? nov) : undefined}>
-                    {nov ? <b style={{ color: colorDe.get(nov) }}>{novLetter(nov)}</b> : (v > 0 ? v.toFixed(2) : '')}
+                    {nov ? <b style={{ color: colorDe.get(nov) }}>{novLetter(nov)}</b> : (
+                      <>
+                        {v > 0 ? v.toFixed(2) : ''}
+                        {vHm > 0 && <span className="planilla-hm">{vHm.toFixed(2)} hm</span>}
+                        {vH > 0 && <span className="planilla-hm">{vH.toFixed(2)} h</span>}
+                      </>
+                    )}
                   </td>
                 )
               })}
-              <td className="planilla-total-col"><strong>{total > 0 ? total.toFixed(2) : ''}</strong></td>
+              <td className="planilla-total-col">
+                <strong>{total > 0 ? total.toFixed(2) : ''}</strong>
+                {totalHm > 0 && <span className="planilla-hm">{totalHm.toFixed(2)} hm</span>}
+                {totalH > 0 && <span className="planilla-hm">{totalH.toFixed(2)} h</span>}
+              </td>
             </tr>
           </tbody>
         </table>

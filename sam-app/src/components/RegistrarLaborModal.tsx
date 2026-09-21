@@ -1,4 +1,8 @@
 import { useMemo, useState } from 'react'
+import { esPorHoras, unidadDeLabor, nombreUnidad, formatArea, aMayus } from '../lib/texto'
+import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
+import { hoyBogota } from '../lib/periodos'
+import { CampoLista, recordarValor } from './CampoPlaca'
 import { useAppData } from '../context/AppDataContext'
 import SearchableSelect from './SearchableSelect'
 import { registrarLaborRealizada } from '../services/samApi'
@@ -22,6 +26,13 @@ const EMPTY = {
   horometroFinal: '',
   hectareas: '',
   isComplete: false,
+  // Solo en servicios POR HORAS (oficios varios): el formulario que dictó el
+  // cliente — hora de inicio, horómetro inicial, administrador encargado, hora
+  // final, horómetro final. El día va vacío = hoy.
+  fecha: '',
+  horaInicio: '',
+  horaFin: '',
+  administrador: '',
 }
 
 /**
@@ -105,6 +116,25 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
     })
   }
 
+  // 🔴 Servicio por horas: no hay hectáreas que teclear. Las horas salen del
+  // horómetro (final − inicial) y, si no sirve, del reloj (final − inicio).
+  const porHoras = esPorHoras(form.labor)
+  const diaServicio = form.fecha || hoyBogota()
+  const instante = (hhmm: string, despuesDe?: string | null): string | null => {
+    if (!/^\d{2}:\d{2}$/.test(hhmm)) return null
+    const d = new Date(`${diaServicio}T${hhmm}:00-05:00`)
+    // Una hora final más temprana que la de inicio es un turno que cruzó la medianoche.
+    if (despuesDe && d.getTime() <= new Date(despuesDe).getTime()) d.setDate(d.getDate() + 1)
+    return d.toISOString()
+  }
+  const inicioServicio = instante(form.horaInicio)
+  const finServicio = instante(form.horaFin, inicioServicio)
+  const horasServ = horasDeServicio({
+    horometroInicial: Number(form.horometroInicial) || null,
+    horometroFinal: Number(form.horometroFinal) || null,
+    startedAt: inicioServicio, finishedAt: finServicio,
+  })
+
   function toggleComplete() {
     setForm((f) => {
       const next = !f.isComplete
@@ -138,8 +168,11 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
     const eq = equipment.find((e) => e.code === form.equipmentCode)
     if (!eq) return setError('Selecciona el equipo.')
     if (form.cliente !== 'ingenios' && form.cliente !== 'proveedores') return setError('Selecciona el tipo de cliente.')
-    const area = Number(form.hectareas)
-    if (!area || isNaN(area) || area <= 0) return setError('Ingresa las hectáreas realizadas (> 0).')
+    const unidad = unidadDeLabor(form.labor)
+    if (porHoras && (!inicioServicio || !finServicio)) return setError('Pon la hora de inicio y la hora final del servicio.')
+    if (porHoras && horasServ.horas == null) return setError('No salen las horas: revisa la hora de inicio y la final, o los dos horómetros.')
+    const area = porHoras ? (horasServ.horas ?? 0) : Number(form.hectareas)
+    if (!area || isNaN(area) || area <= 0) return setError(`Ingresa ${unidad === 'hm' ? 'los hectómetros realizados' : 'las hectáreas realizadas'} (> 0).`)
     const hi = form.horometroInicial.trim() === '' ? null : Number(form.horometroInicial)
     const hf = form.horometroFinal.trim() === '' ? null : Number(form.horometroFinal)
     if (hi !== null && isNaN(hi)) return setError('Horómetro inicial inválido.')
@@ -158,7 +191,10 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
           (a.status === 'COMPLETADA' || a.status === 'PARCIAL'),
       )
       .reduce((s, a) => s + (a.executedArea || 0), 0)
-    if (suerteArea != null && yaEjec + area > suerteArea + 0.05) {
+    // ⚠️ Solo lo que se mide en hectáreas se topa contra el área de la suerte.
+    // Sin esto el registro rápido rechazaba los hectómetros de ACEQUIAS (12 hm en
+    // una suerte de 9 ha) y rechazaría cualquier servicio por horas.
+    if (unidad === 'ha' && suerteArea != null && yaEjec + area > suerteArea + 0.05) {
       return setError(
         `Esta suerte ya tiene ${yaEjec.toFixed(2)} ha de ${suerteArea.toFixed(2)} registradas; estas ${area.toFixed(2)} ha la exceden. ¿Es un duplicado?`,
       )
@@ -185,10 +221,17 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
         horometroFinal: hf,
         cliente: form.cliente,
         zone: miZona === 'NORTE' || miZona === 'SUR' ? (miZona as Zone) : null,
+        ...(porHoras ? {
+          startedAt: inicioServicio,
+          finishedAt: finServicio,
+          administradorEncargado: aMayus(form.administrador.trim()) || null,
+          notes: horasServ.fuente === 'RELOJ' ? `[Horas por RELOJ: ${horasServ.problemaHorometro}]` : '',
+        } : {}),
       })
+      if (porHoras && form.administrador.trim()) recordarValor('ADMIN_ENCARGADO', form.administrador)
       setAssignments((prev) => [created, ...prev])
       try { await db.assignments.put(created) } catch { /* sin cache */ }
-      setInfo(`Labor registrada: ${created.labor} en ${created.haciendaName} ${created.suerte} (${area.toFixed(2)} ha) para ${op.name}.`)
+      setInfo(`Labor registrada: ${created.labor} en ${created.haciendaName} ${created.suerte} (${formatArea(area, form.labor)}) para ${op.name}.`)
       reset()
       onClose()
     } catch (err) {
@@ -326,7 +369,42 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
           </label>
         </div>
 
-        {suerteArea != null && (
+        {porHoras && (
+          <>
+            <p className="field-hint">
+              ⏱ <strong>Servicio por horas.</strong> Las horas salen solas: por horómetro (final − inicial) y, si el
+              horómetro no sirve, por reloj (hora final − hora de inicio).
+            </p>
+            <label className="field">
+              <span>Día del servicio</span>
+              <input type="date" value={form.fecha || hoyBogota()} max={hoyBogota()}
+                onChange={(e) => set('fecha', e.target.value)} disabled={busy} />
+            </label>
+            <div className="field-row">
+              <label className="field">
+                <span>Hora de inicio</span>
+                <input type="time" value={form.horaInicio} onChange={(e) => set('horaInicio', e.target.value)} disabled={busy} />
+              </label>
+              <label className="field">
+                <span>Hora final</span>
+                <input type="time" value={form.horaFin} onChange={(e) => set('horaFin', e.target.value)} disabled={busy} />
+              </label>
+            </div>
+            <label className="field">
+              <span>Administrador encargado</span>
+              <CampoLista tipo="ADMIN_ENCARGADO" value={form.administrador}
+                onChange={(v) => set('administrador', v)} disabled={busy}
+                placeholder="QUIÉN RECIBE EL SERVICIO EN LA HACIENDA" />
+            </label>
+            <div className="feedback" style={{ marginTop: 4 }}>
+              Por horómetro: <strong>{fmtHoras(horasServ.porHorometro)}</strong> · por reloj: <strong>{fmtHoras(horasServ.porReloj)}</strong>
+              {horasServ.horas != null && <> → se registran <strong>{fmtHoras(horasServ.horas)}</strong> ({horasServ.fuente === 'RELOJ' ? 'reloj' : 'horómetro'}).</>}
+              {horasServ.problemaHorometro && (form.horometroInicial || form.horometroFinal) && <> ⚠ {horasServ.problemaHorometro}.</>}
+            </div>
+          </>
+        )}
+
+        {!porHoras && suerteArea != null && (
           <div className="complete-toggle-row" style={{ marginTop: 4 }}>
             <div>
               <span className="complete-toggle-label">Hizo el 100% de la suerte</span>
@@ -349,12 +427,14 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
           </div>
         )}
 
+        {!porHoras && (
         <label className="field">
-          <span>Hectáreas realizadas</span>
+          <span>{nombreUnidad(form.labor)} {unidadDeLabor(form.labor) === 'hm' ? 'realizados' : 'realizadas'}</span>
           <input type="number" inputMode="decimal" min={0.01} step="0.01" value={form.hectareas}
             onChange={(e) => set('hectareas', e.target.value)}
             disabled={busy || (form.isComplete && suerteArea != null)} />
         </label>
+        )}
 
         {error && <div className="feedback error">{error}</div>}
 

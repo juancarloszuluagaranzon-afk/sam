@@ -95,6 +95,48 @@ export function LaboresTab() {
     }
   }
 
+  /**
+   * En qué se mide la labor (ha / hm / horas) y quién la puede programar.
+   * 🔴 La unidad NO se cambia a la ligera: las labores ya registradas se leen con
+   * la unidad de HOY. Pasar DESPEJE a «horas» convertiría todo su histórico de
+   * hectáreas en horas en la planilla. Por eso pide confirmación.
+   */
+  async function cambiarUnidad(labor: Labor, unidad: 'ha' | 'hm' | 'h') {
+    if ((labor.unidad ?? 'ha') === unidad) return
+    const nombres = { ha: 'hectáreas', hm: 'hectómetros', h: 'horas' }
+    if (!window.confirm(
+      `¿Medir «${labor.nombre}» en ${nombres[unidad]}?\n\n` +
+      `Todo lo que YA está registrado de esta labor se va a leer en ${nombres[unidad]} (planilla, reporte y Excel). ` +
+      'Si la labor ya tiene historia en otra unidad, es mejor crear una labor nueva.')) return
+    setBusy(true)
+    setError('')
+    try {
+      const updated = await updateLabor(labor.id, { unidad })
+      setLabores((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+      setInfo(`«${updated.nombre}» ahora se mide en ${nombres[unidad]}.`)
+    } catch (err) {
+      setError(`No se pudo cambiar la unidad. (${(err as { message?: string })?.message ?? 'error'})`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function toggleSoloAdmin(labor: Labor) {
+    setBusy(true)
+    setError('')
+    try {
+      const updated = await updateLabor(labor.id, { soloAdministracion: !labor.soloAdministracion })
+      setLabores((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))
+      setInfo(updated.soloAdministracion
+        ? `«${updated.nombre}»: solo la programan el dueño y administración. Ya no le sale al supervisor ni al operario en campo.`
+        : `«${updated.nombre}»: la puede programar cualquier supervisor.`)
+    } catch (err) {
+      setError(`No se pudo cambiar. (${(err as { message?: string })?.message ?? 'error'})`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function toggleTipo(labor: Labor) {
     const next: LaborTipo = labor.tipo === 'MANUAL' ? 'MECANIZADA' : 'MANUAL'
     setBusy(true)
@@ -216,6 +258,7 @@ export function LaboresTab() {
             <tr>
               <th>Labor</th>
               <th>Tipo</th>
+              <th>Se mide en</th>
               <th>Meta ha/día</th>
               <th>Estado</th>
               <th></th>
@@ -229,6 +272,19 @@ export function LaboresTab() {
                   <span className={`labor-cat-chip ${l.tipo === 'MANUAL' ? 'manual' : 'mec'}`}>
                     {l.tipo === 'MANUAL' ? 'Manual' : 'Mecanizada'}
                   </span>
+                </td>
+                <td>
+                  <select
+                    value={l.unidad ?? 'ha'}
+                    onChange={(e) => void cambiarUnidad(l, e.target.value as 'ha' | 'hm' | 'h')}
+                    disabled={busy}
+                    aria-label={`Unidad de ${l.nombre}`}
+                  >
+                    <option value="ha">Hectáreas</option>
+                    <option value="hm">Hectómetros</option>
+                    <option value="h">Horas</option>
+                  </select>
+                  {l.soloAdministracion && <span className="labor-cat-chip manual" style={{ marginLeft: 6 }}>Solo admón.</span>}
                 </td>
                 <td>
                   <input
@@ -268,6 +324,10 @@ export function LaboresTab() {
                       disabled={busy}
                     >
                       {l.tipo === 'MANUAL' ? '→ Mecanizada' : '→ Manual'}
+                    </button>
+                    <button type="button" className="inline-button" onClick={() => void toggleSoloAdmin(l)} disabled={busy}
+                      title="Quién puede programar esta labor">
+                      {l.soloAdministracion ? '→ Todos la programan' : '→ Solo administración'}
                     </button>
                     <button type="button" className="inline-button" onClick={() => openEdit(l)} disabled={busy}>
                       Renombrar

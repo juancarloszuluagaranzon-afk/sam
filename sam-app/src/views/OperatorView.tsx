@@ -27,7 +27,9 @@ import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { MapButton } from '../components/MapButton'
 import { fmtCantidad } from '../lib/cantidad'
-import { unidadDeLabor, formatArea } from '../lib/texto'
+import { unidadDeLabor, formatArea, esPorHoras, nombreUnidad } from '../lib/texto'
+import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
+import { CampoLista } from '../components/CampoPlaca'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
@@ -262,6 +264,9 @@ interface Props {
   handleChangePin: (e: FormEvent) => Promise<void>
   onSaveSession: (user: UserProfile | null) => void
 }
+
+/** Una jornada de servicio por horas, para el rendimiento quincenal. */
+const HORAS_POR_JORNADA = 8
 
 export function OperatorView({
   operatorTab,
@@ -594,6 +599,8 @@ export function OperatorView({
     const relevant = operatorAssignments.filter(
       (a) =>
         a.status !== 'CANCELADA' &&
+        // Los servicios por horas no son hectáreas: fuera de «planificado / ejecutado».
+        !esPorHoras(a.labor) &&
         (a.dateKey === todayKey ||
           ((a.status === 'COMPLETADA' || a.status === 'PARCIAL') &&
             todayBogota(a.finishedAt) === todayKey)),
@@ -635,6 +642,9 @@ export function OperatorView({
         const progress = getSuerteProgress(a, assignments)
         // Si la propia esta EN_PROCESO la dejamos siempre (operario adentro)
         if (a.status === 'EN_PROCESO') return true
+        // Un servicio por horas no tiene «restante» contra el área de la suerte:
+        // nace en 0 horas y se quedaría escondido de Activas para siempre.
+        if (esPorHoras(a.labor)) return true
         return progress.remaining > 0
       })
       .filter((a) => {
@@ -759,6 +769,15 @@ export function OperatorView({
       const meta = metaLabor && metaLabor > 0 ? metaLabor : metaDiaRef
       if (metaLabor && metaLabor > 0) usaMetaPorLabor = true
       const esHoy = dk === todayKey
+      // 🔴 Servicio por horas: NO son hectáreas, pero el día SÍ se trabajó. Una
+      // jornada de oficios varios cuenta como jornada (8 h = 1), para que al
+      // operario que mandan a un servicio no se le caiga el rendimiento; y sus
+      // horas no entran a las hectáreas de la quincena.
+      if (esPorHoras(a.labor)) {
+        jornadas += exec / HORAS_POR_JORNADA
+        if (esHoy) jornadasHoy += exec / HORAS_POR_JORNADA
+        continue
+      }
       haQuincena += exec
       haPorDia.set(dk, (haPorDia.get(dk) ?? 0) + exec)
       if (esHoy) haHoy += exec
@@ -915,7 +934,7 @@ export function OperatorView({
     setError(dictationErrorMessage(err))
   }
 
-  function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal', value: string) {
+  function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal' | 'administrador', value: string) {
     setFinishDrafts((current) => ({
       ...current,
       [assignmentId]: {
@@ -923,6 +942,7 @@ export function OperatorView({
         notes: current[assignmentId]?.notes ?? '',
         horometroFinal: current[assignmentId]?.horometroFinal ?? '',
         isComplete: current[assignmentId]?.isComplete ?? false,
+        administrador: current[assignmentId]?.administrador,
         [field]: value,
       },
     }))
@@ -1721,12 +1741,33 @@ export function OperatorView({
                         : 'Continuando labor parcial'
                       return (
                       <div className="finish-grid">
-                        {isPartialContinuation && (
+                        {esPorHoras(a.labor) && (() => {
+                          // Servicio por horas: nada que teclear de cantidad. Se ve en
+                          // vivo lo que va a quedar, con las DOS medidas.
+                          const hs = horasDeServicio({
+                            horometroInicial: a.horometroInicial,
+                            horometroFinal: Number(draft?.horometroFinal) || null,
+                            startedAt: a.startedAt, finishedAt: new Date().toISOString(),
+                          })
+                          return (
+                            <div className="partial-progress-banner">
+                              <strong>⏱ Servicio por horas</strong>
+                              <span>
+                                Escribe el <strong>horómetro final</strong> y las horas salen solas.
+                                {' '}Por reloj llevas {fmtHoras(hs.porReloj)} (desde las {formatTime(a.startedAt)}).
+                                {hs.porHorometro != null && <> Por horómetro: <strong>{fmtHoras(hs.porHorometro)}</strong> — son las que cuentan.</>}
+                                {hs.porHorometro == null && draft?.horometroFinal && <> ⚠ {hs.problemaHorometro}: se usarán las del reloj y lo revisa administración.</>}
+                              </span>
+                            </div>
+                          )
+                        })()}
+                        {!esPorHoras(a.labor) && isPartialContinuation && (
                           <div className="partial-progress-banner">
                             <strong>{bannerTitle}</strong>
                             <span>{bannerText}</span>
                           </div>
                         )}
+                        {!esPorHoras(a.labor) && (
                         <div className="complete-toggle-row">
                           <div>
                             <span className="complete-toggle-label">Labor completada al 100%</span>
@@ -1748,10 +1789,11 @@ export function OperatorView({
                             <span className="toggle-thumb" />
                           </button>
                         </div>
+                        )}
 
-                        {!(draft?.isComplete ?? false) && (
+                        {!esPorHoras(a.labor) && !(draft?.isComplete ?? false) && (
                           <label>
-                            {isPartialContinuation ? 'Ha ejecutadas en esta sesión' : 'Ha ejecutadas'}
+                            {isPartialContinuation ? `${nombreUnidad(a.labor)} ejecutadas en esta sesión` : `${nombreUnidad(a.labor)} ejecutadas`}
                             <div className="dictate-input-wrap">
                               <input
                                 type="number"
@@ -1802,6 +1844,17 @@ export function OperatorView({
                         {/* Solo avisa: no toca el guardado. Cerrar la labor es
                             por donde la gente cobra y no se puede arriesgar. */}
                         <AvisoHorometro equipoCodigo={a.equipmentCode} valor={draft?.horometroFinal} />
+                        {esPorHoras(a.labor) && (
+                          <label>
+                            Administrador encargado
+                            <CampoLista
+                              tipo="ADMIN_ENCARGADO"
+                              value={draft?.administrador ?? a.administradorEncargado ?? ''}
+                              onChange={(v) => updateFinishDraft(a.id, 'administrador', v)}
+                              placeholder="QUIÉN RECIBE EL SERVICIO EN LA HACIENDA"
+                            />
+                          </label>
+                        )}
                         <label className="finish-notes">
                           <div className="dictate-field-header">
                             <span>Observaciones</span>

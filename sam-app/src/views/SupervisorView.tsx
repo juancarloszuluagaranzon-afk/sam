@@ -1,4 +1,7 @@
-import { unidadDeLabor, formatArea } from '../lib/texto'
+import { unidadDeLabor, formatArea, esPorHoras, nombreUnidad } from '../lib/texto'
+import { CampoLista } from '../components/CampoPlaca'
+import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
+import { fmtHora } from '../lib/fechas'
 import { useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 
@@ -19,7 +22,8 @@ import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { MaquinasInactivas } from '../components/MaquinasInactivas'
 import { usePhotoUpload } from '../hooks/usePhotoUpload'
 import { useUserForm } from '../hooks/useUserForm'
-import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo, loadAuditoria, type AsignacionAuditoria } from '../services/samApi'
+import { createAppUser, updateAppUser, deleteAppUser, setAppUserActivo, loadAppUsers, summarizeAssignments, getIngenioName,
+  getIdSuerte, executionDateKey, cancelAssignmentsBulk, deleteAssignment, loadKardexDeEquipo, loadAuditoria, type AsignacionAuditoria } from '../services/samApi'
 import { db } from '../lib/db'
 import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
@@ -79,6 +83,8 @@ export interface AssignmentFormState {
   ingenioId: string
   supervisorId: string
   zone: string
+  /** Solo en servicios por horas: quién recibe el servicio en la hacienda. */
+  administradorEncargado: string
 }
 
 export interface EquipmentFormState {
@@ -602,6 +608,10 @@ export function SupervisorView({
     fechaEjec: '',
     status: 'PENDIENTE' as Assignment['status'],
     facturaNumero: '',
+    // Solo se usan en servicios por horas (OFICIOS VARIOS).
+    horaInicio: '',
+    horaFin: '',
+    administrador: '',
   })
 
   // Auditoría de ediciones (historial de cambios de una labor).
@@ -668,7 +678,7 @@ export function SupervisorView({
     })
   }, [scopedAssignments, statusFilter, operatorFilter, haciendaFilter, ingenioFilter, laborSearch, maestro])
 
-  const summaryAssignments = useMemo(
+  const summaryTodas = useMemo(
     () =>
       summaryBaseAssignments.filter((a) => {
         if (a.status === 'CANCELADA') return false
@@ -690,6 +700,20 @@ export function SupervisorView({
       }),
     [summaryBaseAssignments, summaryMonth, summaryQuincena, todayKey],
   )
+  // 🔴 El Resumen es de HECTÁREAS. Los servicios por horas (oficios varios) van
+  // APARTE: ahí `area`/`executedArea` son horas, y metidos en estas sumas
+  // inflarían las «hectáreas ejecutadas» con un número que no es terreno.
+  const summaryAssignments = useMemo(() => summaryTodas.filter((a) => !esPorHoras(a.labor)), [summaryTodas])
+  const summaryServicios = useMemo(() => {
+    const lista = summaryTodas.filter((a) => esPorHoras(a.labor))
+    const cerrados = lista.filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
+    return {
+      total: lista.length,
+      enCurso: lista.filter((a) => a.status === 'EN_PROCESO').length,
+      horas: cerrados.reduce((s, a) => s + (a.executedArea ?? 0), 0),
+      maquinas: new Set(lista.map((a) => a.equipmentCode).filter(Boolean)).size,
+    }
+  }, [summaryTodas])
 
   const summaryMetrics = useMemo(() => {
     // plannedArea DEDUP por suerte+labor: el split de cruce-de-día y el
@@ -1867,6 +1891,16 @@ export function SupervisorView({
               <strong>{summaryMetrics.inProgress}</strong>
               <span>labores activas</span>
             </article>
+            {summaryServicios.total > 0 && (
+              <article className="metric-panel">
+                <p>SERVICIOS POR HORAS</p>
+                <strong>{fmtHoras(Math.round(summaryServicios.horas * 100) / 100)}</strong>
+                <span>
+                  {summaryServicios.total} servicio{summaryServicios.total === 1 ? '' : 's'} · {summaryServicios.maquinas} máquina{summaryServicios.maquinas === 1 ? '' : 's'}
+                  {summaryServicios.enCurso > 0 ? ` · ${summaryServicios.enCurso} en curso` : ''}
+                </span>
+              </article>
+            )}
           </section>
         ) : null}
 
@@ -2495,7 +2529,12 @@ export function SupervisorView({
               // estado + ingenio + hacienda + operador). Misma fórmula que la
               // franja "Hoy" del toolbar: excluye CANCELADA del planificado,
               // toma executedArea (con fallback a area) para los COMPLETADA.
-              const activos = filteredReport.filter((a) => a.status !== 'CANCELADA')
+              // Los KPI de área son de hectáreas: las labores por horas salen aparte.
+              const noCanceladas = filteredReport.filter((a) => a.status !== 'CANCELADA')
+              const activos = noCanceladas.filter((a) => !esPorHoras(a.labor))
+              const horasServicio = noCanceladas
+                .filter((a) => esPorHoras(a.labor) && (a.status === 'COMPLETADA' || a.status === 'PARCIAL'))
+                .reduce((s, a) => s + (a.executedArea ?? 0), 0)
               const planif = activos.reduce((s, a) => s + a.area, 0)
               const ejec = activos
                 .filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
@@ -2521,6 +2560,12 @@ export function SupervisorView({
                       <strong>{planif.toFixed(2)}</strong>
                       <span>Ha planif.</span>
                     </div>
+                    {horasServicio > 0 && (
+                      <div className="day-status-item">
+                        <strong>{horasServicio.toFixed(2)}</strong>
+                        <span>Horas serv.</span>
+                      </div>
+                    )}
                     <div className="day-status-item day-status-item--green day-status-item--emph">
                       <strong>{ejec.toFixed(2)}</strong>
                       <span>Ha ejecut.</span>
@@ -2552,6 +2597,7 @@ export function SupervisorView({
                       <th>Fecha ejec.</th>
                       <th>Hacienda</th>
                       <th>Suerte</th>
+                      <th>ID suerte</th>
                       <th>Labor</th>
                       <th>Ha plan.</th>
                       <th>Ha ejec.</th>
@@ -2574,6 +2620,7 @@ export function SupervisorView({
                           <td>{executionDateKey(a)}</td>
                           <td>{a.haciendaName}</td>
                           <td>{a.suerte}</td>
+                          <td className="nowrap">{getIdSuerte(a, maestro)}</td>
                           <td>{a.labor}</td>
                           <td className="num-cell">{formatArea(a.area, a.labor)}</td>
                           <td className="num-cell">
@@ -2632,6 +2679,8 @@ export function SupervisorView({
                   totalHoras: number
                   totalAreaPlan: number
                   totalAreaEjec: number
+                  /** Horas de SERVICIO (oficios varios): aparte de las horas de horómetro. */
+                  totalHorasServ: number
                 }
                 const groups = new Map<string, MachineGroup>()
                 for (const a of filteredReport) {
@@ -2639,11 +2688,13 @@ export function SupervisorView({
                   const name = a.equipmentName || code
                   let g = groups.get(code)
                   if (!g) {
-                    g = { code, name, labors: [], totalHoras: 0, totalAreaPlan: 0, totalAreaEjec: 0 }
+                    g = { code, name, labors: [], totalHoras: 0, totalAreaPlan: 0, totalAreaEjec: 0, totalHorasServ: 0 }
                     groups.set(code, g)
                   }
                   g.labors.push(a)
-                  if (a.status !== 'CANCELADA') {
+                  if (a.status !== 'CANCELADA' && esPorHoras(a.labor)) {
+                    if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') g.totalHorasServ += a.executedArea ?? 0
+                  } else if (a.status !== 'CANCELADA') {
                     g.totalAreaPlan += a.area
                     if (a.status === 'COMPLETADA' || a.status === 'PARCIAL') {
                       g.totalAreaEjec += a.executedArea > 0 ? a.executedArea : a.area
@@ -2664,7 +2715,7 @@ export function SupervisorView({
                         <header style={{ background: '#1a6b3a', color: '#fff', padding: '10px 14px', display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'space-between', alignItems: 'baseline' }}>
                           <strong style={{ fontSize: 15 }}>{g.name}</strong>
                           <span style={{ fontSize: 13, opacity: 0.95 }}>
-                            {g.totalHoras.toFixed(1)} h trabajadas · {g.totalAreaPlan.toFixed(2)} ha plan. · {g.totalAreaEjec.toFixed(2)} ha ejec. · {g.labors.length} labor{g.labors.length !== 1 ? 'es' : ''}
+                            {g.totalHoras.toFixed(1)} h de horómetro · {g.totalAreaPlan.toFixed(2)} ha plan. · {g.totalAreaEjec.toFixed(2)} ha ejec.{g.totalHorasServ > 0 ? ` · ${g.totalHorasServ.toFixed(2)} h de servicio` : ''} · {g.labors.length} labor{g.labors.length !== 1 ? 'es' : ''}
                           </span>
                         </header>
                         <div className="report-table-wrap" style={{ background: '#fff' }}>
@@ -3714,6 +3765,9 @@ export function SupervisorView({
                             fechaEjec: executionDateKey(selectedLabor),
                             status: selectedLabor.status,
                             facturaNumero: selectedLabor.facturaNumero ?? '',
+                            horaInicio: fmtHora(selectedLabor.startedAt),
+                            horaFin: fmtHora(selectedLabor.finishedAt),
+                            administrador: selectedLabor.administradorEncargado ?? '',
                           })
                           setEditingLabor(true)
                         }}
@@ -3737,7 +3791,7 @@ export function SupervisorView({
                     <span className="labor-value">{selectedLabor.haciendaName}</span>
 
                     <span className="labor-label">Suerte</span>
-                    <span className="labor-value">{selectedLabor.suerte}</span>
+                    <span className="labor-value">{selectedLabor.suerte} · <strong>{getIdSuerte(selectedLabor, maestro)}</strong></span>
 
                     <span className="labor-label">Zona</span>
                     <span className="labor-value">
@@ -3789,6 +3843,22 @@ export function SupervisorView({
 
                     <span className="labor-label">Fin</span>
                     <span className="labor-value">{formatTime(selectedLabor.finishedAt)}</span>
+
+                    {esPorHoras(selectedLabor.labor) && (() => {
+                      const hs = horasDeServicio(selectedLabor)
+                      return (
+                        <>
+                          <span className="labor-label">Administrador</span>
+                          <span className="labor-value">{selectedLabor.administradorEncargado || '— sin registrar'}</span>
+                          <span className="labor-label">Horas</span>
+                          <span className="labor-value">
+                            por horómetro {fmtHoras(hs.porHorometro)} · por reloj {fmtHoras(hs.porReloj)}
+                            {hs.problemaHorometro && <> · ⚠ {hs.problemaHorometro}</>}
+                            {hs.seSeparan && <> · ⚠ las dos medidas se separan mucho</>}
+                          </span>
+                        </>
+                      )
+                    })()}
 
                     {selectedLabor.horometroInicial !== null && (
                       <>
@@ -3868,16 +3938,66 @@ export function SupervisorView({
 
                     <label className="assignment-detail-field">
                       {/* La unidad la manda la labor: ACEQUIAS va en hectómetros. */}
-                      <span>{unidadDeLabor(selectedLabor.labor) === 'hm' ? 'Hectómetros ejecutados' : 'Hectáreas ejecutadas'}</span>
+                      <span>{esPorHoras(selectedLabor.labor) ? 'Horas que cuentan' : `${nombreUnidad(selectedLabor.labor)} ${unidadDeLabor(selectedLabor.labor) === 'ha' ? 'ejecutadas' : 'ejecutados'}`}</span>
                       <input
                         type="number"
                         min={0}
                         step={0.01}
                         value={editLaborDraft.executedArea}
                         onChange={(e) => setEditLaborDraft((d) => ({ ...d, executedArea: e.target.value }))}
+                        // Hectómetros y horas: solo administración los corrige.
+                        disabled={unidadDeLabor(selectedLabor.labor) !== 'ha' && session.role !== 'owner' && session.role !== 'administracion'}
                       />
-                      <small>Planificadas: {selectedLabor.area.toFixed(2)} {unidadDeLabor(selectedLabor.labor)}</small>
+                      {unidadDeLabor(selectedLabor.labor) !== 'ha' && session.role !== 'owner' && session.role !== 'administracion' && (
+                        <small>🔒 {unidadDeLabor(selectedLabor.labor) === 'h' ? 'Las horas' : 'Los hectómetros'} solo los corrige administración.</small>
+                      )}
+                      {esPorHoras(selectedLabor.labor) ? (() => {
+                        // Las dos medidas con lo que hay escrito AHORA en el formulario,
+                        // para que administración vea de dónde sale cada número antes de guardar.
+                        const dia = editLaborDraft.fechaEjec
+                        const iso = (h: string) => (dia && h ? `${dia}T${h}:00-05:00` : null)
+                        const hs = horasDeServicio({
+                          horometroInicial: Number(editLaborDraft.horometroInicial) || null,
+                          horometroFinal: Number(editLaborDraft.horometroFinal) || null,
+                          startedAt: iso(editLaborDraft.horaInicio), finishedAt: iso(editLaborDraft.horaFin),
+                        })
+                        return (
+                          <small>
+                            Por horómetro: <strong>{fmtHoras(hs.porHorometro)}</strong> · por reloj: <strong>{fmtHoras(hs.porReloj)}</strong>.
+                            {hs.problemaHorometro && <> ⚠ {hs.problemaHorometro}.</>}{' '}
+                            <button type="button" className="dash-card__link" disabled={hs.horas == null}
+                              onClick={() => setEditLaborDraft((d) => ({ ...d, executedArea: String(hs.horas ?? '') }))}>
+                              Usar {fmtHoras(hs.horas)}
+                            </button>
+                          </small>
+                        )
+                      })() : (
+                        <small>Planificadas: {selectedLabor.area.toFixed(2)} {unidadDeLabor(selectedLabor.labor)}</small>
+                      )}
                     </label>
+
+                    {esPorHoras(selectedLabor.labor) && (
+                      <>
+                        <div className="assignment-detail-field-grid">
+                          <label className="assignment-detail-field">
+                            <span>Hora de inicio</span>
+                            <input type="time" value={editLaborDraft.horaInicio}
+                              onChange={(e) => setEditLaborDraft((d) => ({ ...d, horaInicio: e.target.value }))} />
+                          </label>
+                          <label className="assignment-detail-field">
+                            <span>Hora final</span>
+                            <input type="time" value={editLaborDraft.horaFin}
+                              onChange={(e) => setEditLaborDraft((d) => ({ ...d, horaFin: e.target.value }))} />
+                          </label>
+                        </div>
+                        <label className="assignment-detail-field">
+                          <span>Administrador encargado</span>
+                          <CampoLista tipo="ADMIN_ENCARGADO" value={editLaborDraft.administrador}
+                            onChange={(v) => setEditLaborDraft((d) => ({ ...d, administrador: v }))}
+                            placeholder="QUIÉN RECIBE EL SERVICIO EN LA HACIENDA" />
+                        </label>
+                      </>
+                    )}
 
                     <div className="assignment-detail-field-grid">
                       <label className="assignment-detail-field">
@@ -3992,13 +4112,26 @@ export function SupervisorView({
                           editLaborDraft.fechaEjec
                             ? new Date(`${editLaborDraft.fechaEjec}T${String(h).padStart(2, '0')}:00:00-05:00`).toISOString()
                             : null
+                        // 🔴 Servicio por horas: la hora de inicio y la final SON el dato
+                        // (de ahí salen las horas por reloj). El 11:00/12:00 de arriba las
+                        // aplastaría a «una hora» cada vez que se corrige el día.
+                        const porHoras = esPorHoras(selectedLabor.labor)
+                        const horaAt = (hhmm: string, base: string | null): string | null => {
+                          if (!porHoras || !editLaborDraft.fechaEjec || !/^\d{2}:\d{2}$/.test(hhmm)) return null
+                          const d = new Date(`${editLaborDraft.fechaEjec}T${hhmm}:00-05:00`)
+                          // Un final más temprano que el inicio es un turno que cruzó la medianoche.
+                          if (base && d.getTime() <= new Date(base).getTime()) d.setDate(d.getDate() + 1)
+                          return d.toISOString()
+                        }
+                        const inicioServicio = horaAt(editLaborDraft.horaInicio, null)
+                        const finServicio = horaAt(editLaborDraft.horaFin, inicioServicio)
 
                         // El ESTADO define fechas, área ejecutada y aprobación.
                         const isDone = newStatus === 'COMPLETADA' || newStatus === 'PARCIAL'
                         const startedAt = isDone || newStatus === 'EN_PROCESO'
-                          ? (dayAt(11) ?? selectedLabor.startedAt ?? nowIso)
+                          ? (inicioServicio ?? dayAt(11) ?? selectedLabor.startedAt ?? nowIso)
                           : null
-                        const finishedAt = isDone ? (dayAt(12) ?? selectedLabor.finishedAt ?? nowIso) : null
+                        const finishedAt = isDone ? (finServicio ?? dayAt(12) ?? selectedLabor.finishedAt ?? nowIso) : null
                         const executedArea = isDone
                           ? (execEntered > 0 ? execEntered : selectedLabor.area)
                           : newStatus === 'EN_PROCESO' ? execEntered : 0
@@ -4015,11 +4148,15 @@ export function SupervisorView({
                           status: newStatus,
                           startedAt,
                           finishedAt,
-                          executedArea,
+                          // El supervisor no manda la cantidad de una labor en hm u horas:
+                          // así puede corregir el día o el operario sin tocarla.
+                          ...(unidadDeLabor(selectedLabor.labor) !== 'ha' && session.role !== 'owner' && session.role !== 'administracion'
+                            ? {} : { executedArea }),
                           horometroInicial: hiNum,
                           horometroFinal: hfNum,
                           notes: editLaborDraft.notes,
                           equipmentCode: editLaborDraft.equipmentCode,
+                          ...(porHoras ? { administradorEncargado: editLaborDraft.administrador.trim() || null } : {}),
                           // Solo se manda factura_numero si (a) es dueño/admin Y
                           // (b) REALMENTE cambió. Así una edición normal (estado/
                           // área) NO depende de esa columna y no se rompe si la
@@ -4316,7 +4453,8 @@ export function SupervisorView({
                   <ul className="suertes-checklist">
                     {filteredSuertes.map((row) => {
                       const suerteCode = `${assignmentForm.haciendaCode}-${row.suerte}`
-                      const remaining = assignmentForm.labor
+                      // Un servicio por horas no «completa» una suerte: no aplica el restante.
+                      const remaining = assignmentForm.labor && !esPorHoras(assignmentForm.labor)
                         ? getRemainingArea(assignments, suerteCode, assignmentForm.labor, row.area, todayKey)
                         : row.area
                       const isCompleted = assignmentForm.labor && remaining === 0
@@ -4371,6 +4509,24 @@ export function SupervisorView({
                   </p>
                 )}
               </label>
+              {esPorHoras(assignmentForm.labor) && (
+                <>
+                  <p className="field-hint">
+                    ⏱ <strong>Servicio por horas.</strong> Se programa en <strong>una</strong> suerte (donde va a trabajar la
+                    máquina). El operario marca el inicio con el horómetro y, al terminar, el horómetro final: las horas
+                    salen solas y van a la planilla.
+                  </p>
+                  <label>
+                    Administrador encargado <span className="field-optional">(quien recibe el servicio en la hacienda)</span>
+                    <CampoLista
+                      tipo="ADMIN_ENCARGADO"
+                      value={assignmentForm.administradorEncargado}
+                      onChange={(v) => updateAssignmentForm('administradorEncargado', v)}
+                      placeholder="NOMBRE DEL ADMINISTRADOR"
+                    />
+                  </label>
+                </>
+              )}
               <label>
                 Operador
                 <SearchableSelect

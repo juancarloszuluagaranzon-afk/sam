@@ -122,6 +122,8 @@ export interface Assignment {
   editadoPor?: string
   // Facturación: N° de factura asignado por administración (null = sin facturar).
   facturaNumero?: string | null
+  // Servicio por horas: quién recibe el servicio en la hacienda. null = no aplica.
+  administradorEncargado?: string | null
   // Ingenio de la suerte (`asignaciones.ingenio_id`, lo pone un trigger al crear).
   // Con haciendaCode + suerte identifica la suerte sin ambigüedad entre ingenios
   // (ver `lib/areaSuerte`). null/undefined = recién creada o sin suerte en el maestro.
@@ -155,7 +157,13 @@ export interface Labor {
    * **hectómetros** (100 m lineales), porque cavar una acequia es un trabajo de
    * longitud y "3 hectáreas de acequia" no significa nada.
    */
-  unidad?: 'ha' | 'hm'
+  unidad?: 'ha' | 'hm' | 'h'
+  /**
+   * Solo dueño y administración la programan (OFICIOS VARIOS: la administra
+   * Carlos David, no los supervisores). No sale en el formulario del supervisor
+   * ni en «tomar en campo». La base también lo exige (`asignaciones_fijar_unidad`).
+   */
+  soloAdministracion?: boolean
 }
 
 // Config del refuerzo motivacional que ve el operario cuando su rendimiento
@@ -639,6 +647,8 @@ export interface CreateAssignmentInput {
   startedAt?: string | null
   approval?: ApprovalStatus
   zone?: Zone | null
+  // Servicio por horas (oficios varios): quién recibe el servicio en la hacienda.
+  administradorEncargado?: string | null
 }
 
 export interface UpdateAssignmentInput {
@@ -651,6 +661,7 @@ export interface UpdateAssignmentInput {
   equipmentName?: string
   horometroInicial?: number | null
   horometroFinal?: number | null
+  administradorEncargado?: string | null
   approval?: ApprovalStatus
   approvedBy?: string | null
   approvedAt?: string | null

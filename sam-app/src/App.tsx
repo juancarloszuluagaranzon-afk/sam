@@ -1,4 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
+import { unidadDeLabor } from './lib/texto'
+import { horasDeServicio } from './lib/horasServicio'
 import { AppDataProvider, SESSION_KEY, useAppData } from './context/AppDataContext'
 import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
@@ -15,7 +17,7 @@ import { PullToRefresh } from './components/PullToRefresh'
 import { matchesSummaryFilter, currentQuincena, type SummaryQuincena } from './components/EntityHistoryModal'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
-import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getAssignmentIngenioId } from './services/samApi'
+import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getIdSuerte, getAssignmentIngenioId } from './services/samApi'
 import { db } from './lib/db'
 import { filaMaestro } from './lib/areaSuerte'
 
@@ -390,21 +392,31 @@ function AppContent() {
       // La facturación es solo de dueño/administración → la columna Factura
       // solo va en su Excel, no en el del supervisor.
       const verFactura = session?.role === 'owner' || session?.role === 'administracion'
-      const rows = filteredReport.map((a) => ({
+      const rows = filteredReport.map((a) => {
+        // 🔴 Cada fila dice en QUÉ se mide. Antes los encabezados decían «(ha)» para
+        // todo, y los hectómetros de ACEQUIAS se descargaban como si fueran
+        // hectáreas («no se ve cuando la descargan»). Ahora la unidad va en su
+        // columna, y un servicio por horas trae además sus dos medidas.
+        const unidad = unidadDeLabor(a.labor)
+        const hs = unidad === 'h' ? horasDeServicio(a) : null
+        return {
         'Fecha (ejecución)': executionDateKey(a),
         'Fecha asignación': a.dateKey,
         'Hacienda': a.haciendaName,
         'Suerte': a.suerte,
         'Código Suerte': a.suerteCode,
+        // El código de hacienda se repite entre ingenios: este sí es único.
+        'ID suerte': getIdSuerte(a, maestro),
         'Labor': a.labor,
-        'Área Plan. (ha)': a.area,
+        'Unidad': unidad === 'h' ? 'horas' : unidad,
+        'Cantidad plan.': unidad === 'h' ? '' : a.area,
         // Área ejecutada = MISMA fórmula que la pantalla: una COMPLETADA/PARCIAL
         // sin área ejecutada registrada cuenta su área planificada (así el Excel
         // cuadra con el Reporte y con lo que se paga). Pendiente/en proceso = ''.
         // Área ejecutada SOLO para COMPLETADA/PARCIAL. Cualquier otro estado
         // (pendiente, en proceso, cancelada/RECHAZADA) va vacío → una labor
         // rechazada nunca aporta área realizada en el Excel.
-        'Área Ejec. (ha)':
+        'Cantidad ejec.':
           (a.status === 'COMPLETADA' || a.status === 'PARCIAL')
             ? (a.executedArea > 0 ? a.executedArea : a.area)
             : '',
@@ -418,6 +430,10 @@ function AppContent() {
         'Fin': a.finishedAt ?? '',
         'Horometro Ini': a.horometroInicial ?? '',
         'Horometro Fin': a.horometroFinal ?? '',
+        // Solo en servicios por horas (vacío en el resto).
+        'Horas por horómetro': hs?.porHorometro ?? '',
+        'Horas por reloj': hs?.porReloj ?? '',
+        'Administrador encargado': a.administradorEncargado ?? '',
         'Zona': a.zone ?? '',
         'Tipo': a.kind,
         'Aprobación': a.approval,
@@ -425,7 +441,8 @@ function AppContent() {
         'Aprobado por': a.approvedBy ? (nombrePorId.get(a.approvedBy) ?? a.approvedBy) : '',
         'Aprobado en': a.approvedAt ?? '',
         'Notas': a.notes,
-      }))
+        }
+      })
       const ws = utils.json_to_sheet(rows)
       const wb = utils.book_new()
       utils.book_append_sheet(wb, ws, 'Labores')

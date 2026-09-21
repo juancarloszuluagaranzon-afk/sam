@@ -5,9 +5,10 @@ import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
 import { updateAssignment, createAssignment, executionDateKey, createLaborSesion } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
-import { unidadDeLabor, formatArea } from '../lib/texto'
+import { unidadDeLabor, formatArea, esPorHoras, aMayus } from '../lib/texto'
+import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
 
-type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean }
+type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean; administrador?: string }
 
 export function useAssignmentActions() {
   const {
@@ -224,6 +225,10 @@ export function useAssignmentActions() {
   async function finishAssignment(assignment: Assignment) {
     const draft = finishDrafts[assignment.id]
     const isComplete = draft?.isComplete ?? false
+    // 🔴 Servicio POR HORAS (OFICIOS VARIOS): no se teclea ninguna cantidad. Las
+    // horas salen del horómetro (final − inicial) y, si el horómetro no sirve,
+    // del reloj (hora final − hora de inicio). Ver `lib/horasServicio`.
+    const porHoras = esPorHoras(assignment.labor)
 
     // Avance agregado de la suerte+labor en el MISMO CICLO entre todos los
     // operarios que trabajan dicha suerte. Si OP-A ya hizo 5 de 10 ha en el
@@ -283,7 +288,7 @@ export function useAssignmentActions() {
     const sessionMax = suerteRemaining
     const sessionDraftValue = Number(draft?.area ?? '')
 
-    if (!sessionDraftValue && !isComplete) {
+    if (!porHoras && !sessionDraftValue && !isComplete) {
       setError(unidadDeLabor(assignment.labor) === 'hm'
         ? 'Ingresa los hectómetros ejecutados antes de finalizar.'
         : 'Ingresa las hectareas ejecutadas antes de finalizar.')
@@ -318,7 +323,10 @@ export function useAssignmentActions() {
     // fila nace con área reducida (ej. 7.32); usar assignment.area truncaba el
     // acumulado (12.20 + 7.32 → 7.32, perdiendo avance real). suerteTotalArea es
     // el MAX del ciclo, el área real de la suerte.
-    if (executedArea > suerteTotalArea) {
+    // ⚠️ Solo lo que se mide en HECTÁREAS. Sin esta condición el recorte también
+    // le caía a los hectómetros de ACEQUIAS: 15 hm en una suerte de 9,32 ha se
+    // guardaban como 9,32 sin decir nada (el tope de arriba sí la tenía; este no).
+    if (tieneTopeDeArea(assignment) && executedArea > suerteTotalArea) {
       executedArea = suerteTotalArea
     }
 
@@ -331,6 +339,20 @@ export function useAssignmentActions() {
     if (isNaN(horometroFinal) || horometroFinal < 0) {
       setError('El horometro final debe ser un numero valido.')
       return
+    }
+
+    const finishedAt = new Date().toISOString()
+    let notaHoras = ''
+    if (porHoras) {
+      const hs = horasDeServicio({
+        horometroInicial: assignment.horometroInicial, horometroFinal,
+        startedAt: assignment.startedAt, finishedAt,
+      })
+      // Nunca se bloquea el cierre: si no hay de dónde sacar las horas queda en 0,
+      // «por aprobar», y administración las corrige desde el Reporte.
+      executedArea = ownExecuted + (hs.horas ?? 0)
+      if (hs.fuente === 'RELOJ') notaHoras = `[Horas por RELOJ (${fmtHoras(hs.porReloj)}): ${hs.problemaHorometro}]`
+      else if (hs.horas == null) notaHoras = '[SIN HORAS: no se pudieron calcular, revisar horómetro y horas]'
     }
 
     setBusy(true)
@@ -346,16 +368,21 @@ export function useAssignmentActions() {
     //   - en otro caso → PARCIAL (sigue activa).
     const eps = 0.001
     const suerteFullyDone = suerteExecutedOthers + executedArea + eps >= suerteTotalArea
+    // Un servicio por horas se cierra siempre: cada cierre es un servicio del día.
     const isFullyDone =
-      isComplete || executedArea + eps >= assignment.area || suerteFullyDone
+      porHoras || isComplete || executedArea + eps >= assignment.area || suerteFullyDone
     const finalStatus: 'COMPLETADA' | 'PARCIAL' = isFullyDone ? 'COMPLETADA' : 'PARCIAL'
 
+    const notasBase = draft?.notes ?? assignment.notes
+    const administrador = aMayus((draft?.administrador ?? '').trim())
     const finishPayload = {
       status: finalStatus,
-      finishedAt: new Date().toISOString(),
+      finishedAt,
       executedArea,
-      notes: draft?.notes ?? assignment.notes,
+      notes: notaHoras ? [notasBase, notaHoras].filter(Boolean).join(' ') : notasBase,
       horometroFinal,
+      // Solo se toca si el operario lo escribió: si no, queda el que programó administración.
+      ...(porHoras && administrador ? { administradorEncargado: administrador } : {}),
       // Toda labor FINALIZADA (parcial o completa) vuelve a "por aprobar": el
       // supervisor revisa el área ejecutada antes de que cuente para facturación.
       // Aplica a ASIGNADA y LIBRE. Si era APROBADA y el operario re-finaliza una
@@ -365,7 +392,9 @@ export function useAssignmentActions() {
     }
 
     const successMessage =
-      finalStatus === 'COMPLETADA'
+      porHoras
+        ? `Servicio cerrado: ${fmtHoras(executedArea - ownExecuted)} de ${assignment.labor}.`
+        : finalStatus === 'COMPLETADA'
         ? `Labor finalizada: ${assignment.labor}.`
         : `Labor guardada como parcial: ${assignment.labor} (sigue activa para continuar).`
 
@@ -621,9 +650,25 @@ export function useAssignmentActions() {
     approvedAt?: string | null
     editadoPor?: string
     facturaNumero?: string | null
+    // Servicio por horas: quién recibe el servicio en la hacienda.
+    administradorEncargado?: string | null
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {
+    // 🔴 Los HECTÓMETROS (acequias) y las HORAS (oficios varios) solo los corrige
+    // administración. Pedido del cliente (19-sep-2026): «los supervisores están
+    // pudiendo editar los hm y esto es tarea de Carlos David». La medida de una
+    // acequia y las horas de un servicio son las que se cobran, y las valida quien
+    // administra, no quien programa. El supervisor sigue pudiendo corregir lo
+    // demás (día, operario, equipo, notas). La base exige lo mismo.
+    if (patch.executedArea !== undefined && unidadDeLabor(assignment.labor) !== 'ha'
+        && session?.role !== 'owner' && session?.role !== 'administracion') {
+      const vigente = assignment.executedArea > 0 ? assignment.executedArea : assignment.area
+      if (Math.abs(patch.executedArea - vigente) > 0.001 && Math.abs(patch.executedArea - (assignment.executedArea ?? 0)) > 0.001) {
+        setError(`${unidadDeLabor(assignment.labor) === 'h' ? 'Las horas de un servicio' : 'Los hectómetros de una acequia'} solo los corrige administración. Avísale a Carlos David.`)
+        return false
+      }
+    }
     // Validacion basica
     if (patch.executedArea !== undefined) {
       if (isNaN(patch.executedArea) || patch.executedArea < 0) {

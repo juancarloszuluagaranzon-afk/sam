@@ -17,7 +17,7 @@ import type { MaestroRow } from '../domain/sam'
  * renderizar todo de una. Si hay más, se pide refinar.
  */
 
-import { ingenioNombre } from '../data/ingenios'
+import { ingenioNombre, idSuerte } from '../data/ingenios'
 import { Ayuda } from '../components/Ayuda'
 
 const LIMIT = 300
@@ -291,6 +291,7 @@ export function MaestrosTab() {
               <th>Ingenio</th>
               <th>Hacienda</th>
               <th>Suerte</th>
+              <th>ID</th>
               <th className="num">Área (ha)</th>
               <th></th>
             </tr>
@@ -306,6 +307,7 @@ export function MaestrosTab() {
                   )}
                 </td>
                 <td>{r.suerte}</td>
+                <td className="nowrap">{idSuerte(r.ingenio_id, r.haciendaCode, r.suerte)}</td>
                 <td className="num">{r.area.toFixed(2)}</td>
                 <td>
                   <div className="maestro-row-actions">
@@ -323,7 +325,7 @@ export function MaestrosTab() {
             ))}
             {shown.length === 0 && (
               <tr>
-                <td colSpan={5} className="validacion-empty">
+                <td colSpan={6} className="validacion-empty">
                   Sin suertes para estos filtros. Usa la búsqueda o cambia los filtros.
                 </td>
               </tr>

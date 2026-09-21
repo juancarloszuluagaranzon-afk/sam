@@ -87,6 +87,7 @@ const EMPTY_FORM: AssignmentFormState = {
   ingenioId: '',
   supervisorId: '',
   zone: '',
+  administradorEncargado: '',
 }
 
 interface Options {

@@ -180,7 +180,7 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
               {/* La unidad la manda la labor: ACEQUIAS va en HECTÓMETROS porque es
                   longitud, no superficie. Escribir "hectáreas" fijo hacía que el
                   supervisor tecleara metros creyendo que eran ha. */}
-              <span>{unidadDeLabor(a.labor) === 'hm' ? 'Hectómetros ejecutados' : 'Hectáreas ejecutadas'}</span>
+              <span>{unidadDeLabor(a.labor) === 'h' ? 'Horas que cuentan' : unidadDeLabor(a.labor) === 'hm' ? 'Hectómetros ejecutados' : 'Hectáreas ejecutadas'}</span>
               <input
                 type="number"
                 min={0}

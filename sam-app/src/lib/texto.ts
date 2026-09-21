@@ -26,19 +26,71 @@ export function normalizarPlaca(v: string): string {
 /**
  * La unidad en la que se mide una labor, para mostrarla al lado del número.
  *
- * Casi todo el trabajo se mide en hectáreas, pero las **acequias van en
- * hectómetros** (100 m lineales): cavar una acequia es longitud, no área, y
- * "3 hectáreas de acequia" no significa nada.
+ * Tres unidades, y NO se suman entre sí:
+ * - **ha** — hectáreas: casi todo el trabajo.
+ * - **hm** — hectómetros (100 m lineales): las ACEQUIAS. Cavar una acequia es
+ *   longitud, y "3 hectáreas de acequia" no significa nada.
+ * - **h** — horas: el servicio de máquina por horas (OFICIOS VARIOS, 19-sep-2026).
+ *   En esas labores `area`/`executedArea` guardan HORAS y no tienen nada que ver
+ *   con el área de la suerte.
  *
- * 🔴 Se resuelve por el NOMBRE de la labor y no por la asignación, porque el
- * nombre es lo único que viaja en todas las pantallas — `asignaciones` guarda
- * `labor_nombre` como texto suelto, sin referencia al catálogo.
+ * 🔴 Se resuelve por el NOMBRE de la labor porque es lo único que viaja en todas
+ * las pantallas (`asignaciones` guarda `labor_nombre` como texto suelto). Pero la
+ * unidad ya no está quemada aquí: **sale del catálogo** (`labores_catalogo.unidad`)
+ * vía `registrarUnidades()`, que llama `AppDataContext` cada vez que el catálogo
+ * carga. Se espeja en el equipo para que al abrir sin señal —o antes de que el
+ * catálogo llegue— la unidad ya sea la correcta. La lista fija de abajo es solo
+ * el respaldo del primer arranque.
  */
-const LABORES_EN_HECTOMETROS = new Set(['ACEQUIAS'])
+export type UnidadLabor = 'ha' | 'hm' | 'h'
 
-export function unidadDeLabor(laborNombre?: string | null): 'ha' | 'hm' {
-  const n = String(laborNombre ?? '').trim().toUpperCase()
-  return LABORES_EN_HECTOMETROS.has(n) ? 'hm' : 'ha'
+const UNIDADES_POR_DEFECTO: Record<string, UnidadLabor> = { ACEQUIAS: 'hm', 'OFICIOS VARIOS': 'h' }
+const LLAVE_UNIDADES = 'sam:labores:unidades'
+
+function leerEspejo(): Record<string, UnidadLabor> {
+  try {
+    if (typeof localStorage === 'undefined') return {}
+    const c = localStorage.getItem(LLAVE_UNIDADES)
+    return c ? (JSON.parse(c) as Record<string, UnidadLabor>) : {}
+  } catch {
+    return {}
+  }
+}
+
+let unidadesDelCatalogo: Record<string, UnidadLabor> = leerEspejo()
+
+const llaveLabor = (nombre?: string | null) => String(nombre ?? '').trim().toUpperCase()
+
+/** Lo llama el contexto al cargar el catálogo de labores. */
+export function registrarUnidades(labores: { nombre: string; unidad?: string | null }[]): void {
+  if (labores.length === 0) return
+  const m: Record<string, UnidadLabor> = {}
+  for (const l of labores) {
+    const u = String(l.unidad ?? 'ha').toLowerCase()
+    m[llaveLabor(l.nombre)] = u === 'hm' ? 'hm' : u === 'h' ? 'h' : 'ha'
+  }
+  unidadesDelCatalogo = m
+  try {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(LLAVE_UNIDADES, JSON.stringify(m))
+  } catch {
+    // Sin espacio en el equipo: queda en memoria, que es lo que importa ahora.
+  }
+}
+
+export function unidadDeLabor(laborNombre?: string | null): UnidadLabor {
+  const n = llaveLabor(laborNombre)
+  return unidadesDelCatalogo[n] ?? UNIDADES_POR_DEFECTO[n] ?? 'ha'
+}
+
+/** ¿Esta labor es un servicio por horas? */
+export function esPorHoras(laborNombre?: string | null): boolean {
+  return unidadDeLabor(laborNombre) === 'h'
+}
+
+/** El nombre largo de la unidad, para etiquetas de formulario: «Hectáreas», «Hectómetros», «Horas». */
+export function nombreUnidad(laborNombre?: string | null): string {
+  const u = unidadDeLabor(laborNombre)
+  return u === 'hm' ? 'Hectómetros' : u === 'h' ? 'Horas' : 'Hectáreas'
 }
 
 /**

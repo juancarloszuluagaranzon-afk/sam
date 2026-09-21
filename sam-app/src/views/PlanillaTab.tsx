@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
 import type { Assignment } from '../domain/sam'
-import { deleteAssignment, formatTime } from '../services/samApi'
+import { deleteAssignment, formatTime, getIdSuerte } from '../services/samApi'
 import { avanceCerradoPorSuerte, areaDelDia, cuentaEnPlanilla, horasDeLabor, MOTIVO_HOROMETRO } from '../lib/planilla'
 import {
   executionDateKey,
@@ -74,7 +74,7 @@ function fmt(value: number) {
 }
 
 export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => void } = {}) {
-  const { assignments, setAssignments, operators, todayKey, session, setError, setInfo , novedadTipos } = useAppData()
+  const { assignments, setAssignments, operators, todayKey, session, setError, setInfo , novedadTipos, maestro } = useAppData()
 
   /**
    * Los códigos de novedad, del catálogo que maneja administración.
@@ -648,6 +648,34 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       const wb = utils.book_new()
       utils.book_append_sheet(wb, ws, 'Planilla')
 
+      // ── Hoja «Labores»: de dónde sale cada casilla, labor por labor ─────
+      // Con el ID de la suerte (PIC-1001-010): el código de hacienda se repite
+      // entre ingenios (971 códigos) y «1001-010» solo no dice cuál es. Mismos
+      // filtros y MISMA cifra que la cuadrícula (areaDelDia), así que sumando esta
+      // hoja por operario y día sale exactamente la planilla.
+      const cerrado = avanceCerradoPorSuerte(assignments)
+      const labores = assignments
+        .filter((a) => cuentaEnPlanilla(a) && matchesSummaryFilter(executionDateKey(a), planillaMonth, planillaQuincena, todayKey))
+        .sort((x, y) => (x.operatorName || '').trim().localeCompare((y.operatorName || '').trim(), 'es')
+          || executionDateKey(x).localeCompare(executionDateKey(y)))
+      const aoaLab = [
+        ['Día', 'Operario', 'ID suerte', 'Hacienda', 'Suerte', 'Labor', 'Cantidad', 'Unidad', 'Estado', 'Máquina'],
+        ...labores.map((a) => {
+          const u = unidadDeLabor(a.labor)
+          return [
+            executionDateKey(a), (a.operatorName || '').trim(), getIdSuerte(a, maestro),
+            a.haciendaName.trim(), a.suerte, a.labor,
+            Number(areaDelDia(a, cerrado).area.toFixed(2)), u === 'h' ? 'horas' : u,
+            a.status === 'EN_PROCESO' ? 'EN CURSO' : a.status,
+            a.equipmentName || a.equipmentCode || '',
+          ]
+        }),
+      ]
+      const wsLab = utils.aoa_to_sheet(aoaLab)
+      wsLab['!cols'] = [{ wch: 11 }, { wch: 30 }, { wch: 15 }, { wch: 24 }, { wch: 7 }, { wch: 18 },
+        { wch: 9 }, { wch: 7 }, { wch: 12 }, { wch: 14 }]
+      utils.book_append_sheet(wb, wsLab, 'Labores')
+
       // ── Hoja 2: las horas de máquina, en la MISMA forma ───────────────
       // Operario × día, igual que la de hectáreas, para poder leer las dos al
       // lado: 12 ha en 4 h dice algo que 12 ha solo no dice.
@@ -698,12 +726,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       // el servicio, las DOS medidas (reloj y horómetro) y cuál de las dos contó.
       if (servicios.length > 0) {
         const aoaServ = [
-          ['Día', 'Operario', 'Máquina', 'Labor', 'Hacienda', 'Suerte', 'Administrador encargado',
+          ['Día', 'Operario', 'Máquina', 'Labor', 'ID suerte', 'Hacienda', 'Suerte', 'Administrador encargado',
             'Hora de inicio', 'Hora final', 'Horas por reloj', 'Horómetro inicial', 'Horómetro final',
             'Horas por horómetro', 'HORAS QUE CUENTAN', 'Salieron de', 'Estado', 'Revisar'],
           ...servicios.map(({ a, hs }) => [
             executionDateKey(a), (a.operatorName || '').trim(), a.equipmentName || a.equipmentCode || '', a.labor,
-            a.haciendaName.trim(), a.suerte, a.administradorEncargado ?? '',
+            getIdSuerte(a, maestro), a.haciendaName.trim(), a.suerte, a.administradorEncargado ?? '',
             fmtHora(a.startedAt), fmtHora(a.finishedAt), hs.porReloj ?? '',
             a.horometroInicial ?? '', a.horometroFinal ?? '', hs.porHorometro ?? '',
             a.status === 'EN_PROCESO' ? '' : Number((a.executedArea ?? 0).toFixed(2)),
@@ -716,7 +744,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
           ]),
         ]
         const wsServ = utils.aoa_to_sheet(aoaServ)
-        wsServ['!cols'] = [{ wch: 11 }, { wch: 28 }, { wch: 13 }, { wch: 16 }, { wch: 22 }, { wch: 8 }, { wch: 26 },
+        wsServ['!cols'] = [{ wch: 11 }, { wch: 28 }, { wch: 13 }, { wch: 16 }, { wch: 15 }, { wch: 22 }, { wch: 8 }, { wch: 26 },
           { wch: 12 }, { wch: 10 }, { wch: 13 }, { wch: 15 }, { wch: 14 }, { wch: 17 }, { wch: 18 }, { wch: 16 }, { wch: 13 }, { wch: 44 }]
         utils.book_append_sheet(wb, wsServ, 'Servicios por horas')
       }
@@ -999,7 +1027,7 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                 {cellLabors.map((a) => (
                   <li key={a.id} className="revisadas-item">
                     <div className="revisadas-item__main">
-                      <strong>{a.haciendaName} · {a.suerte}</strong>
+                      <strong>{a.haciendaName} · {a.suerte} <span className="id-suerte">{getIdSuerte(a, maestro)}</span></strong>
                       <span>
                         {a.labor} · {a.area.toFixed(2)} {unidadDeLabor(a.labor)} ·{' '}
                         {a.status === 'EN_PROCESO' ? 'En proceso' : a.status === 'PARCIAL' ? 'Parcial' : 'Completada'}

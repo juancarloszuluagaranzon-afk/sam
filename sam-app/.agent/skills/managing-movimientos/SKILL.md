@@ -479,6 +479,18 @@ Pedido: *«semáforos en el análisis de combustible y ganchos»*, con esta tabl
   referencia 2025). Medido en septiembre: PUMA 2302 da 5,17 gal/h → «⚠ alto» con el rango
   4–4,5 que se usa hoy; con el otro rango de la tabla (5–6) sería verde → la pregunta de las
   PUMA sigue abierta y aquí se nota.
+- **Gráfica del dibujo del cliente** en «Eficiencia maquinaria» (`views/GraficaGalHora.tsx`,
+  21-sep-2026; mandó una hoja cuadriculada con dos barras): una columna por máquina — barra =
+  galones del mes, encima gal/h con su semáforo, y debajo la tabla alineada **Máquina ·
+  Horómetro inicial · Horómetro final · Horas**. Es una rejilla (no gráfico + tabla aparte)
+  para que cada columna se lea de arriba abajo. `loadHorasPorRangoMes` ahora devuelve también
+  `extremos` (primera y última lectura buena del mes). 🔴 En las máquinas cuya serie se
+  desplomó (Σ = horas por suma de labores; 6 de 22 en sep) **no se muestran** el inicial y el
+  final: la limpieza deja restos como «1 → 55» o «147.284 → 147.284» que harían creer que la
+  resta da esas horas. Anchos medidos: columnas de 3,3em (≈53 px, lo que ocupa «11.490,2»);
+  con `max-content` 22 máquinas pedían 2.094 px en un monitor de 1.440 — ahora caben en 1.377
+  y en celular la rejilla se desliza con los rótulos quietos. El Excel del tablero suma las
+  columnas «Horómetro inicial» y «Horómetro final».
 - Para mirar la tarjeta sin sesión: montarla en un archivo temporal dentro de un contenedor
   **`.mov`** — fuera de él `--dash-s1` no existe y las barras salen vacías (no es un error de
   la tarjeta).

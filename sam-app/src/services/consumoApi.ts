@@ -116,13 +116,15 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
   horas: Map<string, number>
   /** Qué máquinas tuvieron que caer a la suma porque su serie se desplomó. */
   cayeronASuma: string[]
+  /** Primera y última lectura BUENA del mes: el horómetro inicial y el final. */
+  extremos: Map<string, { inicial: number; final: number }>
 }> {
   const { data, error } = await supabase
     .from('labor_sesiones')
     .select('equipo_codigo,fecha,horometro_inicial,horometro_final,horas')
     .gte('fecha', desde).lte('fecha', hasta)
     .order('fecha', { ascending: true })
-  if (error || !data) return { horas: new Map(), cayeronASuma: [] }
+  if (error || !data) return { horas: new Map(), cayeronASuma: [], extremos: new Map() }
 
   type Lect = { fecha: string; h: number }
   const porEquipo = new Map<string, { lecturas: Lect[]; suma: number }>()
@@ -147,6 +149,7 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
 
   const horas = new Map<string, number>()
   const cayeronASuma: string[] = []
+  const extremos = new Map<string, { inicial: number; final: number }>()
 
   for (const [eq, { lecturas, suma }] of porEquipo) {
     // Por fecha y, dentro del mismo día, de menor a mayor: el horómetro sube.
@@ -166,6 +169,7 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
     const rango = primera != null && ultima != null
       ? Math.round((ultima - primera) * 100) / 100
       : 0
+    if (primera != null && ultima != null) extremos.set(eq, { inicial: primera, final: ultima })
     // El rango de un mes no puede quedar por debajo de la mitad de lo que suman
     // sus propios tramos: si pasó, la limpieza se comió las lecturas buenas.
     if (rango >= suma * 0.5 && rango > 0) {
@@ -176,6 +180,6 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
     }
   }
 
-  return { horas, cayeronASuma }
+  return { horas, cayeronASuma, extremos }
 }
 

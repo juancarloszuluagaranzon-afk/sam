@@ -8,6 +8,7 @@ import {
 } from '../services/consumoApi'
 import { loadSemaforos } from '../services/samApi'
 import { NIVEL, describirRango, nivelDe, rangoDe, type RangoSemaforo } from '../lib/semaforo'
+import { GraficaGalHora } from './GraficaGalHora'
 
 /**
  * Tablero de consumo para el dueño.
@@ -66,6 +67,8 @@ export function ConsumoDashboardTab() {
   const [fuenteHoras, setFuenteHoras] = useState<'cierre' | 'rango'>('rango')
   /** Las máquinas cuya serie de horómetros se desplomó y hubo que sumar tramos. */
   const [sinRango, setSinRango] = useState<string[]>([])
+  /** Horómetro inicial y final del mes de cada máquina (para la gráfica). */
+  const [extremos, setExtremos] = useState<Map<string, { inicial: number; final: number }>>(new Map())
   const [cargando, setCargando] = useState(true)
   const [mesSel, setMesSel] = useState<string>('')
   // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
@@ -139,11 +142,15 @@ export function ConsumoDashboardTab() {
     // (el unico mes que lo tiene): el rango acierta 13 de 20 maquinas dentro del
     // 10% contra 9, y varias exactas.
     void (async () => {
-      const cierre = await loadHorasDelMes(mesSel)
+      const [cierre, r] = await Promise.all([
+        loadHorasDelMes(mesSel),
+        // Aunque el mes tenga cierre, las lecturas dan el horómetro inicial y final.
+        loadHorasPorRangoMes(desde, hasta > hoyISO() ? hoyISO() : hasta),
+      ])
       if (!vivo) return
+      setExtremos(r.extremos)
       if (cierre.size > 0) { setHoras(cierre); setFuenteHoras('cierre'); setSinRango([]); return }
-      const r = await loadHorasPorRangoMes(desde, hasta > hoyISO() ? hoyISO() : hasta)
-      if (vivo) { setHoras(r.horas); setFuenteHoras('rango'); setSinRango(r.cayeronASuma) }
+      setHoras(r.horas); setFuenteHoras('rango'); setSinRango(r.cayeronASuma)
     })()
     return () => { vivo = false }
   }, [mesSel])
@@ -194,10 +201,12 @@ export function ConsumoDashboardTab() {
         horasIncompletas,
         galHora, ref, desv,
         ganHora, refGan, desvGan,
+        inicial: extremos.get(codigo)?.inicial ?? null,
+        final: extremos.get(codigo)?.final ?? null,
         usaGanchos: refGan != null,
       }
     }).sort((a, b) => b.gal - a.gal)
-  }, [delMes, horas, refDe, equipoNombre])
+  }, [delMes, horas, refDe, equipoNombre, extremos])
 
   // En ganchos solo se listan las que los usan: mostrar un PUMA con "—" en todo
   // hace pensar que falta un dato, cuando lo que pasa es que no lleva ganchos.
@@ -230,6 +239,7 @@ export function ConsumoDashboardTab() {
       }))), 'Por mes')
       utils.book_append_sheet(wb, utils.json_to_sheet(porMaquina.map((m) => ({
         'Máquina': m.nombre, 'Combustible(gal)': m.gal, 'Ganchos': m.gan,
+        'Horómetro inicial': m.inicial ?? '', 'Horómetro final': m.final ?? '',
         'Horas': m.horas || '',
         'Gal/hora': m.galHora ?? '', 'Ref. gal/h 2025': m.ref ?? '', 'Desv. gal %': m.desv ?? '',
         'Semáforo gal/h': textoSemaforo(m.galHora, rangoDe(rangos, 'gal_hora', m.nombre), m.horasIncompletas),
@@ -302,6 +312,22 @@ export function ConsumoDashboardTab() {
               <span className="kpi__n">{galHoraFlota ?? '—'}</span>
               <span className="kpi__l">galones por hora</span></div>
           </div>
+
+          {/* La gráfica que dibujó el cliente: barra = galones, encima gal/h con
+              su semáforo, y debajo máquina · horómetro inicial · final · horas. */}
+          <GraficaGalHora
+            horasDeCierre={fuenteHoras === 'cierre'}
+            columnas={porMaquina.map((m) => {
+              const rango = rangoDe(rangos, 'gal_hora', m.nombre)
+              return {
+                codigo: m.codigo, nombre: m.nombre, galones: m.gal, horas: m.horas,
+                galHora: m.horasIncompletas ? null : m.galHora,
+                inicial: m.inicial, final: m.final,
+                porSuma: sinRango.includes(m.codigo),
+                rango, nivel: m.horasIncompletas ? null : nivelDe(m.galHora, rango),
+              }
+            })}
+          />
 
           <p className="subtle-copy" style={{ marginTop: 4 }}>
             {fuenteHoras === 'cierre'

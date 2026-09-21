@@ -179,3 +179,11 @@ Excel, columna «ID suerte»), en el detalle de la labor y en el Maestro. «??»
 ingenio (medido: 0 de 756 labores de septiembre). Comprobado: **0 repetidos** en las 17.565
 suertes del maestro.
 
+**Ampliado el mismo 21-sep** (pedido: «ponlo también en la planilla y en la tarjeta del
+operario»): etiqueta `.id-suerte` en la tarjeta de Activas, la hoja de cierre y el historial
+del operario; en la Planilla, en el detalle del día (al tocar una casilla), en la hoja
+«Servicios por horas» y en una hoja nueva **«Labores»** del Excel — una fila por labor con su
+ID, y con la MISMA cifra que la cuadrícula (`areaDelDia`): medido, 915,76 ha en la hoja y
+915,76 en el pie de la planilla. Ejemplo que muestra por qué hacía falta: U058 tenía
+«VALPARAISO - 010» y es **PIC-1224-010** (Pichichí); la VALPARAISO de Riopaila es la 3104.
+

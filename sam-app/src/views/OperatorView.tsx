@@ -38,7 +38,7 @@ import type { Assignment, UserProfile } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { AvisoPendientes } from '../components/AvisoPendientes'
 import { enviarOEncolar } from '../lib/outboxInsumos'
-import { formatTime, executionDateKey, formatExecutionDate, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, loadTanqueosPorConfirmar, confirmarTanqueo, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
+import { formatTime, executionDateKey, formatExecutionDate, getIdSuerte, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, loadTanqueosPorConfirmar, confirmarTanqueo, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
 
 type OperatorTab = 'activas' | 'campo' | 'historial' | 'mapa' | 'chequeo' | 'soporte'
@@ -1593,6 +1593,8 @@ export function OperatorView({
                 >
                   <div className="active-card-compact__main">
                     <h2>{assignment.haciendaName} - {assignment.suerte}</h2>
+                    {/* El número de suerte se repite entre ingenios: el ID dice cuál es. */}
+                    <span className="id-suerte">{getIdSuerte(assignment, maestro)}</span>
                     <p className="subtle-copy">
                       {assignment.labor}{' '}
                       {assignment.kind === 'ASIGNADA' ? (
@@ -1642,7 +1644,7 @@ export function OperatorView({
                     <div className="more-sheet__handle" />
                     <div className="active-sheet__header">
                       <div>
-                        <strong>{a.haciendaName} - {a.suerte}</strong>
+                        <strong>{a.haciendaName} - {a.suerte} <span className="id-suerte">{getIdSuerte(a, maestro)}</span></strong>
                         <span className="subtle-copy">
                           {a.labor} - {esPorHoras(a.labor) ? '⏱ servicio por horas' : formatArea(a.area, a.labor)}
                           {getSuerteProgress(a, assignments).hasProgress && (
@@ -2165,7 +2167,8 @@ export function OperatorView({
                   <div key={assignment.id} className="movement-row">
                     <div>
                       <strong>
-                        {assignment.haciendaName} - {assignment.suerte}
+                        {assignment.haciendaName} - {assignment.suerte}{' '}
+                        <span className="id-suerte">{getIdSuerte(assignment, maestro)}</span>
                       </strong>
                       <span>
                         {assignment.labor}{' '}

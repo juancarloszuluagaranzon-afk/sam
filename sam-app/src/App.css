@@ -9415,3 +9415,50 @@ td.planilla-vacio:hover { background: #fde047; }
 .dash-sem__detalle { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; }
 .dash-sem__detalle p { margin: 0; line-height: 1.6; }
 .dash-sem__detalle small { color: var(--color-ink-mid, #5a5f57); }
+
+/* ID visible de la suerte (PIC-1001-010), 21-sep-2026. Chico y en gris: identifica,
+   no compite con el nombre de la hacienda. Cifras tabulares para que se lea como
+   código. */
+.id-suerte {
+  display: inline-block; font-size: 0.72rem; font-weight: 600; letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums; color: var(--color-ink-mid, #5a5f57);
+  background: var(--color-bg-soft, #eef1ec); border-radius: 6px; padding: 1px 6px;
+  vertical-align: middle; white-space: nowrap;
+}
+:root[data-theme="dark"] .id-suerte { background: rgba(255, 255, 255, 0.08); color: inherit; }
+
+/* ── Gráfica «galones y gal/h» de Eficiencia maquinaria (21-sep-2026) ──────
+   El dibujo del cliente: una columna por máquina, barra de galones, gal/h
+   encima y la tabla (máquina, horómetros, horas) alineada debajo. */
+.ggh__scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+.ggh__grid { display: grid; column-gap: 4px; width: 100%; }
+.ggh__eje, .ggh__rot {
+  position: sticky; left: 0; z-index: 1; background: var(--color-surface, #fff);
+  font-size: 0.72rem; color: var(--color-ink-mid, #5a5f57);
+}
+.ggh__eje { display: flex; align-items: center; justify-content: center; border-right: 2px solid var(--color-ink-mid, #5a5f57); }
+.ggh__eje span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; letter-spacing: .04em; }
+.ggh__col {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px;
+  border-bottom: 2px solid var(--color-ink-mid, #5a5f57);
+}
+/* «gal/h» en un segundo renglón: en uno solo la etiqueta obligaba columnas de
+   ~90 px y 22 máquinas pedían 2.094 px aun en un monitor de 1.440. */
+.ggh__galh { justify-self: auto; font-size: 0.74rem; padding: 2px 6px; white-space: normal; text-align: center; line-height: 1.15; border-radius: 10px; }
+.ggh__galh small { display: block; font-weight: 600; font-size: 0.66rem; opacity: .85; }
+.ggh__barra {
+  width: 70%; max-width: 56px; display: flex; align-items: flex-end; justify-content: center;
+  background: linear-gradient(180deg, var(--color-brand-mid, #1f7a40), var(--color-brand, #155b30));
+  border-radius: 6px 6px 0 0;
+}
+.ggh__gal { color: #fff; font-size: 0.72rem; font-weight: 800; font-variant-numeric: tabular-nums; padding: 4px 2px; text-align: center; line-height: 1.1; }
+.ggh__gal small { display: block; font-weight: 600; opacity: .9; }
+.ggh__gal--fuera { color: var(--color-ink, #1f2a1f); padding: 0; }
+.ggh__rot { display: flex; align-items: center; padding: 6px 6px 6px 0; font-weight: 700; border-bottom: 1px solid var(--color-divider, #e3e6df); }
+.ggh__cel {
+  text-align: center; font-size: 0.74rem; font-variant-numeric: tabular-nums; padding: 6px 2px;
+  border-bottom: 1px solid var(--color-divider, #e3e6df);
+}
+.ggh__cel--maq { font-weight: 700; font-size: 0.74rem; line-height: 1.2; overflow-wrap: anywhere; }
+.ggh__cel--horas { font-weight: 800; }
+.ggh__nota { margin: 6px 0 0; font-size: 0.76rem; color: var(--color-ink-mid, #5a5f57); line-height: 1.45; }

@@ -73,7 +73,9 @@ export function ConsumoDashboardTab() {
   const [mesSel, setMesSel] = useState<string>('')
   // Combustible o ganchos. Un selector y no dos columnas más: la tabla ya tiene
   // cinco y en celular no cabe una sexta sin volverse ilegible.
-  const [medida, setMedida] = useState<'COMBUSTIBLE' | 'GANCHOS'>('COMBUSTIBLE')
+  // Abre en GANCHOS: lo pidió el cliente (21-sep-2026, «déjalo predeterminado en
+  // ganchos»). El combustible ya se ve arriba, en la gráfica de galones y gal/h.
+  const [medida, setMedida] = useState<'COMBUSTIBLE' | 'GANCHOS'>('GANCHOS')
   // Rangos del semáforo (los ajusta el cliente en la base, sin publicar versión).
   // Si no cargan, la columna dice «sin rango»: nunca se inventa un verde.
   const [rangos, setRangos] = useState<RangoSemaforo[]>([])

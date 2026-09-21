@@ -409,3 +409,44 @@ También: `equipo_horometro_v` lee ahora el horómetro de las **entregas**
 eso la pantalla de Horómetros mostraba la PUMA 2302 quieta 16 días. ⚠️ Siguen atascadas las
 máquinas con **lectura manual vieja** (la manual manda siempre: PUMA 2101 del 4-ago, VALTRA
 9902 del 20-ago) — pendiente de decisión del cliente.
+
+## 🟡 Semáforos de gal/hora y de ganchos por máquina — PEDIDO del 21-sep-2026, sin construir
+
+El cliente mandó la tabla (captura de Excel) pidiendo *«semáforos en el análisis de
+combustible y ganchos»*. Copiada **tal cual** — los errores de tecleo son suyos y se
+confirman, no se adivinan:
+
+| Máquina | MÍNIMO (verde) | MEDIO (naranja) |
+|---|---|---|
+| CASE 1001 | 1,2 a 1,5 | 1,51 a 1,7 |
+| CASE 1002 | 1,2 a 1,5 | 1,51 a 1,7 |
+| CASE 1101 | 1,7 a 2,1 | 2,11 a 2,3 |
+| CASE 1102 | 1,2 a 1,5 | 1,51 a 1,7 |
+| CASE 1301 · 1302 · 1303 · 1304 | 1,7 a 2,1 | 2,11 a 2,3 |
+| CASE 901 · 902 · 903 · 951 · 952 | 1,2 a 1,5 | 1,51 a 1,7 |
+| FIAT | — (vacío) | — (vacío) |
+| PUMA 2101 · 2301 · 2302 | «5 A 6 / 4 A ,5» | «6,1 A 6,5 / 4,51 A 5» |
+| VALTRA 1351 | 1,3 a 1,7 | 1,71 a 1,8 |
+| VALTRA 9901 · 9902 · 9903 · 9904 | 1,1 a 1,5 | «1.70» |
+| GANCHOS | 0,7 a 1,1 | 1,11 a 1,4 |
+| GANCHOS | «40 DE 0 A 45 HR» | «80 DE 45,1 A 90» |
+
+**Por confirmar con el cliente antes de construir:**
+- Por encima del naranja = **rojo** (no lo dice la tabla).
+- PUMA trae **dos rangos** separados por «/»: ¿por tipo de labor (pesada / liviana)? Y
+  «4 A ,5» parece «4 a 4,5».
+- VALTRA 99xx naranja es un solo número «1.70»: ¿1,51 a 1,70?
+- FIAT no tiene valores: sin semáforo, y decirlo en pantalla, no pintarlo de verde.
+- GANCHOS, fila 1: ¿ganchos por hora? Fila 2: ¿40 ganchos para 0–45 h de trabajo y 80
+  para 45,1–90 h? Son dos lecturas distintas del mismo insumo.
+
+**Cómo construirlo cuando se confirme:**
+- Los rangos van en una **FILA de la base** (por máquina, con su régimen), no en el código
+  — mismo principio que `taller_config` («la ley va en una fila»): el cliente los va a
+  ajustar.
+- Dónde: las barras de `ConsumoHoraCard` (gal/hora por máquina, ya con horómetro inicial y
+  final del periodo) y la torta de ganchos por máquina de `InsumosCard`.
+- El color **nunca solo**: ícono + etiqueta («✓ dentro», «▲ medio», «⚠ alto»), por
+  daltonismo y por impresión (regla de dataviz). Una máquina sin horas confiables en el
+  periodo **no lleva semáforo**: pintar un gal/hora que salió de un horómetro malo es
+  inventar un juicio.

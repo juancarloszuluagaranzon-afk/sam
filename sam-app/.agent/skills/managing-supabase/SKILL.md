@@ -348,3 +348,12 @@ Las tablas son de `supabase_admin`; `postgres` **no** puede alterarlas ni hacer
 python put_b64.py <local.sql> /root/mig.sql
 python ssh_run.py 'docker cp /root/mig.sql supabase-db:/tmp/mig.sql && docker exec supabase-db psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 --single-transaction -f /tmp/mig.sql'
 ```
+
+### Candado por rol en un trigger: se apoya en `editado_por` (21-sep-2026)
+
+`trg_asignaciones_cantidad_solo_admin` decide por el rol de `NEW.editado_por` (la app entra
+con la llave anónima: la base no sabe quién está en el celular). Eso obliga a que **toda
+escritura estampe `editado_por`**; una que no lo haga hereda al último editor. Al escribir
+un trigger así: compararlo **solo cuando cambia la columna protegida** (`is not distinct
+from`), para no frenar las ediciones de otras columnas, y probar los cuatro actores
+(supervisor, administración, operario, y la unidad que NO se protege).

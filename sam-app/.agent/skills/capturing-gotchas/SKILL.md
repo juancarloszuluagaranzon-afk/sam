@@ -80,3 +80,29 @@ tiene que mirar el dueño del proyecto en su tablero.
 
 🔴 **No decir «ya está desplegado» por haber hecho push.** Confirmar que el bundle servido trae
 el cambio (buscar una cadena nueva del código en el `index-*.js` de producción).
+
+## ⏰ Un reloj adelantado deja la sync ciega (hallado 21-sep-2026) · 🔴 SIN ARREGLAR
+
+Probando OFICIOS VARIOS, una labor recién creada **no aparecía** en `loadAssignments()`.
+Causa: el **reloj de este PC va 72 s adelante** del servidor (el servidor está bien: NTP
+sincronizado y coincide con la hora de Google al segundo).
+
+`loadAssignments` guarda como marca `assignments_last_sync = new Date()` —**la hora del
+aparato**— y el delta pide `updated_at >= marca − 10 s`, comparando contra la hora del
+**servidor**. Con el aparato adelantado más de esos 10 s, todo lo que otros escribieron
+entre dos consultas queda **antes** de la marca: el delta vuelve vacío siempre y la
+pantalla solo se entera con una sincronización completa. No da error; simplemente no
+llegan los cambios de los demás.
+
+- **Arreglo** (en `services/samApi.ts`, `loadAssignments`): la marca debe salir del
+  **servidor**, no del aparato — el mayor `updated_at`/`created_at` de las filas recibidas
+  (y si no llegó ninguna, dejar la marca como estaba). Revisar las otras tablas que
+  sincronizan igual (buscar `last_sync`).
+- **Cómo medirlo**:
+  ```bash
+  date -u '+%H:%M:%S'; curl -sI https://www.google.com | grep -i '^date:'
+  ```
+  en el PC y en el VPS (`timedatectl` dice si hay NTP).
+- Los celulares suelen tomar la hora de la red, pero **no todos**: uno con la hora puesta a
+  mano repite el problema. Y cualquier caso de «a mí no me sale lo que el otro registró»
+  debe empezar por aquí.

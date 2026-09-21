@@ -694,5 +694,93 @@ casillas estaba mal. Con esa planilla se paga.
 La columna de hm sale **vacía** cuando no hay acequias en el periodo: meterle una
 columna de ceros a quien no la usa es ruido.
 
-⚠️ **El Resumen y el Reporte todavía suman las dos unidades.** Al tocar cualquier
-total que cruce labores, separarlo igual.
+⚠️ **El Resumen y el Reporte todavía suman ha con hm.** Al tocar cualquier total que
+cruce labores, separarlo igual. (Las HORAS sí salen aparte en todos — ver abajo.)
+
+## ⏱ Servicios POR HORAS — OFICIOS VARIOS (19/21-sep-2026) · 🟡 sin desplegar
+
+Pedido por voz: *«montar la lógica para control de máquinas cuando prestan servicio de
+oficios varios, que es por horas… esta parte no la va a programar el supervisor (Alfredo,
+Julio César Niño) sino Carlos David desde la administración… debe aparecer en horas, en la
+planilla, cuando se descargue en Excel»*. Formulario dictado: **hora de inicio · horómetro
+inicial · administrador encargado · hora final · horómetro final**.
+
+### La base manda (migración `20260919120000_oficios_varios_horas.sql`, 11 pruebas en `supabase/pruebas_oficios_varios.sql`)
+
+- `labores_catalogo.unidad in ('ha','hm','h')` + **`solo_administracion`**. OFICIOS VARIOS =
+  MECANIZADA, `'h'`, solo administración.
+- `trg_asignaciones_fijar_unidad` (BEFORE INSERT): copia la unidad del catálogo a
+  `asignaciones.unidad` y **rechaza `SOLO_ADMINISTRACION`** si la programa alguien que no es
+  owner/administracion. El histórico NO se rellenó (null = era de hectáreas).
+- `asignaciones_cap_area()` exime **todo lo que no sea `'ha'`**: el área de la suerte no es
+  techo para hectómetros ni para horas.
+- `asignaciones.administrador_encargado` (texto, nullable): quién recibe el servicio en la
+  hacienda. Lista recordada `ADMIN_ENCARGADO` (`CampoLista`).
+
+### La unidad sale del CATÁLOGO
+
+`registrarUnidades(labores)` (en `AppDataContext`, con espejo en localStorage) alimenta
+`unidadDeLabor()`; si el catálogo no ha llegado, respaldo por nombre (ACEQUIAS→hm,
+OFICIOS VARIOS→h). Helpers: `esPorHoras()`, `nombreUnidad()`.
+
+### Cómo salen las horas — `lib/horasServicio.ts`
+
+🔴 **Manda el HORÓMETRO** (final − inicial) si es creíble: los dos > 0, final ≥ inicial,
+distinto, ≤ 24 h. Si no, el **RELOJ** (fin − inicio, ≤ 24 h) y queda escrito en las notas
+`[Horas por RELOJ (…)]`; sin ninguno, `[SIN HORAS: …]` y 0. `seSeparan` = las dos medidas
+difieren más de max(1 h, 35 % del reloj) → sale para revisar.
+- Horómetro primero: es lo que se cobra en maquinaria y no depende de a qué hora tocó el
+  operario «Iniciar».
+- **No se promedian**: dos números que no cuadran son una alerta, no algo que suavizar.
+- 7 casos probados con la función real: horómetro bueno · horómetro en 0 (→ reloj) · al
+  revés · dedazo `4000 → 40075` · turno que cruza medianoche · se le olvidó cerrar 3 días
+  (→ sin horas) · máquina parada (2 h de horómetro en 9 de reloj → cuenta 2 y avisa).
+
+### Por dónde pasa
+
+| Sitio | Qué hace con las horas |
+|---|---|
+| Programar (`useAssignmentForm`, `SupervisorView`) | Una sola suerte, `area_asignada = 0`, sin «restante», sin reutilizar la línea pendiente. Pide administrador encargado. Al supervisor **no le sale** la labor (`activeLabores` filtra `soloAdministracion`) y el operario no la toma en campo libre (`fieldLabores`) |
+| Cerrar (`finishAssignment`, `OperatorView`) | Sin cantidad que teclear: banner «⏱ Servicio por horas» con las dos medidas en vivo, sin interruptor de 100 %. Siempre `COMPLETADA`, aprobación `PENDIENTE` como toda labor |
+| Planilla (`PlanillaTab`) | Tercer cubo `perDayH/totalH`; en la casilla va debajo con «h». Columna **«Horas serv.»**, distinta de las horas de horómetro. Un servicio abierto se ve «⏱ en curso» |
+| Excel de la planilla | 🔴 **Una fila por unidad**: la de ha y, debajo, `↳ hm` y `↳ horas` solo si las hay, con columna «Unidad» y números de verdad en las casillas (nómina suma y aplica tarifa por fila). **Las horas nunca entran en «Total»** (ha + hm, decisión del cliente). Hoja nueva **«Servicios por horas»**: las dos medidas, cuáles contaron (horómetro / reloj / corregidas a mano) y qué revisar |
+| MiPlanilla (la del operario) | Los mismos tres cubos |
+| Reporte Excel (`App.tsx`) | Columnas **Unidad**, **Cantidad plan.**/**Cantidad ejec.** (antes decía «(ha)» para todo), horas por horómetro y por reloj, administrador |
+| Totales en ha | Fuera de `summarizeAssignments`, Resumen (tarjeta propia «SERVICIOS POR HORAS»), KPIs y «por máquina» del Reporte, Dashboard, métricas del operario. Facturación lleva ha y h por separado |
+| Rendimiento del operario | **8 h de servicio = 1 jornada** (`HORAS_POR_JORNADA`): al que mandan a un servicio no se le cae el indicador, y sus horas no se vuelven hectáreas |
+| Registro rápido (`RegistrarLaborModal`) | Con labor por horas pide día, hora de inicio y final, administrador; calcula en vivo y guarda las horas REALES (antes todo quedaba con «ahora»). 🔴 El tope contra el área de la suerte ahora es **solo para ha**: antes rechazaba una acequia con más hm que ha tiene la suerte |
+| Editar labor (modal) | Las dos medidas + botón «Usar X h»; se editan hora de inicio y final (antes corregir el día las aplastaba a 11:00–12:00 = «una hora») y el administrador |
+| Catálogo (`LaboresTab`) | Columna «Se mide en» (pide confirmación: cambia cómo se lee **todo el histórico** de esa labor — si ya tiene historia en otra unidad, crear una labor nueva) y botón «→ Solo administración» |
+
+**Probado** (21-sep): tsc + build; punta a punta contra producción con U058 — supervisor
+rechazado al programar; administración crea con área 0 e ingenio `pichichi`; cierra en
+**6,8 h por horómetro** frente a 7,5 de reloj; el supervisor no puede corregir las horas y
+administración sí; cuenta en la planilla como `'h'`; no mueve las ha del día. Borrada.
+**Falta**: el flujo en pantalla en celular (regla del 17-sep) y desplegar.
+
+## 🔒 Hectómetros y horas: solo ADMINISTRACIÓN los corrige (21-sep-2026)
+
+*«Los supervisores están pudiendo editar los hm y esto es tarea de Carlos David.»* La
+medida de una acequia y las horas de un servicio son lo que se cobra; las valida quien
+administra, no quien programa.
+
+- Cliente: `editAssignment` rechaza cambiar `executedArea` de una labor que no es `'ha'`
+  si el rol no es owner/administracion. En el modal el campo sale bloqueado con 🔒, y el
+  guardado del supervisor **no manda la cantidad** — así sigue pudiendo corregir día,
+  operario, equipo y notas.
+- Base: **`trg_asignaciones_cantidad_solo_admin`** (BEFORE UPDATE, migración
+  `20260919130000_cantidad_hm_horas_solo_admin.sql`) — **activo en producción desde el
+  21-sep**: si cambia `area_realizada` de una labor no-`'ha'` y `editado_por` es un
+  supervisor → `SOLO_ADMINISTRACION`. 5/5 pruebas con rollback: supervisor cambia hm →
+  rechazado; supervisor cambia notas → pasa; administración → pasa; el operario cerrando →
+  pasa; supervisor corrige ha de un DESPEJE → pasa.
+- ⚠️ **Depende de que toda escritura estampe `editado_por`.** El cierre del operario lo hace
+  (también en la versión publicada). Una escritura NUEVA que cambie `area_realizada` sin
+  estampar hereda al último editor: si fue un supervisor, bloquea a quien no debía.
+
+## 🐛 ACEQUIAS recortadas al área de la suerte al cerrar (hallado 19-sep-2026)
+
+`finishAssignment` recortaba `executedArea` al área de la suerte **también para hm**:
+**13 de 55** cierres de ACEQUIAS desde agosto quedaron recortados (6 en septiembre,
+editados por U002). Arreglado en el cliente (`tieneTopeDeArea`: solo ha). 🔴 **Los datos
+viejos NO se corrigieron**: reescribir historia necesita un sí explícito del cliente.

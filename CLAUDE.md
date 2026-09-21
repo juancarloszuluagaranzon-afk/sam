@@ -125,8 +125,17 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    que mezcla unidades y lo reafirmó.
    Medido antes de separarlos: a un operario se le sumaban 196,88 hm con 59,51 ha y
    salía un total de 256,39 sin significado — y **8 de los 17 días con acequias**
-   mezclaban las dos unidades. ⚠️ El Resumen y el Reporte **todavía suman**; al tocar
-   un total que cruce labores, separarlo igual.
+   mezclaban las dos unidades. ⚠️ El Resumen y el Reporte **todavía suman** ha con hm;
+   al tocar un total que cruce labores, separarlo igual.
+   🔴 **Hay una TERCERA unidad: HORAS (`'h'`)** — OFICIOS VARIOS, servicio de máquina que
+   se cobra por horas y que **solo programa administración** (Carlos David), no los
+   supervisores (`labores_catalogo.solo_administracion`, lo exige la base). Las horas
+   salen del **horómetro** y, si no sirve, del **reloj** (`lib/horasServicio.ts`), y
+   **NUNCA se suman con hectáreas ni hectómetros**: ni en «Total» de la planilla, ni en
+   el Resumen, ni en facturación, ni en el rendimiento. `unidadDeLabor()` ya lee el
+   CATÁLOGO (`registrarUnidades`). Y los **hm y las horas solo los corrige
+   administración** (trigger `trg_asignaciones_cantidad_solo_admin`, activo). Detalle en
+   `.agent/skills/managing-assignments/` → «Servicios POR HORAS».
 8. **Nunca usar `now()`** al normalizar fechas en SQL; usar `coalesce(fecha_inicio, created_at)`.
 
 ## Flujo de trabajo
@@ -484,6 +493,37 @@ nadie lo viera: el mapeo de `EN_CURSO`.
 real —incluido el paso que falló— y **medir el resultado donde queda guardado** (la
 fila en la base, el archivo en el servidor). Un componente que funciona aislado es una
 hipótesis, no una verificación. Ver `capturing-gotchas`.
+
+## 🟡 En curso al 21-sep-2026 — leer antes de seguir
+
+**OFICIOS VARIOS por horas + candado de hm está ESCRITO Y PROBADO pero SIN DESPLEGAR.**
+El código vive solo en el disco del PC de Iván (17 archivos modificados + 4 nuevos, sin
+commit). Si abres esto desde GitHub o desde el celular, **no está ahí**.
+
+- ✅ En producción YA: las dos migraciones (`20260919120000_oficios_varios_horas.sql`,
+  `20260919130000_cantidad_hm_horas_solo_admin.sql`). OFICIOS VARIOS quedó con
+  **`activa=false`** a propósito: la app publicada no sabe de horas.
+- ⏭️ Falta, en orden: commit + push → confirmar el bundle (`capturing-gotchas`) →
+  `update labores_catalogo set activa=true where nombre='OFICIOS VARIOS'` → probar
+  en celular con U058 el flujo completo en pantalla (regla del 17-sep) → avisar versión.
+- 🔴 **Hallazgo sin arreglar: la sincronización por cambios se ciega en un aparato con el
+  reloj adelantado** (este PC va 72 s adelante del servidor, que sí está en hora).
+  Ver `capturing-gotchas` → «Un reloj adelantado deja la sync ciega». Arreglarlo ANTES
+  de desplegar horas: afecta a todas las labores, no solo a estas.
+- ⏳ **Pedidos del cliente sin atender (21-sep):**
+  1. «Carlos Castillo: no coincide la planilla con el historial en el reporte» — sin
+     revisar. Primero descartar el reloj de arriba (caché viejo en un solo aparato);
+     luego comparar criterio: la planilla va por **fecha de ejecución** y
+     `areaDelDia`, el historial puede ir por fecha de asignación.
+  2. «Id diferenciador por suerte, en diferentes ingenios existen las mismas suertes»
+     — la llave **ingenio + código + suerte** ya está en la base desde el 18-sep
+     (`asignaciones.ingenio_id`, `filaMaestro()`). Que lo vuelva a pedir dice que
+     **en alguna pantalla no se ve**: buscar dónde se elige o se muestra una suerte
+     sin su ingenio.
+  3. **Semáforos de gal/hora y de ganchos por máquina** — la tabla del cliente está
+     copiada tal cual en `managing-movimientos` → «Semáforos». Sin construir.
+  4. ACEQUIAS: ✅ hecho (candado). Queda la decisión sobre las **13 ACEQUIAS
+     recortadas** al área de la suerte (ver `managing-assignments`): no se tocan sin un sí.
 
 ## Cómo trabaja el usuario
 

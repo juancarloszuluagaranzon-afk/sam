@@ -17,6 +17,17 @@ Nació porque el cliente quiere arrancar un **pago por productividad** con los t
 despachadores. Eso cambia todo: no es un reporte, es la base de la nómina de tres
 personas con nombre propio.
 
+## 🔴 La lista por despachador SE QUITÓ (21-sep-2026)
+
+El cliente mandó captura con la lista por persona (Eduvin, Genaro, Diego: entregas, días,
+por hora, % de registro, cuadre del carro) y el aviso «Estos números todavía no son para
+pagar», y escribió: **«quita esto»**. Salió de `MovimientosTab` junto con su ventana de
+detalle por persona. Lo que sigue en la pantalla: la cinta (sin foto · sin aprobar · gal sin
+cuadrar), las cuatro cifras, las tortas, combustible por hora con sus semáforos y «A quién se
+entrega». Las funciones (`indiceCalidad`, `ritmoPorHora`, `cuadreCarro`, `esDeRuta`) siguen
+en `services/movimientosApi.ts`: si vuelve el pago por productividad, no hay que rehacer los
+cálculos. Las secciones de abajo que hablan de esa lista describen cómo era, no cómo es.
+
 ## 🔴 La regla que ordena toda la pantalla
 
 **El volumen NUNCA se muestra solo.** Al lado del número de entregas va siempre la

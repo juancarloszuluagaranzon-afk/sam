@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Ayuda } from '../components/Ayuda'
-import { BarrasH, Columnas, colorDe, SERIES, type Punto } from '../components/Charts'
+import { BarrasH, Columnas, SERIES, type Punto } from '../components/Charts'
 import { fmtFechaHora } from '../lib/fechas'
-import { fmtCantidad } from '../lib/cantidad'
 import { PERIODOS, rangoDe, esUnSoloDia, hoyBogota, type Periodo } from '../lib/periodos'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, loadKardexReporte } from '../services/samApi'
@@ -11,9 +10,9 @@ import { InsumosCard } from './InsumosCard'
 import { ConsumoHoraCard } from './ConsumoHoraCard'
 import type { InsumoKardex } from '../domain/sam'
 import {
-  loadResumenMovimientos, indiceCalidad, ritmoPorHora, hhmm,
-  cuadreCarro, esDeRuta, loadSolicitudesOperarios,
-  type ResumenMovimientos, type Despachador, type ResumenSolicitudes,
+  loadResumenMovimientos,
+  cuadreCarro, loadSolicitudesOperarios,
+  type ResumenMovimientos, type ResumenSolicitudes,
 } from '../services/movimientosApi'
 
 /**
@@ -38,13 +37,6 @@ import {
 function n0(v: number) { return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 0 }).format(v) }
 function n1(v: number) { return new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 }).format(v) }
 function pct(parte: number, total: number) { return total > 0 ? Math.round((parte / total) * 100) : 0 }
-
-/** "RIVERA HERREÑO GENARO" → "Genaro". El apellido no ayuda a leer una frase. */
-function primerNombre(completo: string): string {
-  const partes = completo.trim().split(/\s+/)
-  const n = partes[partes.length - 1] || completo
-  return n.charAt(0) + n.slice(1).toLowerCase()
-}
 
 /**
  * Una sección que se abre a propósito, con su cifra de resumen en el título.
@@ -90,7 +82,6 @@ export function MovimientosTab() {
   const [datos, setDatos] = useState<ResumenMovimientos | null>(null)
   const [cargando, setCargando] = useState(true)
   const [error, setError] = useState('')
-  const [detalle, setDetalle] = useState<Despachador | null>(null)
   // El panel de solicitudes va en su propia consulta: es el que menos se abre y
   // no tiene por que viajar en cada carga del tablero.
   const [solicitudes, setSolicitudes] = useState<ResumenSolicitudes>({
@@ -261,79 +252,10 @@ export function MovimientosTab() {
 
       {!cargando && t && t.entregas > 0 && (
         <>
-          {/* Una fila por persona. Volumen, presencia y ritmo en la misma línea
-              —el veredicto afirma los tres— y debajo la calidad del registro,
-              para que ninguna de las dos cosas obligue a abrir un modal. */}
-          <div className="mov-tarjetas">
-            {despachadores.map((d, i) => {
-              const cal = indiceCalidad(d)
-              const ritmo = ritmoPorHora(d, datos?.jornadas ?? [])
-              const porEvento = d.eventos > 0 ? d.entregas / d.eventos : 1
-              const cuadre = cuadreCarro(d)
-              const alertas = (d.carguesSospechosos > 0 ? 1 : 0) + (d.avalVencido > 0 ? 1 : 0)
-                + (porEvento > 1.15 ? 1 : 0)
-              return (
-                <button key={d.id} type="button" className="mov-fila" onClick={() => setDetalle(d)}>
-                  <i className="mov-fila__color" style={{ background: colorDe(i) }} />
-                  <span className="mov-fila__nom">{primerNombre(d.nombre)}</span>
-                  {/* Las tres van en UNA rejilla y no en tres celdas sueltas:
-                      cada celda por su cuenta alinea sus propios hijos, y las
-                      cifras quedaban a 354, 360 y 355 px — medido. Aquí
-                      comparten fila y línea base aunque tengan tamaños distintos. */}
-                  <span className="mov-fila__cifras">
-                    <span className="mov-fila__c mov-fila__c--n">
-                      <b>{n0(d.entregas)}</b><i>entregas</i>
-                    </span>
-                    <span className="mov-fila__c">
-                      <b>{d.dias}</b><i>días</i>
-                    </span>
-                    <span className="mov-fila__c">
-                      <b>{ritmo != null ? n1(ritmo) : '—'}</b><i>por hora</i>
-                    </span>
-                  </span>
-                  {/* La celda se declara siempre, con alerta o sin ella: si
-                      desapareciera, esa fila entera se correría de columna. */}
-                  <span className="mov-fila__alerta">{alertas > 0 ? `⚠${alertas}` : ''}</span>
-                  <span className="mov-fila__ir" aria-hidden>›</span>
-                  <span className="mov-fila__pie">
-                    <span className={cal >= 95 ? '' : cal >= 85 ? 'es-ojo' : 'es-mal'}>
-                      <b>{cal}%</b> registro
-                    </span>
-                    {cuadre != null ? (
-                      <span className={Math.abs(cuadre) > 50 ? 'es-mal' : ''}>
-                        carro <b>{cuadre > 0 ? '+' : ''}{n0(cuadre)}</b> gal
-                      </span>
-                    ) : (
-                      <span>bodega, sin carro · no se compara con los de ruta</span>
-                    )}
-                  </span>
-                </button>
-              )
-            })}
-          </div>
-
-          {/* El freno se queda a la vista SIEMPRE; lo que se pliega es la
-              explicación, nunca la advertencia. */}
-          <div className="mov-freno">
-            <span>⚠ Estos números todavía no son para pagar.</span>
-            <Ayuda rotulo="Por qué">
-              <p>
-                <strong>{despachadores.filter((d) => !esDeRuta(d)).map((d) => primerNombre(d.nombre)).join(' y ') || 'Quien despacha desde la bodega'}</strong>{' '}
-                no hace ruta: entregar no es su trabajo principal y aparece de último
-                aunque haga bien lo suyo. No entra en la comparación.
-              </p>
-              <p>
-                <strong>La demora en aprobar la decide el operario</strong> cuando
-                confirma, no el despachador. Cobrársela se responde presionando al
-                operario para que firme sin revisar.
-              </p>
-              <p>
-                <strong>Un mes dice poco.</strong> Deje correr dos y vigile que las
-                entregas por visita se mantengan cerca de 1,0.
-              </p>
-            </Ayuda>
-          </div>
-
+          {/* 🔴 La lista por persona (entregas, días, por hora, % de registro, cuadre
+              del carro) y su aviso «todavía no son para pagar» se QUITARON el
+              21-sep-2026: lo pidió el cliente («quita esto»). Las funciones que la
+              calculaban siguen en lib/ por si vuelve el pago por productividad. */}
           {/* Informativa a propósito: no son botones porque no llevan a ninguna
               parte, y un chip pulsable que no responde se aprende como adorno. */}
           <div className="mov-cinta">
@@ -553,80 +475,6 @@ export function MovimientosTab() {
       {/* Las entregas detrás de una porción de las tortas. */}
       {detIns && (
         <ModalEntregas titulo={detIns.titulo} items={detIns.items} onClose={() => setDetIns(null)} />
-      )}
-
-      {detalle && (
-        <div className="modal-overlay open" onClick={() => setDetalle(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="labor-detail-header">
-              <div>
-                <p className="eyebrow">Despachador</p>
-                <h3>{detalle.nombre}</h3>
-              </div>
-              <button type="button" className="modal-close-btn" onClick={() => setDetalle(null)} aria-label="Cerrar">✕</button>
-            </div>
-            <div className="dash-kpis">
-              <div className="dash-kpi"><span className="dash-kpi__val">{n0(detalle.entregas)}</span><span className="dash-kpi__lbl">entregas</span></div>
-              <div className="dash-kpi"><span className="dash-kpi__val">{n0(detalle.eventos)}</span><span className="dash-kpi__lbl">visitas</span></div>
-              <div className="dash-kpi"><span className="dash-kpi__val">{detalle.dias}</span><span className="dash-kpi__lbl">días activos</span></div>
-              <div className="dash-kpi"><span className="dash-kpi__val">{n0(detalle.galones)}</span><span className="dash-kpi__lbl">galones</span></div>
-              <div className="dash-kpi"><span className="dash-kpi__val">{detalle.maquinas}</span><span className="dash-kpi__lbl">máquinas</span></div>
-              <div className="dash-kpi"><span className="dash-kpi__val">{detalle.operarios}</span><span className="dash-kpi__lbl">operarios</span></div>
-            </div>
-            {(() => {
-              const jor = (datos?.jornadas ?? []).find((j) => j.id === detalle.id)
-              const porEvento = detalle.eventos > 0 ? detalle.entregas / detalle.eventos : 1
-              return (
-                <>
-                  <ul className="mov-detalle-lista">
-                    {jor && (
-                      <li>
-                        Jornada: de {hhmm(jor.primeraHora)} a {hhmm(jor.ultimaHora)}{' '}
-                        (<strong>{n1(jor.horas)} h</strong>)
-                      </li>
-                    )}
-                    <li>Con foto: <strong>{detalle.conFoto}</strong> de {detalle.entregas} ({pct(detalle.conFoto, detalle.entregas)}%)</li>
-                    <li>Aprobadas por el operario: <strong>{detalle.avaladas}</strong> ({pct(detalle.avaladas, detalle.entregas)}%)</li>
-                    <li>Reportadas con diferencia: <strong>{detalle.conDiferencia}</strong></li>
-                    <li>Con horómetro registrado: <strong>{detalle.conHorometro}</strong> ({pct(detalle.conHorometro, detalle.entregas)}%)</li>
-                    {detalle.horasAvalMediana != null && (
-                      <li>La aprobación tarda <strong>{n1(detalle.horasAvalMediana)} h</strong> (mediana)</li>
-                    )}
-                    <li>Primera entrega: {fmtFechaHora(detalle.primera)}</li>
-                    <li>Última entrega: {fmtFechaHora(detalle.ultima)}</li>
-                    <li>
-                      Promedio por entrega:{' '}
-                      <strong>{fmtCantidad(detalle.entregas > 0 ? detalle.galones / detalle.entregas : 0, 'galón')} gal</strong>
-                    </li>
-                  </ul>
-
-                  {detalle.carguesSospechosos > 0 && (
-                    <p className="mov-alerta">
-                      ⚠ {detalle.carguesSospechosos} cargue{detalle.carguesSospechosos > 1 ? 's' : ''} por
-                      encima de 500 galones, por fuera del cuadre. Revíselo en Aprobaciones.
-                    </p>
-                  )}
-                  {detalle.avalVencido > 0 && (
-                    <p className="mov-alerta">
-                      ⚠ {detalle.avalVencido} entrega{detalle.avalVencido > 1 ? 's' : ''} sin
-                      aprobar con más de 3 días
-                    </p>
-                  )}
-                  {porEvento > 1.15 && (
-                    <p className="mov-alerta">
-                      ⚠ {n1(porEvento)} entregas por visita — revisar si se están partiendo
-                    </p>
-                  )}
-                </>
-              )
-            })()}
-            <p className="subtle-copy">
-              «Visitas» agrupa las entregas a la misma máquina dentro de hora y media. Si
-              las entregas suben mucho más rápido que las visitas, alguien está partiendo
-              un tanqueo en varios registros.
-            </p>
-          </div>
-        </div>
       )}
     </section>
   )

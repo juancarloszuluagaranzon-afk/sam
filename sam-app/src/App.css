@@ -9461,3 +9461,39 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .ggh__cel--maq { font-weight: 700; font-size: 0.74rem; line-height: 1.2; overflow-wrap: anywhere; }
 .ggh__cel--horas { font-weight: 800; }
+
+/* ── «Por despachar» en Insumos y materiales (21-sep-2026) ─────────────────
+   Dos renglones y una lista plegada: cuántas/para cuándo y qué alistar. */
+.pdesp { margin-top: 12px; }
+.pdesp__vacio { margin: 4px 0 0; color: var(--color-ink-mid, #5a5f57); font-size: 0.9rem; }
+.pdesp__linea { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 4px 0 0; font-size: 0.95rem; }
+.pdesp__n { font-size: 1.5rem; font-weight: 800; line-height: 1; color: var(--color-brand, #155b30); font-variant-numeric: tabular-nums; }
+.pdesp__chip {
+  font-size: 0.78rem; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+  background: var(--color-bg-soft, #eef1ec); color: var(--color-ink, #1f2a1f);
+}
+.pdesp__chip--atrasada { background: var(--color-status-cancel-bg); color: var(--color-status-cancel); }
+.pdesp__chip--hoy, .pdesp__chip--manana { background: var(--color-status-progress-bg); color: var(--color-status-progress); }
+.pdesp__sub { margin: 4px 0 0; font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); }
+.pdesp__alistar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 10px 0 0; font-size: 0.86rem; }
+.pdesp__lbl { font-size: 0.7rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--color-ink-mid, #5a5f57); }
+.pdesp__mat b { font-variant-numeric: tabular-nums; }
+.pdesp__lista { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1px solid var(--color-divider, #e3e6df); }
+.pdesp__lista li {
+  display: grid; grid-template-columns: 9.5em minmax(0, 1.4fr) minmax(0, 1.4fr) auto; gap: 4px 12px; align-items: baseline;
+  padding: 8px 2px; border-bottom: 1px solid var(--color-divider, #e3e6df); font-size: 0.84rem;
+}
+.pdesp__lista li.es-atrasada .pdesp__cuando { color: var(--color-status-cancel); font-weight: 700; }
+.pdesp__cuando { font-variant-numeric: tabular-nums; }
+.pdesp__cuando em { font-style: normal; }
+.pdesp__quien { overflow-wrap: anywhere; }
+.pdesp__quien small { color: var(--color-ink-mid, #5a5f57); }
+.pdesp__que { overflow-wrap: anywhere; }
+.pdesp__estado { font-size: 0.74rem; font-weight: 700; color: var(--color-status-done); white-space: nowrap; }
+.pdesp__estado.es-porAprobar { color: var(--color-status-progress); }
+@media (max-width: 620px) {
+  .pdesp__lista li { grid-template-columns: minmax(0, 1fr) auto; }
+  .pdesp__cuando { grid-column: 1; }
+  .pdesp__estado { grid-column: 2; grid-row: 1; justify-self: end; }
+  .pdesp__quien, .pdesp__que { grid-column: 1 / -1; }
+}

@@ -8,6 +8,7 @@ import { executionDateKey, loadKardexReporte } from '../services/samApi'
 import { ModalEntregas } from '../components/ModalEntregas'
 import { InsumosCard } from './InsumosCard'
 import { ConsumoHoraCard } from './ConsumoHoraCard'
+import { PorDespacharCard } from './PorDespacharCard'
 import type { InsumoKardex } from '../domain/sam'
 import {
   loadResumenMovimientos,
@@ -88,8 +89,11 @@ export function MovimientosTab() {
     porOperario: [], porInsumo: [], detalle: [],
   })
 
+  // Cada «Actualizar» recarga también la cola de «Por despachar».
+  const [vuelta, setVuelta] = useState(0)
   const cargar = useCallback(async () => {
     setCargando(true); setError('')
+    setVuelta((v) => v + 1)
     try {
       const [res, sols] = await Promise.all([
         loadResumenMovimientos(desde, hasta),
@@ -247,7 +251,12 @@ export function MovimientosTab() {
       {cargando && <p className="muted-text">Cargando movimientos…</p>}
 
       {!cargando && t && t.entregas === 0 && (
-        <p className="dash-vacio">No hay entregas registradas en este periodo.</p>
+        <>
+          <p className="dash-vacio">No hay entregas registradas en este periodo.</p>
+          {/* Sin entregas en el periodo (p. ej. «Hoy» temprano) es justo cuando más
+              sirve ver qué hay por despachar. */}
+          <PorDespacharCard vuelta={vuelta} />
+        </>
       )}
 
       {!cargando && t && t.entregas > 0 && (
@@ -293,6 +302,12 @@ export function MovimientosTab() {
               <span className="dash-kpi__pie">{t.conDiferencia} con diferencia</span>
             </div>
           </div>
+
+          {/* ── Por despachar: lo que falta entregar, para planear mañana ───
+              Pedido del cliente (21-sep-2026). Va justo después de las cifras de lo
+              ENTREGADO: primero lo que pasó, enseguida lo que falta. No sigue el
+              filtro de periodo — es la cola viva. */}
+          <PorDespacharCard vuelta={vuelta} />
 
           {/* ── Qué se entregó ────────────────────────────────────────────
               Hasta aquí la pantalla habló de PERSONAS: quién entregó, cuánto,

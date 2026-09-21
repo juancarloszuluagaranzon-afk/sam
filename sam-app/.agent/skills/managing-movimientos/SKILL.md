@@ -505,6 +505,19 @@ Pedido: *«semáforos en el análisis de combustible y ganchos»*, con esta tabl
      cualquier otro periodo las horas salen de las lecturas del rango. Medido: 1ra (3.932,5
      gal) + 2da quinc. (1.092,9) = mes (5.025,2); ganchos 1.440 + 440 = 1.880. El papel
      (mar–jul) viene por día, así que las quincenas también sirven para esos meses.
+- **«Por despachar»** en Insumos y materiales (`views/PorDespacharCard.tsx`, 21-sep-2026). Pedido:
+  *«que se vean las solicitudes pendientes por entregar con el fin de poder planificar los
+  despachos… algo gerencial, simple y que no sature»*. Va justo después de las cuatro cifras
+  (y también cuando el periodo no tiene entregas). Dos renglones y una lista plegada:
+  cuántas y **para cuándo** (⚠ atrasada · para hoy · para mañana · después · sin fecha, por
+  `requerido_para` en hora de Colombia), cuántas aprobadas vs por aprobar, y **qué alistar**
+  (total por material y unidad, nunca sumando materiales). Pendiente = `PENDIENTE` (falta
+  aprobar) o `PROGRAMADA` (aprobada, falta despachar). 🔴 **No sigue el filtro de periodo**:
+  es la cola viva — lo atrasado es lo que más importa y «Hoy» lo escondería. Recarga con
+  «Actualizar». Al construirla había 3: una aprobada para el **15-sep 11:00** que nunca se
+  entregó (13 gal, finca La Carilera) y dos sin aprobar ni fecha. ⚠️ El 96 % de lo que se
+  entrega es **entrega directa** (650 de 679), que no pasa por solicitud: esta cola solo ve lo
+  que los operarios PIDEN. Mide 143 px en escritorio y 239 en celular, plegada.
 - Para mirar la tarjeta sin sesión: montarla en un archivo temporal dentro de un contenedor
   **`.mov`** — fuera de él `--dash-s1` no existe y las barras salen vacías (no es un error de
   la tarjeta).

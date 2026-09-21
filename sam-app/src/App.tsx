@@ -5,6 +5,8 @@ import { AppDataProvider, SESSION_KEY, useAppData } from './context/AppDataConte
 import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
+import { FincasView } from './views/fincas/FincasView'
+import { ModoSwitch, leerModo, guardarModo, type Modo } from './components/ModoSwitch'
 import { SoporteShell } from './views/SoporteShell'
 import { InsumosView } from './views/InsumosView'
 import { AnalistaView } from './views/AnalistaView'
@@ -47,6 +49,9 @@ function AppContent() {
   } = useAppData()
 
   const [isSideMenuOpen, setIsSideMenuOpen] = useState(false)
+  // Los dos inicios (maquinaria / fincas) para dueño, administración y supervisores.
+  const [modo, setModo] = useState<Modo>(leerModo)
+  const cambiarModo = (m: Modo) => { setModo(m); guardarModo(m); window.scrollTo(0, 0) }
   const [isPinModalOpen, setIsPinModalOpen] = useState(false)
   const [pinForm, setPinForm] = useState({ current: '', newPin: '', confirm: '', error: '', loading: false })
   const [moreMenuOpen, setMoreMenuOpen] = useState(false)
@@ -584,9 +589,20 @@ function AppContent() {
   }
 
   if (isSupervisorOrOwner(session.role)) {
+    // Segundo inicio: administración de fincas de caña (MVP 22-sep-2026).
+    if (modo === 'fincas') {
+      return (
+        <>
+          {impersonationBar}
+          <ModoSwitch modo={modo} onCambiar={cambiarModo} />
+          <FincasView onLogout={() => saveSession(null)} />
+        </>
+      )
+    }
     return (
       <>
         {impersonationBar}
+        <ModoSwitch modo={modo} onCambiar={cambiarModo} />
         {syncErrorBanner}
         <SupervisorView
         isSideMenuOpen={isSideMenuOpen}

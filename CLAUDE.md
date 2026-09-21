@@ -527,6 +527,9 @@ hipótesis, no una verificación. Ver `capturing-gotchas`.
 
 ## Cómo trabaja el usuario
 
+- 🔴 **Responder SIEMPRE en español** — también los resúmenes al terminar una tarea larga y
+  después de un cambio de modelo o una compactación. No habla inglés; ya reclamó tres veces
+  (21 y 22-sep-2026) por resúmenes que salieron en inglés.
 - Pide en español, a menudo por voz (llegan transcripciones con erratas — interpretar).
 - **Quiere acción, no preguntas**: si el contexto ya está claro, ejecutar y desplegar.
 - Manda capturas de pantalla con errores: leerlas con cuidado, suelen tener la causa.

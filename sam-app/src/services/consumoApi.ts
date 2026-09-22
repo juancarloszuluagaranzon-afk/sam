@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { unidadDeLabor } from '../lib/texto'
 
 /**
  * Consumo por máquina, uniendo el papel y la app.
@@ -183,3 +184,53 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
   return { horas, cayeronASuma, extremos }
 }
 
+
+/** El día en Colombia de una marca de tiempo (igual que en el resto de la app). */
+function diaBogota(valor: string | null | undefined): string {
+  if (!valor) return ''
+  return new Date(valor).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+}
+
+/**
+ * Hectáreas REALIZADAS por máquina en el periodo.
+ *
+ * Misma regla del Reporte y del Excel, para que las cifras no se contradigan:
+ * - Solo labores que se miden en **hectáreas**: una acequia va en hectómetros y
+ *   un oficio varios en horas; sumarlas daría un número que no significa nada.
+ * - Solo COMPLETADA y PARCIAL. Lo pendiente, en proceso o cancelado no es área
+ *   hecha.
+ * - Si no quedó registrada el área ejecutada, cuenta la planificada (es lo que
+ *   se paga y lo que muestra el Reporte).
+ * - Cuenta por el día en que se EJECUTÓ (fecha de fin); si no la tiene, por el
+ *   día en que se creó.
+ */
+export async function loadHectareasPorRango(desde: string, hasta: string): Promise<Map<string, number>> {
+  // Se pide un día de más a cada lado y se filtra aquí: la base guarda la hora
+  // en UTC y el corte del día es el de Colombia.
+  const margen = (iso: string, dias: number) => {
+    const d = new Date(`${iso}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + dias)
+    return d.toISOString().slice(0, 10)
+  }
+  const { data, error } = await supabase
+    .from('asignaciones')
+    .select('equipo_codigo,labor_nombre,estado,area_asignada,area_realizada,fecha_fin,created_at')
+    .in('estado', ['COMPLETADA', 'PARCIAL'])
+    .gte('created_at', `${margen(desde, -30)}T00:00:00Z`)
+    .lte('created_at', `${margen(hasta, 2)}T23:59:59Z`)
+    .limit(20000)
+  if (error || !data) return new Map()
+
+  const m = new Map<string, number>()
+  for (const r of data as Record<string, unknown>[]) {
+    const equipo = String(r.equipo_codigo ?? '')
+    if (!equipo) continue
+    if (unidadDeLabor(String(r.labor_nombre ?? '')) !== 'ha') continue
+    const dia = diaBogota(r.fecha_fin ? String(r.fecha_fin) : String(r.created_at ?? ''))
+    if (!dia || dia < desde || dia > hasta) continue
+    const hecha = Number(r.area_realizada ?? 0)
+    const area = hecha > 0 ? hecha : Number(r.area_asignada ?? 0)
+    if (area > 0) m.set(equipo, (m.get(equipo) ?? 0) + area)
+  }
+  return m
+}

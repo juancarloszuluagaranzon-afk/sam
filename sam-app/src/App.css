@@ -8468,7 +8468,7 @@ td.planilla-vacio:hover { background: #fde047; }
 
 .cons-tabla { display: flex; flex-direction: column; margin-top: 8px; }
 .cons-fila {
-  display: grid; grid-template-columns: 1.6fr 0.8fr 0.7fr 0.8fr 1.1fr;
+  display: grid; grid-template-columns: 1.5fr 0.7fr 0.8fr 0.6fr 0.7fr 1.05fr;
   gap: 6px; align-items: center; padding: 10px 8px; font-size: 0.86rem;
   border-bottom: 1px solid var(--color-divider); font-variant-numeric: tabular-nums;
 }
@@ -8493,6 +8493,9 @@ td.planilla-vacio:hover { background: #fde047; }
 .cons-sem .dash-galh { justify-self: auto; }
 .cons-sem small { text-align: right; line-height: 1.3; }
 .cons-sem__corto { display: none; }
+/* En pantalla ancha las hectáreas tienen su columna; el renglón de abajo no las repite. */
+.cons-ha-corto { display: none; }
+@media (max-width: 620px) { .cons-ha-corto { display: inline; } }
 @media (max-width: 620px) {
   .cons-sem__largo { display: none; }
   .cons-sem__corto { display: inline; white-space: nowrap; }
@@ -8500,6 +8503,8 @@ td.planilla-vacio:hover { background: #fde047; }
 @media (max-width: 620px) {
   .mural-kpi { grid-template-columns: repeat(2, 1fr); }
   .cons-fila { grid-template-columns: 1.4fr 0.7fr 0.6fr 0.7fr 1fr; font-size: 0.78rem; }
+  /* Seis columnas no caben en un celular: las hectáreas se leen bajo el nombre. */
+  .cons-col-ha { display: none; }
 }
 
 /* Selector combustible / ganchos. Píldoras, no un <select>: son dos opciones

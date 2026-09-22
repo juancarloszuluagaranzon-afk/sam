@@ -3,7 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { Ayuda } from '../components/Ayuda'
 import { fmtCantidad } from '../lib/cantidad'
 import {
-  loadConsumo, loadHorasDelMes, loadHorasPorRangoMes, loadReferencias,
+  loadConsumo, loadHectareasPorRango, loadHorasDelMes, loadHorasPorRangoMes, loadReferencias,
   type ConsumoFila, type ReferenciaEquipo,
 } from '../services/consumoApi'
 import { loadSemaforos } from '../services/samApi'
@@ -80,6 +80,8 @@ export function ConsumoDashboardTab() {
   const [filas, setFilas] = useState<ConsumoFila[]>([])
   const [refs, setRefs] = useState<ReferenciaEquipo[]>([])
   const [horas, setHoras] = useState<Map<string, number>>(new Map())
+  /** Hectáreas realizadas por máquina en el periodo (solo labores en ha). */
+  const [hectareas, setHectareas] = useState<Map<string, number>>(new Map())
   /** Las máquinas cuya serie de horómetros se desplomó y hubo que sumar tramos. */
   const [sinRango, setSinRango] = useState<string[]>([])
   /** Horómetro inicial y final del mes de cada máquina (para la gráfica). */
@@ -186,6 +188,7 @@ export function ConsumoDashboardTab() {
       ])
       if (!vivo) return
       setExtremos(r.extremos)
+      loadHectareasPorRango(desde, hasta).then((h) => { if (vivo) setHectareas(h) }).catch(() => { /* sin área */ })
       if (cierre.size > 0) { setHoras(cierre); setSinRango([]); return }
       setHoras(r.horas); setSinRango(r.cayeronASuma)
     })()
@@ -240,6 +243,10 @@ export function ConsumoDashboardTab() {
       return {
         codigo,
         nombre: equipoNombre.get(codigo) ?? codigo,
+        // Lo que de verdad produjo la máquina en el periodo. Sin esto, «gastó
+        // 358 galones» no dice si fue mucho o poco: 358 en 40 ha y 358 en 12 no
+        // son el mismo negocio.
+        ha: Math.round((hectareas.get(codigo) ?? 0) * 100) / 100,
         gal: Math.round(v.gal * 10) / 10,
         gan: Math.round(v.gan),
         horas: Math.round(h * 10) / 10,
@@ -252,7 +259,7 @@ export function ConsumoDashboardTab() {
         usaGanchos: refGan != null,
       }
     }).sort((a, b) => b.gal - a.gal)
-  }, [delMes, horas, refDe, equipoNombre, extremos])
+  }, [delMes, horas, refDe, equipoNombre, extremos, hectareas])
 
   // En ganchos solo se listan las que los usan: mostrar un PUMA con "—" en todo
   // hace pensar que falta un dato, cuando lo que pasa es que no lleva ganchos.
@@ -284,7 +291,7 @@ export function ConsumoDashboardTab() {
         'Movimientos': m.movs, 'Fuente': [...m.fuente].join(' + '),
       }))), 'Por mes')
       utils.book_append_sheet(wb, utils.json_to_sheet(porMaquina.map((m) => ({
-        'Máquina': m.nombre, 'Combustible(gal)': m.gal, 'Ganchos': m.gan,
+        'Máquina': m.nombre, 'Combustible(gal)': m.gal, 'Ganchos': m.gan, 'Ha realizadas': m.ha || '',
         'Horómetro inicial': m.inicial ?? '', 'Horómetro final': m.final ?? '',
         'Horas': m.horas || '',
         'Gal/hora': m.galHora ?? '', 'Ref. gal/h 2025': m.ref ?? '', 'Desv. gal %': m.desv ?? '',
@@ -425,7 +432,8 @@ export function ConsumoDashboardTab() {
 
           <div className="cons-tabla">
             <div className="cons-fila cons-fila--cab">
-              <span>Máquina</span><span>{esGan ? 'Ganchos' : 'Galones'}</span><span>Horas</span>
+              <span>Máquina</span><span>{esGan ? 'Ganchos' : 'Galones'}</span>
+              <span className="cons-col-ha">Ha realizadas</span><span>Horas</span>
               <span>{esGan ? 'Gan/hora' : 'Gal/hora'}</span><span>Semáforo</span>
             </div>
             {visibles.map((m) => {
@@ -442,10 +450,15 @@ export function ConsumoDashboardTab() {
                 <div key={m.codigo} className="cons-fila">
                   <span className="cons-fila__maq">
                     🚜 {m.nombre}
-                    {!esGan && m.gan > 0 && <small>{fmtCantidad(m.gan, 'unidad')} ganchos</small>}
-                    {esGan && m.gal > 0 && <small>{fmtCantidad(m.gal, 'galón')} gal</small>}
+                    <small>
+                      {!esGan && m.gan > 0 ? `${fmtCantidad(m.gan, 'unidad')} ganchos` : ''}
+                      {esGan && m.gal > 0 ? `${fmtCantidad(m.gal, 'galón')} gal` : ''}
+                      {/* En celular la columna de hectáreas no cabe: va aquí. */}
+                      {m.ha > 0 && <span className="cons-ha-corto">{(!esGan && m.gan > 0) || (esGan && m.gal > 0) ? ' · ' : ''}{fmtN(m.ha)} ha</span>}
+                    </small>
                   </span>
                   <span>{(esGan ? m.gan : m.gal).toLocaleString('es-CO')}</span>
+                  <span className="cons-col-ha">{m.ha > 0 ? fmtN(m.ha) : '—'}</span>
                   <span>{m.horas || '—'}</span>
                   <span><strong>{porHora ?? '—'}</strong></span>
                   <span className="cons-sem" title={[rango ? describirRango(rango) : '', ref2025].filter(Boolean).join(' · ')}>

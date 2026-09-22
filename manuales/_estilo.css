@@ -143,3 +143,57 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   .paso { break-inside: avoid; }
   .pantalla { break-inside: avoid; }
 }
+
+/* ── Recortes del módulo de fincas (manual-fincas) ── */
+.r-chip { display: inline-block; font-size: 0.66rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.r-chip--ok { background: #e3f4e8; color: #166534; }
+.r-chip--ojo { background: #fdf3dc; color: #8a5a00; }
+.r-chip--mal { background: var(--alerta-suave); color: var(--alerta); }
+.r-chip--neutro { background: var(--suave); color: var(--tinta-media); border: 1px solid var(--borde); }
+.r-barra { display: block; height: 7px; border-radius: 999px; background: var(--borde); overflow: hidden; }
+.r-barra i { display: block; height: 100%; background: var(--verde); border-radius: 999px; }
+.r-campo { display: flex; flex-direction: column; gap: 2px; }
+.r-campo span { font-size: 0.66rem; font-weight: 700; color: var(--tinta-media); }
+.r-campo div { border: 1px solid var(--borde); border-radius: 8px; padding: 5px 8px; background: var(--papel); }
+.r-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.r-foto {
+  height: 74px; border-radius: 9px; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(160deg, #7fae5b, #3f6f2f); color: #fff; font-size: 0.7rem; font-weight: 700;
+}
+.r-foto--mini { width: 40px; height: 40px; flex: 0 0 auto; font-size: 0.55rem; }
+.r-mov { display: flex; gap: 8px; align-items: center; }
+.r-mov > div { flex: 1; min-width: 0; }
+.r-verde { color: #166534; font-weight: 700; }
+.r-rojo { color: var(--alerta); font-weight: 700; }
+.r-ok { color: #166534; font-weight: 700; }
+.r-kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.r-kpi { border: 1px solid var(--borde); border-radius: 9px; padding: 6px 8px; }
+.r-kpi b { display: block; font-size: 1rem; }
+.r-kpi span { font-size: 0.66rem; color: var(--tinta-media); }
+.r-kpi--ojo { border-color: #e2b34a; background: #fdf3dc; }
+.r-wa { background: #e7f7dc; border-radius: 10px 10px 10px 2px; padding: 8px 10px; font-size: 0.74rem; white-space: pre-line; }
+
+/* La cadena de la información, de la finca al dueño */
+.cadena { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 0; }
+.cadena__eslabon {
+  background: var(--papel); border: 1px solid var(--borde); border-radius: 10px;
+  padding: 6px 10px; font-size: 0.85rem; font-weight: 600;
+}
+.cadena__eslabon small { display: block; font-weight: 400; color: var(--tinta-media); font-size: 0.72rem; }
+.cadena__eslabon--dueno { background: var(--verde); color: #fff; border-color: var(--verde); }
+.cadena__eslabon--dueno small { color: #fff; opacity: 0.85; }
+.cadena__flecha { color: var(--tinta-media); font-weight: 700; }
+
+/* Un ejemplo de flujo: pasos con su recorte, uno detrás del otro */
+.flujo__quien { margin: 0 0 12px; font-size: 0.9rem; }
+.flujo__quien b { background: var(--verde-claro); color: var(--verde); padding: 2px 8px; border-radius: 999px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.flujo { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 760px) { .flujo { grid-template-columns: repeat(3, 1fr); } }
+.flujo__paso { display: flex; flex-direction: column; gap: 6px; }
+.flujo__rotulo { font-size: 0.78rem; font-weight: 700; color: var(--verde); }
+.flujo__rotulo em { font-style: normal; color: var(--tinta-media); font-weight: 400; }
+.flujo__paso .recorte { flex: 1; }
+.resultado {
+  margin-top: 12px; background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; padding: 14px 16px;
+}
+.resultado h3 { margin: 0 0 8px; font-size: 0.95rem; }

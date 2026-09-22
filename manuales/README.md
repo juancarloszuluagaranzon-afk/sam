@@ -1,6 +1,6 @@
 # Manuales de AgroMorales
 
-Cinco guías, una por rol. Se comparten **por enlace**, no como archivo adjunto:
+Seis guías, una por rol (la de fincas, por módulo). Se comparten **por enlace**, no como archivo adjunto:
 
 | Manual | Para quién | Enlace |
 |---|---|---|
@@ -9,6 +9,7 @@ Cinco guías, una por rol. Se comparten **por enlace**, no como archivo adjunto:
 | Analista de insumos | Diego | `/manuales/manual-analista-diego.html` |
 | Taller de maquinaria | Quien carga el taller | `/manuales/manual-taller.html` |
 | Conductor de camioneta | Julián, Camilo — los que llenan el F-OPE-22 | `/manuales/manual-conductor.html` |
+| Administración de fincas | Administración, supervisores y el dueño de ASM — 5 ejemplos de flujo, de la labor a lo que ve el dueño de la tierra | `/manuales/manual-fincas.html` |
 
 Base: `https://agroserviciosmorales.vercel.app`
 
@@ -20,6 +21,11 @@ un selector. **Al agregar un rol nuevo hay que sumarlo ahí**, o ese rol se qued
 manual y nadie se entera. El enlace suelto sigue existiendo para WhatsApp.
 
 ## Cómo se arman
+
+`manual-fincas.html` se arma igual: `_estilo.css` + `_cuerpo_fincas.html` → `manual-fincas.html`
+(y copia en `sam-app/public/manuales/`). Sus recortes usan las piezas del final de `_estilo.css`
+(`.flujo`, `.cadena`, `.r-chip`, `.r-campo`…). Se abre también con «📖 Manual» dentro de Fincas.
+Si cambia una pantalla de Fincas, revisar el ejemplo que la muestra.
 
 ```
 _estilo.css          ← estilo común de los cinco

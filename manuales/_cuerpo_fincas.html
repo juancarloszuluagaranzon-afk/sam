@@ -1,0 +1,522 @@
+<div class="hoja">
+
+  <div class="portada">
+    <p class="portada__marca">AgroMorales · Manual</p>
+    <h1>Guía de Administración de fincas</h1>
+    <p class="portada__para">Para administración, supervisores y el dueño de ASM</p>
+    <p class="portada__nota">
+      ASM administra fincas de caña de otras personas. Esta parte de la app existe para una sola cosa:
+      que el dueño de la tierra vea, en todo momento, qué se hizo en su finca, cuánto costó y quién lo
+      aprobó — con la foto y la ubicación de cada labor.
+    </p>
+    <p class="portada__nota">Los nombres y las cifras de los recortes son de ejemplo.</p>
+  </div>
+
+  <nav class="indice">
+    <h2>Qué va a encontrar</h2>
+    <ol>
+      <li><a href="#idea">La idea en un minuto</a></li>
+      <li><a href="#entrar">Cómo se entra</a></li>
+      <li><a href="#pestanas">Las pestañas</a></li>
+      <li><a href="#ej1">Ejemplo 1 · Montar una finca y abrir el ciclo</a></li>
+      <li><a href="#ej2">Ejemplo 2 · Del campo a la oficina: reportar una labor</a></li>
+      <li><a href="#ej3">Ejemplo 3 · Aceptar o rechazar lo reportado</a></li>
+      <li><a href="#ej4">Ejemplo 4 · La plata del dueño: anticipos, gastos y saldo</a></li>
+      <li><a href="#ej5">Ejemplo 5 · El dueño ve su finca desde su celular</a></li>
+      <li><a href="#atiempo">¿A tiempo? Cómo se califica cada labor</a></li>
+      <li><a href="#reglas">Lo que la app no deja hacer (y por qué)</a></li>
+    </ol>
+  </nav>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <section class="paso" id="idea">
+    <h2><span class="paso__num">1</span> La idea en un minuto</h2>
+    <p class="paso__intro">
+      Toda la información sigue el mismo camino. Cada eslabón depende del anterior: por eso, si algo
+      no cuadra, se puede devolver hasta el origen.
+    </p>
+    <div class="cadena">
+      <span class="cadena__eslabon">Finca<small>y su dueño</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Suertes<small>con su área</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Ciclo<small>de corte a corte</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Labores<small>con presupuesto</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Reporte<small>foto + ubicación</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Aceptación<small>otra persona</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Cuenta<small>gasto con soporte</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon cadena__eslabon--dueno">El dueño lo ve<small>en su celular</small></span>
+    </div>
+    <div class="tip">
+      <strong>Lo más importante:</strong> una labor no cuenta hasta que <strong>otra persona</strong> la acepta
+      mirando la foto. Solo lo aceptado suma al avance y a la plata del dueño.
+    </div>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <section class="paso" id="entrar">
+    <h2><span class="paso__num">2</span> Cómo se entra</h2>
+    <p class="paso__intro">La app de ASM tiene dos inicios. Arriba de todo está el selector para cambiar entre los dos.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__cuerpo">
+          <div class="r-tabs">
+            <span class="r-tab">🚜 Maquinaria</span>
+            <span class="r-tab on">🌱 Fincas</span>
+          </div>
+          <div class="r-card">
+            <div class="r-titulo">Confirme su PIN para entrar a Fincas</div>
+            <div class="r-sub">El módulo de fincas tiene su propia llave, porque ahí está la plata de los dueños. Se pide una vez cada 30 días en este celular.</div>
+            <div style="height:6px"></div>
+            <div class="r-campo"><span>PIN</span><div>• • • •</div></div>
+            <div style="height:6px"></div>
+            <span class="r-btn">Entrar</span>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>🌱 Fincas</strong><span>Lo ven el dueño de ASM, administración y los supervisores. Los operarios no.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Normalmente no pide nada</strong><span>Al iniciar sesión con su PIN, la app abre también la llave de Fincas. El recuadro del PIN solo aparece si pasaron 30 días o si la llave se canceló.</span></div></li>
+        <li><span class="marca">3</span><div><strong>5 intentos errados</strong><span>Se bloquea 15 minutos. Es a propósito: aquí se mueve plata de terceros.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Al salir se cancela</strong><span>Si presta el celular y cierra sesión, el siguiente no hereda el acceso a las fincas.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <section class="paso" id="pestanas">
+    <h2><span class="paso__num">3</span> Las pestañas</h2>
+    <p class="paso__intro">Arriba del módulo están las cinco pestañas.</p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">AgroMorales <small>ADMINISTRACIÓN DE FINCAS</small></div>
+        <div class="recorte__cuerpo">
+          <div class="r-tabs">
+            <span class="r-tab on">Inicio</span>
+            <span class="r-tab">Fincas</span>
+            <span class="r-tab">Por aceptar (2)</span>
+            <span class="r-tab">Reportar labor</span>
+            <span class="r-tab">Paquete de labores</span>
+          </div>
+          <div class="r-kpis">
+            <div class="r-kpi"><b>3</b><span>fincas · 84 ha</span></div>
+            <div class="r-kpi r-kpi--ojo"><b>2</b><span>por aceptar</span></div>
+            <div class="r-kpi"><b>1</b><span>atrasadas</span></div>
+            <div class="r-kpi"><b>$7,4 M</b><span>ejecutado de $18 M</span></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Inicio</strong><span>Todas las fincas de un vistazo: lo que espera aceptación, las labores atrasadas y cuánto se ha gastado contra lo presupuestado.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Fincas</strong><span>Una tarjeta por finca. Adentro: lo que ve el dueño, las labores por suerte, la cuenta y la bitácora.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Por aceptar</strong><span>Los reportes del campo esperando que alguien los revise. El número entre paréntesis es cuántos hay.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Reportar labor</strong><span>Desde el campo: qué se hizo, cuánto, con foto y ubicación.</span></div></li>
+        <li><span class="marca">5</span><div><strong>Paquete de labores</strong><span>Solo administración. La plantilla de labores, costos y tiempos que se carga en cada ciclo.</span></div></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- EJEMPLO 1 ─────────────────────────────────────── -->
+  <section class="paso" id="ej1">
+    <h2><span class="paso__num">4</span> Ejemplo 1 · Montar una finca y abrir el ciclo</h2>
+    <p class="flujo__quien">Lo hace: <b>administración</b>. Una sola vez por finca, y un ciclo nuevo en cada corte.</p>
+
+    <div class="flujo">
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 1 <em>· Fincas → + Nueva finca</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Nueva finca</div>
+          <div class="recorte__cuerpo">
+            <div class="r-campo"><span>Nombre de la finca</span><div>LA CEIBA</div></div>
+            <div class="r-campo"><span>Dueño de la tierra</span><div>Jorge Pérez</div></div>
+            <div class="r-campo"><span>Celular del dueño (WhatsApp)</span><div>300 123 4567</div></div>
+            <div class="r-campo"><span>Cómo cobra ASM la administración</span><div>Porcentaje sobre los costos · 8 %</div></div>
+            <div class="r-sub"><strong>Suertes</strong> — Traer del maestro del ingenio o + Suerte a mano</div>
+            <div class="r-2"><div class="r-campo"><div>12</div></div><div class="r-campo"><div>10 ha</div></div></div>
+            <span class="r-btn r-btn--ancho">Guardar finca</span>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 2 <em>· Paquete de labores</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Paquete de labores</div>
+          <div class="recorte__cuerpo">
+            <div class="r-card">
+              <div class="r-fila"><span class="r-titulo">ROTURACIÓN</span><span class="r-sub">soca</span></div>
+              <div class="r-fila"><span>$100.000 / ha</span><span class="r-sub">ideal 16 · normal 30 días</span></div>
+            </div>
+            <div class="r-card">
+              <div class="r-fila"><span class="r-titulo">FERTILIZACIÓN</span><span class="r-sub">soca</span></div>
+              <div class="r-fila"><span class="r-rojo">sin costo</span><span class="r-sub">ideal 45 · normal 60 días</span></div>
+            </div>
+            <div class="r-card r-card--rojo"><div class="r-sub">▲ 1 labor del paquete no tiene costo: sin eso el presupuesto sale en cero.</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 3 <em>· La finca → Labores por suerte → Abrir ciclo</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Suerte 12 · 10 ha</div>
+          <div class="recorte__cuerpo">
+            <div class="r-2">
+              <div class="r-campo"><span>Fecha del corte</span><div>01/09/2026</div></div>
+              <div class="r-campo"><span>Tipo</span><div>Soca</div></div>
+            </div>
+            <span class="r-btn">Abrir ciclo</span>
+            <div class="r-card r-card--verde">
+              <div class="r-fila"><b>roturación</b><span>$1 M</span></div>
+              <div class="r-sub">10 ha × $100.000 · programada</div>
+              <div class="r-fila"><b>fertilización</b><span class="r-rojo">sin costo</span></div>
+              <div class="r-fila"><b>control de malezas</b><span class="r-rojo">sin costo</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resultado">
+      <h3>Qué pasa con la información</h3>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>La finca queda con su dueño y sus suertes</strong><span>El área de cada suerte es el techo: nadie podrá reportar más hectáreas de las que tiene.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Al abrir el ciclo se copia el paquete</strong><span>Cada labor del paquete que aplica (soca o plantilla) entra al ciclo con su cantidad (área × cantidad por ha), su costo y su ventana de tiempo. Eso es el <strong>presupuesto</strong> que va a ver el dueño.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Cambiar el paquete después no cambia lo ya planeado</strong><span>Lo del ciclo abierto se ajusta en la finca con <em>Costo</em> o <em>Anular</em> (con motivo).</span></div></li>
+      </ul>
+    </div>
+    <div class="ojo">
+      <strong>Ponga los costos ANTES de abrir el primer ciclo.</strong> Una labor sin costo no suma al
+      presupuesto ni carga plata al aceptarse: el dueño vería el trabajo, pero la cuenta no se movería.
+    </div>
+    <div class="tip">
+      <strong>Cuando vuelvan a cortar la suerte:</strong> <em>Registrar nuevo corte</em>. El ciclo actual se
+      cierra con esa fecha y se abre el siguiente, con el paquete otra vez.
+    </div>
+  </section>
+
+  <!-- EJEMPLO 2 ─────────────────────────────────────── -->
+  <section class="paso" id="ej2">
+    <h2><span class="paso__num">5</span> Ejemplo 2 · Del campo a la oficina: reportar una labor</h2>
+    <p class="flujo__quien">Lo hace: <b>el supervisor en el campo</b>, el mismo día de la labor.</p>
+
+    <div class="flujo">
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 1 <em>· Reportar labor</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Reportar una labor</div>
+          <div class="recorte__cuerpo">
+            <div class="r-2">
+              <div class="r-campo"><span>Finca</span><div>LA CEIBA</div></div>
+              <div class="r-campo"><span>Suerte</span><div>Suerte 12 · 10 ha</div></div>
+            </div>
+            <div class="r-campo"><span>Labor</span><div>roturación · faltan 10 ha</div></div>
+            <div class="r-2">
+              <div class="r-campo"><span>Cantidad hecha (ha)</span><div>6</div></div>
+              <div class="r-campo"><span>Día en que se hizo</span><div>10/09/2026</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 2 <em>· La prueba</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Foto de la labor (obligatoria)</div>
+          <div class="recorte__cuerpo">
+            <div class="r-foto">📷 foto de la suerte arada</div>
+            <div class="r-ok">⌖ Ubicación tomada (±9 m)</div>
+            <div class="r-campo"><span>Nota (opcional)</span><div>Quedó pendiente la cabecera norte</div></div>
+            <span class="r-btn r-btn--ancho">Enviar reporte</span>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 3 <em>· Queda por aceptar</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Mis últimos reportes</div>
+          <div class="recorte__cuerpo">
+            <div class="r-ok">✓ Reportado: 6 ha de roturación. Queda por aceptar.</div>
+            <div class="r-mov">
+              <span class="r-foto r-foto--mini">foto</span>
+              <div><b>roturación · 6 ha</b><div class="r-sub">10/09/2026 3:42 p. m.</div></div>
+              <span class="r-chip r-chip--ojo">por aceptar</span>
+            </div>
+            <div class="r-kpis"><div class="r-kpi r-kpi--ojo"><b>1</b><span>por aceptar (en el Inicio)</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resultado">
+      <h3>Qué pasa con la información</h3>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Sin foto no hay reporte</strong><span>El botón no se habilita sin foto, y la base tampoco lo recibe. Es la evidencia que va a ver el dueño.</span></div></li>
+        <li><span class="marca">2</span><div><strong>La ubicación y la hora no las pone el celular</strong><span>La ubicación sale del GPS y la hora de llegada la pone el servidor. Si no hubo GPS, el reporte queda marcado «Sin ubicación».</span></div></li>
+        <li><span class="marca">3</span><div><strong>Todavía no cuenta</strong><span>Queda <em>por aceptar</em>: no suma avance ni plata hasta que otra persona lo revise (Ejemplo 3).</span></div></li>
+      </ul>
+    </div>
+    <div class="ojo">
+      <strong>Este reporte necesita señal.</strong> Si no hay, la app lo avisa: tome la foto igual y repórtelo al
+      tener conexión, con el día en que se hizo. Si la señal se cae a mitad de camino, vuelva a enviar: el reporte
+      <strong>no se duplica</strong>.
+    </div>
+  </section>
+
+  <!-- EJEMPLO 3 ─────────────────────────────────────── -->
+  <section class="paso" id="ej3">
+    <h2><span class="paso__num">6</span> Ejemplo 3 · Aceptar o rechazar lo reportado</h2>
+    <p class="flujo__quien">Lo hace: <b>otra persona</b> — administración u otro supervisor. <strong>Nunca quien reportó.</strong></p>
+
+    <div class="flujo">
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 1 <em>· Por aceptar</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Por aceptar</div>
+          <div class="recorte__cuerpo">
+            <div class="r-foto">📷 foto de la labor</div>
+            <div class="r-titulo">roturación · 6 ha</div>
+            <div class="r-sub">LA CEIBA · suerte 12 · 9 días del corte</div>
+            <div class="r-sub">Hecha el <b>10/09</b> · reportó <b>Carlos</b></div>
+            <div class="r-sub">Ubicación: <u>ver en el mapa</u> (±9 m)</div>
+            <div class="r-sub">Al aceptar se cargan <b>$600.000</b> a la cuenta del dueño</div>
+            <div class="r-fila"><span class="r-btn">Aceptar</span><span class="r-btn r-btn--gris">Rechazar…</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 2 <em>· Si se acepta: avance</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Labores por suerte · Suerte 12</div>
+          <div class="recorte__cuerpo">
+            <div class="r-fila"><b>roturación</b><span class="r-chip r-chip--ok">✓ a tiempo</span></div>
+            <span class="r-barra"><i style="width:60%"></i></span>
+            <div class="r-sub">6 aceptado de 10 ha · en curso</div>
+            <div class="r-fila"><span>Presupuesto</span><b>$1 M</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 3 <em>· …y plata en la cuenta</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Cuenta · Movimientos</div>
+          <div class="recorte__cuerpo">
+            <div class="r-mov">
+              <span class="r-foto r-foto--mini">foto</span>
+              <div><b>Gasto</b> · roturación suerte 12<div class="r-sub">10/09 · por labor aceptada</div></div>
+              <span class="r-rojo">−$600.000</span>
+            </div>
+            <div class="r-card r-card--rojo">
+              <div class="r-sub"><b>Si se rechaza:</b> hay que escribir por qué («la foto es de otra suerte»). Quien reportó lo ve en <em>Mis últimos reportes</em> con el motivo.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resultado">
+      <h3>Qué pasa con la información</h3>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Aceptar suma el avance</strong><span>Las 6 ha cuentan como hechas. Cuando lo aceptado llega al 98 % de lo planeado, la labor queda <em>terminada</em> sola.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Y crea el gasto una sola vez</strong><span>Cantidad × costo de la labor, con la foto del reporte como soporte. Aunque se oprima dos veces, el gasto no se repite.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Rechazar no borra nada</strong><span>El reporte queda rechazado con su motivo y su foto. Se corrige reportando otra vez.</span></div></li>
+      </ul>
+    </div>
+    <div class="tip">
+      <strong>Antes de aceptar, mire tres cosas:</strong> que la foto sea de esa labor, que la ubicación caiga en
+      la suerte («ver en el mapa») y que la cantidad sea creíble para ese día.
+    </div>
+  </section>
+
+  <!-- EJEMPLO 4 ─────────────────────────────────────── -->
+  <section class="paso" id="ej4">
+    <h2><span class="paso__num">7</span> Ejemplo 4 · La plata del dueño: anticipos, gastos y saldo</h2>
+    <p class="flujo__quien">Lo hace: <b>administración</b>, en la finca → <em>Cuenta</em>.</p>
+
+    <div class="flujo">
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 1 <em>· Llega la plata del dueño</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Registrar en la cuenta</div>
+          <div class="recorte__cuerpo">
+            <div class="r-campo"><span>Tipo</span><div>Anticipo del dueño (entra)</div></div>
+            <div class="r-campo"><span>Concepto</span><div>Transferencia del dueño</div></div>
+            <div class="r-campo"><span>Valor (pesos)</span><div>5.000.000</div></div>
+            <div class="r-campo"><span>Soporte (opcional: foto de la consignación)</span><div>📎 consignacion.jpg</div></div>
+            <span class="r-btn r-btn--ancho">Registrar $5.000.000</span>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 2 <em>· Un gasto que no viene de una labor</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Registrar en la cuenta</div>
+          <div class="recorte__cuerpo">
+            <div class="r-campo"><span>Tipo</span><div>Gasto (sale, con soporte)</div></div>
+            <div class="r-campo"><span>Concepto</span><div>Compra de herbicida</div></div>
+            <div class="r-campo"><span>Suerte (opcional)</span><div>Suerte 12</div></div>
+            <div class="r-campo"><span>Soporte (obligatorio: factura o remisión)</span><div class="r-rojo">sin cargar</div></div>
+            <span class="r-btn r-btn--ancho r-btn--gris">Registrar</span>
+            <div class="r-sub">Un gasto sin soporte no entra: así lo ve el dueño.</div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 3 <em>· El saldo</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Cuenta</div>
+          <div class="recorte__cuerpo">
+            <div class="r-kpis">
+              <div class="r-kpi"><b>$5 M</b><span>anticipos</span></div>
+              <div class="r-kpi"><b>$600 mil</b><span>gastos con soporte</span></div>
+              <div class="r-kpi"><b>$0</b><span>honorarios</span></div>
+              <div class="r-kpi"><b>$4,4 M</b><span>saldo</span></div>
+            </div>
+            <div class="r-mov">
+              <span class="r-foto r-foto--mini">foto</span>
+              <div><b>Anticipo</b> · Transferencia del dueño<div class="r-sub">21/09 · Administración</div></div>
+              <span class="r-verde">+$5.000.000</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resultado">
+      <h3>Qué pasa con la información</h3>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Saldo = anticipos − gastos − honorarios</strong><span>Si es positivo, el dueño tiene plata a favor; si es negativo, sale en rojo como «Saldo por girar».</span></div></li>
+        <li><span class="marca">2</span><div><strong>Los gastos de las labores entran solos</strong><span>Al aceptar un reporte (Ejemplo 3). A mano solo se registran los demás: compras, fletes, jornales sueltos.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Honorario de administración</strong><span>Lo que cobra ASM. Por ahora se registra a mano, según el modo acordado en la finca.</span></div></li>
+      </ul>
+    </div>
+    <div class="ojo">
+      <strong>Un movimiento no se edita ni se borra.</strong> Si hubo un error, se toca <em>Anular</em> y se escribe
+      el motivo. Queda tachado, con quién lo anuló y por qué — y el dueño también lo ve. Después se registra bien.
+    </div>
+  </section>
+
+  <!-- EJEMPLO 5 ─────────────────────────────────────── -->
+  <section class="paso" id="ej5">
+    <h2><span class="paso__num">8</span> Ejemplo 5 · El dueño ve su finca desde su celular</h2>
+    <p class="flujo__quien">Lo prepara: <b>administración</b>. Lo usa: <b>el dueño de la tierra</b>, sin usuario ni PIN.</p>
+
+    <div class="flujo">
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 1 <em>· La finca → Lo que ve el dueño</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">Acceso directo del dueño</div>
+          <div class="recorte__cuerpo">
+            <div class="r-campo"><span>Para quién es el enlace</span><div>Jorge Pérez</div></div>
+            <span class="r-btn">Crear enlace para el dueño</span>
+            <div class="r-card r-card--verde">
+              <div class="r-sub"><b>Enlace creado.</b> Envíelo ya: por seguridad no se vuelve a mostrar.</div>
+              <div class="r-fila"><span class="r-btn">Enviar por WhatsApp</span><span class="r-btn r-btn--gris">Copiar enlace</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 2 <em>· Le llega al dueño</em></span>
+        <div class="recorte">
+          <div class="recorte__barra">WhatsApp</div>
+          <div class="recorte__cuerpo">
+            <div class="r-wa">Hola Jorge Pérez. Este es su acceso directo a la finca LA CEIBA, administrada por AgroServicios Morales:
+<u>agroserviciosmorales.vercel.app/#finca=…</u>
+
+Ahí ve en todo momento las labores con su foto y ubicación, el presupuesto y su cuenta. Es personal: no lo reenvíe.</div>
+          </div>
+        </div>
+      </div>
+      <div class="flujo__paso">
+        <span class="flujo__rotulo">Paso 3 <em>· Lo que ve el dueño</em></span>
+        <div class="recorte">
+          <div class="recorte__barra"><div>LA CEIBA<small>SU FINCA A LA VISTA · AGROSERVICIOS MORALES</small></div></div>
+          <div class="recorte__cuerpo">
+            <div class="r-tabs"><span class="r-tab on">Resumen</span><span class="r-tab">Labores por suerte</span><span class="r-tab">Cuenta</span><span class="r-tab">Bitácora</span></div>
+            <div class="r-card">
+              <div class="r-titulo">El ciclo contra lo presupuestado</div>
+              <div><b>$600 mil</b> <span class="r-sub">de $1 M</span></div>
+              <span class="r-barra"><i style="width:60%"></i></span>
+            </div>
+            <div class="r-card">
+              <div class="r-fila"><span>roturación · suerte 12</span><span class="r-chip r-chip--ok">✓ a tiempo</span></div>
+            </div>
+            <div class="r-card">
+              <div class="r-fila"><span>Saldo a su favor</span><b>$4.400.000</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="resultado">
+      <h3>Qué pasa con la información</h3>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Ve SOLO su finca</strong><span>Lo decide la base de datos con la llave del enlace, no la pantalla: aunque alguien manipule el celular, no puede ver otra finca ni cambiar nada.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Las mismas cifras que ve ASM</strong><span>No es un informe preparado: es la misma información de la pestaña «Lo que ve el dueño», en vivo. Cada vez que abre la app se trae lo último.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Administración sabe si lo mira</strong><span>Debajo del botón aparece «lo ha abierto 5 veces, la última 21/09 7:10 a. m.».</span></div></li>
+        <li><span class="marca">4</span><div><strong>Quitar acceso</strong><span>Si el enlace se reenvió o el dueño perdió el celular, <em>Quitar acceso</em>: deja de abrir de inmediato y al que lo tenga le sale «Este enlace ya no está activo. Pida uno nuevo a AgroServicios Morales». Luego se crea uno nuevo.</span></div></li>
+      </ul>
+    </div>
+    <div class="tip">
+      <strong>Varios dueños o socios:</strong> se crea un enlace para cada uno, con su nombre. Cada enlace se quita
+      por separado. Y el botón <em>Enviar resumen al dueño</em> sigue sirviendo para mandarle el resumen de la
+      semana por WhatsApp.
+    </div>
+    <div class="ojo">
+      <strong>El enlace se muestra una sola vez.</strong> La base solo guarda una huella de él: ni soporte ni nadie
+      lo puede volver a leer. Si no alcanzó a enviarlo, créelo otra vez.
+    </div>
+  </section>
+
+  <!-- ¿A TIEMPO? ────────────────────────────────────── -->
+  <section class="paso" id="atiempo">
+    <h2><span class="paso__num">9</span> ¿A tiempo? Cómo se califica cada labor</h2>
+    <p class="paso__intro">
+      Se cuentan los días desde el corte hasta el día en que se hizo la labor (su primer reporte aceptado).
+      Si todavía no se ha hecho, se cuentan hasta hoy. No se escribe a mano: la app lo calcula.
+    </p>
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">¿A tiempo?</div>
+        <div class="recorte__cuerpo">
+          <div class="r-fila"><span>roturación · suerte 12 <span class="r-sub">hecha a los 9 días</span></span><span class="r-chip r-chip--ok">✓ a tiempo</span></div>
+          <div class="r-fila"><span>fertilización · suerte 12 <span class="r-sub">52 días, sin hacer</span></span><span class="r-chip r-chip--ojo">▲ normal</span></div>
+          <div class="r-fila"><span>roturación · suerte 14 <span class="r-sub">41 días, sin hacer</span></span><span class="r-chip r-chip--mal">⚠ tardía</span></div>
+        </div>
+      </div>
+      <div>
+        <table>
+          <tr><th>Labor</th><th>✓ a tiempo</th><th>▲ normal</th><th>⚠ tardía</th></tr>
+          <tr><td>Roturación (soca)</td><td>hasta 16 días</td><td>17 a 30</td><td>más de 30</td></tr>
+          <tr><td>Fertilización (soca)</td><td>hasta 45 días</td><td>46 a 60</td><td>más de 60</td></tr>
+          <tr><td>Fertilización (plantilla)</td><td>hasta 60 días</td><td>61 a 90</td><td>más de 90</td></tr>
+        </table>
+        <p class="paso__intro" style="margin-top:10px">
+          Las ventanas vienen del paquete de labores. Una labor sin ventana dice «sin ventana»: la app no inventa
+          una. Las tardías sin hacer aparecen en el Inicio como <strong>atrasadas</strong>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CIERRE ─────────────────────────────────────────── -->
+  <section class="cierre" id="reglas">
+    <h2>Lo que la app no deja hacer (y por qué)</h2>
+    <p>Estas reglas no dependen de que alguien se acuerde: las hace cumplir la base de datos. Si la pantalla
+      tuviera un error, igual no pasan.</p>
+    <table>
+      <tr><th>No se puede</th><th>Por qué</th></tr>
+      <tr><td>Reportar sin foto</td><td>La foto es la prueba que ve el dueño.</td></tr>
+      <tr><td>Aceptar un reporte propio</td><td>Siempre revisa otra persona: nadie se aprueba a sí mismo.</td></tr>
+      <tr><td>Reportar más hectáreas de las que tiene la suerte</td><td>El área es el techo (con 2 % de margen).</td></tr>
+      <tr><td>Poner una fecha futura o anterior al corte</td><td>La labor tiene que caber en su ciclo.</td></tr>
+      <tr><td>Registrar un gasto sin soporte</td><td>El dueño ve la factura de cada peso que sale.</td></tr>
+      <tr><td>Borrar o editar un movimiento</td><td>Se anula con motivo y queda a la vista.</td></tr>
+      <tr><td>Marcar una labor terminada a mano</td><td>Termina sola cuando lo aceptado llega al 98 %. A mano solo se anula, con motivo.</td></tr>
+      <tr><td>Que un supervisor cree fincas, cambie costos o toque la plata</td><td>Eso es solo de administración.</td></tr>
+      <tr><td>Que el dueño cambie algo o vea otra finca</td><td>Su enlace es de solo lectura y de una sola finca.</td></tr>
+    </table>
+    <p style="margin-top:14px"><strong>Todavía no hace:</strong> reportar sin señal (hay que tener conexión),
+      calcular el honorario solo (se registra a mano) ni la cosecha y la liquidación del ingenio.</p>
+  </section>
+
+</div>

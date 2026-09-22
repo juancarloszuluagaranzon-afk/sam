@@ -1,5 +1,7 @@
 -- Pruebas del módulo de administración de fincas (20260922120000).
 -- Correr DESPUÉS de la migración, dentro de begin … rollback: no deja nada.
+-- Desde 20260922150000 las funciones con usuario son INTERNAS (af__*): estas pruebas
+-- prueban su lógica; las llaves se prueban en pruebas_acceso_dueno.sql.
 -- Actores reales: U005 (administración), U002 y U033 (supervisores), U009 (operador).
 
 create temp table r (n serial, caso text, esperado text, obtenido text);
@@ -37,10 +39,10 @@ select pg_temp.prueba('admin pone costo a roturación', 'ok',
 
 -- Ciclo
 select pg_temp.prueba('supervisor abre ciclo', 'SIN_PERMISO',
-  $q$select af_abrir_ciclo((select v from ids where k = 'suerte'), '2026-09-01', 'SOCA', 'U002')::text$q$);
+  $q$select af__abrir_ciclo((select v from ids where k = 'suerte'), '2026-09-01', 'SOCA', 'U002')::text$q$);
 select pg_temp.prueba('ciclo con corte futuro', 'FECHA_FUTURA',
-  $q$select af_abrir_ciclo((select v from ids where k = 'suerte'), '2030-01-01', 'SOCA', 'U005')::text$q$);
-insert into ids select 'ciclo', af_abrir_ciclo((select v from ids where k = 'suerte'), '2026-09-01', 'SOCA', 'U005');
+  $q$select af__abrir_ciclo((select v from ids where k = 'suerte'), '2030-01-01', 'SOCA', 'U005')::text$q$);
+insert into ids select 'ciclo', af__abrir_ciclo((select v from ids where k = 'suerte'), '2026-09-01', 'SOCA', 'U005');
 insert into r (caso, esperado, obtenido)
   select 'ciclo soca carga 4 labores (sin la fert. de plantilla)', '4', count(*)::text from af_labores where ciclo_id = (select v from ids where k = 'ciclo');
 insert into ids select 'rot', id from af_labores where ciclo_id = (select v from ids where k = 'ciclo') and labor = 'ROTURACIÓN';
@@ -51,42 +53,42 @@ insert into r (caso, esperado, obtenido)
 -- Reportes
 insert into ids values ('rep1', gen_random_uuid()), ('rep2', gen_random_uuid()), ('rep3', gen_random_uuid());
 select pg_temp.prueba('operador reporta', 'SIN_PERMISO',
-  $q$select af_reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 1, '2026-09-10', 'foto', null, null, null, null, 'U009')::text$q$);
+  $q$select af__reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 1, '2026-09-10', 'foto', null, null, null, null, 'U009')::text$q$);
 select pg_temp.prueba('reporte sin foto', 'SIN_FOTO',
-  $q$select af_reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 1, '2026-09-10', '  ', null, null, null, null, 'U002')::text$q$);
+  $q$select af__reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 1, '2026-09-10', '  ', null, null, null, null, 'U002')::text$q$);
 select pg_temp.prueba('reporte antes del corte', 'FECHA_ANTES_DEL_CORTE',
-  $q$select af_reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 1, '2026-08-20', 'foto', null, null, null, null, 'U002')::text$q$);
+  $q$select af__reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 1, '2026-08-20', 'foto', null, null, null, null, 'U002')::text$q$);
 select pg_temp.prueba('supervisor A reporta 6 ha', 'ok',
-  $q$select 'x' from (select af_reportar((select v from ids where k = 'rep1'), (select v from ids where k = 'rot'), 6, '2026-09-10', 'https://x/foto.jpg', 3.9, -76.3, 8, 'prueba', 'U002')) s$q$);
+  $q$select 'x' from (select af__reportar((select v from ids where k = 'rep1'), (select v from ids where k = 'rot'), 6, '2026-09-10', 'https://x/foto.jpg', 3.9, -76.3, 8, 'prueba', 'U002')) s$q$);
 select pg_temp.prueba('reintento del mismo reporte no duplica', 'ok 1',
-  $q$select count(*)::text from (select af_reportar((select v from ids where k = 'rep1'), (select v from ids where k = 'rot'), 6, '2026-09-10', 'https://x/foto.jpg', null, null, null, null, 'U002')) s, af_reportes where labor_id = (select v from ids where k = 'rot')$q$);
+  $q$select count(*)::text from (select af__reportar((select v from ids where k = 'rep1'), (select v from ids where k = 'rot'), 6, '2026-09-10', 'https://x/foto.jpg', null, null, null, null, 'U002')) s, af_reportes where labor_id = (select v from ids where k = 'rot')$q$);
 insert into r (caso, esperado, obtenido) select 'la labor pasa a EN_CURSO al reportar', 'EN_CURSO', estado from af_labores where id = (select v from ids where k = 'rot');
 select pg_temp.prueba('reporte que pasa el área (6+5 > 10)', 'SUPERA_AREA',
-  $q$select af_reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 5, '2026-09-11', 'foto', null, null, null, null, 'U002')::text$q$);
+  $q$select af__reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 5, '2026-09-11', 'foto', null, null, null, null, 'U002')::text$q$);
 
 -- Aceptar
 select pg_temp.prueba('supervisor A acepta lo suyo', 'NO_PROPIO',
-  $q$select af_revisar((select v from ids where k = 'rep1'), true, null, 'U002')$q$);
+  $q$select af__revisar((select v from ids where k = 'rep1'), true, null, 'U002')$q$);
 select pg_temp.prueba('supervisor B acepta', 'ok ACEPTADO',
-  $q$select af_revisar((select v from ids where k = 'rep1'), true, null, 'U033')$q$);
+  $q$select af__revisar((select v from ids where k = 'rep1'), true, null, 'U033')$q$);
 insert into r (caso, esperado, obtenido)
   select 'aceptar crea el gasto con la foto de soporte', 'GASTO 600000.00 https://x/foto.jpg', tipo || ' ' || valor::text || ' ' || soporte_url
     from af_movimientos where reporte_id = (select v from ids where k = 'rep1');
 select pg_temp.prueba('aceptar dos veces', 'YA_REVISADO',
-  $q$select af_revisar((select v from ids where k = 'rep1'), true, null, 'U005')$q$);
+  $q$select af__revisar((select v from ids where k = 'rep1'), true, null, 'U005')$q$);
 select pg_temp.prueba('supervisor A reporta 4 ha más', 'ok',
-  $q$select 'x' from (select af_reportar((select v from ids where k = 'rep2'), (select v from ids where k = 'rot'), 4, '2026-09-12', 'https://x/foto2.jpg', null, null, null, null, 'U002')) s$q$);
+  $q$select 'x' from (select af__reportar((select v from ids where k = 'rep2'), (select v from ids where k = 'rot'), 4, '2026-09-12', 'https://x/foto2.jpg', null, null, null, null, 'U002')) s$q$);
 select pg_temp.prueba('rechazar sin motivo', 'MOTIVO',
-  $q$select af_revisar((select v from ids where k = 'rep2'), false, ' ', 'U005')$q$);
+  $q$select af__revisar((select v from ids where k = 'rep2'), false, ' ', 'U005')$q$);
 select pg_temp.prueba('admin acepta las 4 ha', 'ok ACEPTADO',
-  $q$select af_revisar((select v from ids where k = 'rep2'), true, null, 'U005')$q$);
+  $q$select af__revisar((select v from ids where k = 'rep2'), true, null, 'U005')$q$);
 insert into r (caso, esperado, obtenido) select 'con 10 de 10 ha la labor queda TERMINADA', 'TERMINADA', estado from af_labores where id = (select v from ids where k = 'rot');
 select pg_temp.prueba('reportar en una labor terminada', 'LABOR_CERRADA',
-  $q$select af_reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 0.1, '2026-09-12', 'foto', null, null, null, null, 'U002')::text$q$);
+  $q$select af__reportar(gen_random_uuid(), (select v from ids where k = 'rot'), 0.1, '2026-09-12', 'foto', null, null, null, null, 'U002')::text$q$);
 select pg_temp.prueba('supervisor A reporta fertilización', 'ok',
-  $q$select 'x' from (select af_reportar((select v from ids where k = 'rep3'), (select v from ids where k = 'fert'), 3, '2026-09-15', 'https://x/f.jpg', null, null, null, null, 'U002')) s$q$);
+  $q$select 'x' from (select af__reportar((select v from ids where k = 'rep3'), (select v from ids where k = 'fert'), 3, '2026-09-15', 'https://x/f.jpg', null, null, null, null, 'U002')) s$q$);
 select pg_temp.prueba('rechazar con motivo', 'ok RECHAZADO',
-  $q$select af_revisar((select v from ids where k = 'rep3'), false, 'la foto es de otra suerte', 'U033')$q$);
+  $q$select af__revisar((select v from ids where k = 'rep3'), false, 'la foto es de otra suerte', 'U033')$q$);
 insert into r (caso, esperado, obtenido)
   select 'lo rechazado no genera gasto', '0', count(*)::text from af_movimientos where reporte_id = (select v from ids where k = 'rep3');
 
@@ -112,11 +114,11 @@ select pg_temp.prueba('gasto a mano amarrado a un reporte', 'MOVIMIENTO_INVALIDO
 select pg_temp.prueba('editar el valor de un movimiento', 'MOVIMIENTO_INMUTABLE',
   $q$update af_movimientos set valor = 1 where reporte_id = (select v from ids where k = 'rep1') returning 'x'$q$);
 select pg_temp.prueba('supervisor anula un gasto', 'SIN_PERMISO',
-  $q$select af_anular_movimiento((select id from af_movimientos where reporte_id = (select v from ids where k = 'rep1')), 'x', 'U002')::text$q$);
+  $q$select af__anular_movimiento((select id from af_movimientos where reporte_id = (select v from ids where k = 'rep1')), 'x', 'U002')::text$q$);
 select pg_temp.prueba('admin anula con motivo', 'ok',
-  $q$select 'x' from (select af_anular_movimiento((select id from af_movimientos where reporte_id = (select v from ids where k = 'rep1')), 'tarifa mal puesta', 'U005')) s$q$);
+  $q$select 'x' from (select af__anular_movimiento((select id from af_movimientos where reporte_id = (select v from ids where k = 'rep1')), 'tarifa mal puesta', 'U005')) s$q$);
 select pg_temp.prueba('anular dos veces', 'MOVIMIENTO_ANULADO',
-  $q$select af_anular_movimiento((select id from af_movimientos where reporte_id = (select v from ids where k = 'rep1')), 'otra vez', 'U005')::text$q$);
+  $q$select af__anular_movimiento((select id from af_movimientos where reporte_id = (select v from ids where k = 'rep1')), 'otra vez', 'U005')::text$q$);
 
 -- La app (llave anónima) no borra ni escribe reportes por fuera de las funciones
 select pg_temp.prueba('la app intenta insertar un reporte directo', 'permission denied for table af_reportes',
@@ -139,7 +141,7 @@ begin
   exception when others then raise notice 'ANON_REPORTE_DIRECTO: ✓ %', split_part(sqlerrm, ' for ', 1); end;
   begin update af_reportes set estado = 'ACEPTADO' where true; raise notice 'ANON_ACEPTA_DIRECTO: ✗ pudo';
   exception when others then raise notice 'ANON_ACEPTA_DIRECTO: ✓ %', split_part(sqlerrm, ' for ', 1); end;
-  begin perform count(*) from af_fincas; raise notice 'ANON_LEE: ✓ puede leer';
-  exception when others then raise notice 'ANON_LEE: ✗ %', sqlerrm; end;
+  begin perform count(*) from af_fincas; raise notice 'ANON_LEE: ✗ pudo leer la tabla directo';
+  exception when others then raise notice 'ANON_LEE: ✓ ya no lee directo (%)', split_part(sqlerrm, ' for ', 1); end;
 end $$;
 reset role;

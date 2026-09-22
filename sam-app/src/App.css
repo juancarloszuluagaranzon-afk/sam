@@ -9604,6 +9604,22 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .af-form__ancho { grid-column: 1 / -1; }
 .af-mini-form { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: flex-end; }
+/* Llave de Fincas por PIN, acceso directo del dueño y su vista (22-sep-2026) */
+.af-pin { max-width: 420px; display: flex; flex-direction: column; gap: 10px; }
+.af-pin label { display: flex; flex-direction: column; gap: 4px; font-size: 0.84rem; font-weight: 700; color: var(--color-ink-mid, #5a5f57); }
+.af-pin input {
+  font: inherit; font-size: 1.3rem; letter-spacing: 0.3em; text-align: center; color: var(--color-ink, #1f2a1f);
+  background: var(--color-surface, #fff); border: 1px solid var(--color-divider, #cfd6c9); border-radius: 10px; padding: 10px;
+}
+.af-acceso .af-mini-form input { min-width: min(260px, 100%); }
+.af-enlace { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; border-radius: 10px;
+  background: var(--color-surface-muted, rgba(46, 125, 50, 0.08)); }
+.af-enlace p { margin: 0; }
+.af-enlace input { font: inherit; font-size: 0.8rem; width: 100%; min-width: 0; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--color-divider, #cfd6c9); background: var(--color-surface, #fff); color: var(--color-ink, #1f2a1f); }
+.af-portal__pie { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-divider, #cfd6c9);
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+.af-portal__pie .af-nota { margin: 0; max-width: 60ch; }
 .af-suerte-fila { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; align-items: center; }
 .af-gps { margin: 0; font-size: 0.85rem; font-weight: 600; }
 .af-gps--ok { color: var(--color-status-done); }

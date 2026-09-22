@@ -6,6 +6,9 @@ import { LoginView } from './views/LoginView'
 import { SupervisorView, type SupervisorTab } from './views/SupervisorView'
 import { OperatorView } from './views/OperatorView'
 import { FincasView } from './views/fincas/FincasView'
+import { PortalDueno } from './views/fincas/PortalDueno'
+import { tomarLlaveDueno } from './views/fincas/llaveDueno'
+import { abrirSesionFincas, cerrarSesionFincas, guardarLlavePersonal, leerLlavePersonal } from './services/fincasApi'
 import { ModoSwitch, leerModo, guardarModo, type Modo } from './components/ModoSwitch'
 import { SoporteShell } from './views/SoporteShell'
 import { InsumosView } from './views/InsumosView'
@@ -133,6 +136,12 @@ function AppContent() {
   const [tableroIngenio, setTableroIngenio] = useState<string>('TODOS')
 
   function saveSession(user: UserProfile | null) {
+    // Al salir se cancela también la llave de Fincas: en un celular compartido,
+    // el siguiente no hereda el acceso a la plata de los dueños.
+    if (!user && session) {
+      const llave = leerLlavePersonal(session.id)
+      if (llave) { guardarLlavePersonal(session.id, null); void cerrarSesionFincas(llave).catch(() => {}) }
+    }
     setSession(user ? { ...user } : null)
     setIsSideMenuOpen(false)
     // El dueño SIEMPRE aterriza en su tablero de inicio (no en Labores): es la
@@ -355,6 +364,14 @@ function AppContent() {
 
       saveSession(user)
       setInfo(`Sesion iniciada para ${user.name}.`)
+      // La llave del módulo de fincas sale del MISMO PIN que acaba de escribir: así
+      // no se lo vuelve a pedir. Si falla (sin señal, etc.) no estorba el ingreso:
+      // Fincas lo pide cuando lo abra.
+      if (isSupervisorOrOwner(user.role)) {
+        void abrirSesionFincas(user.id, pin)
+          .then((llave) => { if (llave) guardarLlavePersonal(user.id, llave) })
+          .catch(() => {})
+      }
       if (isSupervisorOrOwner(user.role)) {
         setSupervisorTab('labores')
       } else {
@@ -674,6 +691,17 @@ function AppContent() {
 }
 
 function App() {
+  // El dueño de la tierra entra con su enlace personal (#finca=…): ve SOLO su
+  // finca, sin usuario ni PIN y sin cargar nada de la operación de maquinaria.
+  const [llaveDueno, setLlaveDueno] = useState<string | null>(tomarLlaveDueno)
+  if (llaveDueno) {
+    return (
+      <>
+        <PortalDueno llave={llaveDueno} onSalir={() => setLlaveDueno(null)} />
+        <UpdateBanner />
+      </>
+    )
+  }
   return (
     <AppDataProvider>
       <AppContent />

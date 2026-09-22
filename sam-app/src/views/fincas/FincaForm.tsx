@@ -10,7 +10,7 @@ import { fmtCant } from '../../lib/fincas'
  * ingenio + hacienda que usa la maquinaria) o escribir a mano.
  */
 export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: string | null; onListo: (id: string | null) => void }) {
-  const { datos: d, usuario, recargar, esAdmin } = ctx
+  const { datos: d, token, recargar, esAdmin } = ctx
   const { ingenios, maestro } = useAppData()
   const actual = fincaId ? d.fincas.find((f) => f.id === fincaId) : undefined
   const [f, setF] = useState({
@@ -52,8 +52,8 @@ export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: 
         id: fincaId ?? undefined, nombre: f.nombre, duenoNombre: f.duenoNombre, duenoTelefono: f.duenoTelefono,
         duenoCorreo: f.duenoCorreo, ingenioId: f.ingenioId, municipio: f.municipio, honorarioModo: f.honorarioModo,
         honorarioValor: f.honorarioValor ? Number(f.honorarioValor.replace(',', '.')) : null, nota: f.nota,
-      }, usuario)
-      await agregarSuertes(id, validas.map((s) => ({ codigo: s.codigo, areaHa: Number(s.areaHa.replace(',', '.')) })), usuario)
+      }, token)
+      await agregarSuertes(id, validas.map((s) => ({ codigo: s.codigo, areaHa: Number(s.areaHa.replace(',', '.')) })), token)
       await recargar()
       onListo(id)
     } catch (e) { setError(mensajeDeError(e)) } finally { setGuardando(false) }

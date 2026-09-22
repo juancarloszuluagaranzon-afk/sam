@@ -10,7 +10,7 @@ import { fmtPesos } from '../../lib/fincas'
  * dueño aprobó.
  */
 export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
-  const { datos: d, usuario, recargar, esAdmin } = ctx
+  const { datos: d, token, recargar, esAdmin } = ctx
   const [editando, setEditando] = useState<Partial<LaborPaquete> & { labor: string } | null>(null)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -19,7 +19,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
   async function guardar() {
     if (!editando) return
     setGuardando(true); setError('')
-    try { await guardarPaquete(editando, usuario); setEditando(null); await recargar() }
+    try { await guardarPaquete(editando, token); setEditando(null); await recargar() }
     catch (e) { setError(mensajeDeError(e)) } finally { setGuardando(false) }
   }
   const nulo = (v: string) => (v.trim() === '' ? null : Number(v))
@@ -75,7 +75,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
                   <td className="af-td-acc">
                     <button type="button" className="af-link" onClick={() => setEditando({ ...p })}>Editar</button>
                     <button type="button" className="af-link" onClick={async () => {
-                      try { await guardarPaquete({ ...p, activa: !p.activa }, usuario); await recargar() } catch (e) { setError(mensajeDeError(e)) }
+                      try { await guardarPaquete({ ...p, activa: !p.activa }, token); await recargar() } catch (e) { setError(mensajeDeError(e)) }
                     }}>{p.activa ? 'Desactivar' : 'Activar'}</button>
                   </td>
                 </tr>

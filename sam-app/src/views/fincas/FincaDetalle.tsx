@@ -10,6 +10,7 @@ import {
 } from '../../lib/fincas'
 import { ingenioNombre } from '../../data/ingenios'
 import { fmtFechaHora } from '../../lib/fechas'
+import { AccesoDueno } from './AccesoDueno'
 
 type Sub = 'resumen' | 'labores' | 'cuenta' | 'bitacora'
 
@@ -23,11 +24,13 @@ const CHIP: Record<NivelOportunidad, { c: string; t: string }> = {
  * Una finca, como la vería su dueño. La pestaña «Resumen» ES la vista del dueño:
  * el día, la plata contra lo que aprobó, si se hizo a tiempo, su cuenta y la
  * bitácora — las mismas cifras que usa ASM, no una versión preparada.
+ * Con `ctx.modoDueno` es la página que abre el dueño con su enlace: solo lectura,
+ * sin volver a la lista, sin editar y sin nada de la administración.
  */
 export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
   ctx: CtxFincas; fincaId: string; onVolver: () => void; onEditar: () => void
 }) {
-  const { datos: d, hoy, esAdmin, usuario, nombre, recargar } = ctx
+  const { datos: d, hoy, esAdmin, token, nombre, recargar, modoDueno } = ctx
   const finca = d.fincas.find((f) => f.id === fincaId)
   const [sub, setSub] = useState<Sub>('resumen')
   const [error, setError] = useState('')
@@ -60,21 +63,21 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
     <div className="af-stack">
       <div className="af-cab">
         <div>
-          <button type="button" className="af-link" onClick={onVolver}>← Fincas</button>
+          {!modoDueno && <button type="button" className="af-link" onClick={onVolver}>← Fincas</button>}
           <h2>{finca.nombre}</h2>
           <p className="subtle-copy" style={{ margin: 0 }}>
             Dueño: <b>{finca.duenoNombre}</b>{finca.duenoTelefono ? ` · ${finca.duenoTelefono}` : ''}
             {finca.ingenioId ? ` · entrega a ${ingenioNombre(finca.ingenioId)}` : ''}{finca.municipio ? ` · ${finca.municipio}` : ''}
           </p>
         </div>
-        <div className="af-acciones">
+        {!modoDueno && <div className="af-acciones">
           {whatsapp && <a className="primary-button" href={whatsapp} target="_blank" rel="noreferrer">Enviar resumen al dueño</a>}
           {esAdmin && <button type="button" className="inline-button" onClick={onEditar}>Editar finca y suertes</button>}
-        </div>
+        </div>}
       </div>
 
       <nav className="af-sub" aria-label="Secciones de la finca">
-        {([['resumen', 'Lo que ve el dueño'], ['labores', 'Labores por suerte'], ['cuenta', 'Cuenta'], ['bitacora', 'Bitácora']] as [Sub, string][]).map(([k, t]) => (
+        {([['resumen', modoDueno ? 'Resumen' : 'Lo que ve el dueño'], ['labores', 'Labores por suerte'], ['cuenta', 'Cuenta'], ['bitacora', 'Bitácora']] as [Sub, string][]).map(([k, t]) => (
           <button key={k} type="button" aria-pressed={sub === k} onClick={() => setSub(k)}>{t}</button>
         ))}
       </nav>
@@ -82,6 +85,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
 
       {sub === 'resumen' && (
         <div className="af-dueno">
+          {esAdmin && !modoDueno && <AccesoDueno ctx={ctx} finca={finca} />}
           <div className="af-card">
             <h3>Hoy en su finca</h3>
             <div className="af-fila2"><span>Labores en curso</span><b>{enCurso.length}</b></div>
@@ -136,7 +140,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                     </p>
                   </div>
                   {esAdmin && <AbrirCiclo hayCiclo={!!ciclo} ocupado={ocupado}
-                    onAbrir={(fecha, tipo) => hacer(() => abrirCiclo(s.id, fecha, tipo, usuario))} />}
+                    onAbrir={(fecha, tipo) => hacer(() => abrirCiclo(s.id, fecha, tipo, token))} />}
                 </div>
                 {propias.length > 0 && (
                   <div className="af-tabla-wrap">
@@ -161,11 +165,11 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                                     <button type="button" className="af-link" disabled={ocupado} onClick={() => {
                                       const v = window.prompt(`Costo por ${x.labor.unidad} de ${x.labor.labor.toLowerCase()} (suerte ${s.codigo}):`, String(x.labor.costoUnitarioPlan || ''))
                                       const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.'))
-                                      if (v != null && Number.isFinite(n) && n >= 0) void hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: n }, usuario))
+                                      if (v != null && Number.isFinite(n) && n >= 0) void hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: n }, token))
                                     }}>Costo</button>
                                     <button type="button" className="af-link" disabled={ocupado} onClick={() => {
                                       const m = window.prompt('¿Por qué se anula esta labor? (queda registrado)')
-                                      if (m && m.trim()) void hacer(() => anularLabor(x.labor.id, m, usuario))
+                                      if (m && m.trim()) void hacer(() => anularLabor(x.labor.id, m, token))
                                     }}>Anular</button>
                                   </>
                                 )}
@@ -192,7 +196,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             <div className={`af-kpi${cuenta.saldo < 0 ? ' af-kpi--mal' : ''}`}><b>{fmtPesosCorto(cuenta.saldo)}</b><span>saldo</span></div>
           </div>
           {esAdmin && <NuevoMovimiento ocupado={ocupado} suertes={suertes.map((s) => ({ id: s.id, codigo: s.codigo }))} hoy={hoy}
-            onGuardar={(m) => hacer(() => registrarMovimiento({ ...m, fincaId }, usuario))} onError={setError} />}
+            onGuardar={(m) => hacer(() => registrarMovimiento({ ...m, fincaId }, token))} onError={setError} />}
           <div className="af-card">
             <h3>Movimientos</h3>
             <ul className="af-lista">
@@ -207,7 +211,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                   {esAdmin && !m.anulado && (
                     <button type="button" className="af-link" disabled={ocupado} onClick={() => {
                       const mo = window.prompt('¿Por qué se anula? El movimiento no se borra: queda anulado con este motivo.')
-                      if (mo && mo.trim()) void hacer(() => anularMovimiento(m.id, mo, usuario))
+                      if (mo && mo.trim()) void hacer(() => anularMovimiento(m.id, mo, token))
                     }}>Anular</button>
                   )}
                 </li>

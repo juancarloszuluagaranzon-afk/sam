@@ -14,7 +14,7 @@ type Gps = { estado: 'buscando' } | { estado: 'ok'; lat: number; lng: number; pr
  * ⚠️ En este MVP el reporte necesita señal (no entra a la cola sin conexión).
  */
 export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
-  const { datos: d, hoy, usuario, nombre, puedeReportar, recargar } = ctx
+  const { datos: d, hoy, usuario, token, nombre, puedeReportar, recargar } = ctx
   const [fincaId, setFincaId] = useState('')
   const [suerteId, setSuerteId] = useState('')
   const [laborId, setLaborId] = useState('')
@@ -75,7 +75,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
           id: idReporte, laborId: labor.id, cantidad: n, fecha, fotoUrl: url,
           lat: gps.estado === 'ok' ? gps.lat : null, lng: gps.estado === 'ok' ? gps.lng : null,
           precisionM: gps.estado === 'ok' ? gps.precision : null, nota,
-        }, usuario)
+        }, token)
       })())
       setListo(`Reportado: ${fmtCant(n)} ${labor.unidad} de ${labor.labor.toLowerCase()}. Queda por aceptar.`)
       setLaborId(''); setCantidad(''); setNota(''); setFoto(null); setVista(null)

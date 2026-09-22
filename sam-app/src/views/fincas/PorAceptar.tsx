@@ -10,7 +10,7 @@ import { fmtFechaHora } from '../../lib/fechas'
  * 🔴 Nadie acepta lo suyo: el botón no aparece y, si apareciera, la base lo frena.
  */
 export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
-  const { datos: d, usuario, nombre, puedeReportar, recargar } = ctx
+  const { datos: d, usuario, token, nombre, puedeReportar, recargar } = ctx
   const [motivos, setMotivos] = useState<Record<string, string>>({})
   const [rechazando, setRechazando] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState<string | null>(null)
@@ -20,7 +20,7 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
   async function revisar(id: string, aceptar: boolean) {
     setOcupado(id); setError('')
     try {
-      await revisarReporte(id, aceptar, motivos[id] ?? '', usuario)
+      await revisarReporte(id, aceptar, motivos[id] ?? '', token)
       setRechazando(null)
       await recargar()
     } catch (e) { setError(mensajeDeError(e)) } finally { setOcupado(null) }

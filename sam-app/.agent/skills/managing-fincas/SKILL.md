@@ -4,7 +4,8 @@ description: >
   Módulo de ADMINISTRACIÓN DE FINCAS DE CAÑA dentro de la app de ASM (segundo inicio, al lado
   de la maquinaria). Úsala al tocar fincas, suertes administradas, ciclos de corte a corte,
   paquete de labores, reportes de campo con foto/GPS, «por aceptar», la cuenta del dueño
-  (anticipos, gastos, honorarios, saldo), el resumen por WhatsApp o las tablas `af_*`.
+  (anticipos, gastos, honorarios, saldo), el resumen por WhatsApp, el ACCESO DIRECTO DEL
+  DUEÑO (enlace personal, `PortalDueno`), las llaves del módulo o las tablas `af_*`.
 ---
 
 # Administración de fincas — MVP (22-sep-2026)
@@ -32,6 +33,34 @@ aceptación → gasto en la cuenta (`af_movimientos`). Todo cambio en `af_audito
 
 La **pestaña «Lo que ve el dueño»** de la finca ES la vista del dueño: hoy, ciclo contra presupuesto,
 ¿a tiempo?, su cuenta y la bitácora. Mismas cifras que usa ASM, no una versión preparada.
+
+## 🔴 Nadie lee ni escribe las tablas directo: todo va con LLAVE (migración `20260922150000_fincas_acceso_dueno.sql`)
+
+La llave pública de la app está en el bundle: con ella cualquiera podría leer tablas abiertas.
+Por eso las tablas `af_*` están CERRADAS a `anon` (sin grants, RLS sin políticas) y el módulo
+entero pasa por funciones `security definer` que reciben `p_token`:
+
+| Quién | Cómo saca la llave | Qué puede |
+|---|---|---|
+| owner / administración / supervisor | `af_abrir_sesion(usuario, pin)` — el MISMO hash del PIN que `app_login`. App.tsx la pide sola al iniciar sesión con el PIN que acaba de escribir; si falta o venció, `FincasView` pide el PIN (`ConfirmarPin`). 30 días. 5 PIN errados en 15 min → `BLOQUEADO`. Al salir (`saveSession(null)`) se cancela. | según su rol, como antes |
+| dueño de la tierra | enlace `https://…/#finca=<llave>` que crea administración (`af_crear_acceso`, tarjeta «Acceso directo del dueño» en «Lo que ve el dueño») | SOLO leer SU finca (`af_datos` filtra por la finca del enlace); ninguna escritura |
+
+- La base guarda solo la **huella** (`af_hash` = sha256) de cada llave: el enlace se muestra UNA vez
+  y nadie lo puede volver a leer. Perdido o reenviado → «Quitar acceso» (`af_revocar_acceso`) y otro nuevo.
+- La llave va después del `#`: no viaja al servidor web. `llaveDueno.ts` la guarda en
+  `localStorage['sam:af-dueno']` y la borra de la barra de direcciones. Si en el celular hay sesión
+  del personal, la llave guardada del dueño se ignora (solo manda el enlace recién abierto).
+- `App()` abre `PortalDueno` ANTES de `AppDataProvider`: el dueño no carga nada de la maquinaria.
+- **Quién hizo qué sale de la llave**, no de un parámetro: `af__usuario(p_token, roles)` → id o
+  `SIN_SESION`/`SIN_PERMISO`. Las funciones viejas quedaron como internas `af__abrir_ciclo`,
+  `af__reportar`, `af__revisar`, `af__anular_movimiento` (sin permiso para `anon`).
+- Lectura: UNA función, `af_datos(p_token)` → `{rol, usuario, fincas, suertes, ciclos, labores,
+  reportes, movimientos, paquete, accesos, nombres}`. Al dueño: `paquete` y `accesos` vacíos, y
+  `nombres` (id → nombre) de quien reportó/aceptó, porque no tiene la lista de usuarios.
+  Cada lectura del dueño suma `usos` y `ultimo_uso` (administración ve «lo ha abierto N veces»).
+- Escrituras: `af_guardar_finca`, `af_agregar_suertes`, `af_guardar_paquete`, `af_actualizar_labor`,
+  `af_anular_labor`, `af_registrar_movimiento` (+ las cuatro de antes con `p_token` primero).
+- ⚠️ Soporte en «Ver como» un supervisor NO entra a Fincas sin el PIN de esa persona (a propósito).
 
 ## Las reglas las hace cumplir la BASE (migración `20260922120000_administracion_fincas.sql`)
 
@@ -73,22 +102,27 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
 
 ## Pruebas
 
-- `supabase/pruebas_administracion_fincas.sql` — 40 casos, dentro de `begin … rollback`, más los
-  permisos del rol anónimo (no borra, no reporta ni acepta directo, sí lee).
+- `supabase/pruebas_administracion_fincas.sql` — 40 casos (llaman las internas `af__*`) y
+  `supabase/pruebas_acceso_dueno.sql` — 25 de llaves y dueño. Correr JUNTAS dentro de
+  `begin; <las dos migraciones si no están>; <pruebas>; rollback;` → 65/65 ✓ y los avisos `ANON_*` ✓.
+  🔴 No usan ningún PIN real: usuarios temporales (TST_AF/TST_OP) y llaves directas en `af_sesiones`,
+  todo dentro del rollback.
 - `scripts/prueba-fincas-e2e.mjs` — **el código real de la app contra la base real**, cargado por
   Vite (`server.ssrLoadModule`), porque `lib/supabase` lee `import.meta.env` y `tsx` no lo trae.
-  16 chequeos de punta a punta. Deja datos «PRUEBA E2E»: borrarlos después (ver abajo).
-- Borrar datos de prueba: SQL con `set_config('af.via_funcion','1', true)`, en orden movimientos →
-  reportes → labores → ciclos → suertes → fincas, y sus filas de `af_auditoria`. 🔴 Las fotos NO se
+  ~30 chequeos de punta a punta, incluido el enlace del dueño. Necesita dos llaves de prueba
+  (`AF_LLAVE_ADMIN`, `AF_LLAVE_OTRO`): crearlas por SQL en `af_sesiones` con
+  `af_hash('<texto al azar>')`, `expira_en = now() + interval '1 hour'`, y BORRARLAS al final.
+  Devuelve solo el costo del paquete. Deja datos «PRUEBA E2E»: borrarlos después (ver abajo).
+- Borrar datos de prueba: SQL con `set_config('af.via_funcion','1', true)`, en orden accesos →
+  movimientos → reportes → labores → ciclos → suertes → fincas, y sus filas de `af_auditoria`. 🔴 Las fotos NO se
   borran por SQL («Direct deletion from storage tables is not allowed»): con la Storage API.
   Y con `ON_ERROR_STOP` + `begin`, un error deja TODO sin aplicar — revisar el conteo final.
 
 ## Límites conocidos del MVP (decírselos al cliente)
 
-- **Acceso directo del dueño de la tierra: todavía no.** La app entra con la llave anónima y el
-  usuario lo dice el celular; un dueño externo con esa llave podría leer otras fincas. Primero,
-  autenticación real + acceso por finca en la base. Mientras tanto: la pestaña «Lo que ve el dueño»
-  y el resumen por WhatsApp.
+- El resto de SAM (maquinaria) sigue con el modelo de siempre: la llave pública lee sus tablas.
+  Fincas es la excepción a propósito, porque ahí entra gente de afuera (el dueño) y está su plata.
+- La vista del dueño **necesita señal** (se trae en vivo; sin conexión muestra «No hay conexión»).
 - El reporte **necesita señal** (no entra a la cola sin conexión). Tiene tope de 90 s con mensaje y
   la misma id en los reintentos (la base no duplica).
 - Fotos en el bucket `avatars` (público), como el resto de SAM.

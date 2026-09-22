@@ -130,8 +130,16 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
 - El resto de SAM (maquinaria) sigue con el modelo de siempre: la llave pública lee sus tablas.
   Fincas es la excepción a propósito, porque ahí entra gente de afuera (el dueño) y está su plata.
 - La vista del dueño **necesita señal** (se trae en vivo; sin conexión muestra «No hay conexión»).
-- El reporte **necesita señal** (no entra a la cola sin conexión). Tiene tope de 90 s con mensaje y
-  la misma id en los reintentos (la base no duplica).
+- El reporte **funciona sin señal** (`lib/outboxFincas.ts`, 22-sep-2026): va a `db.outbox` con
+  `type: 'FINCA'` y la foto a `db.fotos` con marcador `local://`; al sincronizar se sube la foto,
+  se anota su URL en la cola (para no subirla dos veces) y se manda con `af_reportar`. Sale por tres
+  caminos: el evento «volvió la señal» (`useSync`, paso 4), al abrir `FincasView` con conexión, y el
+  botón «Intentar enviar ahora». 🔴 Los tres pasan por el MISMO candado `enVuelo` — sin él, dos
+  envíos a la vez suben la misma foto dos veces (pasó en la prueba del 22-sep). Tope de 90 s: al
+  vencer cuenta como falta de red y va a la cola. La id se fija al llenar el formulario y `af_reportar`
+  es idempotente con ella: reintentar NO duplica. Quien reportó sale de la LLAVE de ese usuario
+  (`leerLlavePersonal(payload.usuario)`); si venció, el reporte espera y pide confirmar el PIN.
+  Un rechazo del servidor (área, fecha, labor cerrada) NO se encola: se muestra para corregirlo.
 - Fotos en el bucket `avatars` (público), como el resto de SAM.
 - Honorario: se registra a mano (el modo y valor de la finca quedan guardados, aún no se calcula).
 - Sin cosecha ni liquidación del ingenio (etapa 3 de la propuesta).

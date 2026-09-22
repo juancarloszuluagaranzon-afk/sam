@@ -18,7 +18,9 @@ export interface OutboxItem {
   // INSUMO: operaciones del modulo de insumos hechas sin senal (despacho,
   // entrega directa, tanqueo, aprobaciones). Antes solo se encolaban labores y todo
   // lo de insumos se perdia sin cobertura.
-  type: 'UPDATE' | 'CREATE' | 'INSUMO'
+  // FINCA: el reporte de campo de una finca administrada, con su foto. Antes
+  // exigia senal y sin cobertura se perdia el trabajo (y la foto).
+  type: 'UPDATE' | 'CREATE' | 'INSUMO' | 'FINCA'
   // For UPDATE (START, FINISH, CANCEL):
   assignmentId?: string            // real ID or temp ID
   updatePayload?: UpdateAssignmentInput
@@ -28,6 +30,9 @@ export interface OutboxItem {
   // For INSUMO: la INTENCION, no el resultado. El saldo se recalcula al
   // sincronizar contra el stock real de ese momento.
   insumoOp?: { kind: string; payload: unknown }
+  // For FINCA: el reporte tal cual se lleno en el campo. La id va adentro y
+  // `af_reportar` es idempotente con ella: reintentar no duplica.
+  fincaOp?: { kind: string; payload: unknown }
   queuedAt: string
   status: 'pending' | 'error'
   errorMessage?: string

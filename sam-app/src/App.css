@@ -9637,3 +9637,6 @@ td.planilla-vacio:hover { background: #fde047; }
   .modo-switch button { font-size: 0.82rem; padding: 7px 10px; }
 }
 .af a.primary-button { text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Lo que espera señal para salir (reportes de campo sin cobertura) */
+.af-card--espera { border-left: 4px solid var(--color-status-progress, #c8a227); }

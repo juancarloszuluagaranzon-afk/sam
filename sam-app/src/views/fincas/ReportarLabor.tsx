@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CtxFincas } from './FincasView'
-import { mensajeDeError, reportarLabor, subirFotoFinca } from '../../services/fincasApi'
+import { mensajeDeError } from '../../services/fincasApi'
+import {
+  avisarPendientes, enviarOEncolarReporte, reportesPendientes, sincronizarReportes,
+  EVENTO_PENDIENTES, type ReportePendiente,
+} from '../../lib/outboxFincas'
 import { avanceLabor, cicloAbiertoDe, fmtCant } from '../../lib/fincas'
 import { fmtFechaHora } from '../../lib/fechas'
+
 
 type Gps = { estado: 'buscando' } | { estado: 'ok'; lat: number; lng: number; precision: number } | { estado: 'no'; motivo: string }
 
@@ -11,7 +16,8 @@ type Gps = { estado: 'buscando' } | { estado: 'ok'; lat: number; lng: number; pr
  * ubicación del celular y —al guardar— la hora del SERVIDOR, no la del aparato.
  * El reporte queda POR ACEPTAR: otra persona lo verifica antes de que cuente.
  *
- * ⚠️ En este MVP el reporte necesita señal (no entra a la cola sin conexión).
+ * SIN SEÑAL no se pierde nada: el reporte y su foto quedan guardados en el
+ * celular y salen solos cuando vuelve la cobertura (`lib/outboxFincas`).
  */
 export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   const { datos: d, hoy, usuario, token, nombre, puedeReportar, recargar } = ctx
@@ -31,6 +37,19 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   // señal se cae a mitad de camino y el reporte sí llegó, reintentar NO lo duplica
   // (la base devuelve el mismo). Se cambia solo cuando el reporte queda guardado.
   const [idReporte, setIdReporte] = useState(() => crypto.randomUUID())
+  const [pendientes, setPendientes] = useState<ReportePendiente[]>([])
+  const [enviandoCola, setEnviandoCola] = useState(false)
+
+  const refrescarPendientes = useCallback(() => { void reportesPendientes().then(setPendientes) }, [])
+  useEffect(() => {
+    refrescarPendientes()
+    window.addEventListener(EVENTO_PENDIENTES, refrescarPendientes)
+    window.addEventListener('online', refrescarPendientes)
+    return () => {
+      window.removeEventListener(EVENTO_PENDIENTES, refrescarPendientes)
+      window.removeEventListener('online', refrescarPendientes)
+    }
+  }, [refrescarPendientes])
 
   // La ubicación se pide al abrir: cuando el operario termine de llenar, ya está.
   useEffect(() => {
@@ -65,23 +84,38 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
 
   async function enviar() {
     if (problemas.length || !labor || !foto) return
-    if (!navigator.onLine) { setError('Sin señal: en esta versión el reporte necesita conexión. Guarde la foto y repórtelo al tener señal.'); return }
     setGuardando(true); setError(''); setListo('')
+    const suerte = d.suertes.find((s) => s.id === suerteId)
+    const finca = d.fincas.find((f) => f.id === fincaId)
     try {
-      // Con señal mala, sin tope se quedaba en «Enviando…» para siempre.
-      await conTope(90_000, (async () => {
-        const url = await subirFotoFinca(foto, 'reportes')
-        await reportarLabor({
-          id: idReporte, laborId: labor.id, cantidad: n, fecha, fotoUrl: url,
-          lat: gps.estado === 'ok' ? gps.lat : null, lng: gps.estado === 'ok' ? gps.lng : null,
-          precisionM: gps.estado === 'ok' ? gps.precision : null, nota,
-        }, token)
-      })())
-      setListo(`Reportado: ${fmtCant(n)} ${labor.unidad} de ${labor.labor.toLowerCase()}. Queda por aceptar.`)
+      const { enviado } = await enviarOEncolarReporte({
+        id: idReporte, laborId: labor.id, cantidad: n, fecha,
+        lat: gps.estado === 'ok' ? gps.lat : null, lng: gps.estado === 'ok' ? gps.lng : null,
+        precisionM: gps.estado === 'ok' ? gps.precision : null, nota,
+        usuario,
+        etiqueta: `${labor.labor.toLowerCase()} · ${fmtCant(n)} ${labor.unidad} · suerte ${suerte?.codigo ?? ''} · ${finca?.nombre ?? ''}`,
+      }, foto, token)
+      // La pantalla dice la verdad: «reportado» solo si de verdad llego.
+      setListo(enviado
+        ? `Reportado: ${fmtCant(n)} ${labor.unidad} de ${labor.labor.toLowerCase()}. Queda por aceptar.`
+        : 'Sin señal: quedó guardado en este celular con su foto. Se envía solo cuando vuelva la señal; no lo vuelva a registrar.')
       setLaborId(''); setCantidad(''); setNota(''); setFoto(null); setVista(null)
       setIdReporte(crypto.randomUUID())
-      await recargar()
+      refrescarPendientes(); avisarPendientes()
+      if (enviado) await recargar()
     } catch (e) { setError(mensajeDeError(e)) } finally { setGuardando(false) }
+  }
+
+  async function enviarCola() {
+    setEnviandoCola(true); setError('')
+    try {
+      const enviados = await sincronizarReportes()
+      refrescarPendientes(); avisarPendientes()
+      if (enviados > 0) {
+        setListo(`${enviados} reporte${enviados === 1 ? '' : 's'} enviado${enviados === 1 ? '' : 's'}. Queda${enviados === 1 ? '' : 'n'} por aceptar.`)
+        await recargar()
+      }
+    } finally { setEnviandoCola(false) }
   }
 
   return (
@@ -145,6 +179,37 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
         </div>
       </div>
 
+      {pendientes.length > 0 && (
+        <div className="af-card af-card--espera">
+          <h3>⏳ Esperando señal ({pendientes.length})</h3>
+          <p className="af-nota" style={{ marginTop: 0 }}>
+            Están guardados en este celular, con su foto. Salen solos cuando haya cobertura: no los vuelva a registrar.
+          </p>
+          <ul className="af-lista">
+            {pendientes.map((p) => (
+              <li key={p.outboxId} className="af-mov">
+                <span className="af-foto af-foto--vacia">📷</span>
+                <span>
+                  <b>{p.etiqueta}</b>
+                  <small>
+                    hecha el {p.fecha} · guardada {fmtFechaHora(p.queuedAt)}
+                    {p.estado === 'error' && p.errorMessage ? ` · no salió: ${mensajeDeError({ message: p.errorMessage })}` : ''}
+                  </small>
+                </span>
+                <span className={`af-chip ${p.estado === 'error' ? 'af-chip--mal' : 'af-chip--ojo'}`}>
+                  {p.estado === 'error' ? 'no salió' : 'por enviar'}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <div className="af-acciones">
+            <button type="button" className="inline-button" disabled={enviandoCola} onClick={() => void enviarCola()}>
+              {enviandoCola ? 'Enviando…' : 'Intentar enviar ahora'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {misReportes.length > 0 && (
         <div className="af-card">
           <h3>Mis últimos reportes</h3>
@@ -171,10 +236,3 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
 
 function esHectarea(unidad: string) { return unidad.toLowerCase() === 'ha' }
 
-/** Corta la espera: sin respuesta en `ms`, falla con un mensaje que se puede leer en campo. */
-function conTope<T>(ms: number, p: Promise<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const t = setTimeout(() => reject(new Error('No hubo respuesta del servidor. Revise la señal y vuelva a enviar: el reporte no se duplica.')), ms)
-    p.then((v) => { clearTimeout(t); resolve(v) }, (e) => { clearTimeout(t); reject(e) })
-  })
-}

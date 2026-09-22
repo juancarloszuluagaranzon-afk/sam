@@ -10,6 +10,7 @@ import {
 } from '../services/samApi'
 import { supabase } from '../lib/supabase'
 import { ejecutarInsumo, resolverFotosDePayload, type InsumoOpKind } from '../lib/outboxInsumos'
+import { sincronizarReportes } from '../lib/outboxFincas'
 
 interface UseSyncParams {
   onAssignmentsReloaded: (data: Assignment[]) => void
@@ -94,6 +95,14 @@ export function useSync({
         // que alguien lo resuelva en vez de que desaparezca en silencio.
         await db.outbox.update(item.id!, { status: 'error', errorMessage: errMsg(err) })
       }
+    }
+
+    // Pass 4: FINCAS. El reporte de campo hecho sin senal, con su foto guardada
+    // en el equipo. Va aparte porque su envio necesita la llave del modulo de
+    // fincas (el PIN), no la sesion normal: si vencio, el reporte espera en vez
+    // de perderse.
+    if (items.some((i) => i.type === 'FINCA')) {
+      synced += await sincronizarReportes()
     }
 
     // Recontar SIEMPRE desde Dexie (pendientes + error). Antes se reseteaba a 0

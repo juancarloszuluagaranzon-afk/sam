@@ -72,6 +72,12 @@ try {
   await espera('reportar pasándose del área de la suerte', () => api.reportarLabor({ id: crypto.randomUUID(), laborId: lRot.id, cantidad: 5, fecha: '2026-09-11', fotoUrl: foto, lat: null, lng: null, precisionM: null, nota: '' }, ADMIN), 'SUPERA_AREA')
   ok('otra persona acepta', (await api.revisarReporte(idRep, true, '', OTRO)) === 'ACEPTADO')
 
+  // Reintento: es lo que hace la cola cuando la senal se cae a mitad de camino.
+  await api.reportarLabor({ id: idRep, laborId: lRot.id, cantidad: 6, fecha: '2026-09-10', fotoUrl: foto, lat: 4.39, lng: -76.07, precisionM: 9, nota: 'prueba e2e' }, ADMIN)
+  d = await api.cargarFincas(ADMIN)
+  ok('reintentar el mismo reporte NO lo duplica', d.reportes.filter((r) => r.laborId === lRot.id).length === 1,
+    `${d.reportes.filter((r) => r.laborId === lRot.id).length} reporte(s)`)
+
   await api.registrarMovimiento({ fincaId, tipo: 'ANTICIPO', fecha: hoy, concepto: 'Giro del dueño (prueba)', valor: 5_000_000 }, ADMIN)
   await espera('un gasto sin soporte no entra', () => api.registrarMovimiento({ fincaId, tipo: 'GASTO', fecha: hoy, concepto: 'sin soporte', valor: 1000 }, ADMIN), 'new row')
 

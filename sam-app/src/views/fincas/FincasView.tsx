@@ -8,6 +8,7 @@ import {
   type CargaFincas,
 } from '../../services/fincasApi'
 import { hoyBogota } from '../../lib/periodos'
+import { reportesPendientes, sincronizarReportes, EVENTO_PENDIENTES } from '../../lib/outboxFincas'
 import { FincasInicio } from './FincasInicio'
 import { FincaDetalle } from './FincaDetalle'
 import { ReportarLabor } from './ReportarLabor'
@@ -54,6 +55,9 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<TabFincas>('inicio')
   const [fincaSel, setFincaSel] = useState<string | null>(null)
   const [editando, setEditando] = useState<'nueva' | string | null>(null)
+  // Reportes hechos sin señal que todavía no salen: se avisa en la pestaña,
+  // porque quien los registró tiene que saber que aún no han llegado.
+  const [porEnviar, setPorEnviar] = useState(0)
 
   const recargar = useCallback(async () => {
     if (!token || !session) { setCargando(false); return }
@@ -65,6 +69,29 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
     } finally { setCargando(false) }
   }, [token, session, setError])
   useEffect(() => { void recargar() }, [recargar])
+
+  // 🔴 Lo pendiente sale SOLO al abrir Fincas con señal, no únicamente cuando el
+  // celular cambia de estado: el caso normal es reportar en el campo sin
+  // cobertura y abrir la app al llegar a donde sí hay. Si solo se enviara con el
+  // evento «volvió la señal», el reporte se quedaría esperando sin que nadie lo
+  // supiera.
+  useEffect(() => {
+    const contar = () => { void reportesPendientes().then((p) => setPorEnviar(p.length)) }
+    const intentar = () => {
+      void (async () => {
+        const p = await reportesPendientes()
+        if (p.length > 0 && navigator.onLine && (await sincronizarReportes()) > 0) await recargar()
+        contar()
+      })()
+    }
+    intentar()
+    window.addEventListener(EVENTO_PENDIENTES, contar)
+    window.addEventListener('online', intentar)
+    return () => {
+      window.removeEventListener(EVENTO_PENDIENTES, contar)
+      window.removeEventListener('online', intentar)
+    }
+  }, [recargar])
 
   if (!session) return null
 
@@ -85,7 +112,7 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
     { id: 'inicio', label: 'Inicio' },
     { id: 'fincas', label: 'Fincas' },
     { id: 'aceptar', label: porAceptar ? `Por aceptar (${porAceptar})` : 'Por aceptar' },
-    { id: 'reportar', label: 'Reportar labor' },
+    { id: 'reportar', label: porEnviar ? `Reportar labor · ${porEnviar} por enviar` : 'Reportar labor' },
     { id: 'paquete', label: 'Paquete de labores', solo: true },
   ]
 
@@ -113,7 +140,7 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
         <nav className="af-nav" aria-label="Secciones de fincas">
           {TABS.filter((t) => !t.solo || esAdmin).map((t) => (
             <button key={t.id} type="button" aria-pressed={tab === t.id}
-                    className={t.id === 'aceptar' && porAceptar ? 'af-nav__pend' : ''}
+                    className={(t.id === 'aceptar' && porAceptar) || (t.id === 'reportar' && porEnviar) ? 'af-nav__pend' : ''}
                     onClick={() => ctx?.ir(t.id)}>
               {t.label}
             </button>

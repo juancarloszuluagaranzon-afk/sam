@@ -115,8 +115,15 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
   Devuelve solo el costo del paquete. Deja datos «PRUEBA E2E»: borrarlos después (ver abajo).
 - Borrar datos de prueba: SQL con `set_config('af.via_funcion','1', true)`, en orden accesos →
   movimientos → reportes → labores → ciclos → suertes → fincas, y sus filas de `af_auditoria`. 🔴 Las fotos NO se
-  borran por SQL («Direct deletion from storage tables is not allowed»): con la Storage API.
+  borran por SQL («Direct deletion from storage tables is not allowed»): con la Storage API
+  desde el VPS: `K=$(docker exec supabase-storage printenv SERVICE_KEY)` y
+  `curl -X DELETE -H "Authorization: Bearer $K" -H "apikey: $K" -H 'Content-Type: application/json'
+  -d '{"prefixes":["fincas/reportes/<archivo>"]}' http://localhost:8000/storage/v1/object/avatars`.
+  ⚠️ La `SERVICE_ROLE_KEY` de `/opt/supabase/docker/.env` NO sirve («signature verification failed»).
   Y con `ON_ERROR_STOP` + `begin`, un error deja TODO sin aplicar — revisar el conteo final.
+- 🔴 Borrar también la **auditoría** que dejó la prueba (`af_auditoria`, incluidas las filas
+  `DELETE` que genera la propia limpieza y los cambios del paquete): queda a nombre de los
+  usuarios reales dueños de las llaves de prueba (U005/U002) y confunde al revisar quién hizo qué.
 
 ## Límites conocidos del MVP (decírselos al cliente)
 

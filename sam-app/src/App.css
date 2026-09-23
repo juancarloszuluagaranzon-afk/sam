@@ -9676,7 +9676,27 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-mapa-modos i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 /* isolation: los z-index de Leaflet (hasta 1000) no se montan sobre la barra de arriba. */
 .af-mapa { position: relative; border-radius: 14px; overflow: hidden; isolation: isolate; }
-.af-mapa__lienzo { height: min(64vh, 560px); min-height: 360px; width: 100%; background: #1f2937; }
+/* En la página, a la mitad de lo que era (pedido del cliente): para verlo grande está ⛶. */
+.af-mapa__lienzo { height: min(32vh, 280px); min-height: 220px; width: 100%; background: #1f2937; }
+/* Pantalla completa: el mapa tapa todo, sin bordes. */
+.af-mapa--grande { position: fixed; inset: 0; z-index: 4000; border-radius: 0; background: #111827; }
+.af-mapa--grande .af-mapa__lienzo { height: 100%; min-height: 0; }
+.af-mapa__arriba {
+  position: absolute; top: 10px; left: 56px; right: 60px; z-index: 1000;
+  overflow-x: auto; scrollbar-width: none;
+}
+.af-mapa__arriba .af-mapa-modos { flex-wrap: nowrap; }
+.af-mapa__arriba .af-mapa-modos button { background: rgba(17, 24, 39, 0.82); color: #fff; border-color: transparent; white-space: nowrap; }
+.af-mapa__arriba .af-mapa-modos button[aria-pressed="true"] { background: #15803d; }
+.af-mapa__hoja {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1000; max-height: 48%; overflow-y: auto;
+  background: var(--color-surface, #fff); border-radius: 16px 16px 0 0; box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.35);
+}
+.af-mapa__hoja .af-ficha { border: none; border-radius: 16px 16px 0 0; }
+.af-mapa__leyenda-flot {
+  position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 1000; padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.92); border-radius: 10px;
+}
 .af-mapa__botones { position: absolute; right: 10px; top: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
 .af-mapa__botones button {
   width: 42px; height: 42px; border-radius: 50%; border: none; background: rgba(17, 24, 39, 0.82); color: #fff;

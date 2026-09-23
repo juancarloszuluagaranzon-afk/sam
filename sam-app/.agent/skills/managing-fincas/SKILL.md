@@ -106,6 +106,19 @@ banner grande con el título + mapa donde se ve el avance. Ideas del geovisor de
   Los 18 pedazos del GeoPDF 2025 se reemplazaron (quedan en `af_auditoria`). La suerte de cada
   pedazo salió de las etiquetas del plano (6, 5B = 5 del norte, 5 = 5 del oriente y centro, 4A =
   fila 2, 4 = franjas del centro-sur, 3A, 3, 2A, 2, 1, 7). Dueño «Por confirmar».
+- **Suerte 0007 ajustada a la foto** (pedido del cliente con captura): el triángulo del plano 2024
+  quedaba corrido. Se redibujó sobre el satélite ESRI z17 con grilla: arriba la vía, a la derecha la
+  línea de árboles, a la izquierda el borde del lote, punta al suroccidente → **6,53 ha dibujadas**
+  (bruta; la neta del ingenio es 5,56 — la relación 0,85 es la misma de la hacienda: 39,18/47,08).
+  Para ajustar otra: recortar el satélite con grilla de píxeles, marcar esquinas, pasar píxel →
+  lon/lat con la fórmula de teselas y `update af_poligonos set anillo = …` con `af.via_funcion`.
+- **Pantalla**: el mapa en la página va a **media altura** (`min(32vh, 280px)`, pedido del cliente) y
+  tiene **⛶ pantalla completa** (`.af-mapa--grande`, fijo a toda la pantalla, Esc sale, sin scroll
+  detrás). En grande, la barra de colores va arriba DENTRO del mapa y la ficha sube como hoja desde
+  abajo. Al cambiar de tamaño: `invalidateSize` en doble `requestAnimationFrame` + 300 ms + 700 ms.
+- 🔴 **Un solo `L.canvas`** (en `lienzoRef`, creado con el mapa). Crear uno en cada repintada dejaba
+  lienzos apilados — uno más por cada cambio de color o de selección — y el toque de prueba caía en uno
+  viejo sin polígonos. En desarrollo el mapa queda en `window.__mapaFinca` para probar desde consola.
 
 ## Las reglas las hace cumplir la BASE (migración `20260922120000_administracion_fincas.sql`)
 

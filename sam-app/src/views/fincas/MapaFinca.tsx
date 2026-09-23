@@ -106,10 +106,16 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   const [plano, setPlano] = useState<MapaConfig | null>(null)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  // Pantalla completa (pedido del cliente, 23-sep): el mapa en la página va a la
+  // mitad de alto, y el que quiera verlo grande lo abre a toda la pantalla.
+  const [grande, setGrande] = useState(false)
 
   const cajaRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<L.Map | null>(null)
   const capaRef = useRef<L.LayerGroup | null>(null)
+  // UN solo lienzo para los polígonos. Crear uno en cada repintada los dejaba
+  // apilados (uno por cada cambio de color o de selección) y crecía sin fin.
+  const lienzoRef = useRef<L.Canvas | null>(null)
   const etiquetasRef = useRef<L.LayerGroup | null>(null)
   const planoRef = useRef<L.TileLayer | null>(null)
   const gpsRef = useRef<L.CircleMarker | null>(null)
@@ -136,6 +142,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
     L.tileLayer(ESRI_SAT, { maxZoom: 19, maxNativeZoom: 18 }).addTo(map)
     map.setView([4.6075, -76.032], 15)
     capaRef.current = L.layerGroup().addTo(map)
+    lienzoRef.current = L.canvas({ padding: 0.5 })
     etiquetasRef.current = L.layerGroup().addTo(map)
     mapRef.current = map
     // Solo en desarrollo: para probar el mapa desde la consola.
@@ -165,7 +172,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
     const capa = capaRef.current
     if (!map || !capa) return
     capa.clearLayers()
-    const render = L.canvas({ padding: 0.5 })
+    const render = lienzoRef.current ?? undefined
     for (const p of piezas) {
       const s = p.suerteId ? suerteDe.get(p.suerteId) : undefined
       const latlngs = p.anillo.map(([lng, lat]) => [lat, lng] as [number, number])
@@ -231,6 +238,29 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
     return () => { map.off('zoomend moveend', poner) }
   }, [piezas, suerteDe])
 
+  // Al abrir o cerrar la pantalla completa el contenedor cambia de tamaño: Leaflet
+  // tiene que volver a medirlo (si no, las teselas quedan corridas o en blanco).
+  // Se repite porque el navegador tarda en asentar el tamaño nuevo.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const medir = () => map.invalidateSize({ pan: false })
+    const r = requestAnimationFrame(() => requestAnimationFrame(medir))
+    const t1 = setTimeout(medir, 300)
+    const t2 = setTimeout(medir, 700)
+    if (!grande) return () => { cancelAnimationFrame(r); clearTimeout(t1); clearTimeout(t2) }
+    // Grande: sin scroll de la página detrás, y Esc para salir.
+    const antes = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setGrande(false) }
+    window.addEventListener('keydown', esc)
+    return () => {
+      cancelAnimationFrame(r); clearTimeout(t1); clearTimeout(t2)
+      document.body.style.overflow = antes
+      window.removeEventListener('keydown', esc)
+    }
+  }, [grande])
+
   function centrar() {
     const map = mapRef.current
     if (!map || !piezas.length) return
@@ -258,45 +288,56 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   const sinAsignar = piezas.filter((p) => !p.suerteId).length
   const sinMapa = suertes.filter((s) => !piezas.some((p) => p.suerteId === s.id))
 
+  const barraModos = (
+    <div className="af-mapa-modos" role="group" aria-label="Cómo pintar el mapa">
+      <button type="button" aria-pressed={modo.tipo === 'ultima'} onClick={() => setModo({ tipo: 'ultima' })}>Última labor</button>
+      <button type="button" aria-pressed={modo.tipo === 'edad'} onClick={() => setModo({ tipo: 'edad' })}>Edad</button>
+      {labores.map((l) => (
+        <button key={l.llave} type="button" aria-pressed={modo.tipo === 'labor' && modo.llave === l.llave}
+                onClick={() => setModo({ tipo: 'labor', llave: l.llave })}>
+          <i style={{ background: colorLabor(l.llave) }} aria-hidden="true" />{nombreLabor(l.nombre)}
+        </button>
+      ))}
+    </div>
+  )
+  const ficha = sel && (
+    <FichaSuerte
+      pieza={sel} suerte={selSuerte} suertes={suertes} hechos={selSuerte ? hechosPor.get(selSuerte.codigo) ?? [] : []}
+      edad={selSuerte ? edadDe(selSuerte) : null}
+      corte={selSuerte ? (cicloAbiertoDe(selSuerte.id, d.ciclos)?.fechaCorte ?? selSuerte.datosIngenio?.fUltCorte ?? null) : null}
+      puedeAsignar={esAdmin && !modoDueno} ocupado={ocupado}
+      onAsignar={(sid) => hacer(() => asignarPoligono(sel.id, sid, token))}
+      onQuitar={() => { if (window.confirm('¿Quitar este pedazo del mapa? Queda en la auditoría.')) void hacer(async () => { await quitarPoligono(sel.id, token); setSelId(null) }) }}
+      onCerrar={() => setSelId(null)}
+    />
+  )
+
   return (
     <div className="af-card af-card--ancha af-mapa-card">
-      <div className="af-mapa-modos" role="group" aria-label="Cómo pintar el mapa">
-        <button type="button" aria-pressed={modo.tipo === 'ultima'} onClick={() => setModo({ tipo: 'ultima' })}>Última labor</button>
-        <button type="button" aria-pressed={modo.tipo === 'edad'} onClick={() => setModo({ tipo: 'edad' })}>Edad</button>
-        {labores.map((l) => (
-          <button key={l.llave} type="button" aria-pressed={modo.tipo === 'labor' && modo.llave === l.llave}
-                  onClick={() => setModo({ tipo: 'labor', llave: l.llave })}>
-            <i style={{ background: colorLabor(l.llave) }} aria-hidden="true" />{nombreLabor(l.nombre)}
-          </button>
-        ))}
-      </div>
+      {!grande && barraModos}
 
-      <div className="af-mapa">
+      <div className={`af-mapa${grande ? ' af-mapa--grande' : ''}`}>
         <div ref={cajaRef} className="af-mapa__lienzo" />
+        {grande && <div className="af-mapa__arriba">{barraModos}</div>}
         <div className="af-mapa__botones">
-          <button type="button" title="Ver toda la finca" onClick={centrar}>⤢</button>
+          <button type="button" title={grande ? 'Salir de pantalla completa' : 'Pantalla completa'} aria-pressed={grande}
+                  onClick={() => setGrande(!grande)}>{grande ? '✕' : '⛶'}</button>
+          <button type="button" title="Ver toda la finca" onClick={centrar}>⌂</button>
           <button type="button" title="Dónde estoy" onClick={ubicarme}>◎</button>
           {plano && <button type="button" title="Plano del ingenio" aria-pressed={verPlano} onClick={() => setVerPlano(!verPlano)}>▦</button>}
         </div>
         {piezas.length === 0 && (
           <div className="af-mapa__vacio">Esta finca todavía no está dibujada en el mapa.{esAdmin && !modoDueno ? ' Cárguela con un KML (abajo).' : ''}</div>
         )}
+        {/* En pantalla completa la ficha sube desde abajo, encima del mapa. */}
+        {grande && ficha && <div className="af-mapa__hoja">{ficha}</div>}
+        {grande && !ficha && <div className="af-mapa__leyenda-flot"><Leyenda modo={modo} labores={labores} /></div>}
       </div>
 
-      <Leyenda modo={modo} labores={labores} />
+      {!grande && <Leyenda modo={modo} labores={labores} />}
       {error && <p className="feedback error">{error}</p>}
 
-      {sel && (
-        <FichaSuerte
-          pieza={sel} suerte={selSuerte} suertes={suertes} hechos={selSuerte ? hechosPor.get(selSuerte.codigo) ?? [] : []}
-          edad={selSuerte ? edadDe(selSuerte) : null}
-          corte={selSuerte ? (cicloAbiertoDe(selSuerte.id, d.ciclos)?.fechaCorte ?? selSuerte.datosIngenio?.fUltCorte ?? null) : null}
-          puedeAsignar={esAdmin && !modoDueno} ocupado={ocupado}
-          onAsignar={(sid) => hacer(() => asignarPoligono(sel.id, sid, token))}
-          onQuitar={() => { if (window.confirm('¿Quitar este pedazo del mapa? Queda en la auditoría.')) void hacer(async () => { await quitarPoligono(sel.id, token); setSelId(null) }) }}
-          onCerrar={() => setSelId(null)}
-        />
-      )}
+      {!grande && ficha}
 
       {esAdmin && !modoDueno && (
         <div className="af-mapa-admin">

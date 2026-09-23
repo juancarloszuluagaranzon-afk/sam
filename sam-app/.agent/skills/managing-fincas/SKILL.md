@@ -96,10 +96,16 @@ banner grande con el título + mapa donde se ve el avance. Ideas del geovisor de
   /Measure con /GPTS, EPSG 3115). `scripts/geopdf-poligonos.py` saca los polígonos y los
   georreferencia (error de las esquinas: 0,1 m; los linderos calzan con el satélite). Los rótulos son
   dibujos, no texto: el número se reconoce por la cantidad de puntos del glifo.
-- Estado al 23-sep: 18 pedazos (31,7 ha del plano 2025), solo 0001 y 0006 asignados (áreas iguales
-  al ingenio). La 2/4/5 no cuadran porque la renovación de julio de 2026 partió suertes (2A, 3A, 4A,
-  5B). **La 0007 no está en el plano**: falta su polígono (KML del dron o dibujarla). Carga hecha como
-  `CARGA_INICIAL` en `editado_por`; dueño «Por confirmar».
+- **Estado (23-sep, tarde)**: el mapa de Riogrande II usa el **plano oficial de la hacienda**
+  («HDA. RIO GRANDE II», código 627, mayo 2024, imagen que mandó el cliente): 20 pedazos, TODOS
+  asignados, las 11 suertes (incl. la 0007, el triángulo al occidente de la vía, que no estaba en el
+  GeoPDF). Cómo: la imagen se vectorizó (umbral + cerrar líneas 1 px + regiones con
+  `scipy.ndimage.label` + envolvente convexa) y se ubicó con una afín por mínimos cuadrados usando
+  como anclas los centroides de 10 pedazos del norte que coinciden con el GeoPDF 2025 (error medio
+  2,6 m, máx 4,9 m). Áreas contra el ingenio: 0007 5,57/5,56 · 0001 0,60/0,61 · total 38,51/39,18.
+  Los 18 pedazos del GeoPDF 2025 se reemplazaron (quedan en `af_auditoria`). La suerte de cada
+  pedazo salió de las etiquetas del plano (6, 5B = 5 del norte, 5 = 5 del oriente y centro, 4A =
+  fila 2, 4 = franjas del centro-sur, 3A, 3, 2A, 2, 1, 7). Dueño «Por confirmar».
 
 ## Las reglas las hace cumplir la BASE (migración `20260922120000_administracion_fincas.sql`)
 

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import { agregarSuertes, guardarFinca, mensajeDeError, type Finca } from '../../services/fincasApi'
 import { useAppData } from '../../context/AppDataContext'
-import { fmtCant } from '../../lib/fincas'
+import { fmtCant, VER_PLATA } from '../../lib/fincas'
 
 /**
  * Crear o editar una finca: el dueño, a qué ingenio entrega y sus suertes con el
@@ -18,6 +18,8 @@ export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: 
     duenoCorreo: actual?.duenoCorreo ?? '', ingenioId: actual?.ingenioId ?? '', municipio: actual?.municipio ?? '',
     honorarioModo: (actual?.honorarioModo ?? 'POR_DEFINIR') as Finca['honorarioModo'],
     honorarioValor: actual?.honorarioValor != null ? String(actual.honorarioValor) : '', nota: actual?.nota ?? '',
+    // El código de la hacienda en el ingenio: con él se pintan en el mapa las labores de maquinaria de ASM.
+    haciendaCodigo: actual?.haciendaCodigo ?? '',
   })
   const [hacienda, setHacienda] = useState('')
   const [nuevas, setNuevas] = useState<{ codigo: string; areaHa: string }[]>([])
@@ -39,6 +41,7 @@ export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: 
     const ya = new Set([...existentes.map((s) => s.codigo), ...nuevas.map((s) => s.codigo)])
     const filas = maestro.filter((r) => r.ingenio_id === f.ingenioId && r.haciendaCode === hacienda && !ya.has(r.suerte))
     setNuevas((n) => [...n, ...filas.map((r) => ({ codigo: r.suerte, areaHa: String(r.area) }))])
+    set('haciendaCodigo', hacienda)
     if (!f.nombre.trim()) set('nombre', haciendas.find((h) => h.code === hacienda)?.name ?? '')
   }
 
@@ -52,6 +55,7 @@ export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: 
         id: fincaId ?? undefined, nombre: f.nombre, duenoNombre: f.duenoNombre, duenoTelefono: f.duenoTelefono,
         duenoCorreo: f.duenoCorreo, ingenioId: f.ingenioId, municipio: f.municipio, honorarioModo: f.honorarioModo,
         honorarioValor: f.honorarioValor ? Number(f.honorarioValor.replace(',', '.')) : null, nota: f.nota,
+        haciendaCodigo: f.haciendaCodigo.trim() || null,
       }, token)
       await agregarSuertes(id, validas.map((s) => ({ codigo: s.codigo, areaHa: Number(s.areaHa.replace(',', '.')) })), token)
       await recargar()
@@ -78,14 +82,17 @@ export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: 
             </select>
           </label>
           <label>Municipio<input id="af-f-muni" value={f.municipio} onChange={(e) => set('municipio', e.target.value)} /></label>
-          <label>Cómo cobra ASM la administración
+          <label>Código de hacienda en el ingenio
+            <input id="af-f-hda" value={f.haciendaCodigo} onChange={(e) => set('haciendaCodigo', e.target.value)} placeholder="Ej.: 627" />
+          </label>
+          {VER_PLATA && <label>Cómo cobra ASM la administración
             <select id="af-f-hon" value={f.honorarioModo} onChange={(e) => set('honorarioModo', e.target.value)}>
               <option value="POR_DEFINIR">Por definir</option>
               <option value="PORCENTAJE">Porcentaje sobre los costos</option>
               <option value="FIJO_HA_MES">Valor fijo por hectárea al mes</option>
             </select>
-          </label>
-          {f.honorarioModo !== 'POR_DEFINIR' && (
+          </label>}
+          {VER_PLATA && f.honorarioModo !== 'POR_DEFINIR' && (
             <label>{f.honorarioModo === 'PORCENTAJE' ? 'Porcentaje (%)' : 'Pesos por ha al mes'}
               <input id="af-f-honv" inputMode="decimal" value={f.honorarioValor} onChange={(e) => set('honorarioValor', e.target.value)} /></label>
           )}

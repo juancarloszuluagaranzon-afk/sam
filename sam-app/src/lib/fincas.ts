@@ -4,7 +4,16 @@
  * Todo lo que el dueño ve sale de aquí, y de UNA foto de los datos: el Inicio, la
  * finca y la cuenta no pueden contradecirse porque usan las mismas funciones.
  */
-import type { Ciclo, DatosFincas, Finca, LaborCiclo, Movimiento, ReporteCampo } from '../services/fincasApi'
+import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, ReporteCampo } from '../services/fincasApi'
+
+/**
+ * 🔴 La plata está APAGADA «de momento» (23-sep-2026). El cliente pidió: «quita lo
+ * de las transferencias, de momento no valoremos nada». Todo lo que son pesos —la
+ * cuenta del dueño, el presupuesto, los costos del paquete, el honorario— se
+ * esconde con esta sola llave. La base lo sigue guardando: se prende cambiándola a
+ * `true`, sin migraciones.
+ */
+export const VER_PLATA = false
 
 export type NivelOportunidad = 'ideal' | 'normal' | 'tardia'
 
@@ -129,7 +138,7 @@ export function bitacoraFinca(fincaId: string, d: DatosFincas, nombre: (id: stri
       foto: r.fotoUrl, estado: r.estado,
     })
   }
-  for (const m of d.movimientos.filter((x) => x.fincaId === fincaId && !x.reporteId)) {
+  for (const m of (VER_PLATA ? d.movimientos : []).filter((x) => x.fincaId === fincaId && !x.reporteId)) {
     ev.push({
       id: `m-${m.id}`, cuando: m.createdAt, tipo: 'movimiento',
       titulo: `${m.tipo === 'ANTICIPO' ? 'Anticipo' : m.tipo === 'HONORARIO' ? 'Honorario' : 'Gasto'} · ${fmtPesos(m.valor)}`,
@@ -177,15 +186,76 @@ export function resumenParaDueno(finca: Finca, d: DatosFincas, hoy: string, nomb
       const { labor, suerte } = contextoReporte(r, d)
       return `• ${labor?.labor.toLowerCase()} suerte ${suerte?.codigo}: ${fmtCant(r.cantidad)} ${labor?.unidad} (hecha el ${r.fecha.slice(8, 10)}/${r.fecha.slice(5, 7)}, ${nombre(r.reportadoPor)})`
     }),
-    '',
-    p.presupuesto > 0
-      ? `Presupuesto del ciclo: ${fmtPesos(p.ejecutado)} ejecutado de ${fmtPesos(p.presupuesto)} (${p.pct}%)`
-      : `Gastado en el ciclo: ${fmtPesos(p.ejecutado)}`,
-    `Su cuenta: anticipos ${fmtPesos(c.anticipos)} · gastos ${fmtPesos(c.gastos)}${c.honorarios ? ` · honorarios ${fmtPesos(c.honorarios)}` : ''} · saldo ${fmtPesos(c.saldo)}`,
+    ...(VER_PLATA ? [
+      '',
+      p.presupuesto > 0
+        ? `Presupuesto del ciclo: ${fmtPesos(p.ejecutado)} ejecutado de ${fmtPesos(p.presupuesto)} (${p.pct}%)`
+        : `Gastado en el ciclo: ${fmtPesos(p.ejecutado)}`,
+      `Su cuenta: anticipos ${fmtPesos(c.anticipos)} · gastos ${fmtPesos(c.gastos)}${c.honorarios ? ` · honorarios ${fmtPesos(c.honorarios)}` : ''} · saldo ${fmtPesos(c.saldo)}`,
+    ] : []),
   ]
   if (tardias.length) {
     lineas.push('', `Atrasadas: ${tardias.map((f) => `${f.labor.labor.toLowerCase()} suerte ${f.suerte.codigo}`).join(', ')}`)
   }
   lineas.push('', 'Cada labor tiene foto, ubicación y quién la aceptó. — AgroServicios Morales')
   return lineas.join('\n')
+}
+
+// ── El mapa: qué se ha hecho en cada suerte ───────────────────────────────
+
+/** «FERTILIZACIÓN» y «FERTILIZACION» son la misma labor: sin tildes y en mayúscula. */
+export function llaveLabor(nombre: string): string {
+  return nombre.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
+}
+
+export interface HechoSuerte {
+  id: string
+  suerteCodigo: string
+  labor: string
+  llave: string
+  fecha: string
+  cantidad: number
+  unidad: string
+  /** maquinaria = lo que registra la operación de ASM · campo = reporte con foto del módulo de fincas. */
+  fuente: 'maquinaria' | 'campo'
+  estado: 'hecha' | 'parcial' | 'en curso' | 'por aceptar'
+  detalle: string
+  foto: string | null
+}
+
+/**
+ * Todo lo hecho en las suertes de una finca, junto: las labores de MAQUINARIA que
+ * ASM ya registra en su operación (no se vuelven a digitar) y los reportes de
+ * campo del módulo. Lo rechazado no cuenta. Del más reciente al más viejo.
+ */
+export function hechosDeFinca(
+  fincaId: string, d: DatosFincas & { maquinaria: LaborMaquina[] }, nombre: (id: string) => string,
+): HechoSuerte[] {
+  const out: HechoSuerte[] = []
+  for (const m of d.maquinaria.filter((x) => x.fincaId === fincaId)) {
+    out.push({
+      id: `m-${m.id}`, suerteCodigo: m.suerteCodigo, labor: m.labor, llave: llaveLabor(m.labor),
+      fecha: m.fecha, cantidad: m.area, unidad: 'ha', fuente: 'maquinaria',
+      estado: m.estado === 'COMPLETADA' ? 'hecha' : m.estado === 'PARCIAL' ? 'parcial' : 'en curso',
+      detalle: [m.equipo, m.operador].filter(Boolean).join(' · '), foto: null,
+    })
+  }
+  for (const r of d.reportes) {
+    if (r.estado === 'RECHAZADO') continue
+    const { labor, suerte, finca } = contextoReporte(r, d)
+    if (finca?.id !== fincaId || !labor || !suerte) continue
+    out.push({
+      id: `r-${r.id}`, suerteCodigo: suerte.codigo, labor: labor.labor, llave: llaveLabor(labor.labor),
+      fecha: r.fecha, cantidad: r.cantidad, unidad: labor.unidad, fuente: 'campo',
+      estado: r.estado === 'ACEPTADO' ? 'hecha' : 'por aceptar',
+      detalle: `reportó ${nombre(r.reportadoPor)}${r.nota ? ` · ${r.nota}` : ''}`, foto: r.fotoUrl,
+    })
+  }
+  return out.sort((a, b) => b.fecha.localeCompare(a.fecha))
+}
+
+/** Meses desde el corte (con un decimal). null si no hay corte conocido. */
+export function edadMeses(fechaCorte: string | null | undefined, hoy: string): number | null {
+  if (!fechaCorte) return null
+  return Math.round((diasEntre(fechaCorte, hoy) / 30.4) * 10) / 10
 }

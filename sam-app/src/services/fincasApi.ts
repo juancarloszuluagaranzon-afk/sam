@@ -29,8 +29,29 @@ export interface Finca {
   nota: string | null
   activa: boolean
   createdAt: string
+  /** Código de la hacienda en el ingenio (p. ej. «627»): enlaza la maquinaria de ASM. */
+  haciendaCodigo: string | null
 }
-export interface SuerteFinca { id: string; fincaId: string; codigo: string; areaHa: number; variedad: string | null; activa: boolean }
+/** Lo que reporta el ingenio de la suerte (último corte, número de corte, TCH…). */
+export interface DatosIngenio {
+  fUltCorte?: string; edadMeses?: number; numeroCorte?: number
+  toneladas?: number; tch?: number; rendimiento?: number; fuente?: string
+}
+export interface SuerteFinca {
+  id: string; fincaId: string; codigo: string; areaHa: number; variedad: string | null; activa: boolean
+  datosIngenio: DatosIngenio | null
+}
+/** Un pedazo de terreno en el mapa, asignado o no a una suerte. Anillo [lng, lat]. */
+export interface Poligono {
+  id: string; fincaId: string; suerteId: string | null; etiqueta: string | null
+  anillo: [number, number][]; areaHa: number | null; fuente: string
+}
+/** Una labor de MAQUINARIA que ASM ya registra en su operación (tabla asignaciones). */
+export interface LaborMaquina {
+  id: string; fincaId: string; suerteCodigo: string; labor: string
+  estado: string; area: number; fecha: string
+  equipo: string | null; operador: string | null
+}
 export interface Ciclo {
   id: string; suerteId: string; fechaCorte: string; tipo: TipoCiclo
   estado: 'ABIERTO' | 'CERRADO'; fechaCierre: string | null
@@ -81,11 +102,25 @@ export interface CargaFincas extends DatosFincas {
   accesos: AccesoDueno[]
   /** Nombres de quien aparece en los datos (el dueño no tiene la lista de usuarios). */
   nombres: Record<string, string>
+  poligonos: Poligono[]
+  maquinaria: LaborMaquina[]
 }
 
 const num = (v: unknown): number => Number(v ?? 0)
 const numN = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
 const txt = (v: unknown): string | null => (v === null || v === undefined || v === '' ? null : String(v))
+/** El día en Colombia de una marca de tiempo. */
+const diaBogota = (v: string): string => (v ? new Date(v).toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }) : '')
+function datosIngenio(v: unknown): DatosIngenio | null {
+  if (!v || typeof v !== 'object') return null
+  const o = v as Record<string, unknown>
+  const n = (k: string) => (o[k] == null ? undefined : Number(o[k]))
+  return {
+    fUltCorte: o.f_ult_corte ? String(o.f_ult_corte) : undefined, edadMeses: n('edad_meses'),
+    numeroCorte: n('numero_corte'), toneladas: n('toneladas'), tch: n('tch'), rendimiento: n('rendimiento'),
+    fuente: o.fuente ? String(o.fuente) : undefined,
+  }
+}
 
 async function lanzar<T>(p: PromiseLike<{ data: T; error: { message: string } | null }>): Promise<T> {
   const { data, error } = await p
@@ -137,6 +172,17 @@ export async function abrirSesionFincas(usuario: string, pin: string): Promise<s
   const d = await lanzar(supabase.rpc('af_abrir_sesion', { p_usuario: usuario, p_pin: pin }))
   return d ? String(d) : null
 }
+/**
+ * La llave SIN PIN, mientras la base lo permita (`af_config.pin_requerido`,
+ * apagado «de momento» el 23-sep-2026). Si el PIN vuelve a exigirse lanza
+ * `PIN_REQUERIDO` y la pantalla lo pide como antes.
+ */
+export async function abrirSesionSinPin(usuario: string): Promise<string> {
+  return String(await lanzar(supabase.rpc('af_abrir_sesion_sin_pin', { p_usuario: usuario })))
+}
+export function esPinRequerido(e: unknown): boolean {
+  return String((e as { message?: string })?.message ?? '').startsWith('PIN_REQUERIDO')
+}
 export async function cerrarSesionFincas(token: string) {
   await supabase.rpc('af_cerrar_sesion', { p_token: token })
 }
@@ -162,11 +208,29 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       duenoTelefono: txt(x.dueno_telefono), duenoCorreo: txt(x.dueno_correo), ingenioId: txt(x.ingenio_id),
       municipio: txt(x.municipio), honorarioModo: (x.honorario_modo as Finca['honorarioModo']) ?? 'POR_DEFINIR',
       honorarioValor: numN(x.honorario_valor), nota: txt(x.nota), activa: x.activa !== false, createdAt: String(x.created_at),
+      haciendaCodigo: txt(x.hacienda_codigo),
     })),
     suertes: arr('suertes').map((x) => ({
       id: String(x.id), fincaId: String(x.finca_id), codigo: String(x.codigo), areaHa: num(x.area_ha),
       variedad: txt(x.variedad), activa: x.activa !== false,
+      datosIngenio: datosIngenio(x.datos_ingenio),
     })),
+    poligonos: arr('poligonos').map((x) => ({
+      id: String(x.id), fincaId: String(x.finca_id), suerteId: txt(x.suerte_id), etiqueta: txt(x.etiqueta),
+      anillo: ((x.anillo as unknown[]) ?? []).map((pt) => [Number((pt as number[])[0]), Number((pt as number[])[1])] as [number, number]),
+      areaHa: numN(x.area_ha), fuente: String(x.fuente ?? ''),
+    })),
+    maquinaria: arr('maquinaria').map((x) => {
+      const hecha = num(x.area_realizada)
+      return {
+        id: String(x.id), fincaId: String(x.finca_id), suerteCodigo: String(x.numero_suerte ?? ''),
+        labor: String(x.labor_nombre ?? ''), estado: String(x.estado ?? ''),
+        // Mismo criterio del Reporte: si no quedó el área ejecutada, cuenta la planificada.
+        area: hecha > 0 ? hecha : num(x.area_asignada),
+        fecha: diaBogota(txt(x.fecha_fin) ?? txt(x.fecha_inicio) ?? String(x.created_at ?? '')),
+        equipo: txt(x.equipo_nombre) ?? txt(x.equipo_codigo), operador: txt(x.operador_nombre),
+      }
+    }),
     ciclos: arr('ciclos').map((x) => ({
       id: String(x.id), suerteId: String(x.suerte_id), fechaCorte: String(x.fecha_corte),
       tipo: (x.tipo as TipoCiclo) ?? 'SOCA', estado: (x.estado as Ciclo['estado']) ?? 'ABIERTO', fechaCierre: txt(x.fecha_cierre),
@@ -204,6 +268,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
 export async function guardarFinca(f: {
   id?: string; nombre: string; duenoNombre: string; duenoTelefono?: string; duenoCorreo?: string
   ingenioId?: string; municipio?: string; honorarioModo: Finca['honorarioModo']; honorarioValor?: number | null; nota?: string
+  haciendaCodigo?: string | null
 }, token: string): Promise<string> {
   const d = await lanzar(supabase.rpc('af_guardar_finca', {
     p_token: token, p_id: f.id ?? null,
@@ -211,6 +276,7 @@ export async function guardarFinca(f: {
       nombre: f.nombre.trim(), dueno_nombre: f.duenoNombre.trim(), dueno_telefono: f.duenoTelefono?.trim() ?? '',
       dueno_correo: f.duenoCorreo?.trim() ?? '', ingenio_id: f.ingenioId ?? '', municipio: f.municipio?.trim() ?? '',
       honorario_modo: f.honorarioModo, honorario_valor: f.honorarioValor ?? null, nota: f.nota?.trim() ?? '',
+      ...(f.haciendaCodigo !== undefined ? { hacienda_codigo: f.haciendaCodigo ?? '' } : {}),
     },
   }))
   return String(d)
@@ -281,6 +347,26 @@ export async function registrarMovimiento(m: {
 
 export async function anularMovimiento(id: string, motivo: string, token: string) {
   await lanzar(supabase.rpc('af_anular_movimiento', { p_token: token, p_id: id, p_motivo: motivo }))
+}
+
+// ── El mapa de la finca (solo administración) ─────────────────────────────
+/** Agrega pedazos de terreno (importar un KML, dibujar). */
+export async function guardarPoligonos(fincaId: string, poligonos: {
+  anillo: [number, number][]; etiqueta?: string; areaHa?: number; suerteCodigo?: string; fuente: string
+}[], token: string): Promise<number> {
+  return Number(await lanzar(supabase.rpc('af_guardar_poligonos', {
+    p_token: token, p_finca: fincaId,
+    p_poligonos: poligonos.map((p) => ({
+      anillo: p.anillo, etiqueta: p.etiqueta ?? '', area_ha: p.areaHa ?? null, suerte_codigo: p.suerteCodigo ?? '', fuente: p.fuente,
+    })),
+  })))
+}
+/** Dice a qué suerte pertenece un pedazo (null = sin suerte). */
+export async function asignarPoligono(poligonoId: string, suerteId: string | null, token: string) {
+  await lanzar(supabase.rpc('af_asignar_poligono', { p_token: token, p_poligono: poligonoId, p_suerte: suerteId }))
+}
+export async function quitarPoligono(poligonoId: string, token: string) {
+  await lanzar(supabase.rpc('af_quitar_poligono', { p_token: token, p_poligono: poligonoId }))
 }
 
 // ── Enlaces del dueño de la tierra (solo administración) ──────────────────

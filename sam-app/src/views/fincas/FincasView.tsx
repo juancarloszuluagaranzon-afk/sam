@@ -4,8 +4,8 @@ import { useAppData } from '../../context/AppDataContext'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { PantallaSegura } from '../../components/PantallaSegura'
 import {
-  abrirSesionFincas, cargarFincas, esSinSesion, guardarLlavePersonal, leerLlavePersonal, mensajeDeError,
-  type CargaFincas,
+  abrirSesionFincas, abrirSesionSinPin, cargarFincas, esPinRequerido, esSinSesion, guardarLlavePersonal,
+  leerLlavePersonal, mensajeDeError, type CargaFincas,
 } from '../../services/fincasApi'
 import { hoyBogota } from '../../lib/periodos'
 import { reportesPendientes, sincronizarReportes, EVENTO_PENDIENTES } from '../../lib/outboxFincas'
@@ -58,6 +58,8 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
   // Reportes hechos sin señal que todavía no salen: se avisa en la pestaña,
   // porque quien los registró tiene que saber que aún no han llegado.
   const [porEnviar, setPorEnviar] = useState(0)
+  // ¿Hay que pedir el PIN? Solo si la base lo exige (hoy está apagado «de momento»).
+  const [pedirPin, setPedirPin] = useState(false)
 
   const recargar = useCallback(async () => {
     if (!token || !session) { setCargando(false); return }
@@ -69,6 +71,17 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
     } finally { setCargando(false) }
   }, [token, session, setError])
   useEffect(() => { void recargar() }, [recargar])
+
+  // Sin llave: primero se intenta entrar sin PIN (lo permite la base mientras el
+  // PIN esté apagado). Si la base lo vuelve a exigir, se pide como antes.
+  useEffect(() => {
+    if (token || !session || pedirPin) return
+    let vivo = true
+    abrirSesionSinPin(session.id)
+      .then((t) => { if (!vivo) return; guardarLlavePersonal(session.id, t); setCargando(true); setToken(t) })
+      .catch((e) => { if (!vivo) return; if (esPinRequerido(e)) setPedirPin(true); else { setPedirPin(true); setError(mensajeDeError(e)) } })
+    return () => { vivo = false }
+  }, [token, session, pedirPin, setError])
 
   // 🔴 Lo pendiente sale SOLO al abrir Fincas con señal, no únicamente cuando el
   // celular cambia de estado: el caso normal es reportar en el campo sin
@@ -152,7 +165,7 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
       {info && <div className="af-info" role="status">{info}</div>}
 
       <section className="af-cuerpo">
-        {!token ? (
+        {!token && !pedirPin ? <p className="subtle-copy">Entrando a Fincas…</p> : !token ? (
           <ConfirmarPin usuario={session.id} nombre={session.name}
                         onListo={(t) => { guardarLlavePersonal(session.id, t); setCargando(true); setToken(t) }} />
         ) : cargando || !ctx ? <p className="subtle-copy">Cargando fincas…</p> : (

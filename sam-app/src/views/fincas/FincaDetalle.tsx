@@ -5,12 +5,13 @@ import {
   type TipoCiclo, type TipoMovimiento,
 } from '../../services/fincasApi'
 import {
-  bitacoraFinca, cicloAbiertoDe, cuentaFinca, diasEntre, fmtCant, fmtPesos, fmtPesosCorto,
-  laboresDeFinca, presupuestoFinca, resumenParaDueno, type NivelOportunidad,
+  bitacoraFinca, cicloAbiertoDe, cuentaFinca, diasEntre, edadMeses, fmtCant, fmtPesos, fmtPesosCorto,
+  hechosDeFinca, laboresDeFinca, presupuestoFinca, resumenParaDueno, VER_PLATA, type NivelOportunidad,
 } from '../../lib/fincas'
 import { ingenioNombre } from '../../data/ingenios'
 import { fmtFechaHora } from '../../lib/fechas'
 import { AccesoDueno } from './AccesoDueno'
+import { MapaFinca } from './MapaFinca'
 
 type Sub = 'resumen' | 'labores' | 'cuenta' | 'bitacora'
 
@@ -59,25 +60,49 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
   const tel = (finca.duenoTelefono ?? '').replace(/\D/g, '')
   const whatsapp = tel ? `https://wa.me/${tel.length === 10 ? `57${tel}` : tel}?text=${encodeURIComponent(resumenParaDueno(finca, d, hoy, nombre))}` : null
 
+  // El banner: lo que identifica la finca de un vistazo.
+  const haFinca = suertes.reduce((t, s) => t + s.areaHa, 0)
+  const edades = suertes.map((s) => edadMeses(cicloAbiertoDe(s.id, d.ciclos)?.fechaCorte ?? s.datosIngenio?.fUltCorte, hoy))
+    .filter((e): e is number => e != null)
+  const edadProm = edades.length ? edades.reduce((t, e) => t + e, 0) / edades.length : null
+  const maduras = edades.filter((e) => e >= 12).length
+  const hechos = hechosDeFinca(fincaId, d, nombre)
+  const hace30 = new Date(Date.parse(`${hoy}T12:00:00`) - 30 * 86_400_000).toISOString().slice(0, 10)
+  const mes = hechos.filter((h) => h.fecha >= hace30)
+  const haMes = mes.filter((h) => h.unidad.toLowerCase() === 'ha').reduce((t, h) => t + h.cantidad, 0)
+
   return (
     <div className="af-stack">
-      <div className="af-cab">
-        <div>
-          {!modoDueno && <button type="button" className="af-link" onClick={onVolver}>← Fincas</button>}
-          <h2>{finca.nombre}</h2>
-          <p className="subtle-copy" style={{ margin: 0 }}>
-            Dueño: <b>{finca.duenoNombre}</b>{finca.duenoTelefono ? ` · ${finca.duenoTelefono}` : ''}
-            {finca.ingenioId ? ` · entrega a ${ingenioNombre(finca.ingenioId)}` : ''}{finca.municipio ? ` · ${finca.municipio}` : ''}
-          </p>
+      {!modoDueno && (
+        <div className="af-cab af-cab--chica">
+          <button type="button" className="af-link" onClick={onVolver}>← Fincas</button>
+          <div className="af-acciones">
+            {whatsapp && <a className="primary-button" href={whatsapp} target="_blank" rel="noreferrer">Enviar resumen al dueño</a>}
+            {esAdmin && <button type="button" className="inline-button" onClick={onEditar}>Editar finca y suertes</button>}
+          </div>
         </div>
-        {!modoDueno && <div className="af-acciones">
-          {whatsapp && <a className="primary-button" href={whatsapp} target="_blank" rel="noreferrer">Enviar resumen al dueño</a>}
-          {esAdmin && <button type="button" className="inline-button" onClick={onEditar}>Editar finca y suertes</button>}
-        </div>}
-      </div>
+      )}
+
+      <header className="af-banner">
+        <p className="af-banner__eyebrow">
+          {finca.ingenioId ? ingenioNombre(finca.ingenioId) : 'Finca administrada'}
+          {finca.haciendaCodigo ? ` · Hacienda ${finca.haciendaCodigo}` : ''}{finca.municipio ? ` · ${finca.municipio}` : ''}
+        </p>
+        <h1 className="af-banner__titulo">{finca.nombre}</h1>
+        <p className="af-banner__sub">Administrada por AgroServicios Morales{modoDueno ? '' : ` · dueño: ${finca.duenoNombre}`}</p>
+        <div className="af-banner__kpis">
+          <div><b>{suertes.length}</b><span>suertes</span></div>
+          <div><b>{fmtCant(Math.round(haFinca * 100) / 100)}</b><span>hectáreas</span></div>
+          <div><b>{edadProm != null ? fmtCant(Math.round(edadProm * 10) / 10) : '—'}</b><span>meses de edad promedio</span></div>
+          <div><b>{mes.length}</b><span>labores en 30 días{haMes > 0 ? ` · ${fmtCant(Math.round(haMes * 100) / 100)} ha` : ''}</span></div>
+          {maduras > 0 && <div><b>{maduras}</b><span>suerte{maduras === 1 ? '' : 's'} de 12 meses o más</span></div>}
+        </div>
+      </header>
+
+      <MapaFinca ctx={ctx} finca={finca} />
 
       <nav className="af-sub" aria-label="Secciones de la finca">
-        {([['resumen', modoDueno ? 'Resumen' : 'Lo que ve el dueño'], ['labores', 'Labores por suerte'], ['cuenta', 'Cuenta'], ['bitacora', 'Bitácora']] as [Sub, string][]).map(([k, t]) => (
+        {([['resumen', modoDueno ? 'Resumen' : 'Lo que ve el dueño'], ['labores', 'Labores por suerte'], ...(VER_PLATA ? [['cuenta', 'Cuenta']] : []), ['bitacora', 'Bitácora']] as [Sub, string][]).map(([k, t]) => (
           <button key={k} type="button" aria-pressed={sub === k} onClick={() => setSub(k)}>{t}</button>
         ))}
       </nav>
@@ -93,13 +118,13 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             <div className="af-fila2"><span>Aceptadas hoy</span><b>{aceptadosHoy.length}{haHoy > 0 ? ` · ${fmtCant(haHoy)} ha` : ''}</b></div>
             <div className="af-fila2"><span>Reportes por aceptar</span><b>{porAceptar.length}</b></div>
           </div>
-          <div className="af-card">
+          {VER_PLATA && <div className="af-card">
             <h3>El ciclo contra lo presupuestado</h3>
             <p className="af-grande">{fmtPesosCorto(p.ejecutado)} <span>de {p.presupuesto > 0 ? fmtPesosCorto(p.presupuesto) : 'sin presupuesto'}</span></p>
             <span className="af-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, p.pct ?? 0)}%` }} /></span>
             <div className="af-fila2"><span>Ejecutado del presupuesto</span><b>{p.pct != null ? `${p.pct} %` : '—'}</b></div>
             {p.sinCosto > 0 && <p className="af-nota">▲ {p.sinCosto} labor{p.sinCosto === 1 ? '' : 'es'} sin costo: no suman al presupuesto.</p>}
-          </div>
+          </div>}
           <div className="af-card">
             <h3>¿A tiempo?</h3>
             {conVentana.length === 0 ? <p className="af-nota">Sin labores con ventana en los ciclos abiertos.</p> : conVentana.slice(0, 8).map((x) => (
@@ -109,13 +134,13 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
               </div>
             ))}
           </div>
-          <div className="af-card">
+          {VER_PLATA && <div className="af-card">
             <h3>Su cuenta</h3>
             <div className="af-fila2"><span>Anticipos girados</span><b>{fmtPesos(cuenta.anticipos)}</b></div>
             <div className="af-fila2"><span>Gastado con soporte</span><b>{fmtPesos(cuenta.gastos)}</b></div>
             {cuenta.honorarios > 0 && <div className="af-fila2"><span>Honorarios de administración</span><b>{fmtPesos(cuenta.honorarios)}</b></div>}
             <div className="af-fila2 af-fila2--total"><span>{cuenta.saldo >= 0 ? 'Saldo a su favor' : 'Saldo por girar'}</span><b className={cuenta.saldo < 0 ? 'af-rojo' : ''}>{fmtPesos(Math.abs(cuenta.saldo))}</b></div>
-          </div>
+          </div>}
           <div className="af-card af-card--ancha">
             <h3>Bitácora</h3>
             <Bitacora eventos={bitacora.slice(0, 6)} />
@@ -145,7 +170,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                 {propias.length > 0 && (
                   <div className="af-tabla-wrap">
                     <table className="af-tabla">
-                      <thead><tr><th>Labor</th><th>Avance</th><th>Presupuesto</th><th>¿A tiempo?</th><th>Estado</th>{esAdmin && <th />}</tr></thead>
+                      <thead><tr><th>Labor</th><th>Avance</th>{VER_PLATA && <th>Presupuesto</th>}<th>¿A tiempo?</th><th>Estado</th>{esAdmin && <th />}</tr></thead>
                       <tbody>
                         {propias.map((x) => (
                           <tr key={x.labor.id} className={x.labor.estado === 'ANULADA' ? 'af-anulada' : ''}>
@@ -154,19 +179,19 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                               <span className="af-barra af-barra--chica" aria-hidden="true"><i style={{ width: `${x.avance.pct}%` }} /></span>
                               <small>{fmtCant(x.avance.aceptado)} aceptado{x.avance.porAceptar ? ` · ${fmtCant(x.avance.porAceptar)} por aceptar` : ''}</small>
                             </td>
-                            <td>{x.labor.costoUnitarioPlan > 0 ? fmtPesosCorto(x.labor.cantidadPlan * x.labor.costoUnitarioPlan) : <span className="af-rojo">sin costo</span>}
-                              <small>{x.labor.costoUnitarioPlan > 0 ? `${fmtPesos(x.labor.costoUnitarioPlan)} / ${x.labor.unidad}` : ''}</small></td>
+                            {VER_PLATA && <td>{x.labor.costoUnitarioPlan > 0 ? fmtPesosCorto(x.labor.cantidadPlan * x.labor.costoUnitarioPlan) : <span className="af-rojo">sin costo</span>}
+                              <small>{x.labor.costoUnitarioPlan > 0 ? `${fmtPesos(x.labor.costoUnitarioPlan)} / ${x.labor.unidad}` : ''}</small></td>}
                             <td>{x.oport ? <span className={`af-chip ${CHIP[x.oport.nivel].c}`}>{CHIP[x.oport.nivel].t}</span> : <small>sin ventana</small>}</td>
                             <td><small>{x.labor.estado === 'ANULADA' ? `anulada: ${x.labor.anuladaMotivo}` : x.labor.estado.replace('_', ' ').toLowerCase()}</small></td>
                             {esAdmin && (
                               <td className="af-td-acc">
                                 {x.labor.estado !== 'ANULADA' && x.labor.estado !== 'TERMINADA' && (
                                   <>
-                                    <button type="button" className="af-link" disabled={ocupado} onClick={() => {
+                                    {VER_PLATA && <button type="button" className="af-link" disabled={ocupado} onClick={() => {
                                       const v = window.prompt(`Costo por ${x.labor.unidad} de ${x.labor.labor.toLowerCase()} (suerte ${s.codigo}):`, String(x.labor.costoUnitarioPlan || ''))
                                       const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.'))
                                       if (v != null && Number.isFinite(n) && n >= 0) void hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: n }, token))
-                                    }}>Costo</button>
+                                    }}>Costo</button>}
                                     <button type="button" className="af-link" disabled={ocupado} onClick={() => {
                                       const m = window.prompt('¿Por qué se anula esta labor? (queda registrado)')
                                       if (m && m.trim()) void hacer(() => anularLabor(x.labor.id, m, token))
@@ -187,7 +212,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
         </div>
       )}
 
-      {sub === 'cuenta' && (
+      {VER_PLATA && sub === 'cuenta' && (
         <div className="af-stack">
           <div className="af-kpis">
             <div className="af-kpi"><b>{fmtPesosCorto(cuenta.anticipos)}</b><span>anticipos</span></div>

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import { mensajeDeError, revisarReporte } from '../../services/fincasApi'
-import { contextoReporte, diasEntre, fmtCant, fmtPesos } from '../../lib/fincas'
+import { contextoReporte, diasEntre, fmtCant, fmtPesos, VER_PLATA } from '../../lib/fincas'
 import { fmtFechaHora } from '../../lib/fechas'
 
 /**
@@ -29,7 +29,7 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
   return (
     <div className="af-stack">
       <div className="af-cab"><div><p className="eyebrow">Verificación</p><h2>Por aceptar</h2></div></div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>Mire la foto y la ubicación antes de aceptar. Lo aceptado cuenta como hecho y, si la labor tiene costo, se carga a la cuenta del dueño.</p>
+      <p className="subtle-copy" style={{ marginTop: 0 }}>Mire la foto y la ubicación antes de aceptar. Lo aceptado cuenta como hecho{VER_PLATA ? ' y, si la labor tiene costo, se carga a la cuenta del dueño' : ' y se ve en el mapa de la finca'}.</p>
       {error && <p className="feedback error">{error}</p>}
       {pendientes.length === 0 && <div className="af-card af-vacio"><p>✓ No hay reportes por aceptar.</p></div>}
       {pendientes.map((r) => {
@@ -50,7 +50,7 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
                 <li>{r.lat != null && r.lng != null
                   ? <>Ubicación: <a href={`https://www.google.com/maps?q=${r.lat},${r.lng}`} target="_blank" rel="noreferrer">ver en el mapa</a>{r.precisionM != null ? ` (±${Math.round(r.precisionM)} m)` : ''}</>
                   : <span className="af-rojo">Sin ubicación</span>}</li>
-                {valor > 0 && <li>Al aceptar se cargan <b>{fmtPesos(valor)}</b> a la cuenta del dueño</li>}
+                {VER_PLATA && valor > 0 && <li>Al aceptar se cargan <b>{fmtPesos(valor)}</b> a la cuenta del dueño</li>}
                 {r.nota && <li>Nota: {r.nota}</li>}
               </ul>
               {propio ? (

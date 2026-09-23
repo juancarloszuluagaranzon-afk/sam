@@ -62,6 +62,45 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   `af_anular_labor`, `af_registrar_movimiento` (+ las cuatro de antes con `p_token` primero).
 - ⚠️ Soporte en «Ver como» un supervisor NO entra a Fincas sin el PIN de esa persona (a propósito).
 
+## 🔴 Dos cosas APAGADAS «de momento» (23-sep-2026) — se prenden sin migración
+
+| Qué | Por qué | Dónde se prende |
+|---|---|---|
+| **La plata** (cuenta, presupuesto, costos, honorario, «se cargan $X») | «quita lo de las transferencias, de momento no valoremos nada» | `VER_PLATA` en `lib/fincas.ts` → `true` (la base lo sigue guardando) |
+| **El PIN para entrar a Fincas** | «déjame ver sin el PIN, después lo volvemos a mostrar» | `update af_config set valor = 'true' where clave = 'pin_requerido'` — las sesiones abiertas SIN PIN (`af_sesiones.sin_pin`) dejan de servir al instante y la app vuelve a pedirlo |
+
+⚠️ Con el PIN apagado, `af_abrir_sesion_sin_pin(usuario)` da una llave a cualquier usuario del
+personal (owner/administración/supervisor) que se nombre: es la concesión que se aceptó. Los
+enlaces del dueño no cambian.
+
+## El MAPA de la finca (migración `20260923090000_fincas_mapa.sql`)
+
+Pedido del cliente para **RIOGRANDE II** (hacienda 627, Ingenio Risaralda, vereda Molina, Toro):
+banner grande con el título + mapa donde se ve el avance. Ideas del geovisor de AgroControl.
+
+- `views/fincas/MapaFinca.tsx`: satélite ESRI + (botón ▦) el plano del ingenio desde `mapas`
+  (se busca por el nombre del ingenio). Polígonos en canvas, número de suerte encima con zoom ≥ 15,
+  tocar = ficha (edad desde el corte, último corte, n.º de corte, TCH/toneladas/rendimiento/edad de
+  la última cosecha, y TODAS las labores). Tres formas de pintar: última labor · edad · una labor.
+- `af_poligonos` son **pedazos**, no «la geometría de la suerte»: el plano puede ser más viejo que
+  las suertes de hoy. Pedazo sin suerte = gris punteado con el número del plano; administración lo
+  asigna en la ficha (`af_asignar_poligono`). También se cargan desde KML (`kmlPoligonos.ts`,
+  el nombre del Placemark se cruza con el código de suerte).
+- **Maquinaria de ASM en el mapa**: `af_fincas.hacienda_codigo` + `ingenio_id` cruzan con
+  `asignaciones` (COMPLETADA/PARCIAL/EN_PROCESO) dentro de `af_datos` (clave `maquinaria`). 🔴 El
+  código de hacienda se repite entre ingenios (hay 627 en Risaralda, Mayagüez y Carmelita): SIEMPRE
+  con el ingenio. Al dueño no le llega el nombre del operario.
+- `af_suertes.datos_ingenio` (jsonb): lo del reporte del ingenio. ⚠️ Su `edad_meses` es la edad AL
+  COSECHAR (la del reporte), no la de hoy; la de hoy se calcula desde el corte.
+- **Cómo se ubicó Riogrande II**: el «PLANO GENERAL_2025.pdf» es un **GeoPDF vectorial** (/VP →
+  /Measure con /GPTS, EPSG 3115). `scripts/geopdf-poligonos.py` saca los polígonos y los
+  georreferencia (error de las esquinas: 0,1 m; los linderos calzan con el satélite). Los rótulos son
+  dibujos, no texto: el número se reconoce por la cantidad de puntos del glifo.
+- Estado al 23-sep: 18 pedazos (31,7 ha del plano 2025), solo 0001 y 0006 asignados (áreas iguales
+  al ingenio). La 2/4/5 no cuadran porque la renovación de julio de 2026 partió suertes (2A, 3A, 4A,
+  5B). **La 0007 no está en el plano**: falta su polígono (KML del dron o dibujarla). Carga hecha como
+  `CARGA_INICIAL` en `editado_por`; dueño «Por confirmar».
+
 ## Las reglas las hace cumplir la BASE (migración `20260922120000_administracion_fincas.sql`)
 
 | Regla | Dónde |

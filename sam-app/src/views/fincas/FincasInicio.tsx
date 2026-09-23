@@ -1,5 +1,5 @@
 import type { CtxFincas } from './FincasView'
-import { cuentaFinca, fmtCant, fmtPesosCorto, laboresDeFinca, presupuestoFinca } from '../../lib/fincas'
+import { cuentaFinca, fmtCant, fmtPesosCorto, laboresDeFinca, presupuestoFinca, VER_PLATA } from '../../lib/fincas'
 import { ingenioNombre } from '../../data/ingenios'
 
 /**
@@ -36,14 +36,14 @@ export function FincasInicio({ ctx, soloLista, onNueva }: { ctx: CtxFincas; solo
             <div className={`af-kpi${atrasadas.length ? ' af-kpi--mal' : ''}`}>
               <b>{atrasadas.length}</b><span>atrasadas</span><small>labores fuera de su ventana, sin hacer</small>
             </div>
-            <div className="af-kpi">
+            {VER_PLATA && <div className="af-kpi">
               <b>{fmtPesosCorto(fincas.reduce((s, f) => s + presupuestoFinca(f.id, d).ejecutado, 0))}</b>
               <span>ejecutado</span>
               <small>de {fmtPesosCorto(fincas.reduce((s, f) => s + presupuestoFinca(f.id, d).presupuesto, 0))} presupuestado</small>
-            </div>
+            </div>}
           </div>
 
-          {esAdmin && paqueteSinCosto > 0 && (
+          {VER_PLATA && esAdmin && paqueteSinCosto > 0 && (
             <p className="af-alerta">
               ▲ {paqueteSinCosto} labor{paqueteSinCosto === 1 ? '' : 'es'} del paquete no tiene{paqueteSinCosto === 1 ? '' : 'n'} costo: sin eso el presupuesto sale en cero.{' '}
               <button type="button" className="af-link" onClick={() => ctx.ir('paquete')}>Ponerles costo</button>
@@ -88,12 +88,12 @@ export function FincasInicio({ ctx, soloLista, onNueva }: { ctx: CtxFincas; solo
                 <span className="af-finca__nom">{f.nombre}</span>
                 <span className="af-finca__dueno">{f.duenoNombre}{f.ingenioId ? ` · ${ingenioNombre(f.ingenioId)}` : ''}</span>
                 <span className="af-finca__ha">{fmtCant(p.hectareas)} ha · {p.ciclos} ciclo{p.ciclos === 1 ? '' : 's'} abierto{p.ciclos === 1 ? '' : 's'}</span>
-                <span className="af-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, p.pct ?? 0)}%` }} /></span>
-                <span className="af-finca__plata">
+                {VER_PLATA && <span className="af-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, p.pct ?? 0)}%` }} /></span>}
+                {VER_PLATA && <span className="af-finca__plata">
                   {p.presupuesto > 0 ? `${fmtPesosCorto(p.ejecutado)} de ${fmtPesosCorto(p.presupuesto)} (${p.pct} %)` : `${fmtPesosCorto(p.ejecutado)} gastado · sin presupuesto`}
-                </span>
+                </span>}
                 <span className="af-finca__chips">
-                  <span className={`af-chip ${c.saldo < 0 ? 'af-chip--mal' : 'af-chip--neutro'}`}>saldo {fmtPesosCorto(c.saldo)}</span>
+                  {VER_PLATA && <span className={`af-chip ${c.saldo < 0 ? 'af-chip--mal' : 'af-chip--neutro'}`}>saldo {fmtPesosCorto(c.saldo)}</span>}
                   {pend > 0 && <span className="af-chip af-chip--ojo">{pend} por aceptar</span>}
                   {tard > 0 && <span className="af-chip af-chip--mal">⚠ {tard} atrasada{tard === 1 ? '' : 's'}</span>}
                 </span>

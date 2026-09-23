@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import { guardarPaquete, mensajeDeError, type LaborPaquete } from '../../services/fincasApi'
-import { fmtPesos } from '../../lib/fincas'
+import { fmtPesos, VER_PLATA } from '../../lib/fincas'
 
 /**
  * El paquete de labores: la plantilla con la que nace cada ciclo. Costo por
@@ -44,7 +44,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
               </select>
             </label>
             <label>Cantidad por hectárea<input id="af-p-cxha" inputMode="decimal" value={String(editando.cantidadPorHa ?? 1)} onChange={(e) => setEditando({ ...editando, cantidadPorHa: Number(e.target.value.replace(',', '.')) || 1 })} /></label>
-            <label>Costo por unidad (pesos)<input id="af-p-costo" inputMode="numeric" value={String(editando.costoUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /></label>
+            {VER_PLATA && <label>Costo por unidad (pesos)<input id="af-p-costo" inputMode="numeric" value={String(editando.costoUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /></label>}
             <label>A tiempo hasta (días del corte)<input id="af-p-vi" inputMode="numeric" value={editando.ventanaIdeal ?? ''} onChange={(e) => setEditando({ ...editando, ventanaIdeal: nulo(e.target.value) })} placeholder="sin ventana" /></label>
             <label>Tardía después de (días)<input id="af-p-vn" inputMode="numeric" value={editando.ventanaNormal ?? ''} onChange={(e) => setEditando({ ...editando, ventanaNormal: nulo(e.target.value) })} placeholder="sin ventana" /></label>
             <label>Aplica a
@@ -64,13 +64,13 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
       <div className="af-card">
         <div className="af-tabla-wrap">
           <table className="af-tabla">
-            <thead><tr><th>Labor</th><th>Aplica</th><th>Costo</th><th>A tiempo</th><th /></tr></thead>
+            <thead><tr><th>Labor</th><th>Aplica</th>{VER_PLATA && <th>Costo</th>}<th>A tiempo</th><th /></tr></thead>
             <tbody>
               {d.paquete.map((p) => (
                 <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
                   <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}</small></td>
                   <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}</small></td>
-                  <td>{p.costoUnitario > 0 ? `${fmtPesos(p.costoUnitario)} / ${p.unidad}` : <span className="af-rojo">sin costo</span>}</td>
+                  {VER_PLATA && <td>{p.costoUnitario > 0 ? `${fmtPesos(p.costoUnitario)} / ${p.unidad}` : <span className="af-rojo">sin costo</span>}</td>}
                   <td><small>{p.ventanaIdeal != null && p.ventanaNormal != null ? `ideal ≤${p.ventanaIdeal} · normal ≤${p.ventanaNormal} días` : 'sin ventana'}</small></td>
                   <td className="af-td-acc">
                     <button type="button" className="af-link" onClick={() => setEditando({ ...p })}>Editar</button>

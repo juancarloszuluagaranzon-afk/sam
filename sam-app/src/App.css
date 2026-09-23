@@ -9645,3 +9645,66 @@ td.planilla-vacio:hover { background: #fde047; }
 
 /* Lo que espera señal para salir (reportes de campo sin cobertura) */
 .af-card--espera { border-left: 4px solid var(--color-status-progress, #c8a227); }
+
+/* ── Banner con el título de la finca y MAPA (23-sep-2026) ─────────────── */
+.af-banner {
+  position: relative; overflow: hidden; border-radius: 18px; padding: 22px 22px 18px; color: #fff;
+  background: linear-gradient(135deg, #14532d 0%, #166534 50%, #3f6212 100%);
+  box-shadow: 0 6px 18px rgba(20, 83, 45, 0.25);
+}
+/* Surcos de caña, apenas insinuados. */
+.af-banner::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.05) 0 2px, transparent 2px 16px);
+}
+.af-banner > * { position: relative; z-index: 1; }
+.af-banner__eyebrow { margin: 0; font-size: 0.76rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.85; }
+.af-banner__titulo { margin: 4px 0 2px; font-size: clamp(2rem, 7vw, 3.3rem); line-height: 1.05; font-weight: 800; color: #fff; }
+.af-banner__sub { margin: 0; opacity: 0.9; font-size: 0.9rem; }
+.af-banner__kpis { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 14px; }
+.af-banner__kpis div { display: flex; flex-direction: column; min-width: 84px; }
+.af-banner__kpis b { font-size: 1.4rem; line-height: 1.15; font-variant-numeric: tabular-nums; }
+.af-banner__kpis span { font-size: 0.74rem; opacity: 0.85; }
+
+.af-mapa-card { display: flex; flex-direction: column; gap: 10px; }
+.af-mapa-modos { display: flex; gap: 6px; flex-wrap: wrap; }
+.af-mapa-modos button {
+  border: 1px solid var(--color-border); background: var(--color-bg-soft); color: var(--color-ink-mid);
+  padding: 6px 12px; border-radius: 999px; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+}
+.af-mapa-modos button[aria-pressed="true"] { background: #166534; color: #fff; border-color: transparent; }
+.af-mapa-modos i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+/* isolation: los z-index de Leaflet (hasta 1000) no se montan sobre la barra de arriba. */
+.af-mapa { position: relative; border-radius: 14px; overflow: hidden; isolation: isolate; }
+.af-mapa__lienzo { height: min(64vh, 560px); min-height: 360px; width: 100%; background: #1f2937; }
+.af-mapa__botones { position: absolute; right: 10px; top: 10px; z-index: 1000; display: flex; flex-direction: column; gap: 8px; }
+.af-mapa__botones button {
+  width: 42px; height: 42px; border-radius: 50%; border: none; background: rgba(17, 24, 39, 0.82); color: #fff;
+  font-size: 1.15rem; cursor: pointer; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.af-mapa__botones button[aria-pressed="true"] { background: #15803d; }
+.af-mapa__vacio {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 1000; background: rgba(17, 24, 39, 0.86);
+  color: #fff; padding: 10px 12px; border-radius: 10px; font-size: 0.85rem;
+}
+.af-mapa-et { background: transparent; border: none; }
+.af-mapa-et span {
+  position: absolute; transform: translate(-50%, -50%); color: #fff; font-weight: 800; font-size: 12px;
+  white-space: nowrap; pointer-events: none; text-shadow: 0 0 2px #000, 0 0 3px #000, 0 1px 2px #000;
+}
+.af-mapa-et span.af-mapa-et--sin { font-weight: 600; font-size: 10px; opacity: 0.9; }
+.af-mapa-leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.78rem; color: var(--color-ink-mid); }
+.af-mapa-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.af-mapa-leyenda i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.af-mapa-leyenda__vacio { border: 1.5px solid var(--color-ink-light); background: transparent !important; }
+.af-ficha {
+  border: 1px solid var(--color-divider); border-radius: 12px; padding: 12px;
+  display: flex; flex-direction: column; gap: 8px; background: var(--color-surface, #fff);
+}
+.af-ficha__datos { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.af-ficha__datos div { display: flex; flex-direction: column; background: var(--color-bg-soft); border-radius: 10px; padding: 8px 10px; }
+.af-ficha__datos b { font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.af-ficha__datos span { font-size: 0.72rem; color: var(--color-ink-light); }
+.af-ficha__tit { margin: 4px 0 0; font-size: 0.9rem; }
+.af-mapa-admin { display: flex; flex-direction: column; gap: 6px; }
+.af-mapa-kml { display: flex; flex-direction: column; gap: 4px; font-size: 0.84rem; font-weight: 700; color: var(--color-ink-mid); }

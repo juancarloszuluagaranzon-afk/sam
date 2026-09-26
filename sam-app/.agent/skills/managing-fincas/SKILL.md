@@ -87,6 +87,10 @@ entero pasa por funciones `security definer` que reciben `p_token`:
     apaga las suscripciones de ese enlace y, además, tanto `af_avisar` como la función solo mandan a
     suscripciones con el enlace vigente (`af_suscripcion_vigente`).
   - Probado en un celular real el 26-sep (Iván, enlace «PRUEBA AVISOS (Iván)»): llegó el aviso de prueba.
+  - **Enlaces de Riogrande II** (25-sep): «Ana María Llanos» (la dueña) e «Iván · copia ASM» (el de
+    prueba, que se quedó como copia permanente: a Iván le llegan los mismos avisos que a la dueña; 2
+    Android). «Por confirmar» (lo creó U001) se QUITÓ. Para probar, usar el de Iván, no el de la dueña:
+    en Android abrir otro enlace reemplaza la llave guardada en ese celular y suma a los usos.
   - iPhone: avisos SOLO con la app instalada (iOS 16.4+); el permiso se pide en el mismo toque, antes
     de cualquier espera. 404/410 del servicio de push = suscripción muerta (`activa=false`).
 - ⚠️ `usos` cuenta CADA carga de la vista (también al volver a la pestaña), no visitas: 7 usos en 4
@@ -148,7 +152,7 @@ banner grande con el título + mapa donde se ve el avance. Ideas del geovisor de
   2,6 m, máx 4,9 m). Áreas contra el ingenio: 0007 5,57/5,56 · 0001 0,60/0,61 · total 38,51/39,18.
   Los 18 pedazos del GeoPDF 2025 se reemplazaron (quedan en `af_auditoria`). La suerte de cada
   pedazo salió de las etiquetas del plano (6, 5B = 5 del norte, 5 = 5 del oriente y centro, 4A =
-  fila 2, 4 = franjas del centro-sur, 3A, 3, 2A, 2, 1, 7). Dueño «Por confirmar».
+  fila 2, 4 = franjas del centro-sur, 3A, 3, 2A, 2, 1, 7). Dueña: Ana María Llanos.
 - **Suerte 0007 ajustada a la foto** (pedido del cliente con captura): el triángulo del plano 2024
   quedaba corrido. Se redibujó sobre el satélite ESRI z17 con grilla: arriba la vía, a la derecha la
   línea de árboles, a la izquierda el borde del lote, punta al suroccidente → **6,53 ha dibujadas**

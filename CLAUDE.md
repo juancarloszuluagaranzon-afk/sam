@@ -43,6 +43,13 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
    siguiente de agregarla.
 3. **NO introducir `React.lazy` / chunks nuevos** sin verificar el preview real de
    Vercel: el chunking de Vercel difiere del local y tumbó producción (17-jul-2026).
+   🔴 **Pantalla en blanco tras un despliegue (25-sep-2026)**: si el service worker se
+   actualiza en el mismo segundo en que Vercel cambia de versión, guarda la página VIEJA
+   con la revisión NUEVA → pide un `index-*.js` que ya no existe (Vercel responde
+   text/html) y queda en blanco aunque se recargue. Lo repara solo el script
+   «Auto-reparación» de `sam-app/index.html` (trae la página vigente con `?vigente=`,
+   la deja en el precache y recarga una vez). **No quitarlo**, y NUNCA reparar
+   desregistrando el service worker: ahí vive la suscripción a los avisos del dueño.
 4. **Migraciones**: van en `sam-app/supabase/migrations/`. Normalmente **las corre el
    usuario en Supabase Studio** — ⚠️ debe **apagar la extensión traductora de Chrome** o
    el SQL se corrompe (`select`→`seleccione`); recordárselo SIEMPRE. También se pueden

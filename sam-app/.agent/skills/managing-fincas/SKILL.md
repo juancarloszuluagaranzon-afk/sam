@@ -91,6 +91,13 @@ entero pasa por funciones `security definer` que reciben `p_token`:
     prueba, que se quedó como copia permanente: a Iván le llegan los mismos avisos que a la dueña; 2
     Android). «Por confirmar» (lo creó U001) se QUITÓ. Para probar, usar el de Iván, no el de la dueña:
     en Android abrir otro enlace reemplaza la llave guardada en ese celular y suma a los usos.
+    Además «ENSAYO dueña (Iván)» (id 23506ad4, creado 25-sep por SQL con `af_token_nuevo`) para
+    ensayar el recorrido de la dueña desde cero (abrir → instalar → activar avisos) en un celular
+    que nunca abrió la app. Quitarlo cuando ya no haga falta.
+- **Bitácora y «Labores por suerte» con la maquinaria** (25-sep, commit `0594114`): `bitacoraFinca`
+  recibe también `maquinaria` (la misma que pinta el mapa). Antes el banner decía «5 labores en 30
+  días» y la bitácora «Todavía no hay movimientos». En «Labores por suerte» cada suerte lista lo
+  que hizo la maquinaria de ASM debajo del ciclo.
   - iPhone: avisos SOLO con la app instalada (iOS 16.4+); el permiso se pide en el mismo toque, antes
     de cualquier espera. 404/410 del servicio de push = suscripción muerta (`activa=false`).
 - ⚠️ `usos` cuenta CADA carga de la vista (también al volver a la pestaña), no visitas: 7 usos en 4

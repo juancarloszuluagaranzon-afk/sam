@@ -7,6 +7,8 @@ import { hoyBogota } from '../../lib/periodos'
 import { fmtFechaHora } from '../../lib/fechas'
 import { FincaDetalle } from './FincaDetalle'
 import type { CtxFincas } from './FincasView'
+import { InstalarApp } from './InstalarApp'
+import { prepararInstalacionDueno } from './llaveDueno'
 
 /**
  * La vista del DUEÑO DE LA TIERRA (22-sep-2026): entra con su enlace personal,
@@ -42,6 +44,9 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
   }, [recargar])
 
   const finca = datos?.fincas[0] ?? null
+  // El ícono que ella instale lleva el nombre de SU finca (y en iPhone, su enlace).
+  const nombreFinca = finca?.nombre ?? null
+  useEffect(() => { if (nombreFinca) prepararInstalacionDueno(llave, nombreFinca) }, [llave, nombreFinca])
   const ctx: CtxFincas | null = datos && finca ? {
     datos, recargar, token: llave, usuario: '', esAdmin: false, puedeReportar: false, modoDueno: true,
     nombre: (id: string) => datos.nombres[id] ?? 'AgroServicios Morales',
@@ -72,6 +77,7 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
       </header>
 
       <section className="af-cuerpo">
+        {finca && estado === 'listo' && <InstalarApp nombreFinca={finca.nombre} />}
         {estado === 'cancelado' ? (
           <div className="af-card af-vacio">
             <h3>Este enlace ya no está activo</h3>

@@ -9728,3 +9728,11 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-ficha__tit { margin: 4px 0 0; font-size: 0.9rem; }
 .af-mapa-admin { display: flex; flex-direction: column; gap: 6px; }
 .af-mapa-kml { display: flex; flex-direction: column; gap: 4px; font-size: 0.84rem; font-weight: 700; color: var(--color-ink-mid); }
+
+/* «Deje su finca en el celular» — instalar la vista del dueño como app (25-sep-2026) */
+.af-instalar {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; padding: 12px 14px; border-radius: 12px;
+  background: #ecfdf3; border: 1px solid #bbf7d0; color: #14532d;
+}
+.af-instalar p { margin: 4px 0 0; font-size: 0.86rem; max-width: 62ch; }

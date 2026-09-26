@@ -51,6 +51,19 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   `localStorage['sam:af-dueno']` y la borra de la barra de direcciones. Si en el celular hay sesión
   del personal, la llave guardada del dueño se ignora (solo manda el enlace recién abierto).
 - `App()` abre `PortalDueno` ANTES de `AppDataProvider`: el dueño no carga nada de la maquinaria.
+- **Instalar la finca como app** (25-sep, `InstalarApp.tsx` + `llaveDueno.ts`): aviso «📲 Deje su finca en
+  el celular». Android/Chrome: botón con `beforeinstallprompt` (la app instalada comparte el
+  almacenamiento del navegador: con la llave guardada basta). 🔴 **iPhone NO comparte** lo guardado en
+  Safari con la app de la pantalla de inicio: por eso en iOS la llave se QUEDA en la dirección (no se
+  borra con `replaceState`) y se cambia el manifiesto por uno en blob con `start_url` = enlace con la
+  llave y el nombre de la finca; se explica «Compartir → Agregar a inicio». El título y el
+  `apple-mobile-web-app-title` pasan a ser el nombre de la finca. «Ahora no» lo oculta
+  (`localStorage['sam:af-instalar-oculto']`); abierta desde el ícono no sale.
+- ⚠️ `usos` cuenta CADA carga de la vista (también al volver a la pestaña), no visitas: 7 usos en 4
+  minutos es una sola persona mirando. Para probar la vista del dueño usar un enlace de PRUEBA (y
+  borrarlo), no el del dueño real, o se le suman aperturas falsas.
+- 🔴 `psql -c "a; b; c"` corre todo en UNA transacción: si la última consulta falla, los DELETE de antes
+  se deshacen aunque digan «DELETE 1». Borrar en un `-c` aparte y verificar en otro.
 - **Quién hizo qué sale de la llave**, no de un parámetro: `af__usuario(p_token, roles)` → id o
   `SIN_SESION`/`SIN_PERMISO`. Las funciones viejas quedaron como internas `af__abrir_ciclo`,
   `af__reportar`, `af__revisar`, `af__anular_movimiento` (sin permiso para `anon`).

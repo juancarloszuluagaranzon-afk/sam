@@ -6,7 +6,7 @@ import {
 } from '../../services/fincasApi'
 import {
   bitacoraFinca, cicloAbiertoDe, cuentaFinca, diasEntre, edadMeses, fmtCant, fmtPesos, fmtPesosCorto,
-  hechosDeFinca, laboresDeFinca, presupuestoFinca, resumenParaDueno, VER_PLATA, type NivelOportunidad,
+  hechosDeFinca, laboresDeFinca, nombreLabor, presupuestoFinca, resumenParaDueno, VER_PLATA, type NivelOportunidad,
 } from '../../lib/fincas'
 import { ingenioNombre } from '../../data/ingenios'
 import { fmtFechaHora } from '../../lib/fechas'
@@ -155,6 +155,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
           {suertes.map((s) => {
             const ciclo = cicloAbiertoDe(s.id, d.ciclos)
             const propias = filas.filter((x) => x.suerte.id === s.id)
+            const maquina = hechos.filter((h) => h.fuente === 'maquinaria' && h.suerteCodigo === s.codigo)
             return (
               <div key={s.id} className="af-card">
                 <div className="af-cab af-cab--chica">
@@ -167,6 +168,16 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                   {esAdmin && <AbrirCiclo hayCiclo={!!ciclo} ocupado={ocupado}
                     onAbrir={(fecha, tipo) => hacer(() => abrirCiclo(s.id, fecha, tipo, token))} />}
                 </div>
+                {maquina.length > 0 && (
+                  <ul className="af-hechos">
+                    {maquina.map((h) => (
+                      <li key={h.id}>
+                        <b>{nombreLabor(h.labor)}</b> · {fmtCant(h.cantidad)} {h.unidad} · {h.fecha}
+                        <small> {h.estado} · maquinaria de ASM</small>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {propias.length > 0 && (
                   <div className="af-tabla-wrap">
                     <table className="af-tabla">
@@ -250,7 +261,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
       {sub === 'bitacora' && (
         <div className="af-card">
           <h3>Bitácora completa</h3>
-          <p className="af-nota">Cada reporte de campo y cada movimiento de plata, en orden. Nada se borra: lo anulado aparece como anulado.</p>
+          <p className="af-nota">Cada labor de maquinaria y cada reporte de campo{VER_PLATA ? ', y cada movimiento de plata' : ''}, en orden. Nada se borra: lo anulado aparece como anulado.</p>
           <Bitacora eventos={bitacora} />
         </div>
       )}
@@ -266,7 +277,7 @@ function Bitacora({ eventos }: { eventos: ReturnType<typeof bitacoraFinca> }) {
         <li key={e.id} className="af-mov">
           {e.foto ? <a href={e.foto} target="_blank" rel="noreferrer"><img className="af-foto" src={e.foto} alt="evidencia" loading="lazy" /></a> : <span className="af-foto af-foto--vacia">—</span>}
           <span><b>{e.titulo}</b><small>{fmtFechaHora(e.cuando)} · {e.detalle}</small></span>
-          <span className={`af-chip ${e.estado === 'ACEPTADO' || e.estado === 'ANTICIPO' ? 'af-chip--ok' : e.estado === 'PENDIENTE' ? 'af-chip--ojo' : e.estado === 'RECHAZADO' || e.estado === 'ANULADO' ? 'af-chip--mal' : 'af-chip--neutro'}`}>
+          <span className={`af-chip ${e.estado === 'ACEPTADO' || e.estado === 'ANTICIPO' || e.estado === 'HECHA' ? 'af-chip--ok' : e.estado === 'PENDIENTE' ? 'af-chip--ojo' : e.estado === 'RECHAZADO' || e.estado === 'ANULADO' ? 'af-chip--mal' : 'af-chip--neutro'}`}>
             {e.estado.toLowerCase()}
           </span>
         </li>

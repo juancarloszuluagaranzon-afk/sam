@@ -9747,3 +9747,8 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-avisos p, .af-novedades p { margin: 4px 0 0; font-size: 0.86rem; max-width: 62ch; }
 .af-novedades ul { margin: 6px 0 0; padding-left: 18px; font-size: 0.86rem; }
 .af-avisos__msg { font-weight: 700; }
+
+/* «Labores por suerte»: lo hecho por la maquinaria de ASM (25-sep-2026) */
+.af-hechos { margin: 8px 0 0; padding-left: 18px; font-size: 0.88rem; }
+.af-hechos li { margin: 2px 0; }
+.af-hechos small { color: var(--text-muted, #64748b); }

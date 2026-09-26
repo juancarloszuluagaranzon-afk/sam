@@ -139,10 +139,11 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
     mapRef.current = map
     // Solo en desarrollo: para probar el mapa desde la consola.
     if (import.meta.env.DEV) (window as unknown as { __mapaFinca?: L.Map }).__mapaFinca = map
-    // El contenedor puede nacer sin tamaño (pestaña recién abierta).
-    setTimeout(() => map.invalidateSize(), 0)
-    setTimeout(() => map.invalidateSize(), 400)
-    return () => { map.remove(); mapRef.current = null }
+    // El contenedor puede nacer sin tamaño (pestaña recién abierta). 🔴 Los reintentos
+    // miran que el mapa siga vivo: si se cerró antes, Leaflet revienta en la consola.
+    setTimeout(() => { if (mapRef.current === map) map.invalidateSize() }, 0)
+    setTimeout(() => { if (mapRef.current === map) map.invalidateSize() }, 400)
+    return () => { map.remove(); mapRef.current = null; encuadradoRef.current = false }
   }, [])
 
   // Plano del ingenio encima del satélite (se prende y se apaga).
@@ -199,7 +200,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
       const b = L.latLngBounds(piezas.flatMap((p) => p.anillo.map(([lng, lat]) => [lat, lng] as [number, number])))
       let movio = false
       map.once('dragstart', () => { movio = true })
-      const encuadrar = () => { if (!movio) { map.invalidateSize(); map.fitBounds(b, { padding: [24, 24], maxZoom: 17 }) } }
+      const encuadrar = () => { if (!movio && mapRef.current === map) { map.invalidateSize(); map.fitBounds(b, { padding: [24, 24], maxZoom: 17 }) } }
       encuadrar()
       setTimeout(encuadrar, 350)
       setTimeout(encuadrar, 900)

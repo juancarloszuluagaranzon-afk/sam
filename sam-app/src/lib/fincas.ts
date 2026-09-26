@@ -119,13 +119,27 @@ export function contextoReporte(r: ReporteCampo, d: DatosFincas) {
 }
 
 export interface EventoBitacora {
-  id: string; cuando: string; tipo: 'reporte' | 'movimiento'
+  id: string; cuando: string; tipo: 'reporte' | 'movimiento' | 'maquinaria'
   titulo: string; detalle: string; foto: string | null; estado: string
 }
 
-/** La bitácora de la finca: cada reporte y cada movimiento, en orden, con su prueba. */
-export function bitacoraFinca(fincaId: string, d: DatosFincas, nombre: (id: string) => string): EventoBitacora[] {
+/**
+ * La bitácora de la finca: cada labor de maquinaria, cada reporte y cada movimiento,
+ * en orden, con su prueba. La maquinaria es la misma que pinta el mapa: si allá sale
+ * «5 labores en 30 días», aquí no puede decir «todavía no hay movimientos».
+ */
+export function bitacoraFinca(
+  fincaId: string, d: DatosFincas & { maquinaria?: LaborMaquina[] }, nombre: (id: string) => string,
+): EventoBitacora[] {
   const ev: EventoBitacora[] = []
+  for (const m of (d.maquinaria ?? []).filter((x) => x.fincaId === fincaId)) {
+    ev.push({
+      id: `q-${m.id}`, cuando: m.registradoEn || m.fecha, tipo: 'maquinaria',
+      titulo: `${nombreLabor(m.labor).toLowerCase()} · suerte ${m.suerteCodigo} · ${fmtCant(m.area)} ha`,
+      detalle: ['Maquinaria de AgroServicios Morales', m.equipo, m.operador].filter(Boolean).join(' · '),
+      foto: null, estado: m.estado === 'COMPLETADA' ? 'HECHA' : m.estado === 'PARCIAL' ? 'PARCIAL' : 'EN CURSO',
+    })
+  }
   for (const r of d.reportes) {
     const { labor, suerte, finca } = contextoReporte(r, d)
     if (finca?.id !== fincaId || !labor || !suerte) continue

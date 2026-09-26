@@ -11,6 +11,46 @@
     <meta name="apple-mobile-web-app-title" content="ASM" />
     <title>ASM - AgroServicios Morales</title>
     <script>
+      // 🔴 Auto-reparación de la pantalla en blanco (25-sep-2026). Si el service
+      // worker se actualiza JUSTO mientras Vercel cambia de versión, puede guardar
+      // (para el modo sin señal) la página VIEJA junto a los archivos NUEVOS: la
+      // página pide un archivo que ya no existe y la app queda en blanco, aunque se
+      // recargue. Aquí se detecta, se trae la página vigente del servidor, se deja
+      // en lugar de la guardada y se recarga una sola vez.
+      // NO se desregistra el service worker: ahí vive la suscripción a los avisos.
+      (function () {
+        var CLAVE = 'sam:reparo-inicio';
+        window.addEventListener('error', function (e) {
+          var s = e.target;
+          if (!s || s.tagName !== 'SCRIPT' || !/\/assets\/index-[^/]+\.js$/.test(s.src || '')) return;
+          try {
+            if (Date.now() - Number(sessionStorage.getItem(CLAVE) || 0) < 60000) return;
+            sessionStorage.setItem(CLAVE, String(Date.now()));
+          } catch (x) { return; }
+          if (!('caches' in window)) return;
+          // Con el parámetro no la contesta el service worker: va al servidor.
+          fetch('/index.html?vigente=' + Date.now(), { cache: 'no-store' }).then(function (r) {
+            if (!r.ok) return;
+            return r.text().then(function (html) {
+              var m = html.match(/\/assets\/index-[^"']+\.js/);
+              if (!m || s.src.indexOf(m[0]) >= 0) return;
+              return caches.keys().then(function (nombres) {
+                return Promise.all(nombres.map(function (n) {
+                  return caches.open(n).then(function (c) {
+                    return c.keys().then(function (ks) {
+                      return Promise.all(ks.filter(function (k) { return new URL(k.url).pathname === '/index.html'; }).map(function (k) {
+                        return c.put(k, new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }));
+                      }));
+                    });
+                  });
+                }));
+              }).then(function () { location.reload(); });
+            });
+          }).catch(function () { /* sin señal: no se toca nada */ });
+        }, true);
+      })();
+    </script>
+    <script>
       // Anti-flash de tema: aplica data-theme antes de que React monte
       // para que la primera pintura ya tenga colores correctos. Mantener
       // en sync con la clave en src/hooks/useTheme.ts.

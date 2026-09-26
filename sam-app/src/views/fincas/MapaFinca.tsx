@@ -7,7 +7,7 @@ import {
 } from '../../services/fincasApi'
 import { loadMapas } from '../../services/samApi'
 import type { MapaConfig } from '../../domain/sam'
-import { cicloAbiertoDe, edadMeses, fmtCant, hechosDeFinca, type HechoSuerte } from '../../lib/fincas'
+import { cicloAbiertoDe, edadMeses, fmtCant, hechosDeFinca, nombreLabor, type HechoSuerte } from '../../lib/fincas'
 import { ingenioNombre } from '../../data/ingenios'
 import { polygonAreaHa } from '../../lib/mapaGeo'
 import { leerKmlPoligonos } from './kmlPoligonos'
@@ -69,14 +69,6 @@ function colorEdad(m: number | null): string | null {
 }
 
 const fmtFecha = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : '')
-/** «FERTILIZACION» → «Fertilización»: así se lee en la leyenda y en los botones. */
-const TILDES: Record<string, string> = { FERTILIZACION: 'Fertilización', FUMIGACION: 'Fumigación', APLICACION: 'Aplicación' }
-function nombreLabor(n: string): string {
-  const s = n.trim().toLowerCase()
-  const k = n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase()
-  return TILDES[k] ?? (s.charAt(0).toUpperCase() + s.slice(1))
-}
-
 export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   const { datos: d, hoy, esAdmin, modoDueno, token, recargar } = ctx
   const suertes = useMemo(() => d.suertes.filter((s) => s.fincaId === finca.id && s.activa), [d.suertes, finca.id])
@@ -187,10 +179,12 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
         }
       }
       const sel = p.id === selId
+      // Novedad desde la última visita del dueño: borde amarillo grueso.
+      const nuevo = !!s && !!ctx.resaltar?.has(s.codigo)
       L.polygon(latlngs, {
         renderer: render,
-        color: sel ? '#facc15' : s ? '#ffffff' : '#cbd5e1',
-        weight: sel ? 3.5 : s ? 1.6 : 1.2,
+        color: sel || nuevo ? '#facc15' : s ? '#ffffff' : '#cbd5e1',
+        weight: sel ? 3.5 : nuevo ? 4 : s ? 1.6 : 1.2,
         dashArray: s ? undefined : '5 4',
         fillColor: fill ?? (s ? '#ffffff' : '#94a3b8'),
         fillOpacity: fill ? 0.55 : s ? 0.1 : 0.18,
@@ -211,7 +205,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
       setTimeout(encuadrar, 900)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [piezas, suerteDe, hechosPor, modo, selId, d.ciclos, hoy])
+  }, [piezas, suerteDe, hechosPor, modo, selId, d.ciclos, hoy, ctx.resaltar])
 
   // Números de suerte sobre el polígono: solo de cerca y solo lo que se ve.
   useEffect(() => {

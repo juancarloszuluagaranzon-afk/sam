@@ -59,6 +59,31 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   llave y el nombre de la finca; se explica «Compartir → Agregar a inicio». El título y el
   `apple-mobile-web-app-title` pasan a ser el nombre de la finca. «Ahora no» lo oculta
   (`localStorage['sam:af-instalar-oculto']`); abierta desde el ícono no sale.
+- **Lo último sin pedirlo** (25-sep): la vista del dueño trae datos al abrir, al volver a la app y
+  **cada 2 minutos** mientras está visible (`CADA_MS` en `PortalDueno`). **Novedades desde su
+  última visita**: `localStorage['sam:af-visto:<12 primeros de la llave>']` se lee UNA vez por carga
+  (Map del módulo: React en desarrollo monta dos veces) y se compara contra `HechoSuerte.registradoEn`
+  (maquinaria: `fecha_fin`; campo: aceptado o enviado). Tarjeta 🆕 + esas suertes con borde amarillo
+  en el mapa (`ctx.resaltar`), hasta «Entendido».
+- 🔔 **Avisos al celular** (migración `20260925090000_fincas_avisos.sql`, función del servidor
+  `supabase/functions/avisos-finca`, receptor `public/sw-avisos.js` importado por el service worker
+  con `workbox.importScripts`). Camino: trigger → `af_avisar` → `pg_net` a
+  `http://functions:9000/avisos-finca` (red interna de Docker, sin esperar) → Web Push (VAPID) → el
+  celular. Avisan: reporte de campo ACEPTADO (`trg_af_aviso_reporte`) y maquinaria COMPLETADA o
+  PARCIAL en la hacienda+ingenio de la finca (`trg_af_aviso_maquinaria` sobre `asignaciones`, envuelto
+  en excepciones: un aviso NUNCA tumba una labor). Solo el DUEÑO se suscribe (`af_suscribir` con la
+  llave de su enlace); «Probar aviso» = `af_probar_aviso` solo a ese celular.
+  - Llaves VAPID + secreto en `af_config` clave `avisos` {publica, privada, contacto, secreto}: se
+    cargaron APARTE (no están en el repo). La pública la entrega `af_clave_avisos()`.
+  - 🔴 En ese servidor las funciones NO verifican JWT (`VERIFY_JWT=false`, abiertas a internet): la
+    función exige el header `x-aviso-secreto`. 🔴 Con la llave de servicio del contenedor, PostgREST
+    responde «permission denied for schema public»: la función lee la base DIRECTO con
+    `SUPABASE_DB_URL` (rol `postgres`, que necesitó `grant select/update` en `af_suscripciones`).
+  - 🔴 `web-push` fuerza https: para probar el envío sin celular, suscripción falsa con llaves ECDH
+    válidas y endpoint `https://supabase.surcoapp.tech/functions/v1/hello` → `enviados: 1`.
+  - Desplegar la función = copiar la carpeta a `/opt/supabase/docker/volumes/functions/` (sin reiniciar).
+  - iPhone: avisos SOLO con la app instalada (iOS 16.4+); el permiso se pide en el mismo toque, antes
+    de cualquier espera. 404/410 del servicio de push = suscripción muerta (`activa=false`).
 - ⚠️ `usos` cuenta CADA carga de la vista (también al volver a la pestaña), no visitas: 7 usos en 4
   minutos es una sola persona mirando. Para probar la vista del dueño usar un enlace de PRUEBA (y
   borrarlo), no el del dueño real, o se le suman aperturas falsas.

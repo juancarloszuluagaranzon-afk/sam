@@ -41,6 +41,8 @@ export interface CtxFincas {
   puedeReportar: boolean
   /** La vista del dueño de la tierra: solo lectura, sin nada de la administración. */
   modoDueno: boolean
+  /** Suertes con novedades desde la última visita del dueño: se resaltan en el mapa. */
+  resaltar?: Set<string>
   nombre: (id: string) => string
   hoy: string
   abrirFinca: (id: string) => void

@@ -9736,3 +9736,14 @@ td.planilla-vacio:hover { background: #fde047; }
   background: #ecfdf3; border: 1px solid #bbf7d0; color: #14532d;
 }
 .af-instalar p { margin: 4px 0 0; font-size: 0.86rem; max-width: 62ch; }
+
+/* Avisos al celular y novedades desde la última visita del dueño (25-sep-2026) */
+.af-avisos, .af-novedades {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
+  margin-bottom: 12px; padding: 12px 14px; border-radius: 12px;
+}
+.af-avisos { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e3a8a; }
+.af-novedades { background: #fefce8; border: 1px solid #fde047; color: #713f12; }
+.af-avisos p, .af-novedades p { margin: 4px 0 0; font-size: 0.86rem; max-width: 62ch; }
+.af-novedades ul { margin: 6px 0 0; padding-left: 18px; font-size: 0.86rem; }
+.af-avisos__msg { font-weight: 700; }

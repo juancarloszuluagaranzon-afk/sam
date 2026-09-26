@@ -93,6 +93,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // Avisos al celular del dueño de la finca (notificaciones push): el
+        // service worker generado importa el que las recibe y las muestra.
+        importScripts: ['sw-avisos.js'],
         // La librería del reconocimiento facial (~330 KB comprimida) solo la usa
         // el taller: fuera del precache, se guarda la primera vez que se abre la
         // cámara (ver `modelos-rostro` abajo).

@@ -50,6 +50,8 @@ export interface Poligono {
 export interface LaborMaquina {
   id: string; fincaId: string; suerteCodigo: string; labor: string
   estado: string; area: number; fecha: string
+  /** Cuándo quedó registrada (para «novedades desde su última visita»). */
+  registradoEn: string
   equipo: string | null; operador: string | null
 }
 export interface Ciclo {
@@ -228,6 +230,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
         // Mismo criterio del Reporte: si no quedó el área ejecutada, cuenta la planificada.
         area: hecha > 0 ? hecha : num(x.area_asignada),
         fecha: diaBogota(txt(x.fecha_fin) ?? txt(x.fecha_inicio) ?? String(x.created_at ?? '')),
+        registradoEn: txt(x.fecha_fin) ?? txt(x.fecha_inicio) ?? String(x.created_at ?? ''),
         equipo: txt(x.equipo_nombre) ?? txt(x.equipo_codigo), operador: txt(x.operador_nombre),
       }
     }),
@@ -367,6 +370,21 @@ export async function asignarPoligono(poligonoId: string, suerteId: string | nul
 }
 export async function quitarPoligono(poligonoId: string, token: string) {
   await lanzar(supabase.rpc('af_quitar_poligono', { p_token: token, p_poligono: poligonoId }))
+}
+
+// ── Avisos al celular del dueño (25-sep-2026) ─────────────────────────────
+export async function claveAvisos(): Promise<string | null> {
+  const d = await lanzar(supabase.rpc('af_clave_avisos'))
+  return d ? String(d) : null
+}
+export async function suscribirAvisos(token: string, sub: PushSubscriptionJSON, agente: string) {
+  await lanzar(supabase.rpc('af_suscribir', { p_token: token, p_sub: sub, p_agente: agente }))
+}
+export async function desuscribirAvisos(token: string, endpoint: string) {
+  await lanzar(supabase.rpc('af_desuscribir', { p_token: token, p_endpoint: endpoint }))
+}
+export async function probarAviso(token: string, endpoint: string): Promise<boolean> {
+  return Boolean(await lanzar(supabase.rpc('af_probar_aviso', { p_token: token, p_endpoint: endpoint })))
 }
 
 // ── Enlaces del dueño de la tierra (solo administración) ──────────────────

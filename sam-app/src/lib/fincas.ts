@@ -221,6 +221,8 @@ export interface HechoSuerte {
   estado: 'hecha' | 'parcial' | 'en curso' | 'por aceptar'
   detalle: string
   foto: string | null
+  /** Cuándo entró al sistema (terminada la maquinaria, aceptado o enviado el reporte). */
+  registradoEn: string
 }
 
 /**
@@ -238,6 +240,7 @@ export function hechosDeFinca(
       fecha: m.fecha, cantidad: m.area, unidad: 'ha', fuente: 'maquinaria',
       estado: m.estado === 'COMPLETADA' ? 'hecha' : m.estado === 'PARCIAL' ? 'parcial' : 'en curso',
       detalle: [m.equipo, m.operador].filter(Boolean).join(' · '), foto: null,
+      registradoEn: m.registradoEn,
     })
   }
   for (const r of d.reportes) {
@@ -249,6 +252,7 @@ export function hechosDeFinca(
       fecha: r.fecha, cantidad: r.cantidad, unidad: labor.unidad, fuente: 'campo',
       estado: r.estado === 'ACEPTADO' ? 'hecha' : 'por aceptar',
       detalle: `reportó ${nombre(r.reportadoPor)}${r.nota ? ` · ${r.nota}` : ''}`, foto: r.fotoUrl,
+      registradoEn: r.revisadoEn ?? r.createdAt,
     })
   }
   return out.sort((a, b) => b.fecha.localeCompare(a.fecha))
@@ -258,4 +262,11 @@ export function hechosDeFinca(
 export function edadMeses(fechaCorte: string | null | undefined, hoy: string): number | null {
   if (!fechaCorte) return null
   return Math.round((diasEntre(fechaCorte, hoy) / 30.4) * 10) / 10
+}
+
+/** «FERTILIZACION» → «Fertilización»: así se lee en la leyenda, la ficha y las novedades. */
+const TILDES: Record<string, string> = { FERTILIZACION: 'Fertilización', FUMIGACION: 'Fumigación', APLICACION: 'Aplicación' }
+export function nombreLabor(n: string): string {
+  const s = n.trim().toLowerCase()
+  return TILDES[llaveLabor(n)] ?? (s.charAt(0).toUpperCase() + s.slice(1))
 }

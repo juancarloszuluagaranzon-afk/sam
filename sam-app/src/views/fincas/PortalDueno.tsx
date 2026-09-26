@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import logoAgromorales from '../../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { PantallaSegura } from '../../components/PantallaSegura'
@@ -8,6 +8,8 @@ import { fmtFechaHora } from '../../lib/fechas'
 import { FincaDetalle } from './FincaDetalle'
 import type { CtxFincas } from './FincasView'
 import { InstalarApp } from './InstalarApp'
+import { AvisosFinca } from './AvisosFinca'
+import { hechosDeFinca, fmtCant, nombreLabor } from '../../lib/fincas'
 import { prepararInstalacionDueno } from './llaveDueno'
 
 /**
@@ -18,6 +20,26 @@ import { prepararInstalacionDueno } from './llaveDueno'
  */
 
 type Estado = 'cargando' | 'listo' | 'cancelado' | 'sin-red'
+
+/**
+ * La visita anterior del dueño en ESTE celular, leída una sola vez por carga de la
+ * app (y ahí mismo se anota la de ahora). Con eso se arma «novedades desde su
+ * última visita». Módulo y no estado de React: en desarrollo React monta dos veces
+ * y la segunda leería la hora que acaba de escribir la primera.
+ */
+const visitas = new Map<string, string | null>()
+function visitaAnterior(llave: string): string | null {
+  if (!visitas.has(llave)) {
+    const clave = `sam:af-visto:${llave.slice(0, 12)}`
+    let antes: string | null = null
+    try { antes = window.localStorage.getItem(clave); window.localStorage.setItem(clave, new Date().toISOString()) } catch { /* sin almacenamiento */ }
+    visitas.set(llave, antes)
+  }
+  return visitas.get(llave) ?? null
+}
+
+/** Cada cuánto se trae lo último mientras la tiene abierta (y a la vista). */
+const CADA_MS = 2 * 60 * 1000
 
 export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => void }) {
   const [datos, setDatos] = useState<CargaFincas | null>(null)
@@ -37,18 +59,34 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
   useEffect(() => {
     const traer = () => { void recargar() }
     traer()
-    // Al volver a la app (la tenía en segundo plano) se trae lo último.
+    // Al volver a la app (la tenía en segundo plano) se trae lo último…
     const alVolver = () => { if (document.visibilityState === 'visible') traer() }
     document.addEventListener('visibilitychange', alVolver)
-    return () => document.removeEventListener('visibilitychange', alVolver)
+    // …y mientras la tiene abierta y a la vista, cada 2 minutos.
+    const reloj = window.setInterval(() => {
+      if (document.visibilityState === 'visible' && navigator.onLine) traer()
+    }, CADA_MS)
+    return () => { document.removeEventListener('visibilitychange', alVolver); window.clearInterval(reloj) }
   }, [recargar])
 
+  // Novedades desde la última visita (lo que entró al sistema después).
+  const antes = useMemo(() => visitaAnterior(llave), [llave])
+  const [novedadesVistas, setNovedadesVistas] = useState(false)
+
   const finca = datos?.fincas[0] ?? null
+  const novedades = useMemo(() => {
+    if (!datos || !finca || !antes) return []
+    return hechosDeFinca(finca.id, datos, (id) => datos.nombres[id] ?? 'AgroServicios Morales')
+      .filter((h) => h.registradoEn > antes)
+  }, [datos, finca, antes])
+  const resaltar = useMemo(
+    () => (novedadesVistas ? undefined : new Set(novedades.map((h) => h.suerteCodigo))),
+    [novedades, novedadesVistas])
   // El ícono que ella instale lleva el nombre de SU finca (y en iPhone, su enlace).
   const nombreFinca = finca?.nombre ?? null
   useEffect(() => { if (nombreFinca) prepararInstalacionDueno(llave, nombreFinca) }, [llave, nombreFinca])
   const ctx: CtxFincas | null = datos && finca ? {
-    datos, recargar, token: llave, usuario: '', esAdmin: false, puedeReportar: false, modoDueno: true,
+    datos, recargar, token: llave, usuario: '', esAdmin: false, puedeReportar: false, modoDueno: true, resaltar,
     nombre: (id: string) => datos.nombres[id] ?? 'AgroServicios Morales',
     hoy: hoyBogota(), abrirFinca: () => {}, ir: () => {},
   } : null
@@ -78,6 +116,26 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
 
       <section className="af-cuerpo">
         {finca && estado === 'listo' && <InstalarApp nombreFinca={finca.nombre} />}
+        {finca && estado === 'listo' && <AvisosFinca llave={llave} nombreFinca={finca.nombre} />}
+        {finca && !novedadesVistas && novedades.length > 0 && antes && (
+          <div className="af-novedades" role="status">
+            <div>
+              <b>🆕 {novedades.length} novedad{novedades.length === 1 ? '' : 'es'} desde su última visita</b>
+              <small> ({fmtFechaHora(antes)})</small>
+              <ul>
+                {novedades.slice(0, 6).map((h) => (
+                  <li key={h.id}>
+                    {nombreLabor(h.labor)} · suerte {h.suerteCodigo.replace(/^0+/, '')} · {fmtCant(h.cantidad)} {h.unidad}
+                    {h.estado === 'por aceptar' ? ' (por aceptar)' : ''}
+                  </li>
+                ))}
+                {novedades.length > 6 && <li>y {novedades.length - 6} más…</li>}
+              </ul>
+              <p>Las suertes con novedades están resaltadas en amarillo en el mapa.</p>
+            </div>
+            <button type="button" className="inline-button" onClick={() => setNovedadesVistas(true)}>Entendido</button>
+          </div>
+        )}
         {estado === 'cancelado' ? (
           <div className="af-card af-vacio">
             <h3>Este enlace ya no está activo</h3>

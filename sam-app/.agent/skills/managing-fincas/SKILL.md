@@ -82,6 +82,11 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   - 🔴 `web-push` fuerza https: para probar el envío sin celular, suscripción falsa con llaves ECDH
     válidas y endpoint `https://supabase.surcoapp.tech/functions/v1/hello` → `enviados: 1`.
   - Desplegar la función = copiar la carpeta a `/opt/supabase/docker/volumes/functions/` (sin reiniciar).
+  - 🔴 **Quitar el enlace apaga sus avisos** (migración `20260926090000`): antes la suscripción seguía
+    activa y el celular de un enlace quitado SEGUÍA recibiendo notificaciones. Ahora `af_revocar_acceso`
+    apaga las suscripciones de ese enlace y, además, tanto `af_avisar` como la función solo mandan a
+    suscripciones con el enlace vigente (`af_suscripcion_vigente`).
+  - Probado en un celular real el 26-sep (Iván, enlace «PRUEBA AVISOS (Iván)»): llegó el aviso de prueba.
   - iPhone: avisos SOLO con la app instalada (iOS 16.4+); el permiso se pide en el mismo toque, antes
     de cualquier espera. 404/410 del servicio de push = suscripción muerta (`activa=false`).
 - ⚠️ `usos` cuenta CADA carga de la vista (también al volver a la pestaña), no visitas: 7 usos en 4

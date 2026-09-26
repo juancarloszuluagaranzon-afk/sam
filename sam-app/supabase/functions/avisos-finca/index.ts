@@ -32,11 +32,14 @@ Deno.serve(async (req) => {
   if (!finca_id) return new Response('falta finca_id', { status: 400 })
   webpush.setVapidDetails(v.contacto, v.publica, v.privada)
 
+  // Solo celulares cuyo enlace sigue vigente: un enlace quitado no recibe más avisos.
   const subs = endpoint
     ? await sql<Suscripcion[]>`select id, endpoint, p256dh, auth, fallos from public.af_suscripciones
-                               where finca_id = ${finca_id} and activa and endpoint = ${endpoint}`
+                               where finca_id = ${finca_id} and activa and endpoint = ${endpoint}
+                                 and public.af_suscripcion_vigente(acceso_id)`
     : await sql<Suscripcion[]>`select id, endpoint, p256dh, auth, fallos from public.af_suscripciones
-                               where finca_id = ${finca_id} and activa`
+                               where finca_id = ${finca_id} and activa
+                                 and public.af_suscripcion_vigente(acceso_id)`
 
   const cargaUtil = JSON.stringify({ titulo, cuerpo, tag, url: '/' })
   let enviados = 0

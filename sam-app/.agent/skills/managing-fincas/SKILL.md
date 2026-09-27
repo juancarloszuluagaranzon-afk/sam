@@ -94,6 +94,11 @@ entero pasa por funciones `security definer` que reciben `p_token`:
     Además «ENSAYO dueña (Iván)» (id 23506ad4, creado 25-sep por SQL con `af_token_nuevo`) para
     ensayar el recorrido de la dueña desde cero (abrir → instalar → activar avisos) en un celular
     que nunca abrió la app. Quitarlo cuando ya no haga falta.
+- **Quién reporta en fincas** (26-sep): **Julio César Niño (U033, supervisor, zona SUR)** hace los
+  registros de las labores. Decisión de Iván: se queda como SUPERVISOR (solo reportar; también
+  puede aceptar reportes de otros, nunca el suyo). El paquete de labores lo arman owner/administración:
+  sin paquete no hay nada que reportar (al 26-sep en Riogrande solo estaba el madurante de la 0007).
+  Verificado en la base con sesión de prueba en transacción + ROLLBACK.
 - **Bitácora y «Labores por suerte» con la maquinaria** (25-sep, commit `0594114`): `bitacoraFinca`
   recibe también `maquinaria` (la misma que pinta el mapa). Antes el banner decía «5 labores en 30
   días» y la bitácora «Todavía no hay movimientos». En «Labores por suerte» cada suerte lista lo

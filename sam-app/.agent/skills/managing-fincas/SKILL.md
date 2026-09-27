@@ -99,6 +99,15 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   puede aceptar reportes de otros, nunca el suyo). El paquete de labores lo arman owner/administración:
   sin paquete no hay nada que reportar (al 26-sep en Riogrande solo estaba el madurante de la 0007).
   Verificado en la base con sesión de prueba en transacción + ROLLBACK.
+- **Paquete de Riogrande II** (26-sep, decisión de Iván: «solo lo que viene»): los ciclos se
+  cargaron el 23-sep SIN las labores del paquete. Se agregaron por SQL (mismo cálculo que
+  `af_abrir_ciclo`, `editado_por = 'CARGA_INICIAL'`) CONTROL DE MALEZAS y RIEGO en las 10 suertes
+  0001–0006 (20 labores, sin ventana). NO se cargaron ROTURACIÓN ni FERTILIZACIÓN: en las cortadas
+  en febrero ya pasaron (las hizo el administrador anterior) y en las de julio las hizo la
+  maquinaria de ASM → habrían salido «tarde / sin hacer» en rojo ante la dueña. La 0007 queda
+  solo con MADURANTE.
+  🔴 Ojo: `af_reportar` topa lo reportado de UNA labor al área de la suerte (SUPERA_AREA), así que
+  un segundo riego o una segunda aplicación de herbicida en el mismo ciclo NO se puede reportar.
 - **Bitácora y «Labores por suerte» con la maquinaria** (25-sep, commit `0594114`): `bitacoraFinca`
   recibe también `maquinaria` (la misma que pinta el mapa). Antes el banner decía «5 labores en 30
   días» y la bitácora «Todavía no hay movimientos». En «Labores por suerte» cada suerte lista lo

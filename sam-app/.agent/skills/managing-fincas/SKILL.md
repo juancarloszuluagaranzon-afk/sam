@@ -106,8 +106,17 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   en febrero ya pasaron (las hizo el administrador anterior) y en las de julio las hizo la
   maquinaria de ASM → habrían salido «tarde / sin hacer» en rojo ante la dueña. La 0007 queda
   solo con MADURANTE.
-  🔴 Ojo: `af_reportar` topa lo reportado de UNA labor al área de la suerte (SUPERA_AREA), así que
-  un segundo riego o una segunda aplicación de herbicida en el mismo ciclo NO se puede reportar.
+- **Labores de VARIAS PASADAS** (28-sep, migración `20260928090000`, pedido de Iván): columna
+  `repetible` en `af_paquete` y `af_labores` (el ciclo la hereda al abrirse en `af__abrir_ciclo`).
+  RIEGO y CONTROL DE MALEZAS quedaron repetibles (paquete + las 20 de Riogrande).
+  - `af__reportar`: si es repetible, cada REPORTE ≤ área de la suerte (una pasada); el TOTAL no se
+    topa. Las demás siguen con el tope acumulado (SUPERA_AREA).
+  - `af__revisar`: una repetible NUNCA pasa a TERMINADA sola (queda EN_CURSO todo el ciclo).
+  - `af_guardar_paquete`: al editar, si no llega `repetible` (app vieja) conserva el que tenía.
+  - App: `cantidadPlan` = UNA pasada; `avanceLabor` da `pasadaEnCurso`, `pasadas` y `restante` de
+    la pasada en curso. «Reportar labor» muestra «riego · pasada 2 · faltan 5,68 ha». Casilla
+    «Se hace varias veces en el ciclo» en el paquete.
+  - Probado en transacción + ROLLBACK (8 casos) y el cálculo con Node sobre `lib/fincas.ts`.
 - **Bitácora y «Labores por suerte» con la maquinaria** (25-sep, commit `0594114`): `bitacoraFinca`
   recibe también `maquinaria` (la misma que pinta el mapa). Antes el banner decía «5 labores en 30
   días» y la bitácora «Todavía no hay movimientos». En «Labores por suerte» cada suerte lista lo

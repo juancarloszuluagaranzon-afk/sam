@@ -62,12 +62,16 @@ export interface LaborPaquete {
   id: string; labor: string; unidad: string; cantidadPorHa: number; costoUnitario: number
   ventanaIdeal: number | null; ventanaNormal: number | null
   aplica: 'SOCA' | 'PLANTILLA' | 'AMBOS'; orden: number; activa: boolean
+  /** Varias pasadas por ciclo (riego, malezas): el total no se topa al área y no se cierra sola. */
+  repetible: boolean
 }
 export interface LaborCiclo {
   id: string; cicloId: string; labor: string; unidad: string
   cantidadPlan: number; costoUnitarioPlan: number
   ventanaIdeal: number | null; ventanaNormal: number | null
   estado: EstadoLabor; anuladaMotivo: string | null; orden: number
+  /** Heredado del paquete: `cantidadPlan` es UNA pasada (el área de la suerte). */
+  repetible: boolean
 }
 export interface ReporteCampo {
   id: string; laborId: string; cantidad: number; fecha: string; fotoUrl: string
@@ -243,6 +247,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       cantidadPlan: num(x.cantidad_plan), costoUnitarioPlan: num(x.costo_unitario_plan),
       ventanaIdeal: numN(x.ventana_ideal), ventanaNormal: numN(x.ventana_normal),
       estado: (x.estado as EstadoLabor) ?? 'PROGRAMADA', anuladaMotivo: txt(x.anulada_motivo), orden: num(x.orden),
+      repetible: x.repetible === true,
     })),
     reportes: arr('reportes').map((x) => ({
       id: String(x.id), laborId: String(x.labor_id), cantidad: num(x.cantidad), fecha: String(x.fecha),
@@ -262,6 +267,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       id: String(x.id), labor: String(x.labor), unidad: String(x.unidad ?? 'ha'), cantidadPorHa: num(x.cantidad_por_ha),
       costoUnitario: num(x.costo_unitario), ventanaIdeal: numN(x.ventana_ideal), ventanaNormal: numN(x.ventana_normal),
       aplica: (x.aplica as LaborPaquete['aplica']) ?? 'AMBOS', orden: num(x.orden), activa: x.activa !== false,
+      repetible: x.repetible === true,
     })),
   }
 }
@@ -299,7 +305,7 @@ export async function guardarPaquete(p: Partial<LaborPaquete> & { labor: string 
     p_datos: {
       labor: p.labor.trim().toUpperCase(), unidad: p.unidad ?? 'ha', cantidad_por_ha: p.cantidadPorHa ?? 1,
       costo_unitario: p.costoUnitario ?? 0, ventana_ideal: p.ventanaIdeal ?? null, ventana_normal: p.ventanaNormal ?? null,
-      aplica: p.aplica ?? 'AMBOS', orden: p.orden ?? 100, activa: p.activa ?? true,
+      aplica: p.aplica ?? 'AMBOS', orden: p.orden ?? 100, activa: p.activa ?? true, repetible: p.repetible ?? false,
     },
   }))
 }

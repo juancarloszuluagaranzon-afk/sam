@@ -185,10 +185,13 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                       <tbody>
                         {propias.map((x) => (
                           <tr key={x.labor.id} className={x.labor.estado === 'ANULADA' ? 'af-anulada' : ''}>
-                            <td><b>{x.labor.labor.toLowerCase()}</b><small>{fmtCant(x.labor.cantidadPlan)} {x.labor.unidad}</small></td>
+                            <td><b>{x.labor.labor.toLowerCase()}</b><small>{fmtCant(x.labor.cantidadPlan)} {x.labor.unidad}{x.labor.repetible ? ' por pasada' : ''}</small></td>
                             <td>
                               <span className="af-barra af-barra--chica" aria-hidden="true"><i style={{ width: `${x.avance.pct}%` }} /></span>
-                              <small>{fmtCant(x.avance.aceptado)} aceptado{x.avance.porAceptar ? ` · ${fmtCant(x.avance.porAceptar)} por aceptar` : ''}</small>
+                              <small>
+                                {x.labor.repetible && x.avance.aceptado > 0 ? `${fmtCant(x.avance.pasadas)} pasada${x.avance.pasadas === 1 ? '' : 's'} · ` : ''}
+                                {fmtCant(x.avance.aceptado)} aceptado{x.avance.porAceptar ? ` · ${fmtCant(x.avance.porAceptar)} por aceptar` : ''}
+                              </small>
                             </td>
                             {VER_PLATA && <td>{x.labor.costoUnitarioPlan > 0 ? fmtPesosCorto(x.labor.cantidadPlan * x.labor.costoUnitarioPlan) : <span className="af-rojo">sin costo</span>}
                               <small>{x.labor.costoUnitarioPlan > 0 ? `${fmtPesos(x.labor.costoUnitarioPlan)} / ${x.labor.unidad}` : ''}</small></td>}

@@ -69,6 +69,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   const labor = labores.find((l) => l.id === laborId)
   const avance = labor ? avanceLabor(labor, d.reportes) : null
   const n = Number(cantidad.replace(',', '.'))
+  const topePasada = d.suertes.find((s) => s.id === suerteId)?.areaHa ?? labor?.cantidadPlan ?? 0
   const misReportes = useMemo(() => d.reportes.filter((r) => r.reportadoPor === usuario).slice(0, 8), [d.reportes, usuario])
 
   if (!puedeReportar) return <p className="subtle-copy">Su usuario no reporta labores de fincas.</p>
@@ -76,7 +77,9 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   const problemas = [
     !labor && 'Escoja finca, suerte y labor.',
     labor && !(n > 0) && 'Escriba la cantidad hecha.',
-    labor && avance && esHectarea(labor.unidad) && n > avance.restante + 0.001 && `Solo quedan ${fmtCant(avance.restante)} ${labor.unidad} por reportar en esta labor.`,
+    labor && avance && esHectarea(labor.unidad) && !labor.repetible && n > avance.restante + 0.001 && `Solo quedan ${fmtCant(avance.restante)} ${labor.unidad} por reportar en esta labor.`,
+    // Varias pasadas: el total no se topa, pero una pasada no cabe en más que la suerte.
+    labor && esHectarea(labor.unidad) && labor.repetible && n > topePasada + 0.001 && `Una pasada no puede pasar de ${fmtCant(topePasada)} ha (el área de la suerte).`,
     ciclo && fecha < ciclo.fechaCorte && `La fecha no puede ser antes del corte (${ciclo.fechaCorte}).`,
     fecha > hoy && 'La fecha no puede ser después de hoy.',
     !foto && 'Tome la foto de la labor: sin foto no hay reporte.',
@@ -143,7 +146,9 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
             }}>
               <option value="">Escoja…</option>
               {labores.map((l) => { const a = avanceLabor(l, d.reportes); return (
-                <option key={l.id} value={l.id}>{l.labor.toLowerCase()} · faltan {fmtCant(a.restante)} {l.unidad}</option>
+                <option key={l.id} value={l.id}>
+                  {l.labor.toLowerCase()} · {l.repetible ? `pasada ${a.pasadaEnCurso} · ` : ''}faltan {fmtCant(a.restante)} {l.unidad}
+                </option>
               ) })}
             </select>
           </label>

@@ -9752,3 +9752,7 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-hechos { margin: 8px 0 0; padding-left: 18px; font-size: 0.88rem; }
 .af-hechos li { margin: 2px 0; }
 .af-hechos small { color: var(--text-muted, #64748b); }
+
+/* Casilla con texto al lado dentro de los formularios de fincas (28-sep-2026) */
+.af-check { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; font-weight: 400; }
+.af-check input { width: auto; margin-top: 3px; }

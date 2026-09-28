@@ -28,7 +28,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
     <div className="af-stack">
       <div className="af-cab">
         <div><p className="eyebrow">Plantilla</p><h2>Paquete de labores</h2></div>
-        <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, aplica: 'AMBOS', orden: 100, activa: true })}>+ Labor</button>
+        <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, aplica: 'AMBOS', orden: 100, activa: true, repetible: false })}>+ Labor</button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada ciclo: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Cambiarlo no toca los ciclos ya abiertos.</p>
       {error && <p className="feedback error">{error}</p>}
@@ -53,6 +53,10 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
               </select>
             </label>
             <label>Orden<input id="af-p-orden" inputMode="numeric" value={String(editando.orden ?? 100)} onChange={(e) => setEditando({ ...editando, orden: Number(e.target.value) || 100 })} /></label>
+            <label className="af-form__ancho af-check">
+              <input id="af-p-repetible" type="checkbox" checked={!!editando.repetible} onChange={(e) => setEditando({ ...editando, repetible: e.target.checked })} />
+              Se hace varias veces en el ciclo (riego, malezas): cada pasada se reporta aparte y la labor no se cierra sola
+            </label>
           </div>
           <div className="af-acciones">
             <button type="button" className="primary-button" disabled={guardando || !editando.labor.trim()} onClick={() => void guardar()}>{guardando ? 'Guardando…' : 'Guardar'}</button>
@@ -68,7 +72,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
             <tbody>
               {d.paquete.map((p) => (
                 <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
-                  <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}</small></td>
+                  <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}{p.repetible ? ' · varias pasadas' : ''}</small></td>
                   <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}</small></td>
                   {VER_PLATA && <td>{p.costoUnitario > 0 ? `${fmtPesos(p.costoUnitario)} / ${p.unidad}` : <span className="af-rojo">sin costo</span>}</td>}
                   <td><small>{p.ventanaIdeal != null && p.ventanaNormal != null ? `ideal ≤${p.ventanaIdeal} · normal ≤${p.ventanaNormal} días` : 'sin ventana'}</small></td>

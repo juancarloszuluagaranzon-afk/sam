@@ -26,16 +26,28 @@ export function cicloAbiertoDe(suerteId: string, ciclos: Ciclo[]): Ciclo | null 
   return ciclos.find((c) => c.suerteId === suerteId && c.estado === 'ABIERTO') ?? null
 }
 
-/** Lo aceptado y lo que falta aceptar de una labor. */
+/**
+ * Lo aceptado y lo que falta aceptar de una labor.
+ * Varias pasadas (riego, malezas): `cantidadPlan` es UNA pasada; `restante` es lo
+ * que falta de la pasada en curso (al completarla se abre otra entera) y
+ * `pasadas` cuántas van aceptadas (1,5 = una y media).
+ */
 export function avanceLabor(labor: LaborCiclo, reportes: ReporteCampo[]) {
   const propios = reportes.filter((r) => r.laborId === labor.id)
   const aceptado = propios.filter((r) => r.estado === 'ACEPTADO').reduce((s, r) => s + r.cantidad, 0)
   const porAceptar = propios.filter((r) => r.estado === 'PENDIENTE').reduce((s, r) => s + r.cantidad, 0)
   const primeraAceptada = propios.filter((r) => r.estado === 'ACEPTADO').map((r) => r.fecha).sort()[0] ?? null
+  const plan = labor.cantidadPlan
+  const llevado = aceptado + porAceptar
+  const completas = labor.repetible && plan > 0 ? Math.floor((llevado + 0.001) / plan) : 0
   return {
     aceptado, porAceptar, primeraAceptada,
-    restante: Math.max(0, labor.cantidadPlan - aceptado - porAceptar),
-    pct: labor.cantidadPlan > 0 ? Math.min(100, Math.round((aceptado / labor.cantidadPlan) * 100)) : 0,
+    restante: labor.repetible
+      ? (plan > 0 ? Math.round((plan - (llevado - completas * plan)) * 100) / 100 : 0)
+      : Math.max(0, plan - aceptado - porAceptar),
+    pct: plan > 0 ? Math.min(100, Math.round((aceptado / plan) * 100)) : 0,
+    pasadas: labor.repetible && plan > 0 ? Math.round((aceptado / plan) * 10) / 10 : 0,
+    pasadaEnCurso: completas + 1,
   }
 }
 

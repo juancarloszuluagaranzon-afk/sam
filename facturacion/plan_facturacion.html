@@ -1,0 +1,314 @@
+<title>Facturación por labor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --tierra: #1a6b3a;
+    --tinta: #1d2621;
+    --tinta-2: #4d5c53;
+    --tinta-3: #6f7d74;
+    --papel: #fafbf8;
+    --hoja: #ffffff;
+    --linea: #dde4dd;
+    --suave: #eef3ee;
+    --ok: #2f7f4f;
+    --ok-fondo: #e3f1e7;
+    --ojo: #b5770f;
+    --ojo-fondo: #fbf0dc;
+    --mal: #b3402f;
+    --mal-fondo: #f9e3df;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --cond: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --tierra: #7cc79a; --tinta: #e6ece7; --tinta-2: #b3c0b7; --tinta-3: #8d9a91;
+      --papel: #121714; --hoja: #19201b; --linea: #2c362f; --suave: #1f2822;
+      --ok: #6cc08e; --ok-fondo: #1d3326; --ojo: #e2a94a; --ojo-fondo: #382c14; --mal: #ec8a7a; --mal-fondo: #3b1f1a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --tierra: #7cc79a; --tinta: #e6ece7; --tinta-2: #b3c0b7; --tinta-3: #8d9a91;
+    --papel: #121714; --hoja: #19201b; --linea: #2c362f; --suave: #1f2822;
+    --ok: #6cc08e; --ok-fondo: #1d3326; --ojo: #e2a94a; --ojo-fondo: #382c14; --mal: #ec8a7a; --mal-fondo: #3b1f1a;
+  }
+
+  body { background: var(--papel); color: var(--tinta); font: 400 15.5px/1.6 var(--sans); }
+  .pagina { max-width: 800px; margin: 0 auto; padding-inline: 20px; padding-block: 40px 72px; display: grid; gap: 44px; }
+  h1, h2, h3 { font-family: var(--cond); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(30px, 5vw, 42px); line-height: 1.08; font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 23px; font-weight: 600; color: var(--tinta); }
+  h3 { font-size: 17px; font-weight: 600; }
+  p { margin: 0; max-width: 66ch; }
+  .etiqueta { font: 600 12px/1 var(--cond); letter-spacing: 0.12em; text-transform: uppercase; color: var(--tierra); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  section { display: grid; gap: 16px; }
+
+  header.cab { display: grid; gap: 14px; border-bottom: 2px solid var(--tierra); padding-bottom: 22px; }
+  .cab p { color: var(--tinta-2); font-size: 17px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--tinta-3); }
+
+  /* Flujo: una labor terminada hasta la pre-factura (es una secuencia real) */
+  .flujo { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; border: 1px solid var(--linea); border-radius: 6px; background: var(--hoja); overflow: hidden; }
+  .flujo li { padding: 14px 14px 16px; display: grid; gap: 6px; align-content: start; border-left: 1px solid var(--linea); }
+  .flujo li:first-child { border-left: 0; }
+  .flujo b { font: 600 14px/1.25 var(--cond); }
+  .flujo span { font-size: 13px; color: var(--tinta-2); line-height: 1.4; }
+  .flujo .paso { font: 500 12px/1 var(--mono); color: var(--tierra); }
+  @media (max-width: 700px) {
+    .flujo { grid-template-columns: 1fr; }
+    .flujo li { border-left: 0; border-top: 1px solid var(--linea); }
+    .flujo li:first-child { border-top: 0; }
+  }
+
+  /* Cifras de hoy */
+  .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+  .cifra { display: grid; gap: 2px; padding: 14px 16px; background: var(--hoja); border: 1px solid var(--linea); border-radius: 6px; }
+  .cifra b { font: 500 24px/1.15 var(--mono); font-variant-numeric: tabular-nums; }
+  .cifra span { font-size: 13px; color: var(--tinta-2); }
+
+  /* Barra de cobertura */
+  .cobertura { display: grid; gap: 10px; padding: 18px; background: var(--hoja); border: 1px solid var(--linea); border-radius: 6px; }
+  .barra { display: flex; height: 30px; gap: 2px; border-radius: 4px; overflow: hidden; }
+  .barra i { display: block; height: 100%; }
+  .barra .s-ok { background: var(--ok); } .barra .s-ojo { background: var(--ojo); } .barra .s-mal { background: var(--mal); }
+  .leyenda { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px 16px; font-size: 13.5px; }
+  .leyenda div { display: grid; grid-template-columns: 12px 1fr; gap: 2px 8px; align-items: baseline; }
+  .leyenda .punto { width: 12px; height: 12px; border-radius: 2px; transform: translateY(2px); }
+  .leyenda small { grid-column: 2; color: var(--tinta-2); }
+
+  /* Tablas */
+  .tabla-caja { overflow-x: auto; border: 1px solid var(--linea); border-radius: 6px; background: var(--hoja); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font: 600 12px/1.2 var(--cond); letter-spacing: 0.06em; text-transform: uppercase; color: var(--tinta-3); padding: 10px 12px; border-bottom: 1px solid var(--linea); background: var(--suave); }
+  td { padding: 11px 12px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.der, th.der { text-align: right; white-space: nowrap; }
+  td small { display: block; color: var(--tinta-2); font-size: 12.5px; margin-top: 2px; }
+  .chip { display: inline-block; font: 600 11.5px/1 var(--cond); letter-spacing: 0.04em; padding: 4px 7px; border-radius: 3px; white-space: nowrap; }
+  .chip.hoja { background: var(--suave); color: var(--tierra); border: 1px solid var(--linea); }
+  .chip.ojo { background: var(--ojo-fondo); color: var(--ojo); }
+  .chip.mal { background: var(--mal-fondo); color: var(--mal); }
+
+  /* Fases */
+  .fases { display: grid; gap: 0; border-left: 2px solid var(--linea); margin-left: 6px; }
+  .fase { position: relative; padding: 0 0 22px 22px; display: grid; gap: 6px; }
+  .fase::before { content: ""; position: absolute; left: -7px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: var(--papel); border: 2px solid var(--tierra); }
+  .fase.hoy::before { background: var(--tierra); }
+  .fase .cuando { font: 500 12.5px/1 var(--mono); color: var(--tierra); }
+  .fase ul { margin: 2px 0 0; padding-left: 18px; display: grid; gap: 3px; color: var(--tinta-2); font-size: 14.5px; }
+
+  .dos { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .dos { grid-template-columns: 1fr; } }
+  .caja { padding: 16px 18px; background: var(--hoja); border: 1px solid var(--linea); border-radius: 6px; display: grid; gap: 8px; align-content: start; }
+  .caja ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14.5px; }
+  .caja.auto h3 { color: var(--ok); } .caja.mano h3 { color: var(--ojo); }
+
+  .reglas { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+  .mensaje { display: grid; gap: 10px; }
+  .mensaje pre { margin: 0; white-space: pre-wrap; font: 400 14.5px/1.55 var(--sans); background: var(--hoja); border: 1px solid var(--linea); border-left: 3px solid var(--tierra); border-radius: 4px; padding: 16px 18px; }
+  button.copiar { justify-self: start; font: 600 14px/1 var(--cond); letter-spacing: 0.03em; color: #fff; background: var(--tierra); border: 0; border-radius: 4px; padding: 10px 16px; cursor: pointer; }
+  :root[data-theme="dark"] button.copiar { color: #10160f; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.copiar { color: #10160f; } }
+  button.copiar:focus-visible { outline: 2px solid var(--tinta); outline-offset: 2px; }
+  .nota { font-size: 13px; color: var(--tinta-3); }
+</style>
+
+<main class="pagina">
+  <header class="cab">
+    <span class="etiqueta">AgroServicios Morales · Plan de trabajo</span>
+    <h1>Valor a facturar en cada labor realizada</h1>
+    <p>Que la app diga sola, línea por línea, cuánto se le factura a quién y con qué razón social. Así la quincena se cierra con una pre-factura lista, en vez de armarla a mano.</p>
+    <div class="meta"><span>Reunión con el cliente · 28 de septiembre de 2026</span><span>Datos de la app al 28-sep</span></div>
+  </header>
+
+  <section>
+    <span class="etiqueta">Cómo va a funcionar</span>
+    <h2>De la labor terminada a la pre-factura, sin digitar</h2>
+    <ol class="flujo">
+      <li><span class="paso">1</span><b>Labor terminada</b><span>El operador la cierra en campo con sus hectáreas, como hoy.</span></li>
+      <li><span class="paso">2</span><b>Cliente y razón social</b><span>Salen solos del ingenio y la hacienda: AgroMorales o Ceballos y Lozano.</span></li>
+      <li><span class="paso">3</span><b>Tarifa vigente</b><span>El precio que regía en la fecha de la labor, para esa labor y ese cliente.</span></li>
+      <li><span class="paso">4</span><b>Valor de la línea</b><span>Hectáreas × tarifa. Si falta el precio, sale «sin tarifa», nunca en $0.</span></li>
+      <li><span class="paso">5</span><b>Pre-factura</b><span>Por quincena, razón social y cliente, en Excel. Se le pone el número de factura en lote.</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <span class="etiqueta">Dónde estamos</span>
+    <h2>Lo que ya hay en la app</h2>
+    <div class="cifras">
+      <div class="cifra"><b class="num">4.739</b><span>labores terminadas desde el 16 de mayo</span></div>
+      <div class="cifra"><b class="num">≈ 26.250 ha</b><span>realizadas en ese periodo</span></div>
+      <div class="cifra"><b class="num">0</b><span>con número de factura en la app: se arranca limpio</span></div>
+      <div class="cifra"><b class="num">37</b><span>precios en la tabla recibida, en 2 razones sociales</span></div>
+    </div>
+    <p>La pantalla de <b>Tarifas</b> ya existe y guarda cada precio con su fecha de vigencia: subir un precio no cambia lo ya facturado. Está escondida porque solo tenía precios de ejemplo. La de <b>Facturación</b> ya lista las labores realizadas y asigna número de factura en lote, pero todavía no muestra el valor en pesos.</p>
+
+    <div class="cobertura" role="img" aria-label="De 26.252 hectáreas realizadas: 10.575 con precio claro, 13.470 con precio pero falta decidir cuál, 2.207 sin precio.">
+      <h3>Si hoy se cruzara la tabla recibida con lo realizado</h3>
+      <div class="barra" aria-hidden="true">
+        <i class="s-ok" style="width:40.3%" title="Con precio claro: 10.575 ha"></i>
+        <i class="s-ojo" style="width:51.3%" title="Falta decidir cuál precio: 13.470 ha"></i>
+        <i class="s-mal" style="width:8.4%" title="Sin precio: 2.207 ha"></i>
+      </div>
+      <div class="leyenda">
+        <div><span class="punto" style="background:var(--ok)"></span><b><span class="num">10.575 ha</span> · 40 %</b><small>Con precio claro</small></div>
+        <div><span class="punto" style="background:var(--ojo)"></span><b><span class="num">13.470 ha</span> · 51 %</b><small>Hay precio, falta decidir cuál</small></div>
+        <div><span class="punto" style="background:var(--mal)"></span><b><span class="num">2.207 ha</span> · 8 %</b><small>La tabla no trae precio</small></div>
+      </div>
+      <p class="nota">Hectáreas realizadas del 16-may al 28-sep-2026, con la regla propuesta en la plantilla. Las acequias en hectómetros se suman como vienen.</p>
+    </div>
+  </section>
+
+  <section>
+    <span class="etiqueta">Qué hay que pedirle al cliente</span>
+    <h2>Seis respuestas resuelven lo que falta</h2>
+    <p>Todo va en un solo Excel <b>prellenado con nuestra propuesta</b>: ellos confirman o corrigen en las celdas amarillas y escogen de listas desplegables. Así, al devolverlo, se carga directo a la app.</p>
+    <div class="tabla-caja">
+      <table>
+        <thead><tr><th>Lo que hay que resolver</th><th class="der">Hectáreas</th><th class="der">Labores</th><th>Hoja</th></tr></thead>
+        <tbody>
+          <tr><td><b>Despeje de Riopaila: ¿AgroMorales o Ceballos y Lozano?</b><small>Tiene precio en las dos tablas ($107.203 y $108.028). Es la respuesta que más pesa.</small></td><td class="der num">8.097</td><td class="der num">1.320</td><td><span class="chip hoja">3 Razón social</span></td></tr>
+          <tr><td><b>¿Qué haciendas son de Riopaila Agrícola y cuáles del Ingenio Riopaila?</b><small>Reencalle, triple y cultivo tienen precio en los dos. Van listadas las 231 haciendas del Ingenio Riopaila que tiene la app.</small></td><td class="der num">3.560</td><td class="der num">590</td><td><span class="chip hoja">4 Haciendas</span></td></tr>
+          <tr><td><b>Precios de labores que se hacen y no están en la tabla</b><small>Reencalle V en San Carlos (1.140 ha), devolución de basura, despeje 0 x 0, subsuelo y triple en Mayagüez y Risaralda…</small></td><td class="der num">1.771</td><td class="der num">274</td><td><span class="chip hoja">2 Faltan precios</span></td></tr>
+          <tr><td><b>Variantes con precio distinto</b><small>Abono plantilla, 2x1 o 4x1; subsuelo y triple 4x1; cultivo plantilla o 2x1. ¿Cómo se sabe cuál es?</small></td><td class="der num">1.168</td><td class="der num">156</td><td><span class="chip hoja">5 Labores</span></td></tr>
+          <tr><td><b>Acequias: ¿por hectárea o por hectómetro?</b><small>En la app hay registros de las dos formas.</small></td><td class="der num">645</td><td class="der num">56</td><td><span class="chip hoja">5 Labores</span></td></tr>
+          <tr><td><b>Clientes sin tabla</b><small>Ingenio Carmelita, Trapiche Lucerna y labores sin ingenio en la app.</small></td><td class="der num">437</td><td class="der num">114</td><td><span class="chip hoja">2 Faltan precios</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Además, en la hoja <b>6 Preguntas</b>: desde qué fecha rigen los precios, si incluyen IVA, cada cuánto se factura y cómo se agrupa, si el ingenio exige número de orden de servicio en cada línea, quién aprueba antes de facturar y <b>una factura ya emitida de cada razón social</b>, para que la pre-factura salga en el mismo formato.</p>
+  </section>
+
+  <section>
+    <span class="etiqueta">Cronograma</span>
+    <h2>Plan de trabajo</h2>
+    <div class="fases">
+      <div class="fase hoy">
+        <span class="cuando">Hoy · en la reunión</span>
+        <h3>Recorrer el Excel con el cliente</h3>
+        <ul>
+          <li>Resolver en vivo lo que se pueda: el despeje de Riopaila, la vigencia, el IVA y la regla de Riopaila Agrícola.</li>
+          <li>Acordar quién llena el resto y para qué fecha lo devuelve.</li>
+          <li>Pedir una factura de ejemplo de AgroMorales y otra de Ceballos y Lozano.</li>
+        </ul>
+      </div>
+      <div class="fase">
+        <span class="cuando">Día 1 · al recibir el Excel</span>
+        <h3>Carga automática de precios y reglas</h3>
+        <ul>
+          <li>Un importador lee el Excel devuelto y carga cada precio con su razón social, cliente, labor, unidad y fecha de vigencia.</li>
+          <li>Carga la regla de razón social por cliente y la lista de haciendas de Riopaila Agrícola.</li>
+          <li>Entrega un informe de lo que no cuadró, en lugar de adivinarlo.</li>
+        </ul>
+      </div>
+      <div class="fase">
+        <span class="cuando">Días 2 y 3</span>
+        <h3>Facturación con valor en cada línea</h3>
+        <ul>
+          <li>Cada labor realizada muestra la tarifa aplicada y su valor; las que no tienen precio salen «sin tarifa».</li>
+          <li>Filtros por razón social, cliente y quincena, con totales facturado y por facturar.</li>
+          <li>Pre-factura en Excel: una hoja por razón social y cliente, con número de factura en lote.</li>
+        </ul>
+      </div>
+      <div class="fase">
+        <span class="cuando">Día 4</span>
+        <h3>Que la variante quede desde el campo</h3>
+        <ul>
+          <li>Labores nuevas en el catálogo (Fertilización 2x1, Subsuelo 4x1…): el supervisor escoge la correcta al asignar y el precio sale solo.</li>
+          <li>Tablero de ingresos: facturado contra por facturar, por mes y por cliente.</li>
+        </ul>
+      </div>
+      <div class="fase">
+        <span class="cuando">Una quincena · conciliación</span>
+        <h3>Probar contra una factura real</h3>
+        <ul>
+          <li>Sacar la pre-factura de la segunda quincena de septiembre y compararla con la factura que ellos emitieron a mano.</li>
+          <li>Corregir las diferencias y, a partir de ahí, facturar desde la app.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="nota">Los días cuentan desde que el cliente devuelve el Excel diligenciado.</p>
+  </section>
+
+  <section>
+    <span class="etiqueta">Qué queda automático</span>
+    <h2>Lo que hace la app y lo que sigue siendo de las personas</h2>
+    <div class="dos">
+      <div class="caja auto">
+        <h3>Automático</h3>
+        <ul>
+          <li>Cliente y razón social de cada labor, por ingenio y hacienda.</li>
+          <li>El precio vigente en la fecha de la labor.</li>
+          <li>El valor de cada línea y los totales.</li>
+          <li>El aviso de las líneas sin tarifa.</li>
+          <li>La pre-factura agrupada por quincena.</li>
+        </ul>
+      </div>
+      <div class="caja mano">
+        <h3>Manual (un toque)</h3>
+        <ul>
+          <li>Escoger la variante al asignar (2x1, 4x1, plantilla).</li>
+          <li>Poner el número de factura en lote.</li>
+          <li>Cargar un precio nuevo cuando cambie (con su fecha).</li>
+          <li>Resolver las líneas «sin tarifa» que aparezcan.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <span class="etiqueta">Reglas que protegen la plata</span>
+    <h2>Lo que la app no va a permitir</h2>
+    <ul class="reglas">
+      <li><b>Cambiar un precio no cambia lo ya facturado</b>: cada precio tiene fecha de inicio y de fin, y cada labor toma el que regía ese día.</li>
+      <li><b>Nada en $0 escondido</b>: una línea sin precio se ve en rojo y no entra a la pre-factura hasta que se resuelva.</li>
+      <li><b>Solo se factura lo aprobado</b> (a confirmar en la hoja 6), con las mismas hectáreas de la planilla.</li>
+      <li><b>Una línea, una factura</b>: una labor que ya tiene número de factura no vuelve a aparecer por facturar.</li>
+    </ul>
+  </section>
+
+  <section class="mensaje">
+    <span class="etiqueta">Para enviar con el Excel</span>
+    <h2>Mensaje al cliente</h2>
+    <pre id="texto-mensaje">Buen día. Como hablamos, les comparto el archivo «ASM_solicitud_tarifas_facturacion.xlsx» para dejar la facturación de labores automática en la app.
+
+Ya viene diligenciado con nuestra propuesta a partir de la tabla de precios que nos pasaron y de las labores registradas desde mayo. Solo necesitamos que revisen y completen las celdas amarillas (casi todo se escoge de listas):
+
+1. Tarifas: confirmar cada precio, la fecha desde la que rige y si incluye IVA.
+2. Faltan precios: labores que sí se han hecho y no tienen precio en la tabla.
+3. Razón social: si a cada cliente se le factura como AGROMORALES o CEBALLOS Y LOZANO.
+4. Haciendas: cuáles de Riopaila son de Riopaila Agrícola.
+5 y 6. Algunas preguntas sobre variantes (2x1, 4x1, plantilla) y sobre cómo facturan.
+
+Si nos pueden mandar también una factura ya emitida de cada razón social, la pre-factura saldrá en el mismo formato. Con el archivo de vuelta, cargamos todo en un día.
+
+Gracias.</pre>
+    <button type="button" class="copiar" id="btn-copiar">Copiar mensaje</button>
+  </section>
+</main>
+
+<script>
+  (function () {
+    var btn = document.getElementById('btn-copiar');
+    var pre = document.getElementById('texto-mensaje');
+    function seleccionar() {
+      var r = document.createRange(); r.selectNodeContents(pre);
+      var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    }
+    btn.addEventListener('click', function () {
+      var texto = pre.textContent;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texto).then(function () {
+          btn.textContent = 'Copiado';
+          setTimeout(function () { btn.textContent = 'Copiar mensaje'; }, 2000);
+        }).catch(function () { seleccionar(); btn.textContent = 'Texto seleccionado: Ctrl+C'; });
+      } else { seleccionar(); btn.textContent = 'Texto seleccionado: Ctrl+C'; }
+    });
+  })();
+</script>

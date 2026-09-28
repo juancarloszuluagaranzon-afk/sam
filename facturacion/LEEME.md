@@ -19,3 +19,10 @@ razón social del DESPEJE de Riopaila (8.097 ha).
 Pendiente al recibir el Excel: importador → `tarifas` (+ razón social, unidad, variante),
 regla razón social por cliente/hacienda, Riopaila Agrícola como cliente, valor por línea
 en `FacturacionTab`, pre-factura Excel, variantes en `labores_catalogo`.
+
+## Dos reglas que ya estaban decididas (skill managing-facturacion)
+- **No facturar hacia atrás**: la plantilla separa la vigencia del precio (desde el 16-may,
+  solo para VER el valor) de la fecha desde la que se FACTURA desde la app (propuesta
+  1-oct-2026). Antes de esa fecha la app valora, pero no arma cobro.
+- **El número legal sale del programa de facturación (¿Siigo?)**: la app entrega la
+  cuenta de cobro / pre-factura. La hoja 6 pregunta cuál programa usan.

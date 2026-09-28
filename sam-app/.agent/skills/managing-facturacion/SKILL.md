@@ -10,9 +10,62 @@ description: >
 
 # Facturacion y cartera — SAM
 
-⚠️ **Estado al 18-ago-2026: las TARIFAS viven en la rama `pruebas`, NO en
-produccion.** Decision del cliente: quiere probarlo antes. De este documento solo
-la investigacion es firme; el codigo esta en `pruebas`.
+⚠️ **Estado al 28-sep-2026:** el codigo de Tarifas YA esta en `main`, pero la
+entrada del menu sigue COMENTADA (`SupervisorView`, buscar "TARIFAS NO SE
+MUESTRA") porque la tabla solo tiene **27 tarifas de EJEMPLO**. `FacturacionTab`
+lista las realizadas y pone N° de factura en lote, pero **no muestra pesos**.
+Medido el 28-sep: **4.739 labores cerradas (16-may → 28-sep), ≈26.252 ha, cero con
+`factura_numero`.** Siguiente paso: ver «28-sep-2026: razon social y plantilla» abajo.
+
+## 🔴 28-sep-2026: razon social y plantilla para el cliente
+
+Pedido de Ivan: **ver el valor a facturar de cada linea de labor realizada**
+(ha × tarifa), lo mas automatico posible. Mando la tabla real de precios (imagen):
+
+- **CEBALLOS Y LOZANO NO es otra operacion ni otra empresa con maquinaria: es la
+  otra RAZON SOCIAL con la que se emiten algunas facturas** (palabras de Ivan: «en
+  la facturacion se hace con esta razon social»). La misma labor de la misma
+  maquinaria se factura como AGROMORALES o como CEBALLOS Y LOZANO, y el precio
+  cambia. → **La llave de la tarifa pasa a ser (razon social, cliente, labor
+  [+ variante], unidad, vigencia)**, no solo (cliente, labor, vigencia).
+- La tabla trae **37 precios**: AGROMORALES → San Carlos, Riopaila, **Riopaila
+  Agricola**, Mayaguez, Risaralda; CEBALLOS Y LOZANO → Pichichi, Riopaila,
+  **Proveedor**. Unidades: casi todo por ha; «Of. varios» por **hora ($50.000) y
+  por jornal ($640.000)**; acequias sin unidad clara (en la app hay ha y hm).
+- **Riopaila Agricola ≠ Ingenio Riopaila** y en la app ambas quedan como
+  `ingenio_id = riopaila`. Lo que dice la tabla: el **despeje** solo tiene precio en
+  «Riopaila»; **abono, subsuelo y acequias** solo en «Riopaila Agricola»;
+  reencalle, triple y cultivo en las dos → se decide por hacienda.
+- Variantes con precio propio: abono plantilla / 2x1 / 4x1, subsuelo y triple 4x1,
+  cultivo plantilla / 2x1, reencalle caña cruda/verde (= se asume `REENCALLE V`).
+  Propuesta: labores nuevas en `labores_catalogo` y que el supervisor escoja.
+
+**Cruce tabla × lo realizado** (regla propuesta en la plantilla): 40 % con precio
+claro · 51 % falta decidir · 8 % sin precio. Lo que mas pesa: **razon social del
+DESPEJE de Riopaila (8.097 ha / 1.320 labores)**; luego Riopaila vs Riopaila
+Agricola por hacienda (3.560 ha); REENCALLE V en San Carlos sin precio (1.140 ha).
+
+**Entregado** (todo en `asm/sam/facturacion/`, ver su `LEEME.md`):
+- `ASM_solicitud_tarifas_facturacion.xlsx` — PRELLENADA; el cliente solo confirma
+  celdas amarillas y escoge de listas (hoja oculta «Listas»). 🔴 **Hojas y
+  encabezados FIJOS: el importador los va a leer tal cual.** Hojas: 1 Tarifas ·
+  2 Faltan precios · 3 Razon social · 4 Haciendas (529, con cliente y razon social
+  por hacienda) · 5 Labores y variantes · 6 Preguntas.
+- `generar_plantilla.py` (regenera; necesita `combos.csv` y `haciendas.csv`, que NO
+  se versionan) y `plan_facturacion.html` (artifact
+  https://claude.ai/artifact/HgxrS719q4K44jaQUr1ABg).
+
+**Para no contradecir lo decidido en agosto** («no facturar hacia atras»): la
+plantilla separa **vigencia del precio** (desde el 16-may, solo para VER el valor)
+de la **fecha desde la que se FACTURA desde la app** (propuesta 1-oct-2026). Antes
+de esa fecha la app valora pero no arma cobro. Y pregunta en que programa emiten
+(¿Siigo?): el numero legal sale de ahi.
+
+**Al recibir el Excel (plan ≈4 dias):** importador → `tarifas` (+ columnas razon
+social, unidad, variante) · regla de razon social por cliente/hacienda · Riopaila
+Agricola como cliente · valor por linea y «sin tarifa» en rojo en `FacturacionTab`
+· pre-factura Excel por quincena + razon social + cliente · variantes en el
+catalogo · luego conciliar UNA quincena contra la factura real antes de salir.
 
 ## El punto de partida: cero facturas
 
@@ -93,8 +146,8 @@ previa editable** → aplicar.
 - Verificado: DESPEJE queda en 95.000 para junio, 104.000 para agosto y 112.000
   para 2027. **Cero huecos y cero solapes** entre vigencias.
 
-⚠️ Hay **14 tarifas de EJEMPLO** cargadas (marcadas en la pantalla con aviso).
-**Son inventadas.** Para limpiarlas: `delete from tarifas;`
+⚠️ Hay **27 tarifas de EJEMPLO** cargadas (nota «EJEMPLO…» o «Ajuste anual 8%»).
+**Son inventadas.** Borrarlas (con respaldo) antes de cargar las reales.
 
 ## Siigo — lo investigado (18-ago-2026, sin credenciales)
 
@@ -183,8 +236,9 @@ detecta y alerta; la nota credito la decide administracion.
   cobro y lleva la cartera; el numero legal sale de Siigo.
 - **Facturar hacia atras las 17.475 ha.** Reconstruir cinco meses con tarifas que
   nadie recuerda produce cartera falsa, que es peor que ninguna.
-- **Tarifa por operario, maquina o zona.** La llave es (cliente, labor, vigencia)
-  hasta que aparezca un contrato real que pida mas.
+- **Tarifa por operario, maquina o zona.** La llave es (razon social, cliente,
+  labor, unidad, vigencia) — la razon social entro el 28-sep porque la tabla real
+  la trae; nada mas hasta que un contrato real lo pida.
 - **Intereses de mora, multimoneda, conciliacion bancaria.** Con 7 clientes, quien
   cobra sabe a quien llamar; lo que le falta es el numero.
 - **Flujo de aprobacion de facturas.** Emitir ya es un acto del dueno. El segundo
@@ -193,7 +247,8 @@ detecta y alerta; la nota credito la decide administracion.
 
 ## Lo que bloquea seguir
 
-1. **Las tarifas reales.** ¿Cambia el precio segun el ingenio? ¿Cada cuanto se
-   renegocia? Sin esto no se factura nada.
-2. **La fecha de corte** desde la que se empieza a facturar.
-3. **Las credenciales de Siigo** y la empresa de pruebas.
+1. **Las tarifas reales** — 28-sep: llego la tabla (37 precios, 2 razones
+   sociales); falta que el cliente devuelva la plantilla diligenciada.
+2. **La fecha de corte** desde la que se empieza a facturar (preguntada en la hoja 6).
+3. **Las credenciales de Siigo** y la empresa de pruebas (hoja 6 pregunta en que
+   programa facturan).

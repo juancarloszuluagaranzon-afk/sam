@@ -332,7 +332,10 @@ titulo(ws, '6 · Cómo se factura', 'Con esto la app arma la pre-factura igual a
 cols = ['Pregunta', 'Por qué importa', 'Nuestra propuesta', 'Respuesta']
 encabezado(ws, 4, cols, [52, 52, 42, 42])
 GEN = [
-    ('¿Desde qué fecha rigen estos precios?', 'Para valorar lo ya hecho desde mayo con el precio que tocaba en su fecha.', 'Desde el 16-may-2026 (primera labor en la app)'),
+    ('¿Desde qué fecha rigen estos precios?', 'Para valorar lo ya hecho con el precio que tocaba en su fecha.', 'Desde el 16-may-2026 (primera labor en la app), solo para ver el valor'),
+    ('¿Desde qué fecha se empieza a FACTURAR desde la app? Lo anterior ya se facturó por fuera.', 'Para no volver a cobrar lo que ya se facturó: antes de esa fecha la app solo muestra el valor, no arma cobro.', 'Desde el 1-oct-2026'),
+    ('¿En qué programa emiten hoy la factura electrónica (Siigo u otro)? ¿Quién la emite?', 'El número legal y el envío a la DIAN salen de ese programa; la app arma la cuenta de cobro y la pre-factura.', 'La app entrega la pre-factura; el número lo da el programa de facturación'),
+    ('Datos de cada cliente para facturar: razón social, NIT y correo de facturación.', 'Para que la pre-factura salga completa por cliente.', 'Los traen las facturas de ejemplo'),
     ('¿Los precios incluyen IVA? ¿Qué impuestos o retenciones lleva la factura?', 'Para que el total de la pre-factura cuadre con la factura real.', 'Precio antes de IVA; la app muestra IVA aparte'),
     ('¿Cada cuánto se factura: quincenal o mensual? ¿Por cliente o por hacienda?', 'Así se agrupan las líneas en cada pre-factura.', 'Quincenal, una por razón social + cliente'),
     ('¿Se factura el área REALIZADA (la que reporta el operador) o el área de la suerte (maestro)?', 'Cambia el valor de cada línea.', 'Área realizada, como en la planilla'),

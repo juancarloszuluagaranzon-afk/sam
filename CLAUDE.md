@@ -529,8 +529,12 @@ hipótesis, no una verificación. Ver `capturing-gotchas`.
 2. **13 ACEQUIAS recortadas** (ago–sep, todas aprobadas, ninguna facturada): el número real
    no quedó guardado en ningún lado. Se le entregó a Carlos David un Excel con la lista para
    corregirlas con cada operario (solo administración puede).
-3. ¿Un turno de noche (empieza 11 p.m., termina 1 a.m.) cuenta el día que EMPEZÓ o el que
-   TERMINÓ? Hoy, el que terminó. 28 labores de 10 operarios en septiembre.
+
+✅ **Cerrado el 30-sep-2026 — turno de noche:** el cliente decidió que **cuenta el día en que
+TERMINA**. Es lo que la app ya hacía (`executionDateKey` = día de `fecha_fin`; planilla,
+historial, Reporte, Resumen, facturación y `labor_sesiones.fecha` igual), así que no se cambió
+código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y facturación. Ver
+`managing-assignments` → «Turnos que cruzan la medianoche».
 
 ## Cómo trabaja el usuario
 

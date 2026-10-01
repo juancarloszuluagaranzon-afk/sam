@@ -807,6 +807,15 @@ pone en el día 19, y el Excel del Reporte trae además «Fecha asignación» = 
 labores de 10 operarios en septiembre. ⚠️ Qué día cuenta un turno nocturno es decisión del
 cliente — **no cambiar `executionDateKey` sin su sí**: mueve quincenas, Resumen y facturación.
 
+✅ **Decidido por el cliente el 30-sep-2026: el turno de noche cuenta el día en que TERMINA.**
+Ya era así, no se tocó código. Revisado ese día que todo lo de lo REALIZADO fecha con el cierre:
+`executionDateKey` (COMPLETADA/PARCIAL → `dayKey(finishedAt)`; EN_PROCESO → inicio mientras
+dura) lo usan planilla (`lib/planilla.ts`), historial, KPI y Excel del Reporte («Fecha
+(ejecución)»; «Fecha asignación» es solo informativa) y Facturación; `labor_sesiones.fecha` =
+`todayKey` al cerrar (horas-máquina). Lo que sigue usando `dateKey` (fecha de asignación) es
+PROGRAMACIÓN: qué está asignado hoy, ciclos de suerte y el filtro de mes del Tablero de
+programado vs realizado — eso es correcto y no se cambia.
+
 Causa más probable del descuadre que vieron: `updated_at` no se movía al editar y las pantallas
 abiertas no recibían correcciones (ver `capturing-gotchas`), arreglado el mismo día.
 

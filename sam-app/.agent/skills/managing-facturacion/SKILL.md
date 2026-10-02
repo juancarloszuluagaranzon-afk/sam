@@ -132,8 +132,13 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   Mayagüez…), cada una con su motivo en Facturación (filtro «Sin tarifa»).
 - **Analista (Diego Urdinola, U051)** tiene Facturación y Cartera en `AnalistaView` y puede
   vincular (migración 20261002200000).
-- «Agricola.xlsx» (Descargas de Iván) trae cantidades reales de acequias de Riopaila Agrícola:
-  sirve para corregir parte de las 13 recortadas — pendiente del sí de Iván.
+- **«Facturar por»** (commit `37fd1ca`): Carlos David (administración, quien maneja el módulo)
+  escoge AGROMORALES o CEBALLOS Y LOZANO y cada línea se valora con la tabla de ESA empresa;
+  sin precio en esa empresa → «sin tarifa» con motivo. Línea ya facturada → la razón social de su
+  factura. Se recuerda en el equipo (`localStorage sam:fact-empresa`).
+- 🔴 **NO se modifican áreas ni hectómetros de los registros** (Iván, 2-oct): ni con «Agricola.xlsx»
+  (labores de Riopaila Agrícola con cantidades propias) ni con ningún otro archivo. Las corrige
+  administración en la app.
 
 **Para no contradecir lo decidido en agosto** («no facturar hacia atras»): la
 plantilla separa **vigencia del precio** (desde el 16-may, solo para VER el valor)

@@ -47,6 +47,8 @@ import { formatTime } from '../services/samApi'
 import { isSameCycle, areaEjecutadaVisible } from '../utils/suerteCycle'
 import { MaestrosTab } from './MaestrosTab'
 import { FacturacionTab } from './FacturacionTab'
+import { CarteraTab } from './CarteraTab'
+import { TrazaFacturacion } from '../components/TrazaFacturacion'
 import { PlanillaTab } from './PlanillaTab'
 import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
@@ -69,7 +71,7 @@ import { BotonManual } from '../components/BotonManual'
 import { filaMaestro } from '../lib/areaSuerte'
 import { faltaModalidad, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'cartera' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -958,7 +960,7 @@ export function SupervisorView({
                   <span className="more-sheet__icon">🧾</span>
                   <div>
                     <div className="more-sheet__label">Facturación</div>
-                    <div className="more-sheet__desc">Asigna N° de factura a las labores realizadas (en lote)</div>
+                    <div className="more-sheet__desc">Soporte del cliente y factura de cada labor realizada</div>
                   </div>
                 </button>
               </>
@@ -1032,7 +1034,19 @@ export function SupervisorView({
                     </div>
                   </button>
                 )}
-                {session.role === 'administracion' && (
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'cartera' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('cartera'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">💰</span>
+                    <div>
+                      <div className="more-sheet__label">Cartera</div>
+                      <div className="more-sheet__desc">Facturas por cobrar, días de mora y pagos</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
                     className={`more-sheet__item ${supervisorTab === 'facturacion' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('facturacion'); setMoreMenuOpen(false) }}
@@ -1040,7 +1054,7 @@ export function SupervisorView({
                     <span className="more-sheet__icon">🧾</span>
                     <div>
                       <div className="more-sheet__label">Facturación</div>
-                      <div className="more-sheet__desc">Asigna N° de factura a las labores realizadas (en lote)</div>
+                      <div className="more-sheet__desc">Soporte del cliente y factura de cada labor realizada</div>
                     </div>
                   </button>
                 )}
@@ -1618,7 +1632,7 @@ export function SupervisorView({
                   )
                 })}
                 <button
-                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' || supervisorTab === 'madera' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
+                  className={`${moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'maestros' || supervisorTab === 'planilla' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'cartera' || supervisorTab === 'motivacion' || supervisorTab === 'aprobaciones' || supervisorTab === 'asignar' || supervisorTab === 'resumen' || supervisorTab === 'bodegas' || supervisorTab === 'avales' || supervisorTab === 'taller' || supervisorTab === 'flota' || supervisorTab === 'madera' ? 'active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -1710,7 +1724,7 @@ export function SupervisorView({
                   </span>
                 </button>
                 <button
-                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'motivacion' ? 'active' : ''}
+                  className={moreMenuOpen || supervisorTab === 'tablero' || supervisorTab === 'reporte' || supervisorTab === 'planilla' || supervisorTab === 'realizadas' || supervisorTab === 'maestros' || supervisorTab === 'usuarios' || supervisorTab === 'catalogo' || supervisorTab === 'ingenios' || supervisorTab === 'empresas' || supervisorTab === 'terceros' || supervisorTab === 'zonas' || supervisorTab === 'insumos' || supervisorTab === 'facturacion' || supervisorTab === 'cartera' || supervisorTab === 'motivacion' ? 'active' : ''}
                   onClick={() => setMoreMenuOpen((v) => !v)}
                   aria-haspopup="true"
                   aria-expanded={moreMenuOpen}
@@ -2306,6 +2320,10 @@ export function SupervisorView({
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'facturacion' ? (
           <PantallaSegura nombre="Facturación"><FacturacionTab /></PantallaSegura>
+        ) : null}
+
+        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'cartera' ? (
+          <PantallaSegura nombre="Cartera"><CarteraTab /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'planilla' ? (
@@ -3785,7 +3803,7 @@ export function SupervisorView({
                   </div>
                 </div>
 
-                {!editingLabor ? (
+                {!editingLabor ? (<>
                   <div className="labor-detail-grid">
                     <span className="labor-label">Fecha</span>
                     <span className="labor-value">{selectedLabor.dateKey || '—'}</span>
@@ -3906,7 +3924,10 @@ export function SupervisorView({
                       </>
                     )}
                   </div>
-                ) : (
+                  {/* Trazabilidad: soporte del cliente → factura → días de cartera o pagada.
+                      Solo dueño y administración (lleva plata). */}
+                  {(session.role === 'owner' || session.role === 'administracion') && <TrazaFacturacion a={selectedLabor} />}
+                </>) : (
                   <div className="labor-detail-edit">
                     <label className="assignment-detail-field">
                       <span>Estado</span>

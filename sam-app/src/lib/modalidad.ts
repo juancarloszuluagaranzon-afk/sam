@@ -41,11 +41,13 @@ export function modalidadesDe(mapa: MapaModalidades, labor: string): string[] {
   return mapa[llave(labor)] ?? []
 }
 
-/** La que viene puesta de entrada: la 2X1 (o 2X1 MECANIZADA); en acequias, 2 PASES. */
+/** La que viene puesta de entrada: la 2X1 (o 2X1 MECANIZADA); en acequias, 2 PASES; en oficios varios, POR HORA. */
 export function modalidadSugerida(mapa: MapaModalidades, labor: string): string | null {
   const lista = modalidadesDe(mapa, labor)
   return lista.find((m) => m.toUpperCase().startsWith('2X1'))
     ?? lista.find((m) => m.toUpperCase() === '2 PASES')
+    // Oficios varios: la app los registra por horas (horómetro).
+    ?? lista.find((m) => m.toUpperCase() === 'POR HORA')
     ?? null
 }
 

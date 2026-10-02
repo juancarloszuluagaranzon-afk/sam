@@ -9774,3 +9774,20 @@ td.planilla-vacio:hover { background: #fde047; }
 .factura-chip--doc:hover { text-decoration: underline; }
 .fact-docs { margin-top: 14px; }
 .fact-docs summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+
+/* Cartera (2-oct-2026): al día · vencida · crítica · otras medidas · pagada */
+.cart-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.78rem; font-weight: 700; white-space: nowrap; }
+.cart--ok.cart-chip { background: #dcf3e4; color: #1e7a45; }
+.cart--neutro.cart-chip { background: var(--color-bg-muted); color: var(--color-ink-mid); }
+.cart--ojo.cart-chip { background: #fdf0d5; color: #9a6400; }
+.cart--mal.cart-chip { background: #fde3dd; color: #b3402f; }
+.cart--grave.cart-chip { background: #3a1d1a; color: #ffd9d2; }
+.cart--pagada.cart-chip { background: #e5e9ff; color: #3943a8; }
+.fact-etapa.cart--ojo b { color: #b37a0a; }
+.fact-etapa.cart--mal b, .fact-etapa.cart--grave b { color: #c0412f; }
+.cart-alerta { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: #fde3dd; color: #8a2c1f; border: 1px solid #f3b8ab; }
+.cart-fila { cursor: pointer; }
+.cart-pagos { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 6px; }
+.cart-pagos li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--color-border); }
+.cart-pago--anulado { opacity: 0.6; text-decoration: line-through; }
+.cart-pago-acc { display: flex; gap: 10px; }

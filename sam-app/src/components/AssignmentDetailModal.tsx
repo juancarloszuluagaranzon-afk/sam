@@ -2,6 +2,7 @@ import { memo, useEffect, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
 import { formatTime, getIngenioName } from '../services/samApi'
 import { unidadDeLabor } from '../lib/texto'
+import { TrazaFacturacion } from './TrazaFacturacion'
 
 interface EditPatch {
   executedArea?: number
@@ -247,6 +248,8 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
             <Row label="Finalizada" value={formatDateTime(a.finishedAt)} />
           </dl>
         </section>
+
+        <TrazaFacturacion a={a} />
 
         <section className="assignment-detail-section">
           <p className="eyebrow">Horómetros</p>

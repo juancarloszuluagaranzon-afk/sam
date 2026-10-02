@@ -73,7 +73,15 @@ preguntado en la hoja 5; si dicen que sí, es solo crear la lista).
   falta: mismo cuadro de cliente y zona, ahora también para ASIGNADAS) y **Facturación**
   (filtro «Sin modalidad (N)» + «Poner modalidad» en lote, solo si lo marcado es UNA
   labor). Al 2-oct: 978 labores de septiembre sin modalidad (todo lo anterior).
-- ⚠️ Tomar en campo (operario) NO pide modalidad: la completa el supervisor al aprobar.
+- 🔴 **El OPERARIO escoge la modalidad AL CERRAR** (commit `a0afc40`, pedido del cliente:
+  es quien ve el encalle real). Viene puesta la del supervisor o la sugerida; también en
+  «Registrar labor realizada». Al tomar en campo no se pide (se pide al cerrar).
+- 🔴 **De entrada TODO viene SUGERIDO en 2X1** (despeje 2X1 MECANIZADA) y **ACEQUIAS en 2
+  PASES** — se puede cambiar (`modalidadSugerida`: la que empieza por «2X1», si no «2 PASES»).
+  Por eso lo nuevo nunca queda sin modalidad y nada se frena.
+- 🔴 **ACEQUIAS: el hectómetro pagado incluye hasta 2 pases; desde el 3.º cada pase es
+  ADICIONAL** (`pasesAdicionales`). Facturación lo marca «+N adicional». Falta el precio del
+  pase adicional (hoja 5 de la plantilla).
 - La llave de tarifa al importar: razón social + cliente + labor + **modalidad** + unidad +
   vigencia. La plantilla ya pide «LABOR · MODALIDAD» («· TODAS» = el precio no cambia).
 

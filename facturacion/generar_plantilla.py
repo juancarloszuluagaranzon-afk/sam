@@ -33,7 +33,7 @@ LABORES_APP = [
     'TRIPLE · TODAS', 'TRIPLE · PLANTILLA', 'TRIPLE · 2X1', 'TRIPLE · 4X1',
     'FERTILIZACION · TODAS', 'FERTILIZACION · PLANTILLA', 'FERTILIZACION · 2X1', 'FERTILIZACION · 4X1',
     'CULTIVO · TODAS', 'CULTIVO · PLANTILLA', 'CULTIVO · 2X1',
-    'ACEQUIAS · 1 PASE', 'ACEQUIAS · 2 PASES', 'ACEQUIAS · 3 PASES', 'ACEQUIAS · POR HECTÓMETRO',
+    'ACEQUIAS · HECTÓMETRO (incluye hasta 2 pases)', 'ACEQUIAS · PASE ADICIONAL (3.º en adelante)',
     'DEVOLUCIÓN DE BASURA', 'OFICIOS VARIOS (hora)', 'OFICIOS VARIOS (jornal)', 'Otra (ver observación)']
 
 # Cómo se muestra en la hoja 1 cada precio de la tabla (la clasificación interna no cambia).
@@ -44,7 +44,7 @@ def con_modalidad(app, lab):
     if '2x1' in l: return ('FERTILIZACION' if 'abono' in l else app.split(' ')[0]) + ' · 2X1'
     if 'plantilla' in l: return ('FERTILIZACION' if 'abono' in l else app.split(' ')[0]) + ' · PLANTILLA'
     if app.startswith('OFICIOS'): return 'OFICIOS VARIOS (jornal)' if 'jornal' in l else 'OFICIOS VARIOS (hora)'
-    if app == 'ACEQUIAS': return None   # ¿por pase o por hectómetro? lo dicen ellos
+    if app == 'ACEQUIAS': return 'ACEQUIAS · HECTÓMETRO (incluye hasta 2 pases)'
     return app + ' · TODAS'
 CONFIRMA = ['Sí, correcto', 'Corregir (ver columnas)', 'Eliminar esta fila']
 SINO = ['Sí', 'No']
@@ -325,12 +325,12 @@ titulo(ws, '5 · Labores y variantes', 'Cómo sabe la app qué precio le toca a 
 cols = ['Labor en la app', 'Pregunta', 'Nuestra propuesta', 'Respuesta', 'Observación']
 encabezado(ws, 4, cols, [22, 60, 55, 38, 40])
 PREG = [
-    ('MODALIDADES (ya en la app)', 'Desde el 2-oct la app pide la modalidad al asignar: DESPEJE 0x0 / 2x1 mecanizada / 4x1 quemada · REENCALLE sencillo / 2x1 / verde · SUBSUELO y TRIPLE plantilla / 2x1 / 4x1 · ACEQUIAS 1 / 2 / 3 pases. ¿Está completa y bien escrita?', 'Sí, así quedó (se puede cambiar en Más → Listas sin publicar)'),
+    ('MODALIDADES (ya en la app)', 'Desde el 2-oct la app pide la modalidad al asignar: DESPEJE 0x0 / 2x1 mecanizada / 4x1 quemada · REENCALLE sencillo / 2x1 / verde · SUBSUELO y TRIPLE plantilla / 2x1 / 4x1 · ACEQUIAS 1 / 2 / 3 pases. De entrada TODO viene en 2X1 y las acequias en 2 PASES; el operario la confirma al cerrar. ¿Está completa?', 'Sí, así quedó (se puede cambiar en Más → Listas sin publicar)'),
     ('TRIPLE', 'En la hoja escrita el triple quedó con la llave vacía. ¿Tiene las mismas modalidades del subsuelo (plantilla, 2x1, 4x1)?', 'Las mismas del subsuelo'),
     ('FERTILIZACION', 'La hoja la deja SIN modalidad, pero la tabla de precios trae Abono plantilla, 2x1 y 4x1. ¿Se le ponen esas tres modalidades?', 'Sí: plantilla / 2x1 / 4x1'),
     ('CULTIVO', 'La tabla trae Cultivo aporque plantilla y 2x1 (proveedores). ¿Se le ponen esas modalidades?', 'Sí: plantilla / 2x1'),
     ('DESPEJE 2X1', '«2x1 verde limpio»: ¿el 2x1 mecanizado es siempre caña verde y limpia? ¿Hay un 2x1 quemado?', '2x1 = mecanizada en verde; 4x1 = quemada'),
-    ('ACEQUIAS', '¿El precio es por PASE (1, 2 o 3) o por hectómetro? ¿Un 2 pases cuesta el doble de uno?', 'Precio por modalidad (1, 2 o 3 pases)'),
+    ('ACEQUIAS', 'Regla del 2-oct: el hectómetro pagado incluye hasta 2 pases; desde el 3.º cada pase es ADICIONAL. ¿Cuánto vale el pase adicional por hectómetro? ¿Igual al hectómetro?', 'Mismo precio del hectómetro por cada pase adicional'),
     ('DEVOLUCIÓN DE BASURA', 'No está en la tabla (≈226 ha en Riopaila). ¿Qué precio tiene? ¿Se factura?', 'Poner precio en la hoja 2'),
     ('OFICIOS VARIOS', '¿Cuándo es por hora ($50.000) y cuándo por jornal ($640.000)? ¿Cuántas horas tiene un jornal?', 'La app lo registra por horas; jornal = labor aparte'),
     ('Labores ya registradas', 'Lo registrado antes del 2-oct no tiene modalidad. ¿Qué modalidad se les pone?', 'Administración la completa en lote en Facturación (filtro «Sin modalidad»)'),

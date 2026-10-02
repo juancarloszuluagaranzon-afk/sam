@@ -83,7 +83,7 @@ export function FlotaCerrarViaje({
     try {
       let firmaUrl: string | undefined
       let evidenciaUrl: string | undefined
-      const firmaFile = await firmaRef.current?.exportar()
+      const firmaFile = esImecol ? null : await firmaRef.current?.exportar()
       if (firmaFile) firmaUrl = await uploadImagenFlota(viaje.id, firmaFile, 'firma')
       if (foto) evidenciaUrl = await uploadImagenFlota(viaje.id, foto, 'evidencia')
 
@@ -97,7 +97,7 @@ export function FlotaCerrarViaje({
         firmaNombre: firmaNombre.trim() || undefined,
         evidenciaUrl,
       })
-      setInfo(esImecol ? 'Servicio terminado y firmado. Ya cuenta para la planilla.' : 'Viaje cerrado. Ya cuenta para la planilla.')
+      setInfo(esImecol ? 'Servicio terminado. Al final del día se firma la planilla.' : 'Viaje cerrado. Ya cuenta para la planilla.')
       onSaved()
       onClose()
     } catch (err) {
@@ -184,7 +184,12 @@ export function FlotaCerrarViaje({
 
         {/* En el papel esta columna se llama FIRMA RESPONSABLE y se escribe el
             nombre CON la cédula («MAURICIO CH 600486»): con el nombre solo, un
-            apellido repetido no distingue a nadie. */}
+            apellido repetido no distingue a nadie.
+            🔴 IMECOL ya NO firma por servicio (2-oct-2026): «una firma por día,
+            no una por registro». Se firma la planilla del día (FlotaFirmarDia). */}
+        {esImecol ? (
+          <p className="field-hint">✍️ La firma se pide <b>una sola vez al final del día</b>, para toda la planilla.</p>
+        ) : (
         <div className="flota-comprobante">
           <span className="flota-comprobante__lbl">✍️ {esImecol ? 'Firma del pasajero / responsable' : 'Firma responsable'}</span>
           <input type="text" className="flota-firma-nombre" placeholder="Nombre y cédula de quien recibe"
@@ -192,6 +197,7 @@ export function FlotaCerrarViaje({
                  onChange={(e) => setFirmaNombre(aMayus(e.target.value))} disabled={busy} />
           <FirmaPad ref={firmaRef} disabled={busy} />
         </div>
+        )}
 
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>

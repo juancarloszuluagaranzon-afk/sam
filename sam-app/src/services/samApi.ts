@@ -41,8 +41,7 @@ import type {
   Zona,
   UpdateAssignmentInput,
   UserProfile,
-  Zone,
-} from '../domain/sam'
+  Zone, FlotaFirmaDia, EditarFlotaServicioInput } from '../domain/sam'
 import { db } from '../lib/db'
 import { supabase } from '../lib/supabase'
 import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
@@ -3655,6 +3654,7 @@ function mapFlota(row: Record<string, unknown>): FlotaServicio {
     // Lección: un estado nuevo en el dominio obliga a revisar el MAPEO, porque
     // TypeScript no avisa si el mapeo nunca lo produce.
     estado: estado === 'ANULADO' ? 'ANULADO' : estado === 'EN_CURSO' ? 'EN_CURSO' : 'REGISTRADO',
+    firmaDiaId: s(row.firma_dia_id),
   }
 }
 
@@ -3797,6 +3797,97 @@ export async function ultimoKmDePlaca(placa: string): Promise<number | null> {
     .limit(1)
   const v = data?.[0]?.km_final
   return v == null ? null : Number(v)
+}
+
+/* ── Firma ÚNICA del día (IMECOL, 2-oct-2026) ───────────────────────────────
+ * «Una firma por día, no una por registro: es una planilla para todos los
+ * recorridos del día». Ver la migración 20261003090000_flota_firma_dia.
+ */
+function mapFirmaDia(r: Record<string, unknown>): FlotaFirmaDia {
+  return {
+    id: String(r.id), conductorId: String(r.conductor_id ?? ''), conductorNombre: r.conductor_nombre ? String(r.conductor_nombre) : undefined,
+    fecha: String(r.fecha ?? ''), formato: r.formato === 'AGROMORALES' ? 'AGROMORALES' : 'IMECOL',
+    firmaUrl: String(r.firma_url ?? ''), firmaNombre: r.firma_nombre ? String(r.firma_nombre) : undefined,
+    nServicios: Number(r.n_servicios ?? 0), createdAt: String(r.created_at ?? ''),
+  }
+}
+
+export async function loadFirmasDia(opts?: { conductorId?: string; desde?: string; hasta?: string }): Promise<FlotaFirmaDia[]> {
+  let q = supabase.from('flota_firmas_dia').select('*').eq('anulado', false).order('fecha', { ascending: false })
+  if (opts?.conductorId) q = q.eq('conductor_id', opts.conductorId)
+  if (opts?.desde) q = q.gte('fecha', opts.desde)
+  if (opts?.hasta) q = q.lte('fecha', opts.hasta)
+  const { data, error } = await q
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map(mapFirmaDia)
+}
+
+/**
+ * Firma la planilla del día: sube la firma UNA vez y la deja en todos los
+ * servicios terminados de ese día que aún no tengan firma. Devuelve cuántos cubrió.
+ */
+export async function firmarDiaFlota(input: {
+  conductorId: string; conductorNombre?: string; fecha: string; formato: 'IMECOL' | 'AGROMORALES'
+  firma: File; firmaNombre?: string; servicioIds: string[]; creadoPor?: string
+}): Promise<number> {
+  const id = crypto.randomUUID()
+  const firmaUrl = await uploadImagenFlota(`dia-${input.conductorId}-${input.fecha}`, input.firma, 'firma')
+  const { error } = await supabase.from('flota_firmas_dia').insert({
+    id, conductor_id: input.conductorId, conductor_nombre: input.conductorNombre ?? null, fecha: input.fecha,
+    formato: input.formato, firma_url: firmaUrl, firma_nombre: input.firmaNombre?.trim() || null,
+    n_servicios: input.servicioIds.length, creado_por: input.creadoPor ?? null,
+  })
+  if (error) {
+    if (error.code === '23505') throw new Error('Este día ya tiene firma.')
+    throw new Error(error.message || 'No se pudo guardar la firma del día')
+  }
+  const { data, error: e2 } = await supabase.from('flota_servicios')
+    .update({ firma_dia_id: id, updated_at: new Date().toISOString() })
+    .in('id', input.servicioIds).eq('estado', 'REGISTRADO').is('firma_dia_id', null)
+    .select('id')
+  if (e2) throw new Error(e2.message || 'No se pudo marcar los servicios del día')
+  return data?.length ?? 0
+}
+
+/** Administración: quita la firma del día (queda ANULADA con motivo) y los servicios vuelven a poderse corregir. */
+export async function quitarFirmaDiaFlota(firmaId: string, motivo: string, usuario?: string): Promise<void> {
+  const { error } = await supabase.from('flota_firmas_dia')
+    .update({ anulado: true, anulado_motivo: motivo.trim(), anulado_por: usuario ?? null }).eq('id', firmaId)
+  if (error) throw new Error(error.message || 'No se pudo quitar la firma')
+  const { error: e2 } = await supabase.from('flota_servicios')
+    .update({ firma_dia_id: null, updated_at: new Date().toISOString() }).eq('firma_dia_id', firmaId)
+  if (e2) throw new Error(e2.message || 'No se pudo liberar los servicios')
+}
+
+/**
+ * Corrige un servicio. 🔴 Solo si su día NO está firmado (ni tiene firma vieja
+ * propia): la condición va en la consulta, así un día firmado no se toca aunque
+ * la pantalla estuviera desactualizada. Devuelve false si no se pudo.
+ */
+export async function editarFlotaServicio(id: string, cambios: EditarFlotaServicioInput, kmInicialActual?: number, kmFinalActual?: number): Promise<boolean> {
+  const p: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  const txt = (v: string | undefined) => (v === undefined ? undefined : v.trim() || null)
+  const mapa: [keyof EditarFlotaServicioInput, string][] = [
+    ['fecha', 'fecha'], ['vehiculo', 'vehiculo'], ['tipoServicio', 'tipo_servicio'], ['centroCosto', 'centro_costo'],
+    ['procesoSolicitante', 'proceso_solicitante'], ['nombrePasajero', 'nombre_pasajero'], ['origen', 'origen'], ['destino', 'destino'],
+    ['horaSalidaOrigen', 'hora_salida_origen'], ['horaLlegadaDestino', 'hora_llegada_destino'], ['horaSalidaDestino', 'hora_salida_destino'],
+    ['horaLlegadaOrigen', 'hora_llegada_origen'], ['horaEspera', 'hora_espera'], ['observacion', 'observacion'],
+  ]
+  for (const [k, col] of mapa) if (cambios[k] !== undefined) p[col] = txt(cambios[k] as string)
+  if (cambios.numPeajes !== undefined) p.num_peajes = cambios.numPeajes
+  if (cambios.otrosGastos !== undefined) p.otros_gastos = cambios.otrosGastos
+  if (cambios.kmInicial !== undefined) p.km_inicial = cambios.kmInicial
+  if (cambios.kmFinal !== undefined) p.km_final = cambios.kmFinal
+  // El total es la resta, igual que al cerrar.
+  const ini = cambios.kmInicial !== undefined ? cambios.kmInicial : kmInicialActual
+  const fin = cambios.kmFinal !== undefined ? cambios.kmFinal : kmFinalActual
+  if ((cambios.kmInicial !== undefined || cambios.kmFinal !== undefined) && ini != null && fin != null) {
+    p.total_km = Math.round((fin - ini) * 100) / 100
+  }
+  const { data, error } = await supabase.from('flota_servicios').update(p)
+    .eq('id', id).is('firma_dia_id', null).is('firma_url', null).neq('estado', 'ANULADO').select('id')
+  if (error) throw new Error(error.message || 'No se pudo guardar')
+  return (data?.length ?? 0) > 0
 }
 
 export async function anularFlotaServicio(id: string): Promise<void> {

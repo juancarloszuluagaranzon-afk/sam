@@ -287,6 +287,46 @@ export interface FlotaServicio {
   abiertoEn?: string
   /** Cuándo se cerró. `undefined` si sigue en curso. */
   cerradoEn?: string
+  /**
+   * Firma ÚNICA del día que cubre este servicio (IMECOL, desde el 2-oct-2026: una
+   * firma por día para toda la planilla). Con firma, el conductor ya no lo edita.
+   */
+  firmaDiaId?: string
+}
+
+/** La firma del día de un conductor (planilla de todos sus recorridos de ese día). */
+export interface FlotaFirmaDia {
+  id: string
+  conductorId: string
+  conductorNombre?: string
+  fecha: string
+  formato: FormatoFlota
+  firmaUrl: string
+  firmaNombre?: string
+  nServicios: number
+  createdAt: string
+}
+
+/** Lo que se puede corregir de un servicio mientras su día no esté firmado. */
+export interface EditarFlotaServicioInput {
+  fecha?: string
+  vehiculo?: string
+  tipoServicio?: string
+  centroCosto?: string
+  procesoSolicitante?: string
+  nombrePasajero?: string
+  origen?: string
+  destino?: string
+  horaSalidaOrigen?: string
+  horaLlegadaDestino?: string
+  horaSalidaDestino?: string
+  horaLlegadaOrigen?: string
+  horaEspera?: string
+  numPeajes?: number | null
+  otrosGastos?: number | null
+  kmInicial?: number | null
+  kmFinal?: number | null
+  observacion?: string
 }
 
 export type FormatoFlota = 'IMECOL' | 'AGROMORALES'

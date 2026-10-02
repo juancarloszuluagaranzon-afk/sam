@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { loadFlotaServicios, anularFlotaServicio } from '../services/samApi'
+import { loadFlotaServicios, anularFlotaServicio, loadFirmasDia, quitarFirmaDiaFlota } from '../services/samApi'
+import { FlotaFirmarDia } from './FlotaFirmarDia'
+import { FlotaEditarServicio } from './FlotaEditarServicio'
 import { FlotaForm } from './FlotaForm'
 import { FlotaFormOpe22 } from './FlotaFormOpe22'
 import { FlotaCerrarViaje } from './FlotaCerrarViaje'
-import type { FlotaServicio } from '../domain/sam'
+import type { FlotaFirmaDia, FlotaServicio } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 
 /**
@@ -51,7 +53,7 @@ function fmtFecha(iso: string): string {
 
 export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; nombre: string } }) {
   // `users` trae la CEDULA, que va en el encabezado del F-OPE-22.
-  const { busy, setBusy, setError, setInfo, users } = useAppData()
+  const { busy, setBusy, setError, setInfo, users, session } = useAppData()
   const esAdmin = !conductorScope
 
   const [servicios, setServicios] = useState<FlotaServicio[]>([])
@@ -68,11 +70,20 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
   /** El viaje que se esta cerrando, o `null`. */
   const [cerrando, setCerrando] = useState<FlotaServicio | null>(null)
   const [verFotoUrl, setVerFotoUrl] = useState<string>('')
+  // Firma ÚNICA del día (IMECOL, 2-oct-2026) y corrección de lo registrado.
+  const [firmas, setFirmas] = useState<FlotaFirmaDia[]>([])
+  const [firmandoDia, setFirmandoDia] = useState<{ fecha: string; conductorId: string; conductorNombre?: string; servicios: FlotaServicio[] } | null>(null)
+  const [editando, setEditando] = useState<FlotaServicio | null>(null)
 
   async function refresh() {
     setLoading(true)
     try {
-      setServicios(await loadFlotaServicios({ conductorId: conductorScope?.id, desde, hasta }))
+      const [sv, fd] = await Promise.all([
+        loadFlotaServicios({ conductorId: conductorScope?.id, desde, hasta }),
+        loadFirmasDia({ conductorId: conductorScope?.id, desde, hasta }),
+      ])
+      setServicios(sv)
+      setFirmas(fd)
     } finally { setLoading(false) }
   }
   useEffect(() => {
@@ -115,6 +126,37 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
    * planilla que parece completa y no lo está.
    */
   const efectivos = useMemo(() => lista.filter((s) => s.estado !== 'ANULADO'), [lista])
+
+  const firmaPorId = useMemo(() => new Map(firmas.map((f) => [f.id, f])), [firmas])
+  /** ¿Ya tiene firma? La del día, o la vieja de un solo servicio. */
+  const firmado = (s: FlotaServicio) => !!s.firmaDiaId || !!s.firmaUrl
+  /**
+   * Días de IMECOL con servicios TERMINADOS sin firma: uno por conductor y fecha.
+   * 🔴 Va arriba, como los viajes abiertos: una planilla sin firmar es trabajo
+   * pendiente, no historial.
+   */
+  const diasPorFirmar = useMemo(() => {
+    const m = new Map<string, { fecha: string; conductorId: string; conductorNombre?: string; servicios: FlotaServicio[] }>()
+    for (const s of servicios) {
+      if (s.formato === 'AGROMORALES' || s.estado !== 'REGISTRADO' || firmado(s) || !s.conductorId) continue
+      const k = `${s.conductorId}|${s.fecha}`
+      const g = m.get(k) ?? { fecha: s.fecha, conductorId: s.conductorId, conductorNombre: s.conductorNombre, servicios: [] }
+      g.servicios.push(s)
+      m.set(k, g)
+    }
+    return [...m.values()].sort((a, b) => b.fecha.localeCompare(a.fecha))
+  }, [servicios])
+
+  async function quitarFirma(f: FlotaFirmaDia) {
+    const motivo = window.prompt(`¿Por qué se quita la firma del ${fmtFecha(f.fecha)}? Los servicios de ese día vuelven a poderse corregir y hay que firmar de nuevo.`)
+    if (!motivo || !motivo.trim()) return
+    setBusy(true); setError('')
+    try {
+      await quitarFirmaDiaFlota(f.id, motivo, session?.id)
+      setInfo('Firma del día quitada: ya se pueden corregir esos servicios.')
+      void refresh()
+    } catch (e) { setError((e as Error).message) } finally { setBusy(false) }
+  }
   const deImecol = useMemo(() => efectivos.filter((s) => s.formato !== 'AGROMORALES'), [efectivos])
   const deAgromorales = useMemo(() => efectivos.filter((s) => s.formato === 'AGROMORALES'), [efectivos])
 
@@ -266,6 +308,53 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       obs.alignment = { vertical: 'top', wrapText: true }
       obs.border = marco
 
+      // 🔴 FIRMA DEL DÍA (2-oct-2026): una por día y conductor, para todos sus
+      // recorridos de ese día. Los días que no se firmaron salen marcados.
+      const dias = new Map<string, { fecha: string; conductor: string; firma?: FlotaFirmaDia; sinFirma: number; n: number }>()
+      for (const s of enOrden) {
+        if (s.estado === 'EN_CURSO') continue
+        const k = `${s.conductorId ?? ''}|${s.fecha}`
+        const g = dias.get(k) ?? { fecha: s.fecha, conductor: s.conductorNombre ?? '', sinFirma: 0, n: 0 }
+        g.n += 1
+        if (s.firmaDiaId) g.firma = firmaPorId.get(s.firmaDiaId) ?? g.firma
+        else if (!s.firmaUrl) g.sinFirma += 1
+        dias.set(k, g)
+      }
+      let fFirma = filaObs + 3
+      ws.mergeCells(fFirma, 1, fFirma, 16)
+      ws.getCell(fFirma, 1).value = 'FIRMA DE RECIBIDO DE LA PLANILLA DEL DÍA'
+      ws.getCell(fFirma, 1).font = { bold: true, size: 9 }
+      ws.getCell(fFirma, 1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE9F3ED' } }
+      ws.getCell(fFirma, 1).border = marco
+      fFirma += 1
+      for (const g of [...dias.values()].sort((a, b) => a.fecha.localeCompare(b.fecha))) {
+        ws.mergeCells(fFirma, 1, fFirma, 2); ws.mergeCells(fFirma, 3, fFirma, 6); ws.mergeCells(fFirma, 7, fFirma, 11); ws.mergeCells(fFirma, 12, fFirma, 16)
+        ws.getCell(fFirma, 1).value = fmtFecha(g.fecha)
+        ws.getCell(fFirma, 3).value = g.conductor
+        ws.getCell(fFirma, 7).value = g.firma ? (g.firma.firmaNombre ?? '') : g.sinFirma > 0 ? '⚠ SIN FIRMA DEL DÍA' : 'Firmado por servicio'
+        ws.getCell(fFirma, 12).value = `${g.n} servicio${g.n === 1 ? '' : 's'}`
+        for (const c of [1, 3, 7, 12]) {
+          ws.getCell(fFirma, c).font = { size: 9, bold: c === 7 && !g.firma && g.sinFirma > 0 }
+          ws.getCell(fFirma, c).alignment = { vertical: 'middle' }
+        }
+        for (let c = 1; c <= 16; c += 1) ws.getCell(fFirma, c).border = marco
+        if (g.firma?.firmaUrl) {
+          try {
+            const b64 = await fetch(g.firma.firmaUrl).then((r) => r.blob()).then((bl) => new Promise<string>((res) => {
+              const fr = new FileReader(); fr.onload = () => res(String(fr.result).split(',')[1] ?? ''); fr.readAsDataURL(bl)
+            }))
+            if (b64) {
+              ws.getRow(fFirma).height = 42
+              const idF = wb.addImage({ base64: b64, extension: 'jpeg' })
+              ws.addImage(idF, { tl: { col: 11.1, row: fFirma - 1 + 0.05 }, ext: { width: 120, height: 52 } })
+              ws.getCell(fFirma, 12).value = ''
+              ws.getCell(fFirma, 7).value = `${g.firma.firmaNombre ?? ''} · ${g.n} servicio${g.n === 1 ? '' : 's'}`
+            }
+          } catch { /* sin imagen queda el nombre */ }
+        }
+        fFirma += 1
+      }
+
       // Segunda hoja: lo que el papel no tiene pero el sistema si guarda.
       const ws2 = wb.addWorksheet('Respaldo')
       ws2.columns = [
@@ -278,7 +367,9 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
       ws2.getRow(1).font = { bold: true }
       enOrden.forEach((s) => ws2.addRow({
         f: fmtFecha(s.fecha), o: s.origen ?? '', d: s.destino ?? '', v: s.vehiculo ?? '',
-        c: s.conductorNombre ?? '', fq: s.firmaNombre ?? '', fu: s.firmaUrl ?? '',
+        c: s.conductorNombre ?? '',
+        fq: (s.firmaDiaId ? firmaPorId.get(s.firmaDiaId)?.firmaNombre : s.firmaNombre) ?? '',
+        fu: (s.firmaDiaId ? firmaPorId.get(s.firmaDiaId)?.firmaUrl : s.firmaUrl) ?? '',
         eu: s.evidenciaUrl ?? '', e: s.estado,
       }))
 
@@ -347,7 +438,8 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
         </div>
       </div>
       <Ayuda>
-        <p>Control de transporte de flota no propia (CDA-F-68). Cada servicio lleva su firma y foto de evidencia.</p>
+        <p>Control de transporte de flota no propia (CDA-F-68). Cada servicio lleva su foto de evidencia; la <b>firma es una por día</b>: al final del día, quien recibe firma la planilla de todos los recorridos.</p>
+        <p>Mientras el día no esté firmado, cada servicio se puede corregir con <b>✏️ Editar</b>.</p>
       </Ayuda>
 
       <div className="rep-toolbar">
@@ -395,7 +487,28 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
                 {esAdmin && s.conductorNombre ? ` · ${s.conductorNombre}` : ''}
               </span>
               <button type="button" className="primary-button" onClick={() => setCerrando(s)} disabled={busy}>
-                {s.formato === 'AGROMORALES' ? 'Cerrar viaje' : '✍️ Terminar y firmar'}
+                {s.formato === 'AGROMORALES' ? 'Cerrar viaje' : 'Terminar servicio'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ✍️ Días de IMECOL con servicios terminados SIN firma: una firma por día. */}
+      {diasPorFirmar.length > 0 && (
+        <div className="flota-abiertos flota-por-firmar">
+          <p className="flota-abiertos__tit">
+            {diasPorFirmar.length} planilla{diasPorFirmar.length === 1 ? '' : 's'} del día sin firmar
+          </p>
+          {diasPorFirmar.map((g) => (
+            <div key={`${g.conductorId}|${g.fecha}`} className="flota-abierto">
+              <strong>{fmtFecha(g.fecha)}</strong>
+              <span>
+                {g.servicios.length} servicio{g.servicios.length === 1 ? '' : 's'}
+                {esAdmin && g.conductorNombre ? ` · ${g.conductorNombre}` : ''}
+              </span>
+              <button type="button" className="primary-button" onClick={() => setFirmandoDia(g)} disabled={busy}>
+                ✍️ Firmar planilla del día
               </button>
             </div>
           ))}
@@ -434,15 +547,27 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
                 {esAdmin && s.conductorNombre && <span>🧑‍✈️ {s.conductorNombre}</span>}
                 {s.estado === 'ANULADO' && <span className="flota-anulado-badge">ANULADO</span>}
               </div>
-              {(s.firmaUrl || s.evidenciaUrl || s.firmaNombre) && (
+              {(s.firmaUrl || s.evidenciaUrl || s.firmaNombre || s.firmaDiaId) && (
                 <div className="flota-card__comp">
                   {s.evidenciaUrl && <button type="button" className="flota-thumb-btn" onClick={() => setVerFotoUrl(s.evidenciaUrl!)}>📷 Evidencia</button>}
                   {s.firmaUrl && <button type="button" className="flota-thumb-btn" onClick={() => setVerFotoUrl(s.firmaUrl!)}>✍️ Firma{s.firmaNombre ? ` · ${s.firmaNombre}` : ''}</button>}
+                  {s.firmaDiaId && firmaPorId.get(s.firmaDiaId) && (
+                    <button type="button" className="flota-thumb-btn" onClick={() => setVerFotoUrl(firmaPorId.get(s.firmaDiaId!)!.firmaUrl)}>
+                      ✍️ Firma del día{firmaPorId.get(s.firmaDiaId)!.firmaNombre ? ` · ${firmaPorId.get(s.firmaDiaId)!.firmaNombre}` : ''}
+                    </button>
+                  )}
                 </div>
               )}
-              {esAdmin && s.estado !== 'ANULADO' && (
+              {s.estado !== 'ANULADO' && (
                 <div className="flota-card__actions">
-                  <button type="button" className="inline-button maestro-delete-btn" onClick={() => void anular(s)} disabled={busy}>Anular</button>
+                  {/* Se corrige mientras el día no esté firmado (pedido de Julián). */}
+                  {s.formato !== 'AGROMORALES' && s.estado === 'REGISTRADO' && !firmado(s) && (
+                    <button type="button" className="inline-button" onClick={() => setEditando(s)} disabled={busy}>✏️ Editar</button>
+                  )}
+                  {esAdmin && s.firmaDiaId && firmaPorId.get(s.firmaDiaId) && (
+                    <button type="button" className="inline-button" onClick={() => void quitarFirma(firmaPorId.get(s.firmaDiaId!)!)} disabled={busy}>Quitar firma del día</button>
+                  )}
+                  {esAdmin && <button type="button" className="inline-button maestro-delete-btn" onClick={() => void anular(s)} disabled={busy}>Anular</button>}
                 </div>
               )}
             </article>
@@ -464,6 +589,19 @@ export function FlotaTab({ conductorScope }: { conductorScope?: { id: string; no
           onClose={() => setCerrando(null)}
           onSaved={() => void refresh()}
         />
+      )}
+      {firmandoDia && (
+        <FlotaFirmarDia
+          fecha={firmandoDia.fecha}
+          conductorId={firmandoDia.conductorId}
+          conductorNombre={firmandoDia.conductorNombre}
+          servicios={firmandoDia.servicios}
+          onClose={() => setFirmandoDia(null)}
+          onSaved={() => void refresh()}
+        />
+      )}
+      {editando && (
+        <FlotaEditarServicio servicio={editando} onClose={() => setEditando(null)} onSaved={() => void refresh()} />
       )}
       {formOpen === 'AGROMORALES' && (
         <FlotaFormOpe22

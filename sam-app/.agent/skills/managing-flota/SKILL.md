@@ -396,3 +396,28 @@ real aparecieron dos fragilidades más:
   viejo: la tinta deja de caer bajo el dedo. `sincronizarTamano()` corre al montar, en
   un `ResizeObserver` y al tocar; y como cambiar `canvas.width` **borra** el lienzo,
   copia lo firmado y lo repinta escalado.
+
+## 🔴 IMECOL: UNA FIRMA POR DÍA y servicios corregibles hasta firmar (2-oct-2026, `17bdb92`)
+
+Pedido de Iván por **Julián Morales Bustos (U053, conductor IMECOL)**: *«solo se debe pedir una
+firma por día, no una por registro, porque es una planilla para todos los recorridos del día»*
+y *«que los registros realizados los podamos modificar»*. Medido: Julián hace 3–12 servicios al día;
+de 134 registrados solo 57 tenían firma, y dejaba viajes SIN TERMINAR (el cierre le pedía firma).
+
+- `flota_firmas_dia` (una vigente por conductor + fecha + formato) y `flota_servicios.firma_dia_id`
+  (migración `20261003090000`). «Terminar servicio» de IMECOL ya NO pide firma
+  (`FlotaCerrarViaje`); AgroMorales (F-OPE-22) sigue igual, con firma por viaje.
+- `FlotaTab`: arriba «N planillas del día sin firmar» (servicios REGISTRADO de IMECOL sin
+  `firma_dia_id` ni `firma_url`, por conductor y día) → `FlotaFirmarDia` (lista + nombre/cédula +
+  FirmaPad) → `firmarDiaFlota` (sube la firma una vez, marca los servicios).
+- `FlotaEditarServicio` + `editarFlotaServicio`: solo manda lo que cambió y la consulta exige
+  `firma_dia_id is null and firma_url is null` (un día firmado no se toca aunque la pantalla esté
+  vieja); km total se recalcula. Administración: «Quitar firma del día» (`quitarFirmaDiaFlota`,
+  anula con motivo y libera los servicios).
+- Excel CDA-F-68: bloque «FIRMA DE RECIBIDO DE LA PLANILLA DEL DÍA» (imagen por día; «⚠ SIN FIRMA
+  DEL DÍA» si falta); la hoja Respaldo usa la firma del día. Las firmas viejas por servicio se respetan.
+- Probado con servicios de prueba (conductor `PRUEBA-CLAUDE`, todo borrado): editar ✓, firmar 2 ✓,
+  segunda firma rechazada ✓, editar tras firmar rechazado ✓, quitar firma → editable ✓.
+  ⚠️ Los archivos del depósito en este servidor son CARPETAS en disco
+  (`/opt/supabase/docker/volumes/storage/stub/stub/<bucket>/<ruta>`): para borrar, `rm -rf` exacto +
+  registro con `set_config('storage.allow_delete_query','true',true)`.

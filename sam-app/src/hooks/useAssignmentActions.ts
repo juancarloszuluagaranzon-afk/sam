@@ -8,6 +8,7 @@ import { updateAssignment, createAssignment, executionDateKey, createLaborSesion
 import { isSameCycle } from '../utils/suerteCycle'
 import { unidadDeLabor, formatArea, esPorHoras, aMayus } from '../lib/texto'
 import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
+import { puedeEditarLabores } from '../lib/editores'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean; administrador?: string; modalidad?: string }
 
@@ -666,6 +667,14 @@ export function useAssignmentActions() {
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {
+    // 🔴 Editar una labor ya registrada (programada o tomada en campo) es SOLO de
+    // Carlos David (2-oct-2026: «los supervisores no»). Los botones ya no se le
+    // muestran a nadie más; esto es el respaldo por si una pantalla vieja quedó
+    // abierta. Ver src/lib/editores.ts.
+    if (!puedeEditarLabores(session)) {
+      setError('Solo Carlos David puede editar las labores registradas. Avísale a él.')
+      return false
+    }
     // 🔴 Los HECTÓMETROS (acequias) y las HORAS (oficios varios) solo los corrige
     // administración. Pedido del cliente (19-sep-2026): «los supervisores están
     // pudiendo editar los hm y esto es tarea de Carlos David». La medida de una

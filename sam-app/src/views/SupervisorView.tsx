@@ -70,6 +70,7 @@ import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 import { filaMaestro } from '../lib/areaSuerte'
 import { faltaModalidad, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
+import { puedeEditarLabores } from '../lib/editores'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'cartera' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
@@ -432,7 +433,11 @@ export function SupervisorView({
     editAssignment: handleEditAssignment,
   } = useAssignmentActions()
 
-  const canEditAssignments =
+  // 🔴 Editar o eliminar labores (programadas o tomadas en campo): SOLO Carlos
+  // David (2-oct-2026). Ver src/lib/editores.ts.
+  const canEditAssignments = puedeEditarLabores(session)
+  // Limpiar pendientes viejas es cancelar (reversible), no editar: sigue por rol.
+  const canCleanStale =
     session?.role === 'supervisor' || session?.role === 'owner' || session?.role === 'administracion'
 
   const {
@@ -3204,7 +3209,7 @@ export function SupervisorView({
               resultCount={filteredAssignments.length}
             />
 
-            {(pendingApprovals.length > 0 || (canEditAssignments && stalePendientes.count > 0)) && (
+            {(pendingApprovals.length > 0 || (canCleanStale && stalePendientes.count > 0)) && (
               <div className="mini-banner-row">
                 {pendingApprovals.length > 0 && (
                   <button
@@ -3220,7 +3225,7 @@ export function SupervisorView({
                   </button>
                 )}
 
-                {canEditAssignments && stalePendientes.count > 0 && (
+                {canCleanStale && stalePendientes.count > 0 && (
                   <div className="mini-banner mini-banner--stale">
                     <span className="mini-banner__text">
                       <strong>{stalePendientes.count}</strong> sin iniciar +{STALE_DAYS}d · {stalePendientes.area.toFixed(2)} ha

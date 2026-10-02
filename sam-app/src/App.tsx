@@ -8,6 +8,7 @@ import { OperatorView } from './views/OperatorView'
 import { FincasView } from './views/fincas/FincasView'
 import { PortalDueno } from './views/fincas/PortalDueno'
 import { tomarLlaveDueno } from './views/fincas/llaveDueno'
+import { modalidadEfectiva } from './lib/modalidad'
 import { abrirSesionFincas, cerrarSesionFincas, guardarLlavePersonal, leerLlavePersonal } from './services/fincasApi'
 import { ModoSwitch, leerModo, guardarModo, type Modo } from './components/ModoSwitch'
 import { SoporteShell } from './views/SoporteShell'
@@ -430,6 +431,7 @@ function AppContent() {
         // El código de hacienda se repite entre ingenios: este sí es único.
         'ID suerte': getIdSuerte(a, maestro),
         'Labor': a.labor,
+        'Modalidad': modalidadEfectiva(a) ?? '',
         'Unidad': unidad === 'h' ? 'horas' : unidad,
         'Cantidad plan.': unidad === 'h' ? '' : a.area,
         // Área ejecutada = MISMA fórmula que la pantalla: una COMPLETADA/PARCIAL

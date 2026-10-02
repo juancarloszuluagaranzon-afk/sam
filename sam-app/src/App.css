@@ -9756,3 +9756,6 @@ td.planilla-vacio:hover { background: #fde047; }
 /* Casilla con texto al lado dentro de los formularios de fincas (28-sep-2026) */
 .af-check { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; font-weight: 400; }
 .af-check input { width: auto; margin-top: 3px; }
+
+/* Facturación: la labor necesita modalidad y no la tiene (2-oct-2026) */
+.factura-chip--falta { background: #fdebd3; color: #9a5b00; border-color: #f2c48a; }

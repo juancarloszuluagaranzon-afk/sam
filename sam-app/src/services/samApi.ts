@@ -177,6 +177,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     facturaNumero: row.factura_numero ? String(row.factura_numero) : null,
     ingenioId: row.ingenio_id ? String(row.ingenio_id) : null,
     administradorEncargado: row.administrador_encargado ? String(row.administrador_encargado) : null,
+    modalidad: row.modalidad ? String(row.modalidad) : null,
   }
 }
 
@@ -186,7 +187,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
 // ⚠️ Solo columnas YA MIGRADAS en producción — agregar aquí una columna que no
 // exista en la BD rompe TODO el sync (lección factura_numero/42703).
 const ASSIGNMENT_COLS =
-  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id,administrador_encargado'
+  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id,administrador_encargado,modalidad'
 
 function mapAssignmentPayload(input: CreateAssignmentInput) {
   return {
@@ -215,6 +216,8 @@ function mapAssignmentPayload(input: CreateAssignmentInput) {
     zona: input.zone ?? null,
     // Solo se manda cuando viene: una labor que no es por horas no toca la columna.
     ...(input.administradorEncargado ? { administrador_encargado: input.administradorEncargado } : {}),
+    // Igual: solo si la labor tiene modalidad.
+    ...(input.modalidad ? { modalidad: input.modalidad } : {}),
   }
 }
 
@@ -4053,6 +4056,28 @@ export async function setFacturaBulk(
   }
 }
 
+/**
+ * Modalidad EN LOTE (Facturación): completa lo ya registrado antes de que
+ * existiera la modalidad. Mismo troceo que `setFacturaBulk`.
+ */
+export async function setModalidadBulk(
+  ids: string[],
+  modalidad: string | null,
+  editadoPor?: string,
+): Promise<void> {
+  if (ids.length === 0) return
+  const payload: Record<string, unknown> = { modalidad: modalidad || null }
+  if (editadoPor) payload.editado_por = editadoPor
+  const CHUNK = 100
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const { error } = await supabase
+      .from('asignaciones')
+      .update(payload)
+      .in('id', ids.slice(i, i + CHUNK))
+    if (error) throw traducirErrorAsignacion(error)
+  }
+}
+
 export interface AsignacionAuditoria {
   id: number
   accion: 'INSERT' | 'UPDATE'
@@ -4110,6 +4135,7 @@ export async function updateAssignment(
   if (input.createdAt !== undefined) payload.created_at = input.createdAt
   if (input.editadoPor !== undefined) payload.editado_por = input.editadoPor
   if (input.facturaNumero !== undefined) payload.factura_numero = input.facturaNumero || null
+  if (input.modalidad !== undefined) payload.modalidad = input.modalidad || null
 
   const { data, error } = await supabase
     .from('asignaciones')

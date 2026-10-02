@@ -7,6 +7,7 @@ import { esPorHoras, aMayus } from '../lib/texto'
 import { recordarValor } from '../components/CampoPlaca'
 import { createAssignment as apiCreateAssignment, loadAssignments, updateAssignment } from '../services/samApi'
 import { findReusableAssignment, isSameCycle } from '../utils/suerteCycle'
+import { modalidadesDe, useModalidades } from '../lib/modalidad'
 
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
@@ -94,6 +95,7 @@ const EMPTY_FORM: AssignmentFormState = {
   equipmentCode2: '',
   notes: '',
   cliente: '',
+  modalidad: '',
   ingenioId: '',
   supervisorId: '',
   zone: '',
@@ -121,6 +123,16 @@ export function useAssignmentForm(options?: Options) {
   } = useAppData()
 
   const [assignmentForm, setAssignmentForm] = useState<AssignmentFormState>(EMPTY_FORM)
+  // Modalidad para facturar: si la labor tiene lista, es obligatoria al asignar.
+  const modalidades = useModalidades()
+  const faltaLaModalidad = () => {
+    const lista = modalidadesDe(modalidades, assignmentForm.labor)
+    if (lista.length > 0 && !assignmentForm.modalidad) {
+      setError(`Escoge la modalidad de ${assignmentForm.labor} (${lista.join(', ')}): con ella se factura.`)
+      return true
+    }
+    return false
+  }
   const [assignmentSuertesList, setAssignmentSuertesList] = useState<string[]>([])
 
   const assignmentHaciendas = useMemo(() => {
@@ -156,6 +168,7 @@ export function useAssignmentForm(options?: Options) {
         setAssignmentSuertesList([])
         return { ...current, ingenioId: value, haciendaCode: '', suerte: '' }
       }
+      if (field === 'labor') return { ...current, labor: value, modalidad: '' }
       if (field === 'haciendaCode') {
         setAssignmentSuertesList([])
         return { ...current, haciendaCode: value, suerte: '' }
@@ -191,6 +204,7 @@ export function useAssignmentForm(options?: Options) {
       setError('Completa labor, operador, equipo y cliente.')
       return
     }
+    if (faltaLaModalidad()) return
 
     if (assignmentForm.zone !== 'NORTE' && assignmentForm.zone !== 'SUR') {
       setError('Selecciona la zona (Norte o Sur).')
@@ -317,6 +331,7 @@ export function useAssignmentForm(options?: Options) {
               equipmentName: eq.name,
               notes: assignmentForm.notes,
               cliente,
+              modalidad: assignmentForm.modalidad || null,
               zone,
               approval: 'APROBADA',
               approvedBy: session.id,
@@ -334,6 +349,7 @@ export function useAssignmentForm(options?: Options) {
               equipmentName: eq.name,
               notes: assignmentForm.notes,
               cliente,
+              modalidad: assignmentForm.modalidad || null,
               zone,
               approval: 'APROBADA',
               approvedBy: session.id,
@@ -360,6 +376,7 @@ export function useAssignmentForm(options?: Options) {
               equipmentName: eq.name,
               notes: assignmentForm.notes,
               cliente,
+              modalidad: assignmentForm.modalidad || null,
               kind: 'ASIGNADA',
               initialStatus: 'PENDIENTE',
               approval: 'APROBADA',
@@ -390,6 +407,7 @@ export function useAssignmentForm(options?: Options) {
               horometroInicial: null,
               horometroFinal: null,
               cliente,
+              modalidad: assignmentForm.modalidad || null,
               approval: 'APROBADA',
               approvedBy: session.id,
               approvedAt: now,
@@ -423,6 +441,7 @@ export function useAssignmentForm(options?: Options) {
                 equipmentName: s.eq.name,
                 notes: assignmentForm.notes,
                 cliente,
+                modalidad: assignmentForm.modalidad || null,
                 zone,
                 approval: 'APROBADA',
                 approvedBy: session.id,
@@ -445,6 +464,7 @@ export function useAssignmentForm(options?: Options) {
               equipmentName: s.eq.name,
               notes: assignmentForm.notes,
               cliente,
+              modalidad: assignmentForm.modalidad || null,
               kind: 'ASIGNADA',
               initialStatus: 'PENDIENTE',
               approval: 'APROBADA',
@@ -509,6 +529,7 @@ export function useAssignmentForm(options?: Options) {
       setError('Completa operador, equipo y cliente para reusar la existente.')
       return
     }
+    if (faltaLaModalidad()) return
     if (assignmentForm.zone !== 'NORTE' && assignmentForm.zone !== 'SUR') {
       setError('Selecciona la zona (Norte o Sur).')
       return
@@ -528,6 +549,7 @@ export function useAssignmentForm(options?: Options) {
             equipmentCode: equipmentItem.code,
             equipmentName: equipmentItem.name,
             cliente: assignmentForm.cliente as 'ingenios' | 'proveedores',
+            modalidad: assignmentForm.modalidad || null,
             zone,
             createdAt: now,
           }),

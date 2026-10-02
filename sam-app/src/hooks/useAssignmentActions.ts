@@ -471,7 +471,7 @@ export function useAssignmentActions() {
     decision: 'APROBADA' | 'RECHAZADA',
     // Datos que el supervisor diligencia al aprobar una labor de campo (cliente
     // y zona, que el operario ya no captura). Se mezclan en el mismo update.
-    extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null },
+    extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null; modalidad?: string | null },
   ) {
     if (!session) return
     // El supervisor asignado aprueba lo suyo; owner/administración pueden aprobar
@@ -506,6 +506,7 @@ export function useAssignmentActions() {
     // se caía de los filtros de zona del Tablero/Resumen.
     if (extra?.cliente) payload.cliente = extra.cliente
     if (extra?.zone === 'NORTE' || extra?.zone === 'SUR') payload.zone = extra.zone
+    if (extra?.modalidad) payload.modalidad = extra.modalidad
 
     try {
       if (!isOnline) {
@@ -551,7 +552,7 @@ export function useAssignmentActions() {
 
   async function approveAssignment(
     assignment: Assignment,
-    extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null },
+    extra?: { cliente?: 'ingenios' | 'proveedores'; zone?: Zone | null; modalidad?: string | null },
   ) {
     return decideApproval(assignment, 'APROBADA', extra)
   }

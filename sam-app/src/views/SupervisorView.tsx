@@ -67,6 +67,7 @@ import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 import { filaMaestro } from '../lib/areaSuerte'
+import { faltaModalidad, modalidadesDe, useModalidades } from '../lib/modalidad'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
@@ -85,6 +86,8 @@ export interface AssignmentFormState {
   zone: string
   /** Solo en servicios por horas: quién recibe el servicio en la hacienda. */
   administradorEncargado: string
+  /** Modalidad para facturar (2X1, 4X1 QUEMADA, 2 PASES…), si la labor tiene lista. */
+  modalidad?: string
 }
 
 export interface EquipmentFormState {
@@ -592,6 +595,9 @@ export function SupervisorView({
   const [approveTarget, setApproveTarget] = useState<Assignment | null>(null)
   const [approveCliente, setApproveCliente] = useState('')
   const [approveZona, setApproveZona] = useState('')
+  // …y la modalidad, si la labor tiene lista y no la trae (2-oct-2026).
+  const [approveModalidad, setApproveModalidad] = useState('')
+  const modalidades = useModalidades()
 
   // Confirmacion de borrado de usuario (CRUD admin/owner). Guarda el usuario
   // a eliminar para mostrar el modal de confirmacion superpuesto.
@@ -3330,9 +3336,9 @@ export function SupervisorView({
                             className="approve-btn"
                             onClick={() => {
                               // Labor de campo sin cliente/zona → obligar a diligenciarlos.
-                              if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
+                              if ((assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) || faltaModalidad(modalidades, assignment)) {
                                 setApproveTarget(assignment)
-                                setApproveCliente(assignment.cliente ?? '')
+                                setApproveCliente(assignment.cliente ?? ''); setApproveModalidad(assignment.modalidad ?? '')
                                 setApproveZona(assignment.zone ?? miZona ?? '')
                               } else {
                                 void handleApproveAssignment(assignment)
@@ -3446,9 +3452,9 @@ export function SupervisorView({
                               setError(`Esta labor lleva más de ${APROBACION_HORAS} h cerrada: solo administración puede aprobarla.`)
                               return
                             }
-                            if (assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) {
+                            if ((assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) || faltaModalidad(modalidades, assignment)) {
                               setApproveTarget(assignment)
-                              setApproveCliente(assignment.cliente ?? '')
+                              setApproveCliente(assignment.cliente ?? ''); setApproveModalidad(assignment.modalidad ?? '')
                               setApproveZona(assignment.zone ?? miZona ?? '')
                             } else {
                               void handleApproveAssignment(assignment)
@@ -4236,7 +4242,7 @@ export function SupervisorView({
             <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(420px, calc(100vw - 32px))' }}>
               <div className="labor-detail-header">
                 <div>
-                  <p className="eyebrow">Aprobar labor de campo</p>
+                  <p className="eyebrow">{approveTarget.kind === 'LIBRE' ? 'Aprobar labor de campo' : 'Aprobar labor'}</p>
                   <h3>{approveTarget.labor}</h3>
                 </div>
                 <button type="button" className="modal-close-btn" onClick={() => setApproveTarget(null)} disabled={busy} aria-label="Cerrar">&#x2715;</button>
@@ -4265,17 +4271,29 @@ export function SupervisorView({
                   ))}
                 </select>
               </label>
+              {modalidadesDe(modalidades, approveTarget.labor).length > 0 && !approveTarget.modalidad && (
+                <label className="assignment-detail-field">
+                  <span>Modalidad (para facturar)</span>
+                  <select id="aprobar-modalidad" value={approveModalidad} onChange={(e) => setApproveModalidad(e.target.value)} disabled={busy}>
+                    <option value="">Seleccionar…</option>
+                    {modalidadesDe(modalidades, approveTarget.labor).map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="modal-footer">
                 <button type="button" className="inline-button" onClick={() => setApproveTarget(null)} disabled={busy}>Cancelar</button>
                 <button
                   type="button"
                   className="primary-button"
-                  disabled={busy || !approveCliente || !approveZona}
+                  disabled={busy || !approveCliente || !approveZona || (faltaModalidad(modalidades, approveTarget) && !approveModalidad)}
                   onClick={async () => {
                     const target = approveTarget
                     await handleApproveAssignment(target, {
                       cliente: approveCliente as 'ingenios' | 'proveedores',
                       zone: approveZona as 'NORTE' | 'SUR',
+                      ...(approveModalidad ? { modalidad: approveModalidad } : {}),
                     })
                     setApproveTarget(null)
                   }}
@@ -4509,6 +4527,17 @@ export function SupervisorView({
                   </p>
                 )}
               </label>
+              {modalidadesDe(modalidades, assignmentForm.labor).length > 0 && (
+                <label>
+                  Modalidad <span className="field-optional">(define la tarifa al facturar)</span>
+                  <SearchableSelect
+                    value={assignmentForm.modalidad ?? ''}
+                    onChange={(value) => updateAssignmentForm('modalidad', value)}
+                    placeholder="Selecciona la modalidad"
+                    options={modalidadesDe(modalidades, assignmentForm.labor).map((m) => ({ value: m, label: m }))}
+                  />
+                </label>
+              )}
               {esPorHoras(assignmentForm.labor) && (
                 <>
                   <p className="field-hint">

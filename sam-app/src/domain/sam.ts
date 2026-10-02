@@ -122,6 +122,8 @@ export interface Assignment {
   editadoPor?: string
   // Facturación: N° de factura asignado por administración (null = sin facturar).
   facturaNumero?: string | null
+  // Modalidad para facturar (2X1, 4X1 QUEMADA, 2 PASES…). Ver `lib/modalidad`.
+  modalidad?: string | null
   // Servicio por horas: quién recibe el servicio en la hacienda. null = no aplica.
   administradorEncargado?: string | null
   // Ingenio de la suerte (`asignaciones.ingenio_id`, lo pone un trigger al crear).
@@ -649,6 +651,8 @@ export interface CreateAssignmentInput {
   zone?: Zone | null
   // Servicio por horas (oficios varios): quién recibe el servicio en la hacienda.
   administradorEncargado?: string | null
+  // Modalidad para facturar (la escoge el supervisor si la labor tiene lista).
+  modalidad?: string | null
 }
 
 export interface UpdateAssignmentInput {
@@ -683,6 +687,8 @@ export interface UpdateAssignmentInput {
   editadoPor?: string
   // Facturación: N° de factura (o null/'' para desfacturar).
   facturaNumero?: string | null
+  // Modalidad para facturar (o null/'' para quitarla).
+  modalidad?: string | null
 }
 
 /* ══════════════════════════════════════════════════════════════════════════

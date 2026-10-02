@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
-import { executionDateKey, setFacturaBulk } from '../services/samApi'
+import { executionDateKey, setFacturaBulk, setModalidadBulk } from '../services/samApi'
+import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, useModalidades } from '../lib/modalidad'
 import {
   matchesSummaryFilter,
   buildMonthOptions,
@@ -14,6 +15,11 @@ import { Ayuda } from '../components/Ayuda'
  * Facturación (administración/owner): lista las labores REALIZADAS
  * (COMPLETADA/PARCIAL) y permite asignarles un N° de factura, individual o
  * EN LOTE (marcar varias → un solo número). Alimenta el KPI "Área facturada".
+ *
+ * MODALIDAD (2-oct-2026): el precio depende de la labor Y su modalidad (despeje
+ * 2x1 mecanizada, acequias 2 pases…). Cada línea la muestra; las que la necesitan
+ * y no la tienen salen «falta» y se completan EN LOTE aquí (lo registrado antes
+ * del 2-oct no la tiene). Ver `lib/modalidad`.
  */
 const LIMIT = 400
 const conFactura = (n?: string | null) => !!(n && n.trim())
@@ -29,10 +35,13 @@ export function FacturacionTab() {
   const [quincena, setQuincena] = useState<SummaryQuincena>(() => currentQuincena(todayKey))
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [facturaInput, setFacturaInput] = useState('')
+  const modalidades = useModalidades()
+  const [soloSinModalidad, setSoloSinModalidad] = useState(false)
+  const [modalidadInput, setModalidadInput] = useState('')
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
-  const realizadas = useMemo(() => {
+  const delPeriodo = useMemo(() => {
     const q = search.trim().toLowerCase()
     return assignments
       .filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.executedArea > 0)
@@ -41,6 +50,8 @@ export function FacturacionTab() {
       .filter((a) => !q || `${a.haciendaName} ${a.suerte} ${a.labor} ${a.operatorName} ${a.facturaNumero ?? ''}`.toLowerCase().includes(q))
       .sort((a, b) => executionDateKey(b).localeCompare(executionDateKey(a)))
   }, [assignments, search, seg, mes, quincena, todayKey])
+  const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)), [delPeriodo, modalidades])
+  const realizadas = soloSinModalidad ? sinModalidad : delPeriodo
 
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
@@ -104,6 +115,30 @@ export function FacturacionTab() {
     }
   }
 
+  // Modalidad en lote: solo si todo lo marcado es la MISMA labor y esa labor tiene lista.
+  const laboresSel = [...new Set(seleccion.map((a) => laborFacturable(a.labor)))]
+  const opcionesModalidad = laboresSel.length === 1 ? modalidadesDe(modalidades, laboresSel[0]) : []
+
+  async function ponerModalidad() {
+    const ids = seleccion.map((a) => a.id)
+    if (ids.length === 0 || !modalidadInput) return
+    setBusy(true)
+    setError('')
+    try {
+      await setModalidadBulk(ids, modalidadInput, session?.id)
+      const set = new Set(ids)
+      setAssignments((prev) => prev.map((a) => (set.has(a.id) ? { ...a, modalidad: modalidadInput } : a)))
+      setInfo(`Modalidad ${modalidadInput} puesta a ${ids.length} labor(es).`)
+      setSelected(new Set())
+      setModalidadInput('')
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo poner la modalidad. (${e?.message ?? 'error'})`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const allChecked = shown.length > 0 && shown.every((a) => selected.has(a.id))
 
   return (
@@ -117,6 +152,7 @@ export function FacturacionTab() {
       </div>
       <Ayuda>
         <p>Labores realizadas del período. Marca varias y asígnales un N° de factura de una sola vez.</p>
+        <p>La <b>modalidad</b> (2x1, 4x1 quemada, 2 pases…) define la tarifa. Si una labor la necesita y no la tiene, sale «falta»: márcalas (de la misma labor) y ponles la modalidad en lote.</p>
       </Ayuda>
 
       {/* Filtros */}
@@ -139,6 +175,14 @@ export function FacturacionTab() {
             {s === 'SIN' ? 'Sin facturar' : s === 'CON' ? 'Facturadas' : 'Todas'}
           </button>
         ))}
+        <button
+          type="button"
+          className={soloSinModalidad ? 'is-active' : ''}
+          onClick={() => { setSoloSinModalidad((v) => !v); setSelected(new Set()) }}
+          title="Solo las labores que necesitan modalidad y no la tienen"
+        >
+          Sin modalidad ({sinModalidad.length})
+        </button>
       </div>
 
       <input
@@ -167,6 +211,24 @@ export function FacturacionTab() {
           <button type="button" className="inline-button" onClick={() => void asignar(true)} disabled={busy}>
             Desfacturar
           </button>
+          {opcionesModalidad.length > 0 && (
+            <>
+              <select
+                id="fact-modalidad"
+                value={modalidadInput}
+                onChange={(e) => setModalidadInput(e.target.value)}
+                disabled={busy}
+                aria-label={`Modalidad de ${laboresSel[0]}`}
+              >
+                <option value="">Modalidad de {laboresSel[0].toLowerCase()}…</option>
+                {opcionesModalidad.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <button type="button" className="inline-button" onClick={() => void ponerModalidad()} disabled={busy || !modalidadInput}>
+                Poner modalidad
+              </button>
+            </>
+          )}
+          {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad, marca una sola labor.</span>}
         </div>
       )}
 
@@ -178,6 +240,7 @@ export function FacturacionTab() {
               <th>Fecha</th>
               <th>Hacienda · Suerte</th>
               <th>Labor</th>
+              <th>Modalidad</th>
               <th>Operario</th>
               <th className="num">Ha ejec.</th>
               <th>Factura</th>
@@ -190,6 +253,13 @@ export function FacturacionTab() {
                 <td className="nowrap">{executionDateKey(a)}</td>
                 <td>{a.haciendaName} · {a.suerte}</td>
                 <td>{a.labor}</td>
+                <td>
+                  {modalidadEfectiva(a)
+                    ? <span className="nowrap">{modalidadEfectiva(a)}</span>
+                    : faltaModalidad(modalidades, a)
+                      ? <span className="factura-chip factura-chip--falta">falta</span>
+                      : <span className="subtle-copy">—</span>}
+                </td>
                 <td>{a.operatorName || '—'}</td>
                 <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
                 <td>
@@ -200,7 +270,7 @@ export function FacturacionTab() {
               </tr>
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={7} className="validacion-empty">
+              <tr><td colSpan={8} className="validacion-empty">
                 {search.trim() ? 'Sin coincidencias.' : seg === 'SIN' ? 'No hay labores sin facturar en el período.' : 'Sin labores en el período.'}
               </td></tr>
             )}

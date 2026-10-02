@@ -65,6 +65,17 @@ const LISTAS: Lista[] = [
     donde: 'Viajes de trozas → Salida del camión → ¿Para dónde va?',
     ejemplo: 'PLANTA YUMBO', normalizar: aMayus,
   },
+  // Modalidades para facturar (2-oct-2026): una lista por labor. Una labor sin
+  // lista no pide modalidad; para pedirla en otra labor basta crear su lista
+  // con el tipo MODALIDAD:<LABOR> (ver lib/modalidad).
+  ...([
+    ['DESPEJE', '🌾', '0X0'], ['REENCALLE', '🌾', 'SENCILLO'], ['SUBSUELO', '🚜', 'PLANTILLA'],
+    ['TRIPLE', '🚜', '2X1'], ['ACEQUIAS', '💧', '2 PASES'],
+  ] as const).map(([labor, icono, ejemplo]): Lista => ({
+    tipo: `MODALIDAD:${labor}`, icono, titulo: `Modalidades de ${labor.toLowerCase()}`,
+    donde: 'Asignar labor → Modalidad · Aprobar labor · Facturación',
+    ejemplo, normalizar: aMayus,
+  })),
 ]
 
 export function CatalogosInsumosTab() {

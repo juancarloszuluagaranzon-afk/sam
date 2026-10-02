@@ -85,6 +85,33 @@ preguntado en la hoja 5; si dicen que sí, es solo crear la lista).
 - La llave de tarifa al importar: razón social + cliente + labor + **modalidad** + unidad +
   vigencia. La plantilla ya pide «LABOR · MODALIDAD» («· TODAS» = el precio no cambia).
 
+### 🔴 2-oct-2026: SOPORTE + FACTURA + CARTERA (en producción, commits `9eb7090`, `1905318`)
+
+Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
+- `fact_documentos` (tipo SOPORTE / FACTURA; número, fecha, razón social, cliente, valor,
+  `plazo_dias` 30, archivo) + `asignaciones.soporte_id` / `factura_id`. Vincular SIEMPRE por
+  `fact_vincular(doc, ids, usuario, reemplazar)` / `fact_desvincular` (solo owner/administración;
+  una línea no cambia de factura sin `reemplazar`; la factura llena `factura_numero`). Número único
+  por tipo+razón social+cliente. Lista `TIPO_SOPORTE` en Más → Listas.
+- Archivos en el depósito PRIVADO **`facturacion`** (no `avatars`); se abren con enlace firmado
+  de 10 min (`abrirArchivo`). ⚠️ La llave de servicio de este servidor NO sirve para la API de
+  archivos («signature verification failed»): para borrar a mano hay que quitar el archivo del
+  disco (`/opt/supabase/docker/volumes/storage/stub/stub/facturacion/...`) y el registro con
+  `set_config('storage.allow_delete_query','true',true)`.
+- **Cartera**: `fact_pagos` (abonos, comprobante, se ANULAN con motivo) y vista
+  `cartera_facturas_v`: vence = fecha + plazo; AL_DIA ≤30 · VENCIDA 31–60 · CRITICA 61–180 ·
+  OTRAS_MEDIDAS >180 · PAGADA (los días se CONGELAN en el último pago) · SIN_VALOR. Pantalla
+  Más → 💰 Cartera (owner y administración; Viviana NO tiene usuario al 2-oct: crearla como
+  administración). Trazabilidad en el detalle de la labor (`TrazaFacturacion`, solo owner/admin).
+- Facturación arranca en TODO el realizado (4.864 labores / 26.961,76 ha al 2-oct) con tarjetas
+  por etapa.
+- **Modalidad histórica**: el 2-oct se puso la sugerida a las 4.474 realizadas sin modalidad
+  (despeje 2X1 MECANIZADA 2.813, reencalle 2X1 1.322, triple 162, subsuelo 108, acequias 2 PASES
+  69). Respaldo: tabla `respaldo_modalidad_20261002` (id, modalidad_antes). Oficios varios:
+  modalidad POR HORA / POR JORNAL (sugerida POR HORA).
+- Probado con datos de prueba contra la base y TODO borrado después (editor original restaurado
+  desde `asignaciones_auditoria`).
+
 **Para no contradecir lo decidido en agosto** («no facturar hacia atras»): la
 plantilla separa **vigencia del precio** (desde el 16-may, solo para VER el valor)
 de la **fecha desde la que se FACTURA desde la app** (propuesta 1-oct-2026). Antes

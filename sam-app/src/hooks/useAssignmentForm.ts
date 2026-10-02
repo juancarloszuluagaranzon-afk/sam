@@ -7,7 +7,7 @@ import { esPorHoras, aMayus } from '../lib/texto'
 import { recordarValor } from '../components/CampoPlaca'
 import { createAssignment as apiCreateAssignment, loadAssignments, updateAssignment } from '../services/samApi'
 import { findReusableAssignment, isSameCycle } from '../utils/suerteCycle'
-import { modalidadesDe, useModalidades } from '../lib/modalidad'
+import { modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 
 function normalizeText(value: string) {
   return value.trim().toUpperCase()
@@ -168,7 +168,8 @@ export function useAssignmentForm(options?: Options) {
         setAssignmentSuertesList([])
         return { ...current, ingenioId: value, haciendaCode: '', suerte: '' }
       }
-      if (field === 'labor') return { ...current, labor: value, modalidad: '' }
+      // De entrada, la sugerida (2X1 / 2 PASES); el supervisor la puede cambiar.
+      if (field === 'labor') return { ...current, labor: value, modalidad: modalidadSugerida(modalidades, value) ?? '' }
       if (field === 'haciendaCode') {
         setAssignmentSuertesList([])
         return { ...current, haciendaCode: value, suerte: '' }
@@ -184,7 +185,7 @@ export function useAssignmentForm(options?: Options) {
   }
 
   function prefillAssignmentForm(haciendaCode: string, suerte: string, labor: string) {
-    setAssignmentForm({ ...EMPTY_FORM, haciendaCode, labor })
+    setAssignmentForm({ ...EMPTY_FORM, haciendaCode, labor, modalidad: modalidadSugerida(modalidades, labor) ?? '' })
     setAssignmentSuertesList([suerte])
   }
 

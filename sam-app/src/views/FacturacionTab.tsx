@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, setFacturaBulk, setModalidadBulk } from '../services/samApi'
-import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, useModalidades } from '../lib/modalidad'
+import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades } from '../lib/modalidad'
 import {
   matchesSummaryFilter,
   buildMonthOptions,
@@ -118,17 +118,19 @@ export function FacturacionTab() {
   // Modalidad en lote: solo si todo lo marcado es la MISMA labor y esa labor tiene lista.
   const laboresSel = [...new Set(seleccion.map((a) => laborFacturable(a.labor)))]
   const opcionesModalidad = laboresSel.length === 1 ? modalidadesDe(modalidades, laboresSel[0]) : []
+  // De entrada la sugerida (2X1 / 2 PASES), igual que en campo.
+  const modalidadLote = modalidadInput || (laboresSel.length === 1 ? modalidadSugerida(modalidades, laboresSel[0]) ?? '' : '')
 
   async function ponerModalidad() {
     const ids = seleccion.map((a) => a.id)
-    if (ids.length === 0 || !modalidadInput) return
+    if (ids.length === 0 || !modalidadLote) return
     setBusy(true)
     setError('')
     try {
-      await setModalidadBulk(ids, modalidadInput, session?.id)
+      await setModalidadBulk(ids, modalidadLote, session?.id)
       const set = new Set(ids)
-      setAssignments((prev) => prev.map((a) => (set.has(a.id) ? { ...a, modalidad: modalidadInput } : a)))
-      setInfo(`Modalidad ${modalidadInput} puesta a ${ids.length} labor(es).`)
+      setAssignments((prev) => prev.map((a) => (set.has(a.id) ? { ...a, modalidad: modalidadLote } : a)))
+      setInfo(`Modalidad ${modalidadLote} puesta a ${ids.length} labor(es).`)
       setSelected(new Set())
       setModalidadInput('')
     } catch (err) {
@@ -215,7 +217,7 @@ export function FacturacionTab() {
             <>
               <select
                 id="fact-modalidad"
-                value={modalidadInput}
+                value={modalidadLote}
                 onChange={(e) => setModalidadInput(e.target.value)}
                 disabled={busy}
                 aria-label={`Modalidad de ${laboresSel[0]}`}
@@ -223,7 +225,7 @@ export function FacturacionTab() {
                 <option value="">Modalidad de {laboresSel[0].toLowerCase()}…</option>
                 {opcionesModalidad.map((m) => <option key={m} value={m}>{m}</option>)}
               </select>
-              <button type="button" className="inline-button" onClick={() => void ponerModalidad()} disabled={busy || !modalidadInput}>
+              <button type="button" className="inline-button" onClick={() => void ponerModalidad()} disabled={busy || !modalidadLote}>
                 Poner modalidad
               </button>
             </>
@@ -255,7 +257,7 @@ export function FacturacionTab() {
                 <td>{a.labor}</td>
                 <td>
                   {modalidadEfectiva(a)
-                    ? <span className="nowrap">{modalidadEfectiva(a)}</span>
+                    ? <span className="nowrap">{modalidadEfectiva(a)}{pasesAdicionales(a) > 0 && <span className="factura-chip factura-chip--falta" title="El hectómetro incluye 2 pases: desde el 3.º es adicional"> +{pasesAdicionales(a)} adicional</span>}</span>
                     : faltaModalidad(modalidades, a)
                       ? <span className="factura-chip factura-chip--falta">falta</span>
                       : <span className="subtle-copy">—</span>}

@@ -37,6 +37,7 @@ import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { AvisoPendientes } from '../components/AvisoPendientes'
+import { laborFacturable, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 import { enviarOEncolar } from '../lib/outboxInsumos'
 import { formatTime, executionDateKey, formatExecutionDate, getIdSuerte, setOperarioNovedades, loadOperarioNovedades, createSolicitud, loadSolicitudes, confirmarRecepcion, loadTanqueosPorConfirmar, confirmarTanqueo, NOVEDAD_TIPOS, NOVEDAD_LABEL, type NovedadTipo, type OperarioNovedad } from '../services/samApi'
 import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
@@ -925,6 +926,8 @@ export function OperatorView({
     })
   }, [historyItems, historySearch])
 
+  // Listas de modalidad (2X1, 2 PASES…) para el cierre. Ver `lib/modalidad`.
+  const modalidades = useModalidades()
   if (!session) return null
 
   // Callback compartido para todos los botones de dictado: muestra al
@@ -934,7 +937,7 @@ export function OperatorView({
     setError(dictationErrorMessage(err))
   }
 
-  function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal' | 'administrador', value: string) {
+  function updateFinishDraft(assignmentId: string, field: 'area' | 'notes' | 'horometroFinal' | 'administrador' | 'modalidad', value: string) {
     setFinishDrafts((current) => ({
       ...current,
       [assignmentId]: {
@@ -943,6 +946,7 @@ export function OperatorView({
         horometroFinal: current[assignmentId]?.horometroFinal ?? '',
         isComplete: current[assignmentId]?.isComplete ?? false,
         administrador: current[assignmentId]?.administrador,
+        modalidad: current[assignmentId]?.modalidad,
         [field]: value,
       },
     }))
@@ -956,6 +960,8 @@ export function OperatorView({
         notes: current[assignmentId]?.notes ?? '',
         horometroFinal: current[assignmentId]?.horometroFinal ?? '',
         isComplete,
+        administrador: current[assignmentId]?.administrador,
+        modalidad: current[assignmentId]?.modalidad,
       },
     }))
   }
@@ -1856,6 +1862,23 @@ export function OperatorView({
                         {/* Solo avisa: no toca el guardado. Cerrar la labor es
                             por donde la gente cobra y no se puede arriesgar. */}
                         <AvisoHorometro equipoCodigo={a.equipmentCode} valor={draft?.horometroFinal} />
+                        {/* Modalidad: el operario dice qué encalle es (o cuántos pases). Viene
+                            puesta la del supervisor o la sugerida (2X1 / 2 PASES). */}
+                        {modalidadesDe(modalidades, a.labor).length > 0 && (
+                          <label>
+                            {laborFacturable(a.labor) === 'ACEQUIAS' ? 'Pases' : 'Modalidad'}
+                            <select
+                              id={`cierre-modalidad-${a.id}`}
+                              value={draft?.modalidad || a.modalidad || modalidadSugerida(modalidades, a.labor) || ''}
+                              onChange={(e) => updateFinishDraft(a.id, 'modalidad', e.target.value)}
+                            >
+                              {modalidadesDe(modalidades, a.labor).map((m) => <option key={m} value={m}>{m}</option>)}
+                            </select>
+                            {laborFacturable(a.labor) === 'ACEQUIAS' && (
+                              <span className="field-hint">El hectómetro incluye hasta 2 pases; el 3.º cuenta como adicional.</span>
+                            )}
+                          </label>
+                        )}
                         {esPorHoras(a.labor) && (
                           <label>
                             Administrador encargado

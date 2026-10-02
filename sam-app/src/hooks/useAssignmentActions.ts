@@ -3,12 +3,13 @@ import { areaOficialSuerte as areaOficialDeSuerte } from '../lib/areaSuerte'
 import { useAppData } from '../context/AppDataContext'
 import type { Assignment, Zone } from '../domain/sam'
 import { db } from '../lib/db'
+import { modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 import { updateAssignment, createAssignment, executionDateKey, createLaborSesion } from '../services/samApi'
 import { isSameCycle } from '../utils/suerteCycle'
 import { unidadDeLabor, formatArea, esPorHoras, aMayus } from '../lib/texto'
 import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
 
-type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean; administrador?: string }
+type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean; administrador?: string; modalidad?: string }
 
 export function useAssignmentActions() {
   const {
@@ -25,6 +26,8 @@ export function useAssignmentActions() {
     supervisors,
     maestro,
   } = useAppData()
+  // Modalidad (2X1, 2 PASES…) que el operario confirma al cerrar. Ver `lib/modalidad`.
+  const modalidades = useModalidades()
 
   /**
    * Área REAL de la suerte, según el maestro del ingenio.
@@ -375,6 +378,11 @@ export function useAssignmentActions() {
 
     const notasBase = draft?.notes ?? assignment.notes
     const administrador = aMayus((draft?.administrador ?? '').trim())
+    // La modalidad la confirma el OPERARIO al cerrar (es quien ve el encalle). Si no
+    // la tocó, vale la que puso el supervisor o, si no hay, la sugerida (2X1 / 2 PASES).
+    const modalidad = modalidadesDe(modalidades, assignment.labor).length > 0
+      ? (draft?.modalidad || assignment.modalidad || modalidadSugerida(modalidades, assignment.labor) || null)
+      : null
     const finishPayload = {
       status: finalStatus,
       finishedAt,
@@ -383,6 +391,7 @@ export function useAssignmentActions() {
       horometroFinal,
       // Solo se toca si el operario lo escribió: si no, queda el que programó administración.
       ...(porHoras && administrador ? { administradorEncargado: administrador } : {}),
+      ...(modalidad ? { modalidad } : {}),
       // Toda labor FINALIZADA (parcial o completa) vuelve a "por aprobar": el
       // supervisor revisa el área ejecutada antes de que cuente para facturación.
       // Aplica a ASIGNADA y LIBRE. Si era APROBADA y el operario re-finaliza una
@@ -410,7 +419,7 @@ export function useAssignmentActions() {
         setAssignments((current) =>
           current.map((a) =>
             a.id === assignment.id
-              ? { ...a, status: finalStatus, finishedAt: finishPayload.finishedAt, executedArea, approval: 'PENDIENTE' }
+              ? { ...a, status: finalStatus, finishedAt: finishPayload.finishedAt, executedArea, approval: 'PENDIENTE', ...(modalidad ? { modalidad } : {}) }
               : a,
           ),
         )
@@ -419,6 +428,7 @@ export function useAssignmentActions() {
           finishedAt: finishPayload.finishedAt,
           executedArea,
           approval: 'PENDIENTE',
+          ...(modalidad ? { modalidad } : {}),
         })
         setOutboxCount((c) => c + 1)
         setInfo(

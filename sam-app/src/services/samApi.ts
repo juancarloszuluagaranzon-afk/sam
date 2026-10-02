@@ -3959,6 +3959,7 @@ export interface RegistrarLaborInput {
   startedAt?: string | null
   finishedAt?: string | null
   administradorEncargado?: string | null
+  modalidad?: string | null
 }
 
 /**
@@ -3985,6 +3986,7 @@ export async function registrarLaborRealizada(input: RegistrarLaborInput) {
     fecha_inicio: input.startedAt ?? now,
     fecha_fin: input.finishedAt ?? now,
     ...(input.administradorEncargado ? { administrador_encargado: input.administradorEncargado } : {}),
+    ...(input.modalidad ? { modalidad: input.modalidad } : {}),
     horometro_inicial: input.horometroInicial,
     horometro_final: input.horometroFinal,
     tipo_area: 'NETA',

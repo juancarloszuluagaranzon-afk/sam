@@ -67,7 +67,7 @@ import { NovedadTiposTab } from './NovedadTiposTab'
 import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 import { filaMaestro } from '../lib/areaSuerte'
-import { faltaModalidad, modalidadesDe, useModalidades } from '../lib/modalidad'
+import { faltaModalidad, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
@@ -3338,7 +3338,7 @@ export function SupervisorView({
                               // Labor de campo sin cliente/zona → obligar a diligenciarlos.
                               if ((assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) || faltaModalidad(modalidades, assignment)) {
                                 setApproveTarget(assignment)
-                                setApproveCliente(assignment.cliente ?? ''); setApproveModalidad(assignment.modalidad ?? '')
+                                setApproveCliente(assignment.cliente ?? ''); setApproveModalidad(assignment.modalidad ?? modalidadSugerida(modalidades, assignment.labor) ?? '')
                                 setApproveZona(assignment.zone ?? miZona ?? '')
                               } else {
                                 void handleApproveAssignment(assignment)
@@ -3454,7 +3454,7 @@ export function SupervisorView({
                             }
                             if ((assignment.kind === 'LIBRE' && (!assignment.cliente || !assignment.zone)) || faltaModalidad(modalidades, assignment)) {
                               setApproveTarget(assignment)
-                              setApproveCliente(assignment.cliente ?? ''); setApproveModalidad(assignment.modalidad ?? '')
+                              setApproveCliente(assignment.cliente ?? ''); setApproveModalidad(assignment.modalidad ?? modalidadSugerida(modalidades, assignment.labor) ?? '')
                               setApproveZona(assignment.zone ?? miZona ?? '')
                             } else {
                               void handleApproveAssignment(assignment)

@@ -8,8 +8,12 @@ import { supabase } from './supabase'
  *
  * Las listas viven en `catalogos_valores` con tipo `MODALIDAD:<LABOR>` y se
  * editan en Más → Listas, sin publicar. Una labor SIN lista no pide modalidad.
- * El supervisor la escoge al asignar o al aprobar una labor de campo; lo ya
+ * La escoge el OPERARIO al cerrar la labor (es quien ve el encalle real); el
+ * supervisor la sugiere al asignar y la completa al aprobar si faltara; lo ya
  * registrado se completa en lote desde Facturación.
+ *
+ * 🔴 Regla del cliente (2-oct-2026): TODO viene SUGERIDO en 2X1, y las ACEQUIAS en
+ * 2 PASES. Se puede cambiar, pero nunca arranca vacía.
  */
 const PREFIJO = 'MODALIDAD:'
 /** Copia local: sin señal el supervisor sigue viendo las modalidades. */
@@ -35,6 +39,25 @@ export const tipoModalidad = (labor: string) => `${PREFIJO}${llave(labor)}`
 /** Las modalidades que se pueden escoger para esta labor ([] = no pide). */
 export function modalidadesDe(mapa: MapaModalidades, labor: string): string[] {
   return mapa[llave(labor)] ?? []
+}
+
+/** La que viene puesta de entrada: la 2X1 (o 2X1 MECANIZADA); en acequias, 2 PASES. */
+export function modalidadSugerida(mapa: MapaModalidades, labor: string): string | null {
+  const lista = modalidadesDe(mapa, labor)
+  return lista.find((m) => m.toUpperCase().startsWith('2X1'))
+    ?? lista.find((m) => m.toUpperCase() === '2 PASES')
+    ?? null
+}
+
+/**
+ * ACEQUIAS: el hectómetro pagado obliga al contratista a asegurar DOS pases; desde
+ * el TERCERO cada pase cuenta como ADICIONAL. Devuelve cuántos pases adicionales
+ * tiene la labor (0 si no es acequia o tiene 1 o 2 pases).
+ */
+export function pasesAdicionales(a: { labor: string; modalidad?: string | null }): number {
+  if (laborFacturable(a.labor) !== 'ACEQUIAS') return 0
+  const n = Number((modalidadEfectiva(a) ?? '').match(/^(\d+)\s*PASE/i)?.[1] ?? 0)
+  return n > 2 ? n - 2 : 0
 }
 
 /** ¿A esta labor le falta escoger modalidad? (tiene lista y no tiene ninguna) */

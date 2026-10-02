@@ -6,6 +6,7 @@ import { CampoLista, recordarValor } from './CampoPlaca'
 import { useAppData } from '../context/AppDataContext'
 import SearchableSelect from './SearchableSelect'
 import { registrarLaborRealizada } from '../services/samApi'
+import { laborFacturable, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 import { db } from '../lib/db'
 import type { Zone } from '../domain/sam'
 
@@ -33,6 +34,7 @@ const EMPTY = {
   horaInicio: '',
   horaFin: '',
   administrador: '',
+  modalidad: '',
 }
 
 /**
@@ -47,6 +49,7 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
     session, users, operators, equipment, sortedEquipment, maestro, activeLabores,
     assignments, setAssignments, isOnline, busy, setBusy, setError, setInfo, error, ingenios,
   } = useAppData()
+  const modalidades = useModalidades()
   const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
 
   const [form, setForm] = useState(EMPTY)
@@ -220,6 +223,9 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
         horometroInicial: hi,
         horometroFinal: hf,
         cliente: form.cliente,
+        modalidad: modalidadesDe(modalidades, form.labor).length > 0
+          ? (form.modalidad || modalidadSugerida(modalidades, form.labor))
+          : null,
         zone: miZona === 'NORTE' || miZona === 'SUR' ? (miZona as Zone) : null,
         ...(porHoras ? {
           startedAt: inicioServicio,
@@ -340,11 +346,20 @@ export function RegistrarLaborModal({ open, onClose }: Props) {
           <span>Labor realizada</span>
           <SearchableSelect
             value={form.labor}
-            onChange={(v) => set('labor', v)}
+            onChange={(v) => { set('labor', v); set('modalidad', '') }}
             options={laborOptions}
             placeholder="Buscar labor…"
           />
         </label>
+        {modalidadesDe(modalidades, form.labor).length > 0 && (
+          <label className="field">
+            <span>{laborFacturable(form.labor) === 'ACEQUIAS' ? 'Pases' : 'Modalidad'}</span>
+            <select id="reg-modalidad" value={form.modalidad || modalidadSugerida(modalidades, form.labor) || ''}
+              onChange={(e) => set('modalidad', e.target.value)} disabled={busy}>
+              {modalidadesDe(modalidades, form.labor).map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+        )}
 
         <label className="field">
           <span>Equipo</span>

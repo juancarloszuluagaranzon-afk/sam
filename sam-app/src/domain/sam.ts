@@ -124,6 +124,9 @@ export interface Assignment {
   facturaNumero?: string | null
   // Modalidad para facturar (2X1, 4X1 QUEMADA, 2 PASES…). Ver `lib/modalidad`.
   modalidad?: string | null
+  // Documento SOPORTE del cliente y FACTURA vinculados (fact_documentos). Ver `services/facturacionApi`.
+  soporteId?: string | null
+  facturaId?: string | null
   // Servicio por horas: quién recibe el servicio en la hacienda. null = no aplica.
   administradorEncargado?: string | null
   // Ingenio de la suerte (`asignaciones.ingenio_id`, lo pone un trigger al crear).

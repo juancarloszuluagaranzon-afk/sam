@@ -9759,3 +9759,18 @@ td.planilla-vacio:hover { background: #fde047; }
 
 /* Facturación: la labor necesita modalidad y no la tiene (2-oct-2026) */
 .factura-chip--falta { background: #fdebd3; color: #9a5b00; border-color: #f2c48a; }
+
+/* Facturación por etapas: sin soporte → con soporte → facturadas (2-oct-2026) */
+.fact-etapas { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; margin-top: 8px; }
+.fact-etapa {
+  display: grid; gap: 2px; text-align: left; padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  background: var(--color-bg-elevated); border: 1px solid var(--color-border); color: var(--color-ink);
+}
+.fact-etapa span { font-size: 0.8rem; color: var(--color-ink-mid); }
+.fact-etapa b { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+.fact-etapa small { color: var(--color-ink-mid); font-variant-numeric: tabular-nums; }
+.fact-etapa.is-active { border-color: var(--color-brand); box-shadow: inset 0 0 0 1px var(--color-brand); }
+.factura-chip--doc { border: 0; cursor: pointer; font-family: inherit; }
+.factura-chip--doc:hover { text-decoration: underline; }
+.fact-docs { margin-top: 14px; }
+.fact-docs summary { cursor: pointer; font-weight: 600; padding: 6px 0; }

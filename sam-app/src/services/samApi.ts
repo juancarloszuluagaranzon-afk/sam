@@ -178,6 +178,8 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
     ingenioId: row.ingenio_id ? String(row.ingenio_id) : null,
     administradorEncargado: row.administrador_encargado ? String(row.administrador_encargado) : null,
     modalidad: row.modalidad ? String(row.modalidad) : null,
+    soporteId: row.soporte_id ? String(row.soporte_id) : null,
+    facturaId: row.factura_id ? String(row.factura_id) : null,
   }
 }
 
@@ -187,7 +189,7 @@ function mapAssignment(row: Record<string, unknown>): Assignment {
 // ⚠️ Solo columnas YA MIGRADAS en producción — agregar aquí una columna que no
 // exista en la BD rompe TODO el sync (lección factura_numero/42703).
 const ASSIGNMENT_COLS =
-  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id,administrador_encargado,modalidad'
+  'id,created_at,updated_at,suerte_codigo,codigo_hacienda,numero_suerte,nombre_hacienda,labor_nombre,area_asignada,estado,operador_id,operador_nombre,supervisor_id,equipo_codigo,equipo_nombre,tractor,fecha_inicio,fecha_fin,area_realizada,observaciones,cliente,tipo_registro,horometro_inicial,horometro_final,aprobacion,aprobada_por,aprobada_en,zona,liberada,editado_por,factura_numero,ingenio_id,administrador_encargado,modalidad,soporte_id,factura_id'
 
 function mapAssignmentPayload(input: CreateAssignmentInput) {
   return {

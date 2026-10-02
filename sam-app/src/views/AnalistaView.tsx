@@ -12,6 +12,8 @@ import { InformeSemanalTab } from './InformeSemanalTab'
 import { BodegasTab } from './BodegasTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 import { MaquinasCrudTab } from './MaquinasCrudTab'
+import { FacturacionTab } from './FacturacionTab'
+import { CarteraTab } from './CarteraTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
 import { BotonManual } from '../components/BotonManual'
@@ -35,7 +37,7 @@ import { BotonManual } from '../components/BotonManual'
  * administración. La aprobación es el segundo par de ojos; si firma lo suyo, no hay
  * control.
  */
-type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'mapa'
+type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'facturacion' | 'cartera' | 'mapa'
 
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
   { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
@@ -47,6 +49,9 @@ const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = 
   { key: 'maquinas', icon: '🚜', label: 'Máquinas', desc: 'Crear, editar y dar de baja' },
   { key: 'semanal', icon: '📅', label: 'Semanal', desc: 'Horas y gal/hora' },
   { key: 'reportes', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
+  // Pedido de Iván (2-oct-2026): Diego Urdinola (analista) lleva facturación y cartera.
+  { key: 'facturacion', icon: '🧾', label: 'Facturación', desc: 'Soporte, factura y valor' },
+  { key: 'cartera', icon: '💰', label: 'Cartera', desc: 'Por cobrar y mora' },
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
 
@@ -114,6 +119,8 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
           : tab === 'maquinas' ? <MaquinasCrudTab />
           : tab === 'semanal' ? <InformeSemanalTab />
           : tab === 'reportes' ? <ConsumoEquiposTab />
+          : tab === 'facturacion' ? <FacturacionTab />
+          : tab === 'cartera' ? <CarteraTab />
           : <MapaView onBack={() => setTab('avales')} />}
       </div>
     </main>

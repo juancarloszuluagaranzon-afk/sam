@@ -8,6 +8,7 @@ import {
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
 import { DocumentoFacturacionModal } from '../components/DocumentoFacturacionModal'
+import { pesosCortos, useTarifas, valorarLinea, type Valoracion } from '../lib/tarifas'
 import { ingenioNombre } from '../data/ingenios'
 import {
   matchesSummaryFilter,
@@ -58,6 +59,9 @@ export function FacturacionTab() {
   const [modalidadInput, setModalidadInput] = useState('')
   const [documentos, setDocumentos] = useState<DocumentoFact[]>([])
   const [modal, setModal] = useState<TipoDocumento | null>(null)
+  // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
+  const { tarifas, haciendasRA } = useTarifas()
+  const [soloSinTarifa, setSoloSinTarifa] = useState(false)
 
   useEffect(() => { void loadDocumentos().then(setDocumentos) }, [])
   const docPorId = useMemo(() => new Map(documentos.map((d) => [d.id, d])), [documentos])
@@ -78,9 +82,16 @@ export function FacturacionTab() {
       .filter((a) => !soloSinModalidad || faltaModalidad(modalidades, a))
       .sort((a, b) => executionDateKey(b).localeCompare(executionDateKey(a)))
   }, [assignments, search, mes, quincena, todayKey, docPorId, soloSinModalidad, modalidades])
+  const valores = useMemo(() => {
+    const m = new Map<string, Valoracion>()
+    for (const a of delPeriodo) m.set(a.id, valorarLinea(a, tarifas, haciendasRA))
+    return m
+  }, [delPeriodo, tarifas, haciendasRA])
+  const sinTarifa = useMemo(() => delPeriodo.filter((a) => valores.get(a.id)?.valor == null).length, [delPeriodo, valores])
 
   const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)).length, [delPeriodo, modalidades])
-  const realizadas = etapa === 'TODAS' ? delPeriodo : delPeriodo.filter((a) => etapaDe(a) === etapa)
+  const realizadas = (etapa === 'TODAS' ? delPeriodo : delPeriodo.filter((a) => etapaDe(a) === etapa))
+    .filter((a) => !soloSinTarifa || valores.get(a.id)?.valor == null)
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
 
@@ -89,22 +100,26 @@ export function FacturacionTab() {
   const suma = (lista: Assignment[], horas: boolean) =>
     lista.filter((a) => esPorHoras(a.labor) === horas).reduce((s, a) => s + haDe(a), 0)
   const porEtapa = useMemo(() => {
-    const out: Record<Etapa, { n: number; ha: number; h: number }> = {
-      SIN_SOPORTE: { n: 0, ha: 0, h: 0 }, CON_SOPORTE: { n: 0, ha: 0, h: 0 }, FACTURADAS: { n: 0, ha: 0, h: 0 }, TODAS: { n: 0, ha: 0, h: 0 },
+    const out: Record<Etapa, { n: number; ha: number; h: number; valor: number }> = {
+      SIN_SOPORTE: { n: 0, ha: 0, h: 0, valor: 0 }, CON_SOPORTE: { n: 0, ha: 0, h: 0, valor: 0 },
+      FACTURADAS: { n: 0, ha: 0, h: 0, valor: 0 }, TODAS: { n: 0, ha: 0, h: 0, valor: 0 },
     }
     for (const a of delPeriodo) {
       for (const k of [etapaDe(a), 'TODAS'] as Etapa[]) {
         out[k].n += 1
+        out[k].valor += valores.get(a.id)?.valor ?? 0
         if (esPorHoras(a.labor)) out[k].h += haDe(a)
         else out[k].ha += haDe(a)
       }
     }
     return out
-  }, [delPeriodo])
+  }, [delPeriodo, valores])
 
   const seleccion = shown.filter((a) => selected.has(a.id))
   const haSel = suma(seleccion, false)
   const hSel = suma(seleccion, true)
+  const valorSel = seleccion.reduce((s, a) => s + (valores.get(a.id)?.valor ?? 0), 0)
+  const sinTarifaSel = seleccion.filter((a) => valores.get(a.id)?.valor == null).length
 
   function toggle(id: string) {
     setSelected((prev) => {
@@ -122,9 +137,12 @@ export function FacturacionTab() {
   // Sugerencias para el documento nuevo: el cliente de las líneas marcadas y la
   // razón social propuesta (Pichichí y proveedores → Ceballos y Lozano).
   const ingeniosSel = [...new Set(seleccion.map((a) => (a.ingenioId ? ingenioNombre(a.ingenioId) : '')).filter(Boolean))]
-  const clienteSugerido = ingeniosSel.length === 1 ? ingeniosSel[0] : ''
-  const razonSugerida = seleccion.length > 0 && seleccion.every((a) => a.cliente === 'proveedores' || a.ingenioId === 'pichichi')
-    ? 'CEBALLOS Y LOZANO' : 'AGROMORALES'
+  // La razón social y el cliente salen de la tarifa de las líneas, si todas coinciden.
+  const rsSel = [...new Set(seleccion.map((a) => valores.get(a.id)?.razonSocial).filter(Boolean))] as string[]
+  const cliSel = [...new Set(seleccion.map((a) => valores.get(a.id)?.cliente).filter(Boolean))] as string[]
+  const clienteSugerido = cliSel.length === 1 ? cliSel[0] : ingeniosSel.length === 1 ? ingeniosSel[0] : ''
+  const razonSugerida = rsSel.length === 1 ? rsSel[0]
+    : seleccion.length > 0 && seleccion.every((a) => a.cliente === 'proveedores' || a.ingenioId === 'pichichi') ? 'CEBALLOS Y LOZANO' : 'AGROMORALES'
 
   function listo(doc: DocumentoFact, vinculadas: number) {
     const ids = new Set(seleccion.map((a) => a.id))
@@ -214,6 +232,7 @@ export function FacturacionTab() {
         <span className="subtle-copy">
           {mes ? `${monthOptions.find((m) => m.value === mes)?.label ?? mes}` : 'Todo el realizado'}: <strong>{fmt(porEtapa.TODAS.ha)} ha</strong>
           {porEtapa.TODAS.h > 0 && <> + <strong>{fmt(porEtapa.TODAS.h)} h</strong></>} en {porEtapa.TODAS.n} labores
+          {' '}· valor <strong>{pesosCortos(porEtapa.TODAS.valor)}</strong>
         </span>
       </div>
       <Ayuda>
@@ -230,6 +249,7 @@ export function FacturacionTab() {
             <span>{e.titulo}</span>
             <b>{porEtapa[e.id].n}</b>
             <small>{fmt(porEtapa[e.id].ha)} ha{porEtapa[e.id].h > 0 ? ` + ${fmt(porEtapa[e.id].h)} h` : ''}</small>
+            <small><b>{pesosCortos(porEtapa[e.id].valor)}</b></small>
           </button>
         ))}
       </div>
@@ -257,6 +277,14 @@ export function FacturacionTab() {
         >
           {soloSinModalidad ? '✓ ' : ''}Sin modalidad ({sinModalidad})
         </button>
+        <button
+          type="button"
+          className={`inline-button${soloSinTarifa ? ' is-active' : ''}`}
+          onClick={() => { setSoloSinTarifa((v) => !v); setSelected(new Set()) }}
+          title="Labores a las que no se les encontró precio"
+        >
+          {soloSinTarifa ? '✓ ' : ''}Sin tarifa ({sinTarifa})
+        </button>
       </div>
 
       <input
@@ -271,7 +299,7 @@ export function FacturacionTab() {
       {/* Barra de acciones en lote */}
       {selected.size > 0 && (
         <div className="factura-bulk-bar">
-          <span><strong>{selected.size}</strong> seleccionada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''}</span>
+          <span><strong>{selected.size}</strong> seleccionada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''} · <strong>{pesosCortos(valorSel)}</strong>{sinTarifaSel > 0 ? ` (${sinTarifaSel} sin tarifa)` : ''}</span>
           <button type="button" className="primary-button" onClick={() => setModal('SOPORTE')} disabled={busy}>📎 Vincular soporte</button>
           <button type="button" className="primary-button" onClick={() => setModal('FACTURA')} disabled={busy}>🧾 Vincular factura</button>
           {seleccion.some((a) => a.soporteId) && (
@@ -312,6 +340,7 @@ export function FacturacionTab() {
               <th>Modalidad</th>
               <th>Operario</th>
               <th className="num">Cant.</th>
+              <th className="num">Valor</th>
               <th>Soporte</th>
               <th>Factura</th>
             </tr>
@@ -335,6 +364,7 @@ export function FacturacionTab() {
                   </td>
                   <td>{a.operatorName || '—'}</td>
                   <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
+                  <td className="num"><CeldaValor v={valores.get(a.id)} /></td>
                   <td>
                     {sop ? <ChipDoc doc={sop} onAbrir={verArchivo} />
                       : a.soporteId ? <span className="factura-chip">…</span>
@@ -349,7 +379,7 @@ export function FacturacionTab() {
               )
             })}
             {shown.length === 0 && (
-              <tr><td colSpan={9} className="validacion-empty">
+              <tr><td colSpan={10} className="validacion-empty">
                 {search.trim() ? 'Sin coincidencias.' : 'No hay labores en esta etapa.'}
               </td></tr>
             )}
@@ -391,6 +421,7 @@ export function FacturacionTab() {
           resumen={`${seleccion.length} línea(s) · ${fmt(haSel)} ha${hSel > 0 ? ` + ${fmt(hSel)} h` : ''}`}
           clienteSugerido={clienteSugerido}
           razonSugerida={razonSugerida}
+          valorSugerido={modal === 'FACTURA' && sinTarifaSel === 0 ? Math.round(valorSel) : null}
           documentos={documentos}
           usuario={session.id}
           hoy={todayKey}
@@ -399,6 +430,18 @@ export function FacturacionTab() {
         />
       )}
     </section>
+  )
+}
+
+/** Valor de la línea; sin tarifa sale marcado (nunca $0 escondido). Al pasar el dedo, de dónde salió. */
+function CeldaValor({ v }: { v?: Valoracion }) {
+  if (!v) return <span className="subtle-copy">—</span>
+  if (v.valor == null) return <span className="factura-chip factura-chip--falta" title={v.nota ?? ''}>sin tarifa</span>
+  const de = [v.razonSocial, v.cliente, v.etiqueta, `${pesosCortos(v.precio ?? 0)}/${v.unidad}`].filter(Boolean).join(' · ')
+  return (
+    <span className="nowrap" title={v.nota ? `${de} — ${v.nota}` : de}>
+      {pesosCortos(v.valor)}{v.nota && <small className="fact-supuesto"> *</small>}
+    </span>
   )
 }
 

@@ -9791,3 +9791,6 @@ td.planilla-vacio:hover { background: #fde047; }
 .cart-pagos li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--color-border); }
 .cart-pago--anulado { opacity: 0.6; text-decoration: line-through; }
 .cart-pago-acc { display: flex; gap: 10px; }
+
+/* Valor con supuesto (otra tabla de Riopaila, pase adicional sin precio…): ver el título */
+.fact-supuesto { color: #b37a0a; font-weight: 700; }

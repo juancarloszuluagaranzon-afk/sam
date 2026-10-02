@@ -12,7 +12,7 @@ import {
  * que se marque «reemplazar» (así una factura no se pisa sin querer).
  */
 export function DocumentoFacturacionModal({
-  tipo, ids, resumen, clienteSugerido, razonSugerida, documentos, usuario, hoy, onCerrar, onListo,
+  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo,
 }: {
   tipo: TipoDocumento
   ids: string[]
@@ -20,6 +20,8 @@ export function DocumentoFacturacionModal({
   resumen: string
   clienteSugerido: string
   razonSugerida: string
+  /** FACTURA: suma de los valores de las líneas (si todas tienen tarifa). */
+  valorSugerido?: number | null
   documentos: DocumentoFact[]
   usuario: string
   hoy: string
@@ -35,7 +37,7 @@ export function DocumentoFacturacionModal({
   const [fecha, setFecha] = useState(hoy)
   const [cliente, setCliente] = useState(clienteSugerido)
   const [razon, setRazon] = useState(razonSugerida)
-  const [valor, setValor] = useState('')
+  const [valor, setValor] = useState(valorSugerido != null ? String(valorSugerido) : '')
   const [nota, setNota] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
   const [reemplazar, setReemplazar] = useState(false)
@@ -154,7 +156,7 @@ export function DocumentoFacturacionModal({
             </label>
             {tipo === 'FACTURA' && (
               <label className="assignment-detail-field">
-                <span>Valor total (opcional)</span>
+                <span>Valor total {valorSugerido != null ? '(suma de las líneas por tarifa)' : '(opcional)'}</span>
                 <input id="doc-valor" inputMode="numeric" value={valor} onChange={(e) => setValor(e.target.value)} disabled={ocupado} placeholder="0" />
               </label>
             )}

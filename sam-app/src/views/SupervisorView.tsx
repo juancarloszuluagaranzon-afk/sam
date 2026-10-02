@@ -3926,7 +3926,7 @@ export function SupervisorView({
                   </div>
                   {/* Trazabilidad: soporte del cliente → factura → días de cartera o pagada.
                       Solo dueño y administración (lleva plata). */}
-                  {(session.role === 'owner' || session.role === 'administracion') && <TrazaFacturacion a={selectedLabor} />}
+                  {(session.role === 'owner' || session.role === 'administracion' || session.role === 'analista_insumos') && <TrazaFacturacion a={selectedLabor} />}
                 </>) : (
                   <div className="labor-detail-edit">
                     <label className="assignment-detail-field">

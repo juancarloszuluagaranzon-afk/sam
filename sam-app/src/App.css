@@ -9794,3 +9794,6 @@ td.planilla-vacio:hover { background: #fde047; }
 
 /* Valor con supuesto (otra tabla de Riopaila, pase adicional sin precio…): ver el título */
 .fact-supuesto { color: #b37a0a; font-weight: 700; }
+
+/* Facturación: con qué empresa se factura (2-oct-2026) */
+.fact-empresa { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }

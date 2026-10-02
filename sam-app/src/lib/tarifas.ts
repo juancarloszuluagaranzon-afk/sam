@@ -25,6 +25,12 @@ import { laborFacturable, modalidadEfectiva, pasesAdicionales } from './modalida
  *   · Acequias: el hectómetro incluye 2 pases; los pases adicionales NO tienen
  *     precio todavía (se avisa, no se cobran).
  * Sin tarifa → `null` con el motivo: nunca $0 escondido.
+ *
+ * 🔴 EMPRESA QUE FACTURA (2-oct-2026): la escoge quien factura (Carlos David) en
+ * Facturación — AGROMORALES o CEBALLOS Y LOZANO — y con eso se resuelve qué tabla
+ * aplica (p. ej. despeje de Riopaila $107.203 vs $108.028). Una línea YA facturada
+ * usa la razón social de su factura. Sin empresa escogida: automático (AGROMORALES
+ * primero).
  */
 export interface Tarifa {
   id: string
@@ -112,7 +118,7 @@ function clientesDe(a: Assignment, haciendasRA: Set<string>): string[] {
   }
 }
 
-export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<string>): Valoracion {
+export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<string>, empresa?: string | null): Valoracion {
   const labor = laborFacturable(a.labor)
   const modalidad = modalidadEfectiva(a)?.toUpperCase() ?? null
   const fecha = executionDateKey(a)
@@ -126,7 +132,9 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
   const orden = (x: Tarifa, y: Tarifa) => (x.razonSocial === 'AGROMORALES' ? 0 : 1) - (y.razonSocial === 'AGROMORALES' ? 0 : 1)
 
   for (const [i, cli] of clientes.entries()) {
-    const delCliente = tarifas.filter((t) => t.clienteClave === cli && t.labor === labor && vigente(t)).sort(orden)
+    const delCliente = tarifas
+      .filter((t) => t.clienteClave === cli && t.labor === labor && vigente(t) && (!empresa || t.razonSocial === empresa))
+      .sort(orden)
     if (delCliente.length === 0) continue
     let t: Tarifa | undefined
     if (porHoras) {
@@ -158,7 +166,12 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
       razonSocial: t.razonSocial, cliente: NOMBRE_CLIENTE[cli], etiqueta: t.etiqueta, nota: notas.join(' · ') || null,
     }
   }
-  return { ...base, cliente: NOMBRE_CLIENTE[clientes[0]], nota: `${NOMBRE_CLIENTE[clientes[0]]} no tiene precio de ${labor.toLowerCase()}` }
+  return {
+    ...base, cliente: NOMBRE_CLIENTE[clientes[0]],
+    nota: empresa
+      ? `${empresa} no tiene precio de ${labor.toLowerCase()} para ${NOMBRE_CLIENTE[clientes[0]]}`
+      : `${NOMBRE_CLIENTE[clientes[0]]} no tiene precio de ${labor.toLowerCase()}`,
+  }
 }
 
 export const pesosCortos = (n: number) =>

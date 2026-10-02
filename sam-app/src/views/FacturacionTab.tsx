@@ -4,7 +4,7 @@ import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, setModalidadBulk } from '../services/samApi'
 import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades } from '../lib/modalidad'
 import {
-  abrirArchivo, desvincularDocumento, loadDocumentos,
+  RAZONES_SOCIALES, abrirArchivo, desvincularDocumento, loadDocumentos,
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
 import { DocumentoFacturacionModal } from '../components/DocumentoFacturacionModal'
@@ -62,6 +62,16 @@ export function FacturacionTab() {
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
   const { tarifas, haciendasRA } = useTarifas()
   const [soloSinTarifa, setSoloSinTarifa] = useState(false)
+  // Con qué EMPRESA se factura (la escoge Carlos David): define qué tabla de precios aplica.
+  // '' = automático. Se recuerda en este equipo.
+  const [empresa, setEmpresa] = useState<string>(() => {
+    try { return localStorage.getItem('sam:fact-empresa') ?? '' } catch { return '' }
+  })
+  function cambiarEmpresa(v: string) {
+    setEmpresa(v)
+    setSelected(new Set())
+    try { localStorage.setItem('sam:fact-empresa', v) } catch { /* sin almacenamiento */ }
+  }
 
   useEffect(() => { void loadDocumentos().then(setDocumentos) }, [])
   const docPorId = useMemo(() => new Map(documentos.map((d) => [d.id, d])), [documentos])
@@ -84,9 +94,13 @@ export function FacturacionTab() {
   }, [assignments, search, mes, quincena, todayKey, docPorId, soloSinModalidad, modalidades])
   const valores = useMemo(() => {
     const m = new Map<string, Valoracion>()
-    for (const a of delPeriodo) m.set(a.id, valorarLinea(a, tarifas, haciendasRA))
+    for (const a of delPeriodo) {
+      // Ya facturada: manda la razón social de SU factura; si no, la empresa escogida.
+      const rs = (a.facturaId ? docPorId.get(a.facturaId)?.razonSocial : null) ?? (empresa || null)
+      m.set(a.id, valorarLinea(a, tarifas, haciendasRA, rs))
+    }
     return m
-  }, [delPeriodo, tarifas, haciendasRA])
+  }, [delPeriodo, tarifas, haciendasRA, empresa, docPorId])
   const sinTarifa = useMemo(() => delPeriodo.filter((a) => valores.get(a.id)?.valor == null).length, [delPeriodo, valores])
 
   const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)).length, [delPeriodo, modalidades])
@@ -141,7 +155,7 @@ export function FacturacionTab() {
   const rsSel = [...new Set(seleccion.map((a) => valores.get(a.id)?.razonSocial).filter(Boolean))] as string[]
   const cliSel = [...new Set(seleccion.map((a) => valores.get(a.id)?.cliente).filter(Boolean))] as string[]
   const clienteSugerido = cliSel.length === 1 ? cliSel[0] : ingeniosSel.length === 1 ? ingeniosSel[0] : ''
-  const razonSugerida = rsSel.length === 1 ? rsSel[0]
+  const razonSugerida = empresa ? empresa : rsSel.length === 1 ? rsSel[0]
     : seleccion.length > 0 && seleccion.every((a) => a.cliente === 'proveedores' || a.ingenioId === 'pichichi') ? 'CEBALLOS Y LOZANO' : 'AGROMORALES'
 
   function listo(doc: DocumentoFact, vinculadas: number) {
@@ -236,6 +250,7 @@ export function FacturacionTab() {
         </span>
       </div>
       <Ayuda>
+        <p><b>Facturar por</b>: escoge la empresa (AGROMORALES o CEBALLOS Y LOZANO) y cada línea toma el precio de la tabla de esa empresa; si esa empresa no tiene precio para ese cliente, la línea sale «sin tarifa». Las líneas ya facturadas usan la empresa de su factura.</p>
         <p>Todo lo realizado pasa por tres etapas: <b>sin soporte</b> → <b>con soporte</b> del cliente (orden de servicio, acta, certificación…) → <b>facturadas</b>.</p>
         <p>Marca las líneas y usa <b>📎 Vincular soporte</b> o <b>🧾 Vincular factura</b>: escoges uno que ya exista o creas uno nuevo con su número, fecha y archivo (PDF o foto). Toca el número de un documento para abrir su archivo.</p>
         <p>La <b>modalidad</b> (2x1, 4x1 quemada, 2 pases…) define la tarifa. Si una labor la necesita y no la tiene, sale «falta»: márcalas (de la misma labor) y ponles la modalidad en lote.</p>
@@ -256,6 +271,13 @@ export function FacturacionTab() {
 
       {/* Filtros */}
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '10px 0' }}>
+        <label className="fact-empresa">
+          <span>Facturar por</span>
+          <select id="fact-empresa" value={empresa} onChange={(e) => cambiarEmpresa(e.target.value)} className="base-input" style={{ width: 'auto' }}>
+            <option value="">Automático (según la tabla)</option>
+            {RAZONES_SOCIALES.map((r) => <option key={r} value={r}>{r}</option>)}
+          </select>
+        </label>
         <select id="fact-mes" value={mes} onChange={(e) => setMes(e.target.value)} className="base-input" style={{ width: 'auto' }}>
           <option value="">Todo el realizado</option>
           {monthOptions.map((m) => (

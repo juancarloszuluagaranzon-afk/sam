@@ -140,6 +140,22 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   (labores de Riopaila Agrícola con cantidades propias) ni con ningún otro archivo. Las corrige
   administración en la app.
 
+### 🔴 2-oct-2026 (noche): PDF reducido y SIIGO (commit `05159f1`)
+
+- **Archivos livianos** (`lib/pdfLigero.ts`, pedido de Cristhian): soporte, factura y comprobante se
+  reducen EN EL EQUIPO antes de subir. PDF > 300 KB → cada página re-dibujada a ~110 ppp en JPEG,
+  mismo tamaño de hoja; fotos con `comprimirImagen`. pdf.js 4.10.38 y pdf-lib 1.17.1 se cargan del
+  CDN jsdelivr SOLO al subir (no entran al paquete ni al precache: regla de chunks). Si falla, sube
+  el original. Medido: 2,8 MB → 775 KB en 2,5 s. ⚠️ El panel del navegador de Claude no dibuja
+  canvas si está oculto: esto se probó con Chrome sin ventana por CDP (puerto 9333).
+- **Siigo**: función del servidor `siigo-factura` (VPS, `/opt/supabase/docker/volumes/functions/`),
+  POST {documento_id, accion: 'estado'|'pdf'}; solo facturas registradas en SAM. Busca por
+  `GET /v1/invoices?name=<número>` (el número debe ir COMO EN SIIGO, p. ej. FV-1-1234), PDF con
+  `GET /v1/invoices/{id}/pdf` (base64), total/saldo/CUFE con `GET /v1/invoices/{id}` → se guardan en
+  `fact_documentos.siigo_*`. Credenciales por razón social en `siigo_config` (CERRADA a anon; se
+  cargan por SQL en el servidor, nunca en el repo). Al 2-oct: **sin credenciales** — la función
+  responde «Siigo no está conectado para …». En Cartera: «Ver factura en Siigo» / «Traer saldo».
+
 **Para no contradecir lo decidido en agosto** («no facturar hacia atras»): la
 plantilla separa **vigencia del precio** (desde el 16-may, solo para VER el valor)
 de la **fecha desde la que se FACTURA desde la app** (propuesta 1-oct-2026). Antes

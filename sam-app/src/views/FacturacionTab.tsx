@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, setModalidadBulk } from '../services/samApi'
@@ -78,29 +78,39 @@ export function FacturacionTab() {
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
-  // El realizado del período y la búsqueda (sin filtrar todavía por etapa).
+  // 🔴 Rendimiento (2-oct-2026): el realizado completo son miles de líneas. Se
+  // ordena y se valora UNA vez (cuando cambian las labores, los precios o la
+  // empresa); buscar, cambiar de mes o de filtro solo recorta esa lista. Antes cada
+  // letra del buscador volvía a calcular el precio de todas las líneas.
+  const realizado = useMemo(() => assignments
+    .filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.executedArea > 0)
+    .map((a) => ({ a, dia: executionDateKey(a) }))
+    .sort((x, y) => y.dia.localeCompare(x.dia)), [assignments])
+  const valores = useMemo(() => {
+    const m = new Map<string, Valoracion>()
+    for (const { a } of realizado) {
+      // Ya facturada: manda la razón social de SU factura; si no, la empresa escogida.
+      const rs = (a.facturaId ? docPorId.get(a.facturaId)?.razonSocial : null) ?? (empresa || null)
+      m.set(a.id, valorarLinea(a, tarifas, haciendasRA, rs))
+    }
+    return m
+  }, [realizado, tarifas, haciendasRA, empresa, docPorId])
+
+  // El realizado del período y la búsqueda (sin filtrar todavía por etapa). La
+  // búsqueda va diferida: el texto se escribe sin esperar a la tabla.
+  const busqueda = useDeferredValue(search)
   const delPeriodo = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    return assignments
-      .filter((a) => (a.status === 'COMPLETADA' || a.status === 'PARCIAL') && a.executedArea > 0)
-      .filter((a) => matchesSummaryFilter(executionDateKey(a), mes, mes ? quincena : 'TODO', todayKey))
+    const q = busqueda.trim().toLowerCase()
+    return realizado
+      .filter(({ dia }) => matchesSummaryFilter(dia, mes, mes ? quincena : 'TODO', todayKey))
+      .map(({ a }) => a)
       .filter((a) => {
         if (!q) return true
         const s = a.soporteId ? docPorId.get(a.soporteId)?.numero ?? '' : ''
         return `${a.haciendaName} ${a.suerte} ${a.labor} ${a.operatorName} ${a.facturaNumero ?? ''} ${s}`.toLowerCase().includes(q)
       })
       .filter((a) => !soloSinModalidad || faltaModalidad(modalidades, a))
-      .sort((a, b) => executionDateKey(b).localeCompare(executionDateKey(a)))
-  }, [assignments, search, mes, quincena, todayKey, docPorId, soloSinModalidad, modalidades])
-  const valores = useMemo(() => {
-    const m = new Map<string, Valoracion>()
-    for (const a of delPeriodo) {
-      // Ya facturada: manda la razón social de SU factura; si no, la empresa escogida.
-      const rs = (a.facturaId ? docPorId.get(a.facturaId)?.razonSocial : null) ?? (empresa || null)
-      m.set(a.id, valorarLinea(a, tarifas, haciendasRA, rs))
-    }
-    return m
-  }, [delPeriodo, tarifas, haciendasRA, empresa, docPorId])
+  }, [realizado, busqueda, mes, quincena, todayKey, docPorId, soloSinModalidad, modalidades])
   const sinTarifa = useMemo(() => delPeriodo.filter((a) => valores.get(a.id)?.valor == null).length, [delPeriodo, valores])
 
   const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)).length, [delPeriodo, modalidades])

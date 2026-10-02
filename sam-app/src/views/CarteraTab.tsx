@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { Ayuda } from '../components/Ayuda'
 import { abrirArchivo } from '../services/facturacionApi'
+import { aligerarDocumento } from '../lib/pdfLigero'
+import { datosSiigo, siigoConectado, traerEstadoSiigo, verPdfSiigo, type DatosSiigo } from '../services/siigoApi'
 import {
   ESTADOS_CARTERA, actualizarFactura, anularPago, infoEstado, loadCartera, loadPagos, pesos, registrarPago,
   type EstadoCartera, type FacturaCartera, type Pago,
@@ -198,6 +200,7 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
           <div className="assignment-detail-row"><dt>Saldo</dt><dd><b>{pesos(f.saldo)}</b></dd></div>
         </dl>
         {f.archivoPath && <button type="button" className="af-link" onClick={() => onVer(f.archivoPath)}>📄 Abrir la factura</button>}
+        <SeccionSiigo factura={f} onError={onError} />
 
         <p className="eyebrow" style={{ marginTop: 14 }}>Valor y plazo</p>
         <div className="assignment-detail-field-grid">
@@ -252,7 +255,9 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
             </div>
             <button type="button" className="primary-button" disabled={ocupado || !(n(valor) > 0) || !fecha}
               onClick={() => void hacer(async () => {
-                await registrarPago({ facturaId: f.id, fecha, valor: n(valor), medio, referencia, creadoPor: usuario }, archivo)
+                // El comprobante se reduce en el equipo antes de subir (lib/pdfLigero).
+                const liviano = archivo ? (await aligerarDocumento(archivo)).archivo : null
+                await registrarPago({ facturaId: f.id, fecha, valor: n(valor), medio, referencia, creadoPor: usuario }, liviano)
                 setValor(''); setReferencia(''); setArchivo(null)
               }, `Pago de ${pesos(n(valor))} registrado a ${f.numero}.`)}>
               {ocupado ? 'Guardando…' : 'Registrar pago'}
@@ -260,6 +265,57 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
           </>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * La factura en SIIGO: ver su PDF oficial y traer su saldo (función del servidor
+ * `siigo-factura`). Si la razón social aún no tiene credenciales, lo dice.
+ */
+function SeccionSiigo({ factura: f, onError }: { factura: FacturaCartera; onError: (m: string) => void }) {
+  const [conectado, setConectado] = useState<boolean | null>(null)
+  const [datos, setDatos] = useState<DatosSiigo | null>(null)
+  const [ocupado, setOcupado] = useState(false)
+  useEffect(() => {
+    let vivo = true
+    void siigoConectado(f.razonSocial).then((c) => { if (vivo) setConectado(c) })
+    void datosSiigo(f.id).then((d) => { if (vivo) setDatos(d) })
+    return () => { vivo = false }
+  }, [f.id, f.razonSocial])
+
+  async function traer() {
+    setOcupado(true)
+    try { await traerEstadoSiigo(f.id); setDatos(await datosSiigo(f.id)) } catch (e) { onError((e as Error).message) } finally { setOcupado(false) }
+  }
+  async function verPdf() {
+    try { await verPdfSiigo(f.id) } catch (e) { onError((e as Error).message) }
+  }
+
+  return (
+    <div className="cart-siigo">
+      <p className="eyebrow" style={{ marginTop: 14 }}>Siigo</p>
+      {conectado === false ? (
+        <p className="subtle-copy">Siigo todavía no está conectado para {f.razonSocial ?? 'esta razón social'}: faltan sus credenciales.</p>
+      ) : (
+        <>
+          {datos?.siigoId && (
+            <dl className="assignment-detail-grid">
+              {datos.nombre && <div className="assignment-detail-row"><dt>En Siigo</dt><dd>{datos.nombre}</dd></div>}
+              <div className="assignment-detail-row"><dt>Total en Siigo</dt><dd>{pesos(datos.total)}</dd></div>
+              <div className="assignment-detail-row"><dt>Saldo en Siigo</dt><dd><b>{pesos(datos.saldo)}</b></dd></div>
+              {datos.cufe && <div className="assignment-detail-row"><dt>CUFE</dt><dd style={{ wordBreak: 'break-all' }}>{datos.cufe}</dd></div>}
+              {datos.consultadoEn && <div className="assignment-detail-row"><dt>Consultado</dt><dd>{new Date(datos.consultadoEn).toLocaleString('es-CO')}</dd></div>}
+            </dl>
+          )}
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button type="button" className="inline-button" onClick={() => void verPdf()} disabled={!conectado}>📄 Ver factura en Siigo</button>
+            <button type="button" className="inline-button" onClick={() => void traer()} disabled={!conectado || ocupado}>
+              {ocupado ? 'Consultando…' : '🔄 Traer saldo de Siigo'}
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

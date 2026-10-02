@@ -4,6 +4,7 @@ import {
   RAZONES_SOCIALES, crearDocumento, vincularDocumento,
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
+import { aligerarDocumento } from '../lib/pdfLigero'
 
 /**
  * Vincular las líneas marcadas a un SOPORTE del cliente o a una FACTURA:
@@ -44,6 +45,8 @@ export function DocumentoFacturacionModal({
   const [pideReemplazo, setPideReemplazo] = useState('')
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  // «PDF reducido de 4,2 MB a 380 KB»: se reduce en el equipo antes de subir (lib/pdfLigero).
+  const [paso, setPaso] = useState('')
 
   useEffect(() => {
     if (tipo !== 'SOPORTE') return
@@ -65,17 +68,24 @@ export function DocumentoFacturacionModal({
       if (!fecha) return setError('Pon la fecha.')
       if (tipo === 'FACTURA' && !razon) return setError('Escoge la razón social que factura.')
       if (valor.trim() && !(n >= 0)) return setError('El valor va en pesos, sin signo.')
-      if (archivo && archivo.size > 15 * 1024 * 1024) return setError('El archivo pasa de 15 MB.')
     }
     setOcupado(true)
     try {
+      let liviano: File | null = null
+      if (modo === 'nuevo' && archivo) {
+        setPaso('Reduciendo el archivo…')
+        const r = await aligerarDocumento(archivo)
+        liviano = r.archivo
+        setPaso(r.nota ?? '')
+        if (liviano.size > 15 * 1024 * 1024) { setError('El archivo sigue pesando más de 15 MB.'); return }
+      }
       const doc = modo === 'existente'
         ? propios.find((d) => d.id === elegido)!
         : await crearDocumento({
           tipo, clase: tipo === 'SOPORTE' ? clase : null, numero, fecha,
           razonSocial: tipo === 'FACTURA' ? razon : null, cliente,
           valor: tipo === 'FACTURA' && valor.trim() ? n : null, nota, creadoPor: usuario,
-        }, archivo)
+        }, liviano)
       // A partir de aquí el documento ya existe: si falla el vínculo, se reintenta como «existente».
       if (modo === 'nuevo') { setModo('existente'); setElegido(doc.id) }
       try {
@@ -178,6 +188,7 @@ export function DocumentoFacturacionModal({
             <span>{pideReemplazo}. Marca aquí para pasarlas a {tipo === 'SOPORTE' ? 'este soporte' : 'esta factura'}.</span>
           </label>
         )}
+        {paso && <p className="field-hint">{paso}</p>}
         {error && <p className="feedback error">{error}</p>}
 
         <div className="modal-footer">

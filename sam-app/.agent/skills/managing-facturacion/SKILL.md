@@ -112,6 +112,29 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
 - Probado con datos de prueba contra la base y TODO borrado después (editor original restaurado
   desde `asignaciones_auditoria`).
 
+### 🔴 2-oct-2026 (tarde): TARIFAS REALES y VALOR por línea (commit `96a2ebf`)
+
+- `tarifas` ahora: razon_social + cliente_clave (SAN_CARLOS, RIOPAILA, RIOPAILA_AGRICOLA,
+  MAYAGUEZ, RISARALDA, PICHICHI, PROVEEDOR) + labor_nombre (base) + modalidad (null = todas) +
+  unidad (ha/hm/h/jornal) + etiqueta. 37 reales (de «TARIFAS IVAN APP.xlsx»), vigentes desde
+  1-may-2026. Las 27 de ejemplo: respaldo_tarifas_20261002. ⚠️ `TarifasTab` (oculta) NO conoce
+  las columnas nuevas: no habilitarla sin adaptarla.
+- `lib/tarifas.ts` `valorarLinea`: proveedores → C&L PROVEEDOR; Pichichí → C&L; San Carlos,
+  Mayagüez, Risaralda → AM; Riopaila → RIOPAILA_AGRICOLA si la hacienda está en la lista
+  `HACIENDA_RIOPAILA_AGRICOLA` (catalogos_valores, sembrada de «Agricola.xlsx»: Venecia, Morillo,
+  Valparaíso, Zambrano, Lagunas, La Luisa Bengala, Normandía, Peralonso, Gertrudis), si no
+  RIOPAILA; si la labor no tiene precio ahí, usa el otro y lo marca (*). Despeje de Riopaila:
+  AGROMORALES por defecto (C&L $108.028 queda como alternativa). Oficios varios: POR HORA →
+  tarifa por hora; POR JORNAL → 1 jornal por servicio. Acequias: hm × precio; pases adicionales
+  SIN precio (marcado).
+- Al 2-oct: 4.675 de 4.875 labores con valor (≈ $2.766,6 M); 200 sin tarifa (Carmelita,
+  Trapiche Lucerna, sin ingenio, devolución de basura, triple/subsuelo en San Carlos, Risaralda,
+  Mayagüez…), cada una con su motivo en Facturación (filtro «Sin tarifa»).
+- **Analista (Diego Urdinola, U051)** tiene Facturación y Cartera en `AnalistaView` y puede
+  vincular (migración 20261002200000).
+- «Agricola.xlsx» (Descargas de Iván) trae cantidades reales de acequias de Riopaila Agrícola:
+  sirve para corregir parte de las 13 recortadas — pendiente del sí de Iván.
+
 **Para no contradecir lo decidido en agosto** («no facturar hacia atras»): la
 plantilla separa **vigencia del precio** (desde el 16-may, solo para VER el valor)
 de la **fecha desde la que se FACTURA desde la app** (propuesta 1-oct-2026). Antes

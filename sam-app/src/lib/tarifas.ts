@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 import { executionDateKey, loadCatalogo } from '../services/samApi'
 import type { Assignment } from '../domain/sam'
@@ -99,7 +99,10 @@ export function useTarifas(): { tarifas: Tarifa[]; haciendasRA: Set<string> } {
     })
     return () => { vivo = false }
   }, [])
-  return { tarifas, haciendasRA: new Set(ra) }
+  // Memo: un Set nuevo en cada render hacía recalcular el valor de TODAS las líneas
+  // de Facturación con cada clic.
+  const haciendasRA = useMemo(() => new Set(ra), [ra])
+  return { tarifas, haciendasRA }
 }
 
 const haDe = (a: { executedArea: number; area: number }) => (a.executedArea > 0 ? a.executedArea : a.area)

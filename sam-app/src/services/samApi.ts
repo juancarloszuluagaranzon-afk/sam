@@ -58,9 +58,15 @@ function dayKey(value: string | null | undefined) {
     return ''
   }
 
-  return new Date(value).toLocaleDateString('en-CA', {
-    timeZone: 'America/Bogota',
-  })
+  // 🔴 Rendimiento (2-oct-2026): antes era `toLocaleDateString('en-CA', { timeZone:
+  // 'America/Bogota' })`, que arma un formateador de zona horaria en CADA llamada.
+  // `executionDateKey` lo llama miles de veces (ordenar el realizado completo eran
+  // ~100.000 llamadas) y Facturación tardaba segundos en cada clic. Colombia está
+  // en UTC−5 fijo, sin horario de verano desde 1993: restar 5 h y tomar la fecha
+  // UTC da el mismo día, cientos de veces más rápido.
+  const ms = new Date(value).getTime()
+  if (Number.isNaN(ms)) return 'Invalid Date'
+  return new Date(ms - 5 * 3_600_000).toISOString().slice(0, 10)
 }
 
 function normalizeStatus(value: string | null | undefined): AssignmentStatus {

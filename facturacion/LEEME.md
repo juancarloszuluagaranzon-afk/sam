@@ -26,3 +26,11 @@ en `FacturacionTab`, pre-factura Excel, variantes en `labores_catalogo`.
   1-oct-2026). Antes de esa fecha la app valora, pero no arma cobro.
 - **El número legal sale del programa de facturación (¿Siigo?)**: la app entrega la
   cuenta de cobro / pre-factura. La hoja 6 pregunta cuál programa usan.
+
+## 2-oct-2026 — MODALIDAD de la labor (ya en la app, commit `f8bcae8`)
+Lógica de Iván (hoja escrita a mano): DESPEJE 0X0 / 2X1 MECANIZADA / 4X1 QUEMADA ·
+REENCALLE SENCILLO / 2X1 / VERDE · SUBSUELO y TRIPLE PLANTILLA / 2X1 / 4X1 · ACEQUIAS
+1 / 2 / 3 PASES. La plantilla pide cada precio por «LABOR · MODALIDAD» («· TODAS» si el
+precio no cambia). Por confirmar (hoja 5): Triple = mismas del subsuelo, Fertilización
+plantilla/2x1/4x1 (la tabla de precios las trae, la hoja escrita no), Cultivo, y si
+acequias se cobra por pase o por hectómetro.

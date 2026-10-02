@@ -55,6 +55,28 @@ Agricola por hacienda (3.560 ha); REENCALLE V en San Carlos sin precio (1.140 ha
   se versionan) y `plan_facturacion.html` (artifact
   https://claude.ai/artifact/HgxrS719q4K44jaQUr1ABg).
 
+### 🔴 2-oct-2026: MODALIDAD de la labor (en producción, commit `f8bcae8`)
+
+El precio depende de la labor **y su modalidad** (lógica que mandó Ivan escrita a mano):
+DESPEJE 0X0 / 2X1 MECANIZADA (verde, limpio) / 4X1 QUEMADA · REENCALLE SENCILLO / 2X1 /
+VERDE · SUBSUELO y TRIPLE PLANTILLA / 2X1 / 4X1 · ACEQUIAS 1 / 2 / 3 PASES. Fertilización
+quedó SIN modalidad en la hoja (la tabla de precios sí trae abono plantilla/2x1/4x1 →
+preguntado en la hoja 5; si dicen que sí, es solo crear la lista).
+
+- Columna `asignaciones.modalidad` (null = sin modalidad) — migración `20261002090000`.
+- Listas en `catalogos_valores`, tipo **`MODALIDAD:<LABOR>`** → se editan en Más → Listas
+  SIN publicar. Una labor sin lista no pide nada. `lib/modalidad.ts` (`useModalidades` con
+  copia local para sin señal, `faltaModalidad`, `modalidadEfectiva`, `laborFacturable`).
+- **DESPEJE 0 X 0** y **REENCALLE V** (labores viejas del catálogo) cuentan como DESPEJE·0X0
+  y REENCALLE·VERDE sin tocarlas (`IMPLICITA`).
+- Dónde se escoge: **Asignar** (obligatoria si la labor tiene lista), **Aprobar** (si le
+  falta: mismo cuadro de cliente y zona, ahora también para ASIGNADAS) y **Facturación**
+  (filtro «Sin modalidad (N)» + «Poner modalidad» en lote, solo si lo marcado es UNA
+  labor). Al 2-oct: 978 labores de septiembre sin modalidad (todo lo anterior).
+- ⚠️ Tomar en campo (operario) NO pide modalidad: la completa el supervisor al aprobar.
+- La llave de tarifa al importar: razón social + cliente + labor + **modalidad** + unidad +
+  vigencia. La plantilla ya pide «LABOR · MODALIDAD» («· TODAS» = el precio no cambia).
+
 **Para no contradecir lo decidido en agosto** («no facturar hacia atras»): la
 plantilla separa **vigencia del precio** (desde el 16-may, solo para VER el valor)
 de la **fecha desde la que se FACTURA desde la app** (propuesta 1-oct-2026). Antes

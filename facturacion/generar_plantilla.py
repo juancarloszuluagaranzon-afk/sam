@@ -26,10 +26,26 @@ ING = {'san_carlos': 'Ingenio San Carlos', 'riopaila': 'Ingenio Riopaila', 'maya
        'risaralda': 'Ingenio Risaralda', 'pichichi': 'Ingenio Pichichí', 'ingenio_carmelita': 'Ingenio Carmelita',
        'trapiche_lucerna': 'Trapiche Lucerna', 'proveedor': 'Proveedor', '': '(sin ingenio en la app)'}
 UNIDADES = ['Hectárea', 'Hectómetro', 'Hora', 'Jornal']
-LABORES_APP = ['DESPEJE', 'DESPEJE 0 X 0', 'REENCALLE', 'REENCALLE V', 'TRIPLE', 'TRIPLE 4X1 (nueva)', 'SUBSUELO',
-               'SUBSUELO 4X1 (nueva)', 'FERTILIZACION PLANTILLA (nueva)', 'FERTILIZACION 2X1 (nueva)',
-               'FERTILIZACION 4X1 (nueva)', 'CULTIVO', 'CULTIVO PLANTILLA (nueva)', 'CULTIVO 2X1 (nueva)', 'ACEQUIAS',
-               'DEVOLUCIÓN DE BASURA', 'OFICIOS VARIOS (hora)', 'OFICIOS VARIOS JORNAL (nueva)', 'Otra (ver observación)']
+LABORES_APP = [
+    'DESPEJE · TODAS', 'DESPEJE · 0X0', 'DESPEJE · 2X1 MECANIZADA', 'DESPEJE · 4X1 QUEMADA',
+    'REENCALLE · TODAS', 'REENCALLE · SENCILLO', 'REENCALLE · 2X1', 'REENCALLE · VERDE',
+    'SUBSUELO · TODAS', 'SUBSUELO · PLANTILLA', 'SUBSUELO · 2X1', 'SUBSUELO · 4X1',
+    'TRIPLE · TODAS', 'TRIPLE · PLANTILLA', 'TRIPLE · 2X1', 'TRIPLE · 4X1',
+    'FERTILIZACION · TODAS', 'FERTILIZACION · PLANTILLA', 'FERTILIZACION · 2X1', 'FERTILIZACION · 4X1',
+    'CULTIVO · TODAS', 'CULTIVO · PLANTILLA', 'CULTIVO · 2X1',
+    'ACEQUIAS · 1 PASE', 'ACEQUIAS · 2 PASES', 'ACEQUIAS · 3 PASES', 'ACEQUIAS · POR HECTÓMETRO',
+    'DEVOLUCIÓN DE BASURA', 'OFICIOS VARIOS (hora)', 'OFICIOS VARIOS (jornal)', 'Otra (ver observación)']
+
+# Cómo se muestra en la hoja 1 cada precio de la tabla (la clasificación interna no cambia).
+def con_modalidad(app, lab):
+    l = lab.lower()
+    if app == 'REENCALLE V': return 'REENCALLE · VERDE'
+    if '4x1' in l: return app.split(' ')[0] + ' · 4X1'
+    if '2x1' in l: return ('FERTILIZACION' if 'abono' in l else app.split(' ')[0]) + ' · 2X1'
+    if 'plantilla' in l: return ('FERTILIZACION' if 'abono' in l else app.split(' ')[0]) + ' · PLANTILLA'
+    if app.startswith('OFICIOS'): return 'OFICIOS VARIOS (jornal)' if 'jornal' in l else 'OFICIOS VARIOS (hora)'
+    if app == 'ACEQUIAS': return None   # ¿por pase o por hectómetro? lo dicen ellos
+    return app + ' · TODAS'
 CONFIRMA = ['Sí, correcto', 'Corregir (ver columnas)', 'Eliminar esta fila']
 SINO = ['Sí', 'No']
 
@@ -194,12 +210,12 @@ encabezado(ws, 4, cols, [22, 22, 28, 34, 16, 16, 14, 16, 22, 40])
 f = 5
 for rs, cli, lab, app, uni, pr in TARIFAS:
     celda(ws, f, 1, rs, color=GRIS); celda(ws, f, 2, cli, color=GRIS); celda(ws, f, 3, lab, color=GRIS)
-    celda(ws, f, 4, app, llenar=True); celda(ws, f, 5, uni, llenar=True); celda(ws, f, 6, pr, llenar=False, fmt=PESOS, color=GRIS)
+    celda(ws, f, 4, con_modalidad(app, lab), llenar=True); celda(ws, f, 5, uni, llenar=True); celda(ws, f, 6, pr, llenar=False, fmt=PESOS, color=GRIS)
     celda(ws, f, 7, None, llenar=True); celda(ws, f, 8, None, llenar=True, fmt='dd/mm/yyyy'); celda(ws, f, 9, None, llenar=True)
     obs = ''
     if uni is None: obs = '¿Se cobra por hectárea o por hectómetro? (en la app hay registros de las dos formas)'
-    elif app == 'REENCALLE V': obs = 'Suponemos que la «REENCALLE V» de la app es este reencalle de caña verde/cruda: confirmar'
-    elif '(nueva)' in app: obs = 'Labor nueva en la app, para que el supervisor escoja la variante al asignar'
+    elif app == 'REENCALLE V': obs = 'Reencalle modalidad VERDE (caña verde / cruda): confirmar'
+    elif (con_modalidad(app, lab) or '').endswith('· TODAS'): obs = '¿Este precio vale para TODAS las modalidades? Si no, escoja la modalidad en la columna D y agregue abajo el precio de las otras'
     celda(ws, f, 10, obs, llenar=True)
     f += 1
 fin_tabla = f
@@ -309,15 +325,15 @@ titulo(ws, '5 · Labores y variantes', 'Cómo sabe la app qué precio le toca a 
 cols = ['Labor en la app', 'Pregunta', 'Nuestra propuesta', 'Respuesta', 'Observación']
 encabezado(ws, 4, cols, [22, 60, 55, 38, 40])
 PREG = [
-    ('FERTILIZACION', 'El abono tiene 3 precios (plantilla, 2x1, 4x1). ¿Cómo se sabe cuál es?', 'Crear 3 labores en la app y que el supervisor escoja al asignar'),
-    ('SUBSUELO / TRIPLE', 'Para proveedores hay «normal» y «4x1». ¿Cómo se sabe cuál es?', 'Crear SUBSUELO 4X1 y TRIPLE 4X1 y que el supervisor escoja'),
-    ('CULTIVO', 'Cultivo aporque: plantilla o 2x1 (proveedores). ¿Cómo se sabe?', 'Crear CULTIVO PLANTILLA y CULTIVO 2X1 y que el supervisor escoja'),
-    ('REENCALLE V', '¿La «REENCALLE V» de la app es el «Reencalle caña cruda / caña verde» de la tabla?', 'Sí: se cobra con ese precio'),
-    ('ACEQUIAS', '¿Se cobra por hectárea o por hectómetro? En la app hay registros de las dos formas.', 'Por hectómetro (es longitud de zanja)'),
-    ('DESPEJE 0 X 0', '¿Qué es y qué precio tiene? (≈109 ha registradas en Pichichí, Riopaila, Risaralda y San Carlos)', 'Mismo precio que Despeje, salvo que digan otro'),
+    ('MODALIDADES (ya en la app)', 'Desde el 2-oct la app pide la modalidad al asignar: DESPEJE 0x0 / 2x1 mecanizada / 4x1 quemada · REENCALLE sencillo / 2x1 / verde · SUBSUELO y TRIPLE plantilla / 2x1 / 4x1 · ACEQUIAS 1 / 2 / 3 pases. ¿Está completa y bien escrita?', 'Sí, así quedó (se puede cambiar en Más → Listas sin publicar)'),
+    ('TRIPLE', 'En la hoja escrita el triple quedó con la llave vacía. ¿Tiene las mismas modalidades del subsuelo (plantilla, 2x1, 4x1)?', 'Las mismas del subsuelo'),
+    ('FERTILIZACION', 'La hoja la deja SIN modalidad, pero la tabla de precios trae Abono plantilla, 2x1 y 4x1. ¿Se le ponen esas tres modalidades?', 'Sí: plantilla / 2x1 / 4x1'),
+    ('CULTIVO', 'La tabla trae Cultivo aporque plantilla y 2x1 (proveedores). ¿Se le ponen esas modalidades?', 'Sí: plantilla / 2x1'),
+    ('DESPEJE 2X1', '«2x1 verde limpio»: ¿el 2x1 mecanizado es siempre caña verde y limpia? ¿Hay un 2x1 quemado?', '2x1 = mecanizada en verde; 4x1 = quemada'),
+    ('ACEQUIAS', '¿El precio es por PASE (1, 2 o 3) o por hectómetro? ¿Un 2 pases cuesta el doble de uno?', 'Precio por modalidad (1, 2 o 3 pases)'),
     ('DEVOLUCIÓN DE BASURA', 'No está en la tabla (≈226 ha en Riopaila). ¿Qué precio tiene? ¿Se factura?', 'Poner precio en la hoja 2'),
     ('OFICIOS VARIOS', '¿Cuándo es por hora ($50.000) y cuándo por jornal ($640.000)? ¿Cuántas horas tiene un jornal?', 'La app lo registra por horas; jornal = labor aparte'),
-    ('Labores ya registradas', 'Las ~4.750 labores desde mayo no tienen variante. ¿Qué precio toman?', 'El de la variante más común; se puede corregir línea por línea antes de facturar'),
+    ('Labores ya registradas', 'Lo registrado antes del 2-oct no tiene modalidad. ¿Qué modalidad se les pone?', 'Administración la completa en lote en Facturación (filtro «Sin modalidad»)'),
 ]
 METODOS = ['El supervisor la escoge al asignar', 'Por la suerte: plantilla o soca', 'Siempre la misma', 'Sí, de acuerdo con la propuesta', 'No (ver observación)']
 for i, (lab, p, prop) in enumerate(PREG, start=5):

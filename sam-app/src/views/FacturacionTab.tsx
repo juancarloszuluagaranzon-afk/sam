@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, setModalidadBulk } from '../services/samApi'
-import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades } from '../lib/modalidad'
+import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades, type MapaModalidades } from '../lib/modalidad'
 import {
   RAZONES_SOCIALES, abrirArchivo, desvincularDocumento, loadDocumentos,
   type DocumentoFact, type TipoDocumento,
@@ -135,14 +135,14 @@ export function FacturacionTab() {
   const valorSel = seleccion.reduce((s, a) => s + (valores.get(a.id)?.valor ?? 0), 0)
   const sinTarifaSel = seleccion.filter((a) => valores.get(a.id)?.valor == null).length
 
-  function toggle(id: string) {
+  const toggle = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
-  }
+  }, [])
   function toggleAll() {
     setSelected((prev) => (shown.every((a) => prev.has(a.id)) ? new Set() : new Set(shown.map((a) => a.id))))
   }
@@ -190,10 +190,10 @@ export function FacturacionTab() {
     }
   }
 
-  async function verArchivo(doc: DocumentoFact) {
+  const verArchivo = useCallback(async (doc: DocumentoFact) => {
     if (!doc.archivoPath) return
     try { await abrirArchivo(doc.archivoPath) } catch (e) { setError((e as Error).message) }
-  }
+  }, [setError])
 
   // ── Modalidad en lote ──────────────────────────────────────────────────
   // Solo si todo lo marcado es la MISMA labor y esa labor tiene lista.
@@ -368,38 +368,19 @@ export function FacturacionTab() {
             </tr>
           </thead>
           <tbody>
-            {shown.map((a) => {
-              const sop = a.soporteId ? docPorId.get(a.soporteId) : undefined
-              const fac = a.facturaId ? docPorId.get(a.facturaId) : undefined
-              return (
-                <tr key={a.id} className={selected.has(a.id) ? 'factura-row--sel' : ''}>
-                  <td><input type="checkbox" checked={selected.has(a.id)} onChange={() => toggle(a.id)} aria-label="Marcar" /></td>
-                  <td className="nowrap">{executionDateKey(a)}</td>
-                  <td>{a.haciendaName} · {a.suerte}</td>
-                  <td>{a.labor}</td>
-                  <td>
-                    {modalidadEfectiva(a)
-                      ? <span className="nowrap">{modalidadEfectiva(a)}{pasesAdicionales(a) > 0 && <span className="factura-chip factura-chip--falta" title="El hectómetro incluye 2 pases: desde el 3.º es adicional"> +{pasesAdicionales(a)} adicional</span>}</span>
-                      : faltaModalidad(modalidades, a)
-                        ? <span className="factura-chip factura-chip--falta">falta</span>
-                        : <span className="subtle-copy">—</span>}
-                  </td>
-                  <td>{a.operatorName || '—'}</td>
-                  <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
-                  <td className="num"><CeldaValor v={valores.get(a.id)} /></td>
-                  <td>
-                    {sop ? <ChipDoc doc={sop} onAbrir={verArchivo} />
-                      : a.soporteId ? <span className="factura-chip">…</span>
-                      : <span className="subtle-copy">—</span>}
-                  </td>
-                  <td>
-                    {fac ? <ChipDoc doc={fac} onAbrir={verArchivo} />
-                      : conFactura(a.facturaNumero) ? <span className="factura-chip" title="Número puesto antes de existir los documentos">{a.facturaNumero}</span>
-                      : <span className="subtle-copy">—</span>}
-                  </td>
-                </tr>
-              )
-            })}
+            {shown.map((a) => (
+              <FilaFactura
+                key={a.id}
+                a={a}
+                sel={selected.has(a.id)}
+                v={valores.get(a.id)}
+                sop={a.soporteId ? docPorId.get(a.soporteId) : undefined}
+                fac={a.facturaId ? docPorId.get(a.facturaId) : undefined}
+                modalidades={modalidades}
+                onToggle={toggle}
+                onAbrir={verArchivo}
+              />
+            ))}
             {shown.length === 0 && (
               <tr><td colSpan={10} className="validacion-empty">
                 {search.trim() ? 'Sin coincidencias.' : 'No hay labores en esta etapa.'}
@@ -454,6 +435,53 @@ export function FacturacionTab() {
     </section>
   )
 }
+
+/**
+ * Una línea de la tabla. Memorizada (2-oct-2026): con el realizado completo son
+ * 400 filas en pantalla, y marcar UNA las redibujaba todas (más de un segundo
+ * por clic). Ahora solo se redibuja la que cambió.
+ */
+const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onToggle, onAbrir }: {
+  a: Assignment
+  sel: boolean
+  v?: Valoracion
+  sop?: DocumentoFact
+  fac?: DocumentoFact
+  modalidades: MapaModalidades
+  onToggle: (id: string) => void
+  onAbrir: (d: DocumentoFact) => void
+}) {
+  const mod = modalidadEfectiva(a)
+  const adic = pasesAdicionales(a)
+  return (
+    <tr className={sel ? 'factura-row--sel' : ''}>
+      <td><input type="checkbox" checked={sel} onChange={() => onToggle(a.id)} aria-label="Marcar" /></td>
+      <td className="nowrap">{executionDateKey(a)}</td>
+      <td>{a.haciendaName} · {a.suerte}</td>
+      <td>{a.labor}</td>
+      <td>
+        {mod
+          ? <span className="nowrap">{mod}{adic > 0 && <span className="factura-chip factura-chip--falta" title="El hectómetro incluye 2 pases: desde el 3.º es adicional"> +{adic} adicional</span>}</span>
+          : faltaModalidad(modalidades, a)
+            ? <span className="factura-chip factura-chip--falta">falta</span>
+            : <span className="subtle-copy">—</span>}
+      </td>
+      <td>{a.operatorName || '—'}</td>
+      <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
+      <td className="num"><CeldaValor v={v} /></td>
+      <td>
+        {sop ? <ChipDoc doc={sop} onAbrir={onAbrir} />
+          : a.soporteId ? <span className="factura-chip">…</span>
+          : <span className="subtle-copy">—</span>}
+      </td>
+      <td>
+        {fac ? <ChipDoc doc={fac} onAbrir={onAbrir} />
+          : conFactura(a.facturaNumero) ? <span className="factura-chip" title="Número puesto antes de existir los documentos">{a.facturaNumero}</span>
+          : <span className="subtle-copy">—</span>}
+      </td>
+    </tr>
+  )
+})
 
 /** Valor de la línea; sin tarifa sale marcado (nunca $0 escondido). Al pasar el dedo, de dónde salió. */
 function CeldaValor({ v }: { v?: Valoracion }) {

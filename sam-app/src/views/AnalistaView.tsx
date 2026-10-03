@@ -55,10 +55,17 @@ const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = 
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
 
+const PRIMARY_TABS = TABS.slice(0, 4)
+const SECONDARY_TABS = TABS.slice(4)
+
 export function AnalistaView({ onLogout }: { onLogout: () => void }) {
   const { session, error, info } = useAppData()
   const [tab, setTab] = useState<AnalistaTab>('resumen')
+  const [showMore, setShowMore] = useState(false)
   if (!session) return null
+
+  const isSecondaryActive = SECONDARY_TABS.some((t) => t.key === tab)
+  const displayMore = showMore || isSecondaryActive
 
   return (
     <main className="app-shell">
@@ -92,7 +99,41 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
 
       <div style={{ padding: '12px 0' }}>
         <div className="insumos-tabs" role="tablist" aria-label="Secciones del analista">
-          {TABS.map((t) => (
+          {PRIMARY_TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              role="tab"
+              aria-selected={tab === t.key}
+              className={`insumos-tab${tab === t.key ? ' is-active' : ''}`}
+              onClick={() => {
+                setTab(t.key)
+                setShowMore(false)
+              }}
+            >
+              <span className="insumos-tab__icon" aria-hidden>{t.icon}</span>
+              <span className="insumos-tab__text">
+                <span className="insumos-tab__label">{t.label}</span>
+                <span className="insumos-tab__desc">{t.desc}</span>
+              </span>
+            </button>
+          ))}
+          
+          {!displayMore && (
+            <button
+              type="button"
+              className="insumos-tab"
+              onClick={() => setShowMore(true)}
+            >
+              <span className="insumos-tab__icon" aria-hidden>⋯</span>
+              <span className="insumos-tab__text">
+                <span className="insumos-tab__label">Más módulos</span>
+                <span className="insumos-tab__desc">Bodegas, reportes...</span>
+              </span>
+            </button>
+          )}
+
+          {displayMore && SECONDARY_TABS.map((t) => (
             <button
               key={t.key}
               type="button"
@@ -108,6 +149,20 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
               </span>
             </button>
           ))}
+
+          {displayMore && !isSecondaryActive && (
+            <button
+              type="button"
+              className="insumos-tab"
+              onClick={() => setShowMore(false)}
+            >
+              <span className="insumos-tab__icon" aria-hidden>⌃</span>
+              <span className="insumos-tab__text">
+                <span className="insumos-tab__label">Ocultar</span>
+                <span className="insumos-tab__desc">Ver principales</span>
+              </span>
+            </button>
+          )}
         </div>
 
         {tab === 'resumen' ? <InventarioResumenTab />

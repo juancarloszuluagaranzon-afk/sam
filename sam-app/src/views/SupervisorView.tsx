@@ -2332,7 +2332,9 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'planilla' ? (
-          <PlanillaTab onEditLabor={setSelectedLabor} />
+          <PantallaSegura nombre="Planilla">
+            <PlanillaTab onEditLabor={setSelectedLabor} />
+          </PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion' || session.role === 'supervisor') && supervisorTab === 'realizadas' ? (
@@ -2389,7 +2391,9 @@ export function SupervisorView({
               </button>
             </div>
             {caraTablero === 'operacion' ? (
-              <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+              <PantallaSegura nombre="Tablero Operación">
+                <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+              </PantallaSegura>
             ) : caraTablero === 'maquinaria' ? (
               <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
             ) : (
@@ -4071,15 +4075,15 @@ export function SupervisorView({
 
                     <label className="assignment-detail-field">
                       <span>Equipo</span>
-                      <select
+                      <SearchableSelect
                         value={editLaborDraft.equipmentCode}
-                        onChange={(e) => setEditLaborDraft((d) => ({ ...d, equipmentCode: e.target.value }))}
-                      >
-                        <option value="">Sin equipo</option>
-                        {sortedEquipment.map((eq) => (
-                          <option key={eq.code} value={eq.code}>{eq.name}</option>
-                        ))}
-                      </select>
+                        onChange={(val) => setEditLaborDraft((d) => ({ ...d, equipmentCode: val }))}
+                        options={[
+                          { value: '', label: 'Sin equipo' },
+                          ...sortedEquipment.map((eq) => ({ value: eq.code, label: eq.name }))
+                        ]}
+                        placeholder="Buscar máquina..."
+                      />
                     </label>
 
                     <label className="assignment-detail-field">

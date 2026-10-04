@@ -981,6 +981,7 @@
   cursor: pointer;
   text-align: left;
   transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  min-width: 0;
 }
 .insumos-tab:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); }
 .insumos-tab.is-active {
@@ -1004,6 +1005,9 @@
   font-weight: 800;
   font-size: 0.95rem;
   color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .insumos-tab.is-active .insumos-tab__label { color: #1f8a47; }
 :root[data-theme="dark"] .insumos-tab.is-active .insumos-tab__label { color: #7fd6a0; }

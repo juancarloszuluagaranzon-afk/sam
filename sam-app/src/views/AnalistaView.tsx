@@ -17,6 +17,32 @@ import { CarteraTab } from './CarteraTab'
 // Import ESTÁTICO (regla 17-jul: nada de lazy chunks nuevos en esta app).
 import { MapaView } from './MapaView'
 import { BotonManual } from '../components/BotonManual'
+import { ConsumoDashboardTab } from './ConsumoDashboardTab'
+import { MovimientosTab } from './MovimientosTab'
+import { PantallaSegura } from '../components/PantallaSegura'
+
+function AnalistaTablerosView() {
+  const [cara, setCara] = useState<'maquinaria' | 'insumos'>('maquinaria')
+  return (
+    <>
+      <div className="tablero-caras-tabs" style={{ marginBottom: 16 }}>
+        <button type="button" className={`tablero-cara-tab ${cara === 'maquinaria' ? 'is-sel' : ''}`}
+                onClick={() => setCara('maquinaria')}>
+          ⛽ Eficiencia maquinaria
+        </button>
+        <button type="button" className={`tablero-cara-tab ${cara === 'insumos' ? 'is-sel' : ''}`}
+                onClick={() => setCara('insumos')}>
+          📦 Insumos y materiales
+        </button>
+      </div>
+      {cara === 'maquinaria' ? (
+        <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
+      ) : (
+        <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
+      )}
+    </>
+  )
+}
 
 /**
  * Vista del rol "Analista de insumos y materiales".
@@ -37,13 +63,14 @@ import { BotonManual } from '../components/BotonManual'
  * administración. La aprobación es el segundo par de ojos; si firma lo suyo, no hay
  * control.
  */
-type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'facturacion' | 'cartera' | 'mapa'
+type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'facturacion' | 'cartera' | 'mapa' | 'tableros'
 
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
   { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
   { key: 'bandeja', icon: '📥', label: 'Bandeja', desc: 'Entregar y despachar' },
   { key: 'avales', icon: '✅', label: 'Aprobaciones', desc: 'Tanqueos por aprobar' },
   { key: 'inventario', icon: '📦', label: 'Inventario', desc: 'Stock y kardex' },
+  { key: 'tableros', icon: '📈', label: 'Tableros', desc: 'Eficiencia e insumos' },
   { key: 'bodegas', icon: '🏢', label: 'Bodegas', desc: 'Principal y carros' },
   { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },
   { key: 'maquinas', icon: '🚜', label: 'Máquinas', desc: 'Crear, editar y dar de baja' },
@@ -176,6 +203,7 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
           : tab === 'reportes' ? <ConsumoEquiposTab />
           : tab === 'facturacion' ? <FacturacionTab />
           : tab === 'cartera' ? <CarteraTab />
+          : tab === 'tableros' ? <AnalistaTablerosView />
           : <MapaView onBack={() => setTab('avales')} />}
       </div>
     </main>

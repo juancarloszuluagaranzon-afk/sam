@@ -301,6 +301,7 @@ export function SupervisorView({
   // son la misma pregunta ("¿cómo va la operación?") mirada desde dos ángulos, y
   // separarlas obliga a acordarse de que existen dos sitios.
   const [caraTablero, setCaraTablero] = useState<'operacion' | 'maquinaria' | 'insumos'>('operacion')
+  const [mountedCaras, setMountedCaras] = useState({ operacion: true, maquinaria: false, insumos: false })
   const [equipoConsumo, setEquipoConsumo] = useState<Equipment | null>(null)
   const [equipoConsumoRows, setEquipoConsumoRows] = useState<InsumoKardex[]>([])
   const [equipoConsumoLoading, setEquipoConsumoLoading] = useState(false)
@@ -2375,29 +2376,37 @@ export function SupervisorView({
           <>
             <div className="tablero-caras">
               <button type="button" className={caraTablero === 'operacion' ? 'is-sel' : ''}
-                      onClick={() => setCaraTablero('operacion')}>
+                      onClick={() => { setCaraTablero('operacion'); setMountedCaras(m => ({ ...m, operacion: true })) }}>
                 📋 Operación general
               </button>
               <button type="button" className={caraTablero === 'maquinaria' ? 'is-sel' : ''}
-                      onClick={() => setCaraTablero('maquinaria')}>
+                      onClick={() => { setCaraTablero('maquinaria'); setMountedCaras(m => ({ ...m, maquinaria: true })) }}>
                 ⛽ Eficiencia maquinaria
               </button>
               {/* La tercera cara del tablero del dueño. Es el MISMO componente que
                   la pestaña de Más, no una copia: dos tableros del mismo hecho
                   terminan dando dos verdades. */}
               <button type="button" className={caraTablero === 'insumos' ? 'is-sel' : ''}
-                      onClick={() => setCaraTablero('insumos')}>
+                      onClick={() => { setCaraTablero('insumos'); setMountedCaras(m => ({ ...m, insumos: true })) }}>
                 📦 Insumos y materiales
               </button>
             </div>
-            {caraTablero === 'operacion' ? (
-              <PantallaSegura nombre="Tablero Operación">
-                <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
-              </PantallaSegura>
-            ) : caraTablero === 'maquinaria' ? (
-              <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
-            ) : (
-              <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
+            {mountedCaras.operacion && (
+              <div style={{ display: caraTablero === 'operacion' ? 'block' : 'none' }}>
+                <PantallaSegura nombre="Tablero Operación">
+                  <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+                </PantallaSegura>
+              </div>
+            )}
+            {mountedCaras.maquinaria && (
+              <div style={{ display: caraTablero === 'maquinaria' ? 'block' : 'none' }}>
+                <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
+              </div>
+            )}
+            {mountedCaras.insumos && (
+              <div style={{ display: caraTablero === 'insumos' ? 'block' : 'none' }}>
+                <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
+              </div>
             )}
           </>
         ) : null}

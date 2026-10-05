@@ -23,22 +23,31 @@ import { PantallaSegura } from '../components/PantallaSegura'
 
 function AnalistaTablerosView() {
   const [cara, setCara] = useState<'maquinaria' | 'insumos'>('maquinaria')
+  const [mounted, setMounted] = useState({ maquinaria: true, insumos: false })
+
   return (
     <>
-      <div className="tablero-caras-tabs" style={{ marginBottom: 16 }}>
-        <button type="button" className={`tablero-cara-tab ${cara === 'maquinaria' ? 'is-sel' : ''}`}
-                onClick={() => setCara('maquinaria')}>
+      <div className="tablero-caras" style={{ marginBottom: 16 }}>
+        <button type="button" className={cara === 'maquinaria' ? 'is-sel' : ''}
+                onClick={() => { setCara('maquinaria'); setMounted(m => ({ ...m, maquinaria: true })) }}>
           ⛽ Eficiencia maquinaria
         </button>
-        <button type="button" className={`tablero-cara-tab ${cara === 'insumos' ? 'is-sel' : ''}`}
-                onClick={() => setCara('insumos')}>
+        <button type="button" className={cara === 'insumos' ? 'is-sel' : ''}
+                onClick={() => { setCara('insumos'); setMounted(m => ({ ...m, insumos: true })) }}>
           📦 Insumos y materiales
         </button>
       </div>
-      {cara === 'maquinaria' ? (
-        <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
-      ) : (
-        <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
+      
+      {mounted.maquinaria && (
+        <div style={{ display: cara === 'maquinaria' ? 'block' : 'none' }}>
+          <PantallaSegura nombre="Eficiencia maquinaria"><ConsumoDashboardTab /></PantallaSegura>
+        </div>
+      )}
+      
+      {mounted.insumos && (
+        <div style={{ display: cara === 'insumos' ? 'block' : 'none' }}>
+          <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>
+        </div>
       )}
     </>
   )

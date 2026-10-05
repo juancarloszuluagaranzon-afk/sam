@@ -82,8 +82,8 @@ const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = 
   { key: 'mapa', icon: '🗺️', label: 'Mapa', desc: 'Plano · sin señal' },
 ]
 
-const PRIMARY_TABS = TABS.slice(0, 4)
-const SECONDARY_TABS = TABS.slice(4)
+const PRIMARY_TABS = TABS.slice(0, 5)
+const SECONDARY_TABS = TABS.slice(5)
 
 export function AnalistaView({ onLogout }: { onLogout: () => void }) {
   const { session, error, info } = useAppData()

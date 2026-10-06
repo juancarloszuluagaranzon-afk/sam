@@ -1,7 +1,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
-import { executionDateKey, setModalidadBulk } from '../services/samApi'
+import { executionDateKey, setModalidadBulk, setTarifaManualBulk } from '../services/samApi'
 import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades, type MapaModalidades } from '../lib/modalidad'
 import {
   RAZONES_SOCIALES, abrirArchivo, desvincularDocumento, loadDocumentos,
@@ -57,6 +57,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const modalidades = useModalidades()
   const [soloSinModalidad, setSoloSinModalidad] = useState(false)
   const [modalidadInput, setModalidadInput] = useState('')
+  const [tarifaInput, setTarifaInput] = useState('')
   const [documentos, setDocumentos] = useState<DocumentoFact[]>([])
   const [modal, setModal] = useState<TipoDocumento | null>(null)
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
@@ -266,6 +267,36 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     }
   }
 
+  const opcionesTarifa = useMemo(() => {
+    if (laboresSel.length !== 1) return []
+    return tarifas.filter(t => t.labor === laboresSel[0])
+  }, [laboresSel, tarifas])
+
+  async function ponerTarifa() {
+    const ids = seleccion.map((a) => a.id)
+    if (ids.length === 0 || !tarifaInput) return
+    setBusy(true)
+    setError('')
+    try {
+      await setTarifaManualBulk(ids, tarifaInput, session?.id)
+      const set = new Set(ids)
+      setAssignments((prev) => prev.map((a) => {
+        if (!set.has(a.id)) return a
+        const notas = String(a.notes || '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+        const nuevas = notas ? `${notas} [TARIFA:${tarifaInput}]` : `[TARIFA:${tarifaInput}]`
+        return { ...a, notes: nuevas }
+      }))
+      setInfo(`Tarifa manual asignada a ${ids.length} labor(es).`)
+      setSelected(new Set())
+      setTarifaInput('')
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo asignar la tarifa. (${e?.message ?? 'error'})`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const allChecked = shown.length > 0 && shown.every((a) => selected.has(a.id))
   const fmt = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 
@@ -400,7 +431,29 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               </button>
             </>
           )}
-          {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad, marca una sola labor.</span>}
+          {opcionesTarifa.length > 0 && (
+            <>
+              <select
+                id="fact-tarifa"
+                value={tarifaInput}
+                onChange={(e) => setTarifaInput(e.target.value)}
+                disabled={busy}
+                aria-label={`Asignar tarifa manual a ${laboresSel[0]}`}
+                style={{ marginLeft: 8 }}
+              >
+                <option value="">Tarifa manual ({opcionesTarifa.length})…</option>
+                {opcionesTarifa.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.razonSocial || 'GENERAL'} - {t.clienteClave || 'Todos'}: {pesosCortos(t.precio)}/{t.unidad}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="inline-button" onClick={() => void ponerTarifa()} disabled={busy || !tarifaInput}>
+                Forzar tarifa
+              </button>
+            </>
+          )}
+          {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad o tarifa, marca una sola labor.</span>}
         </div>
       )}
 

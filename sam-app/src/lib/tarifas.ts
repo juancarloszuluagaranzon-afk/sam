@@ -127,6 +127,24 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
   const fecha = executionDateKey(a)
   const porHoras = esPorHoras(a.labor)
   const base: Valoracion = { valor: null, precio: null, cantidad: haDe(a), unidad: porHoras ? 'h' : 'ha', razonSocial: null, cliente: null, etiqueta: null, nota: null }
+
+  const manualMatch = a.notes?.match(/\[TARIFA:([a-f0-9\-]{36})\]/i)
+  if (manualMatch) {
+    const t = tarifas.find((x) => x.id === manualMatch[1])
+    if (t) {
+      return {
+        ...base,
+        precio: t.precio,
+        valor: base.cantidad * t.precio,
+        razonSocial: t.razonSocial,
+        cliente: NOMBRE_CLIENTE[t.clienteClave] || t.clienteClave,
+        etiqueta: t.etiqueta,
+        unidad: t.unidad,
+        nota: 'Asignada manualmente',
+      }
+    }
+  }
+
   const clientes = clientesDe(a, haciendasRA)
   if (clientes.length === 0) return { ...base, nota: a.ingenioId ? 'Este cliente no tiene tabla de precios' : 'La labor no tiene ingenio' }
 

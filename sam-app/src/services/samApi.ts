@@ -4179,6 +4179,25 @@ export async function setModalidadBulk(
   }
 }
 
+export async function setTarifaManualBulk(
+  ids: string[],
+  tarifaId: string,
+  editadoPor?: string,
+): Promise<void> {
+  if (ids.length === 0) return
+  const { data, error: eLeer } = await supabase.from('asignaciones').select('id, observaciones').in('id', ids)
+  if (eLeer || !data) throw new Error('No se pudieron leer las observaciones actuales')
+  
+  for (const row of data) {
+    const notas = String(row.observaciones || '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+    const nuevas = notas ? `${notas} [TARIFA:${tarifaId}]` : `[TARIFA:${tarifaId}]`
+    const payload: Record<string, unknown> = { observaciones: nuevas }
+    if (editadoPor) payload.editado_por = editadoPor
+    const { error } = await supabase.from('asignaciones').update(payload).eq('id', row.id)
+    if (error) throw new Error('No se pudo guardar la tarifa manual')
+  }
+}
+
 export interface AsignacionAuditoria {
   id: number
   accion: 'INSERT' | 'UPDATE'

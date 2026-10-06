@@ -3396,7 +3396,11 @@ export function SupervisorView({
                       <div className="labor-actions" onClick={(e) => e.stopPropagation()}>
                         <button
                           className="cancel-btn"
-                          onClick={() => void handleCancelAssignment(assignment)}
+                          onClick={() => {
+                            if (window.confirm('¿Estás seguro de cancelar esta labor?')) {
+                              void handleCancelAssignment(assignment)
+                            }
+                          }}
                         >
                           Cancelar
                         </button>
@@ -4230,8 +4234,14 @@ export function SupervisorView({
                     <button
                       className="cancel-btn"
                       onClick={() => {
-                        void handleCancelAssignment(selectedLabor)
-                        closeModal()
+                        const isParcial = selectedLabor.status === 'PARCIAL';
+                        const confirmMsg = isParcial
+                          ? '¡Atención! Esta labor es PARCIAL. Si la cancelas, el área y horas reportadas por el operario no se liquidarán. ¿Estás seguro de cancelarla?'
+                          : '¿Estás seguro de cancelar esta labor asignada?';
+                        if (window.confirm(confirmMsg)) {
+                          void handleCancelAssignment(selectedLabor)
+                          closeModal()
+                        }
                       }}
                     >
                       Cancelar labor

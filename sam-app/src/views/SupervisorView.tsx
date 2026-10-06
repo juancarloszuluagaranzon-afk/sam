@@ -2325,7 +2325,7 @@ export function SupervisorView({
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'facturacion' ? (
-          <PantallaSegura nombre="Facturación"><FacturacionTab /></PantallaSegura>
+          <PantallaSegura nombre="Facturación"><FacturacionTab onEdit={setSelectedLabor} /></PantallaSegura>
         ) : null}
 
         {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'cartera' ? (

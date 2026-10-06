@@ -45,7 +45,7 @@ const ETAPAS: { id: Etapa; titulo: string }[] = [
   { id: 'TODAS', titulo: 'Todas' },
 ]
 
-export function FacturacionTab() {
+export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void }) {
   const { assignments, setAssignments, session, todayKey, busy, setBusy, setError, setInfo } = useAppData()
 
   const [search, setSearch] = useState('')
@@ -178,6 +178,40 @@ export function FacturacionTab() {
     setInfo(`${doc.tipo === 'SOPORTE' ? 'Soporte' : 'Factura'} ${doc.numero} vinculado a ${vinculadas} labor(es).`)
     setModal(null)
     setSelected(new Set())
+  }
+
+  async function exportarAExcel() {
+    try {
+      const { utils, writeFile } = await import('xlsx')
+      const wb = utils.book_new()
+      const filas = realizadas.map((a) => {
+        const v = valores.get(a.id)
+        const sop = a.soporteId ? docPorId.get(a.soporteId) : undefined
+        const fac = a.facturaId ? docPorId.get(a.facturaId) : undefined
+        return {
+          'Fecha': executionDateKey(a),
+          'Hacienda': a.haciendaName,
+          'Suerte': a.suerte,
+          'Labor': a.labor,
+          'Modalidad': modalidadEfectiva(a) || '',
+          'Máquina': a.equipmentName || a.equipmentCode || '',
+          'Operario': a.operatorName || '',
+          'Cant.': haDe(a),
+          'Unidad': unidadDeLabor(a.labor),
+          'Valor Unitario': v?.precio ?? 0,
+          'Valor Total': v?.valor ?? 0,
+          'Soporte': sop ? sop.numero : '',
+          'Factura': fac ? fac.numero : '',
+          'Razón Social': v?.razonSocial ?? '',
+          'Cliente': v?.cliente ?? '',
+        }
+      })
+      utils.book_append_sheet(wb, utils.json_to_sheet(filas), 'Facturación')
+      writeFile(wb, `Facturacion_${mes || 'Todo'}.xlsx`)
+    } catch (err) {
+      console.error(err)
+      alert('Error al exportar a Excel.')
+    }
   }
 
   async function quitar(tipo: TipoDocumento) {
@@ -317,6 +351,15 @@ export function FacturacionTab() {
         >
           {soloSinTarifa ? '✓ ' : ''}Sin tarifa ({sinTarifa})
         </button>
+        <button
+          type="button"
+          className="inline-button"
+          onClick={() => void exportarAExcel()}
+          title="Exportar a Excel"
+          style={{ marginLeft: 'auto' }}
+        >
+          ⬇️ Exportar Excel
+        </button>
       </div>
 
       <input
@@ -370,6 +413,7 @@ export function FacturacionTab() {
               <th>Hacienda · Suerte</th>
               <th>Labor</th>
               <th>Modalidad</th>
+              <th>Máquina</th>
               <th>Operario</th>
               <th className="num">Cant.</th>
               <th className="num">Valor</th>
@@ -389,6 +433,7 @@ export function FacturacionTab() {
                 modalidades={modalidades}
                 onToggle={toggle}
                 onAbrir={verArchivo}
+                onEdit={onEdit}
               />
             ))}
             {shown.length === 0 && (
@@ -451,7 +496,7 @@ export function FacturacionTab() {
  * 400 filas en pantalla, y marcar UNA las redibujaba todas (más de un segundo
  * por clic). Ahora solo se redibuja la que cambió.
  */
-const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onToggle, onAbrir }: {
+const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onToggle, onAbrir, onEdit }: {
   a: Assignment
   sel: boolean
   v?: Valoracion
@@ -460,6 +505,7 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
   modalidades: MapaModalidades
   onToggle: (id: string) => void
   onAbrir: (d: DocumentoFact) => void
+  onEdit?: (a: Assignment) => void
 }) {
   const mod = modalidadEfectiva(a)
   const adic = pasesAdicionales(a)
@@ -467,7 +513,12 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
     <tr className={sel ? 'factura-row--sel' : ''}>
       <td><input type="checkbox" checked={sel} onChange={() => onToggle(a.id)} aria-label="Marcar" /></td>
       <td className="nowrap">{executionDateKey(a)}</td>
-      <td>{a.haciendaName} · {a.suerte}</td>
+      <td className="nowrap">
+        {a.haciendaName} · {a.suerte}
+        {onEdit && (
+          <button type="button" onClick={() => onEdit(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, marginLeft: 4 }} title="Editar">✏️</button>
+        )}
+      </td>
       <td>{a.labor}</td>
       <td>
         {mod
@@ -476,6 +527,7 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
             ? <span className="factura-chip factura-chip--falta">falta</span>
             : <span className="subtle-copy">—</span>}
       </td>
+      <td>{a.equipmentName || a.equipmentCode || '—'}</td>
       <td>{a.operatorName || '—'}</td>
       <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
       <td className="num"><CeldaValor v={v} /></td>

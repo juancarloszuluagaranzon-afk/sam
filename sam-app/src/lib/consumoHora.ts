@@ -285,6 +285,132 @@ export function consumoPorHora(input: {
   return filas.sort((a, b) => b.galones - a.galones)
 }
 
+/* ── TANQUE A TANQUE (7-oct-2026) ─────────────────────────────────────────────
+ *
+ * Regla de Iván: «se tanquea 15 galones con horómetro 1234 y luego se tanquearon
+ * el 1 de oct con horómetro 1433,3; así el 9902 del 1 al 3 deberían aparecer
+ * gastados alrededor de 9, que fue lo que se cargó, y se asume que se gastaron
+ * con horómetro 1439,1. Todo debe quedar con esta misma lógica».
+ *
+ * Cada tanqueo LLENA lo que se gastó desde el tanqueo anterior. Entonces:
+ *
+ *   gastado del periodo = galones de los tanqueos del periodo MENOS el primero
+ *                         (el primero repone lo gastado ANTES del periodo)
+ *   horas del periodo   = horómetro del último tanqueo − el del primero
+ *   gal/hora            = gastado / horas
+ *
+ * VALTRA 9902, 1 al 3 de octubre: tanqueos del 1-oct (14 gal, 1.433,3) y del
+ * 3-oct (9 gal, 1.439,1) → gastó 9 gal en 5,8 h = 1,55 gal/h. Los 14 del 1-oct
+ * son lo que gastó del 30-sep al 1-oct.
+ *
+ * Los horómetros sucios se filtran igual que arriba (magnitud, mediana, que no
+ * retroceda). Un tanqueo con el horómetro malo o sin horómetro NO corta la
+ * cuenta: sus galones siguen contando si cae entre dos tanqueos buenos. Lo que
+ * cae antes del primer tanqueo bueno o después del último no se puede medir y
+ * queda fuera (se dice en la pantalla).
+ *
+ * Con un solo tanqueo en el periodo (lo normal en «Hoy») no hay contra qué
+ * restar: se necesita el siguiente.
+ */
+
+export interface Tanqueo {
+  maquina: string
+  /** Instante ISO. */
+  cuando: string
+  /** `null` = no se anotó. */
+  horometro: number | null
+  galones: number
+  fuente: 'Entrega' | 'Tanqueo'
+  detalle: string
+}
+
+export interface TramoTanque extends Tanqueo {
+  /** Horas desde el tanqueo bueno anterior (`null` en el primero o si el horómetro no sirve). */
+  horasDesdeAnterior: number | null
+  /** ¿Sus galones entran en el gastado del periodo? */
+  cuenta: boolean
+  /** Por qué no entra, o por qué su horómetro no se usó. */
+  nota: string | null
+}
+
+export interface ConsumoTanques {
+  maquina: string
+  /** Gastado tanque a tanque. `null` si no hay dos tanqueos con horómetro bueno. */
+  gastado: number | null
+  /** Todo lo que se le cargó en el periodo (lo de la torta). */
+  cargado: number
+  horas: number | null
+  galPorHora: number | null
+  inicial: Tanqueo | null
+  final: Tanqueo | null
+  problema: string | null
+  tramos: TramoTanque[]
+}
+
+export function consumoTanqueATanque(tanqueos: Tanqueo[], dias: number): Map<string, ConsumoTanques> {
+  const porMaq = new Map<string, Tanqueo[]>()
+  for (const t of tanqueos) {
+    if (!t.maquina || !(t.galones > 0)) continue
+    const l = porMaq.get(t.maquina) ?? []
+    l.push(t)
+    porMaq.set(t.maquina, l)
+  }
+  const out = new Map<string, ConsumoTanques>()
+  for (const [maquina, lista] of porMaq) {
+    const orden = [...lista].sort((a, b) => a.cuando.localeCompare(b.cuando) || (a.horometro ?? 0) - (b.horometro ?? 0))
+    const comoLectura = (t: Tanqueo): Lectura => ({ maquina, cuando: t.cuando, horometro: t.horometro ?? 0, fuente: t.fuente, detalle: t.detalle })
+    const conH = orden.filter((t) => (t.horometro ?? 0) > 0)
+    const { buenas: b1 } = porMagnitud(conH.map(comoLectura))
+    const { buenas: b2 } = cercaDeLaMediana(b1, dias)
+    const { buenas } = enOrdenDelTiempo(b2)
+    const buena = new Set(buenas.map((l) => `${l.cuando}|${l.horometro}`))
+    const esBuena = (t: Tanqueo) => (t.horometro ?? 0) > 0 && buena.has(`${t.cuando}|${t.horometro}`)
+
+    const iPrimero = orden.findIndex(esBuena)
+    let iUltimo = -1
+    for (let i = orden.length - 1; i >= 0; i--) if (esBuena(orden[i])) { iUltimo = i; break }
+
+    const tramos: TramoTanque[] = []
+    let hAnterior: number | null = null
+    orden.forEach((t, i) => {
+      const ok = esBuena(t)
+      const cuenta = iPrimero >= 0 && i > iPrimero && i <= iUltimo
+      let nota: string | null = null
+      if (!(t.horometro ?? 0)) nota = 'sin horómetro'
+      else if (!ok) nota = 'horómetro que no cuadra con los demás'
+      if (i === iPrimero) nota = 'primer tanqueo: repone lo gastado antes del periodo'
+      else if (iPrimero >= 0 && i < iPrimero) nota = 'antes del primer horómetro bueno: no se puede medir'
+      else if (iUltimo >= 0 && i > iUltimo) nota = `${nota ? `${nota} · ` : ''}después del último horómetro bueno: se mide con el siguiente tanqueo`
+      tramos.push({ ...t, horasDesdeAnterior: ok && hAnterior != null ? r1(t.horometro! - hAnterior) : null, cuenta, nota })
+      if (ok) hAnterior = t.horometro!
+    })
+
+    const cargado = r1(orden.reduce((s, t) => s + t.galones, 0))
+    const inicial = iPrimero >= 0 ? orden[iPrimero] : null
+    const final = iUltimo >= 0 ? orden[iUltimo] : null
+    let gastado: number | null = null
+    let horas: number | null = null
+    let problema: string | null = null
+    if (!inicial || !final) problema = 'ningún tanqueo con horómetro en el periodo'
+    else if (iPrimero === iUltimo) problema = 'un solo tanqueo con horómetro: se mide con el siguiente'
+    else {
+      const h = final.horometro! - inicial.horometro!
+      if (h <= 0) problema = 'el horómetro no avanzó entre tanqueos'
+      else if (h > 24 * Math.max(1, dias)) problema = `${r1(h)} h en ${dias} día${dias === 1 ? '' : 's'}: revisar horómetro`
+      else {
+        horas = r1(h)
+        gastado = r1(tramos.filter((t) => t.cuenta).reduce((s, t) => s + t.galones, 0))
+      }
+    }
+    out.set(maquina, {
+      maquina, gastado, cargado, horas,
+      galPorHora: gastado != null && horas ? r2(gastado / horas) : null,
+      inicial, final, problema, tramos,
+    })
+  }
+  return out
+}
+
 /** Días calendario de un rango `YYYY-MM-DD`, ambos incluidos. */
 export function diasDelRango(desde: string, hasta: string): number {
   const a = new Date(`${desde}T12:00:00Z`).getTime()

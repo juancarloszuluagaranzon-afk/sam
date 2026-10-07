@@ -335,7 +335,6 @@ export function MovimientosTab() {
               Usa el MISMO filtro de periodo de arriba. */}
           <ConsumoHoraCard
             movs={insumosMovs}
-            cerradas={cerradas}
             catalogo={catalogoInsumos}
             nombreMaq={nombreMaq}
             desde={desde}

@@ -99,6 +99,7 @@ export function InformeSemanalTab() {
           'Horómetro final': f.horometroFinal ?? '',
           'HORAS TRABAJADAS': f.horas ?? '',
           'Combustible(gal)': f.galones || '',
+          'Gastado tanque a tanque (gal)': f.galonesGastados ?? '',
           'GALONES / HORA': f.galonesPorHora ?? '',
           '¿Engrasó el tractor?': f.engrases.preguntadas === 0 ? ''
             : f.engrases.si > 0 ? `SI (${f.engrases.si} de ${f.engrases.preguntadas})` : 'NO',
@@ -193,7 +194,9 @@ export function InformeSemanalTab() {
                   </div>
                   <div className="sem-fila__kpis">
                     <span><small>Horas</small><strong>{f.horas ?? '—'}</strong></span>
-                    <span><small>Galones</small><strong>{f.galones || '—'}</strong></span>
+                    <span title="Cargados en la semana · gastados tanque a tanque (sin el primer tanqueo, que repone lo de antes)">
+                      <small>Galones</small><strong>{f.galones || '—'}{f.galonesGastados != null && <small> · gastó {f.galonesGastados}</small>}</strong>
+                    </span>
                     {f.engrases.preguntadas > 0 && (
                       <span><small>Engrase</small><strong>{f.engrases.si}/{f.engrases.preguntadas}</strong></span>
                     )}

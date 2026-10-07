@@ -49,7 +49,7 @@ import { redondear2 } from '../lib/cantidad'
 import { filaMaestro } from '../lib/areaSuerte'
 import { esPorHoras } from '../lib/texto'
 import type { RangoSemaforo } from '../lib/semaforo'
-import type { Lectura } from '../lib/consumoHora'
+import type { Tanqueo } from '../lib/consumoHora'
 
 type Source = 'supabase' | 'fallback' | 'cache'
 
@@ -2785,50 +2785,51 @@ export async function loadKardexReporte(opts?: { desde?: string; hasta?: string;
 }
 
 /**
- * Lecturas de horómetro de las ENTREGAS y los TANQUEOS de un periodo, para el
- * combustible por hora (`lib/consumoHora`). Consulta liviana a propósito: solo
- * máquina, horómetro y cuándo — `loadSolicitudes` trae cada entrega con todos
- * sus ítems y la guarda en el celular, y aquí no hace falta nada de eso.
+ * TANQUEOS de un periodo con sus galones y su horómetro, para el consumo tanque a
+ * tanque (`consumoTanqueATanque` en `lib/consumoHora`, 7-oct-2026). Entregas de
+ * bodega con combustible + tanqueos en bomba. Los que no traen horómetro también
+ * vienen: sus galones cuentan si caen entre dos tanqueos con horómetro.
  * `desde`/`hasta` son días (`YYYY-MM-DD`) en hora de Colombia.
  */
-export async function loadLecturasHorometro(desde: string, hasta: string): Promise<Lectura[]> {
+export async function loadTanqueos(desde: string, hasta: string): Promise<Tanqueo[]> {
   const [ent, tq] = await Promise.all([
     supabase
       .from('insumos_solicitudes')
-      .select('equipo_codigo,horometro,entregado_en,created_at,estado,operario_nombre')
+      .select('equipo_codigo,horometro,entregado_en,created_at,operario_nombre,items:insumos_solicitud_items(insumo_nombre,cantidad,cantidad_despachada)')
       .not('equipo_codigo', 'is', null)
-      .not('horometro', 'is', null)
       .neq('estado', 'CANCELADA')
       .gte('entregado_en', `${desde}T00:00:00-05:00`)
       .lte('entregado_en', `${hasta}T23:59:59-05:00`)
       .limit(5000),
     supabase
       .from('combustible_externo')
-      .select('equipo_codigo,horometro,created_at,fecha,estado,operario_nombre')
+      .select('equipo_codigo,horometro,galones,created_at,fecha,operario_nombre')
       .not('equipo_codigo', 'is', null)
-      .not('horometro', 'is', null)
       .neq('estado', 'RECHAZADO')
       .gte('fecha', desde)
       .lte('fecha', hasta)
       .limit(5000),
   ])
-  const out: Lectura[] = []
+  if (ent.error || tq.error) throw new Error('No se pudieron leer los tanqueos')
+  const h = (v: unknown) => (Number(v) > 0 ? Number(v) : null)
+  const out: Tanqueo[] = []
   for (const r of (ent.data ?? []) as Record<string, unknown>[]) {
+    const items = (r.items ?? []) as { insumo_nombre?: string; cantidad?: number; cantidad_despachada?: number | null }[]
+    const galones = items
+      .filter((it) => /combustible/i.test(it.insumo_nombre ?? ''))
+      .reduce((s, it) => s + Number(it.cantidad_despachada ?? it.cantidad ?? 0), 0)
+    if (!(galones > 0)) continue
     out.push({
-      maquina: String(r.equipo_codigo),
-      cuando: String(r.entregado_en ?? r.created_at),
-      horometro: Number(r.horometro) || 0,
-      fuente: 'Entrega',
-      detalle: String(r.operario_nombre ?? ''),
+      maquina: String(r.equipo_codigo), cuando: String(r.entregado_en ?? r.created_at),
+      horometro: h(r.horometro), galones, fuente: 'Entrega', detalle: String(r.operario_nombre ?? ''),
     })
   }
   for (const r of (tq.data ?? []) as Record<string, unknown>[]) {
+    const galones = Number(r.galones ?? 0)
+    if (!(galones > 0)) continue
     out.push({
-      maquina: String(r.equipo_codigo),
-      cuando: String(r.created_at ?? `${r.fecha}T12:00:00-05:00`),
-      horometro: Number(r.horometro) || 0,
-      fuente: 'Tanqueo',
-      detalle: String(r.operario_nombre ?? ''),
+      maquina: String(r.equipo_codigo), cuando: String(r.created_at ?? `${r.fecha}T12:00:00-05:00`),
+      horometro: h(r.horometro), galones, fuente: 'Tanqueo', detalle: String(r.operario_nombre ?? ''),
     })
   }
   return out

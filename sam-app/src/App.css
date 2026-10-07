@@ -9447,6 +9447,10 @@ td.planilla-vacio:hover { background: #fde047; }
 }
 .ggh__eje { display: flex; align-items: center; justify-content: center; border-right: 2px solid var(--color-ink-mid, #5a5f57); }
 .ggh__eje span { writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; letter-spacing: .04em; }
+/* Tocable: el tablero abre los tanqueos de la máquina (7-oct-2026). */
+.ggh__col--ver { cursor: pointer; }
+.ggh__col--ver:hover .ggh__barra, .ggh__col--ver:focus-visible .ggh__barra { filter: brightness(1.12); }
+.ggh__col--ver:focus-visible { outline: 2px solid var(--color-brand, #155b30); outline-offset: 2px; border-radius: 6px; }
 .ggh__col {
   display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px;
   border-bottom: 2px solid var(--color-ink-mid, #5a5f57);

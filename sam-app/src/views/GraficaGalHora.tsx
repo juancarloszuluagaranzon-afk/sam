@@ -31,6 +31,8 @@ export interface ColumnaGalHora {
   porSuma: boolean
   nivel: NivelSemaforo | null
   rango: RangoSemaforo | null
+  /** Qué decir encima cuando no hay gal/h (por defecto «sin horas»). */
+  sinGalHora?: string
 }
 
 const ALTO_BARRAS = 170 // px del área de barras
@@ -41,14 +43,23 @@ const SUCIO = 'Las lecturas de este horómetro vienen sucias: no hay un inicial 
 const n1 = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 1 })
 const n2 = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
 
-export function GraficaGalHora({ columnas }: { columnas: ColumnaGalHora[] }) {
+/**
+ * @param onVer      al tocar una columna (el tablero abre los tanqueos de esa máquina).
+ * @param titulo     el rótulo de arriba; `rotuloColumna` el de la fila de nombres.
+ */
+export function GraficaGalHora({ columnas, onVer, titulo = 'Galones y galones por hora, máquina por máquina', rotuloColumna = 'Máquina' }: {
+  columnas: ColumnaGalHora[]
+  onVer?: (codigo: string) => void
+  titulo?: string
+  rotuloColumna?: string
+}) {
   const cols = columnas.filter((c) => c.galones > 0)
   if (cols.length === 0) return null
   const max = Math.max(...cols.map((c) => c.galones), 0.0001)
 
   return (
     <div className="ggh">
-      <p className="ins-res__lbl" style={{ margin: '18px 0 6px' }}>Galones y galones por hora, máquina por máquina</p>
+      <p className="ins-res__lbl" style={{ margin: '18px 0 6px' }}>{titulo}</p>
       <div className="ggh__scroll" role="region" aria-label="Galones por máquina" tabIndex={0}>
         {/* Ancho = el del panel; solo se desliza si las columnas no caben a 3,3em
             (≈53 px: lo que ocupa «11.490,2», la cifra más ancha). Con `max-content`
@@ -64,14 +75,17 @@ export function GraficaGalHora({ columnas }: { columnas: ColumnaGalHora[] }) {
             const alto = Math.max((c.galones / max) * ALTO_BARRAS, 3)
             const adentro = alto >= 30 // si no cabe el número dentro, va encima
             return (
-              <div key={c.codigo} className="ggh__col" style={{ height: ALTO_BARRAS + 44 }}
+              <div key={c.codigo} className={`ggh__col${onVer ? ' ggh__col--ver' : ''}`} style={{ height: ALTO_BARRAS + 44 }}
+                   role={onVer ? 'button' : undefined} tabIndex={onVer ? 0 : undefined}
+                   onClick={onVer ? () => onVer(c.codigo) : undefined}
+                   onKeyDown={onVer ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onVer(c.codigo) } } : undefined}
                    title={`${c.nombre}: ${n1(c.galones)} gal en ${c.horas ? n1(c.horas) : '—'} h${c.rango ? ` · rango ${describirRango(c.rango)} gal/h` : ''}`}>
                 {c.galHora != null ? (
                   <span className={`dash-galh ggh__galh${c.nivel ? ` dash-galh--${c.nivel}` : ''}`}>
                     {c.nivel && `${NIVEL[c.nivel].icono} `}{n2(c.galHora)}<small>gal/h</small>
                   </span>
                 ) : (
-                  <span className="dash-galh dash-galh--sin ggh__galh">sin horas</span>
+                  <span className="dash-galh dash-galh--sin ggh__galh">{c.sinGalHora ?? 'sin horas'}</span>
                 )}
                 {!adentro && <span className="ggh__gal ggh__gal--fuera">{n1(c.galones)} gal</span>}
                 <span className="ggh__barra" style={{ height: alto }}>
@@ -82,8 +96,11 @@ export function GraficaGalHora({ columnas }: { columnas: ColumnaGalHora[] }) {
           })}
 
           {/* ── La tabla, alineada con las barras ──────────────────── */}
-          <div className="ggh__rot">Máquina</div>
-          {cols.map((c) => <div key={c.codigo} className="ggh__cel ggh__cel--maq">{c.nombre}</div>)}
+          <div className="ggh__rot">{rotuloColumna}</div>
+          {cols.map((c) => (
+            <div key={c.codigo} className={`ggh__cel ggh__cel--maq${onVer ? ' ggh__col--ver' : ''}`}
+                 onClick={onVer ? () => onVer(c.codigo) : undefined}>{c.nombre}</div>
+          ))}
 
           <div className="ggh__rot">Horómetro inicial</div>
           {cols.map((c) => <div key={c.codigo} className="ggh__cel" title={c.porSuma ? SUCIO : undefined}>{!c.porSuma && c.inicial != null ? n1(c.inicial) : '—'}</div>)}

@@ -6,9 +6,11 @@ import {
   loadConsumo, loadHectareasPorRango, loadHorasDelMes, loadHorasPorRangoMes, loadReferencias,
   type ConsumoFila, type ReferenciaEquipo,
 } from '../services/consumoApi'
-import { loadSemaforos } from '../services/samApi'
+import { loadSemaforos, loadTanqueos } from '../services/samApi'
+import { consumoTanqueATanque, diasDelRango, type ConsumoTanques } from '../lib/consumoHora'
 import { NIVEL, describirRango, nivelDe, rangoDe, type RangoSemaforo } from '../lib/semaforo'
-import { GraficaGalHora } from './GraficaGalHora'
+import { GraficaGalHora, type ColumnaGalHora } from './GraficaGalHora'
+import { fmtFechaHora } from '../lib/fechas'
 import { PERIODOS, rangoDe as rangoDePeriodo, hoyBogota, type Periodo } from '../lib/periodos'
 
 /**
@@ -87,6 +89,10 @@ export function ConsumoDashboardTab() {
   /** Horómetro inicial y final del mes de cada máquina (para la gráfica). */
   const [extremos, setExtremos] = useState<Map<string, { inicial: number; final: number }>>(new Map())
   const [cargando, setCargando] = useState(true)
+  /** Consumo TANQUE A TANQUE del periodo por máquina (ver `lib/consumoHora`). */
+  const [tanques, setTanques] = useState<Map<string, ConsumoTanques>>(new Map())
+  /** La máquina cuyos tanqueos se están mirando (al tocar su barra). */
+  const [verMaq, setVerMaq] = useState<string | null>(null)
   const [mesSel, setMesSel] = useState<string>('')
   // Filtros de periodo — los MISMOS de Operación general e Insumos y materiales
   // (lib/periodos). Pedido del cliente con captura (21-sep-2026): «ponle estos
@@ -189,6 +195,9 @@ export function ConsumoDashboardTab() {
       if (!vivo) return
       setExtremos(r.extremos)
       loadHectareasPorRango(desde, hasta).then((h) => { if (vivo) setHectareas(h) }).catch(() => { /* sin área */ })
+      loadTanqueos(desde, hasta)
+        .then((tq) => { if (vivo) setTanques(consumoTanqueATanque(tq, diasDelRango(desde, hasta))) })
+        .catch(() => { if (vivo) setTanques(new Map()) })
       if (cierre.size > 0) { setHoras(cierre); setSinRango([]); return }
       setHoras(r.horas); setSinRango(r.cayeronASuma)
     })()
@@ -216,8 +225,18 @@ export function ConsumoDashboardTab() {
       m.set(f.equipoCodigo, e)
     }
     return [...m.entries()].map(([codigo, v]) => {
-      const h = horas.get(codigo) ?? 0
-      const galHora = h > 0 ? Math.round((v.gal / h) * 100) / 100 : null
+      // 🔴 TANQUE A TANQUE (7-oct-2026, regla de Iván): si la máquina tiene
+      // tanqueos en la app, el gasto y las horas salen de ellos — galones de los
+      // tanqueos del periodo menos el primero, contra el horómetro del último menos
+      // el del primero. Con un solo tanqueo no hay medida (se mide con el
+      // siguiente). Lo de antes (cierre mensual / horómetros del mes) queda solo
+      // para los meses del formato en papel, que no tienen tanqueos.
+      const tq = tanques.get(codigo)
+      const porTanque = tq != null
+      const cargado = v.gal
+      if (porTanque) v = { ...v, gal: tq.gastado ?? 0 }
+      const h = porTanque ? (tq.horas ?? 0) : (horas.get(codigo) ?? 0)
+      const galHora = porTanque ? tq.galPorHora : h > 0 ? Math.round((v.gal / h) * 100) / 100 : null
       const ref = refDe.get(codigo)?.galHora ?? null
 
       // ⚠️ Antes de acusar a la máquina, revisar el denominador.
@@ -230,7 +249,9 @@ export function ConsumoDashboardTab() {
       // Sin esto el tablero marcaba 12 de 21 máquinas en rojo, y una alerta que
       // suena doce veces no la lee nadie.
       const horasImplicitas = ref != null && ref > 0 ? v.gal / ref : null
-      const horasIncompletas = horasImplicitas != null && h > 0 && h < horasImplicitas * 0.6
+      // Tanque a tanque las horas y los galones son del MISMO tramo: no pueden
+      // quedar «incompletas» una respecto de la otra.
+      const horasIncompletas = !porTanque && horasImplicitas != null && h > 0 && h < horasImplicitas * 0.6
       const desv = galHora != null && ref != null && ref > 0 && !horasIncompletas
         ? Math.round(((galHora - ref) / ref) * 100) : null
 
@@ -254,12 +275,15 @@ export function ConsumoDashboardTab() {
         horasIncompletas,
         galHora, ref, desv,
         ganHora, refGan, desvGan,
-        inicial: extremos.get(codigo)?.inicial ?? null,
-        final: extremos.get(codigo)?.final ?? null,
+        inicial: porTanque ? tq.inicial?.horometro ?? null : extremos.get(codigo)?.inicial ?? null,
+        final: porTanque ? tq.final?.horometro ?? null : extremos.get(codigo)?.final ?? null,
+        cargado: Math.round(cargado * 10) / 10,
+        porTanque,
+        problemaTanque: porTanque ? tq.problema : null,
         usaGanchos: refGan != null,
       }
     }).sort((a, b) => b.gal - a.gal)
-  }, [delMes, horas, refDe, equipoNombre, extremos, hectareas])
+  }, [delMes, horas, refDe, equipoNombre, extremos, hectareas, tanques])
 
   // En ganchos solo se listan las que los usan: mostrar un PUMA con "—" en todo
   // hace pensar que falta un dato, cuando lo que pasa es que no lleva ganchos.
@@ -291,7 +315,9 @@ export function ConsumoDashboardTab() {
         'Movimientos': m.movs, 'Fuente': [...m.fuente].join(' + '),
       }))), 'Por mes')
       utils.book_append_sheet(wb, utils.json_to_sheet(porMaquina.map((m) => ({
-        'Máquina': m.nombre, 'Combustible(gal)': m.gal, 'Ganchos': m.gan, 'Ha realizadas': m.ha || '',
+        'Máquina': m.nombre, 'Combustible gastado (gal)': m.gal, 'Combustible cargado (gal)': m.cargado,
+        'Cálculo': m.porTanque ? (m.problemaTanque ?? 'tanque a tanque') : 'cierre / horómetros del mes',
+        'Ganchos': m.gan, 'Ha realizadas': m.ha || '',
         'Horómetro inicial': m.inicial ?? '', 'Horómetro final': m.final ?? '',
         'Horas': m.horas || '',
         'Gal/hora': m.galHora ?? '', 'Ref. gal/h 2025': m.ref ?? '', 'Desv. gal %': m.desv ?? '',
@@ -375,7 +401,7 @@ export function ConsumoDashboardTab() {
 
           <div className="mural-kpi">
             <div className="kpi"><span className="kpi__n">{totalGal.toLocaleString('es-CO')}</span>
-              <span className="kpi__l">galones</span></div>
+              <span className="kpi__l">{porMaquina.some((m) => m.porTanque) ? 'galones gastados' : 'galones'}</span></div>
             <div className="kpi"><span className="kpi__n">{totalGan.toLocaleString('es-CO')}</span>
               <span className="kpi__l">ganchos</span></div>
             <div className="kpi"><span className="kpi__n">{porMaquina.length}</span>
@@ -394,11 +420,28 @@ export function ConsumoDashboardTab() {
                 codigo: m.codigo, nombre: m.nombre, galones: m.gal, horas: m.horas,
                 galHora: m.horasIncompletas ? null : m.galHora,
                 inicial: m.inicial, final: m.final,
-                porSuma: sinRango.includes(m.codigo),
+                porSuma: !m.porTanque && sinRango.includes(m.codigo),
                 rango, nivel: m.horasIncompletas ? null : nivelDe(m.galHora, rango),
               }
             })}
+            onVer={(codigo) => setVerMaq(codigo)}
           />
+          {tanques.size > 0 && (
+            <p className="field-hint" style={{ marginTop: 4 }}>
+              Consumo entre tanqueos: cada tanqueo repone lo gastado desde el anterior, así que se cuentan
+              los galones del periodo sin el primer tanqueo, contra las horas del primero al último. Toca
+              una máquina para ver cada tanqueo y su eficiencia.
+            </p>
+          )}
+          {verMaq && (
+            <TanqueosMaquina
+              nombre={equipoNombre.get(verMaq) ?? verMaq}
+              tq={tanques.get(verMaq) ?? null}
+              rango={rangoDe(rangos, 'gal_hora', equipoNombre.get(verMaq) ?? verMaq)}
+              periodo={etiquetaPeriodo}
+              onClose={() => setVerMaq(null)}
+            />
+          )}
 
           {/* Las notas de de dónde salen las horas y de las máquinas con el horómetro
               sucio se QUITARON a pedido del cliente (21-sep-2026, «quita estos
@@ -465,7 +508,7 @@ export function ConsumoDashboardTab() {
                     {/* ⏱ primero: con horas de menos el gal/h sale inflado, y pintarlo
                         de rojo sería acusar a la máquina de lo que falló en el registro. */}
                     {m.horasIncompletas ? <small>⏱ faltan horas (≈{m.horasEsperadas})</small>
-                      : porHora == null ? <small>sin horas</small>
+                      : porHora == null ? <small title={m.problemaTanque ?? ''}>{m.problemaTanque?.startsWith('un solo') ? '1 tanqueo' : 'sin horas'}</small>
                       : !rango ? <small>sin rango</small>
                       : nivel && (
                         <>
@@ -487,3 +530,90 @@ export function ConsumoDashboardTab() {
 }
 
 export default ConsumoDashboardTab
+
+/**
+ * Los tanqueos de UNA máquina en el periodo filtrado arriba, con la eficiencia de
+ * cada tramo (7-oct-2026, pedido del cliente: «al oprimir se abra la gráfica de
+ * cada equipo donde se vean cada uno de estos eventos de tanqueos y su eficiencia
+ * entre tanqueos en el mes o en la quincena»).
+ *
+ * Cada columna es un tanqueo: sus galones reponen lo gastado desde el tanqueo
+ * anterior, así que su gal/h = galones ÷ (horómetro − horómetro anterior). Los
+ * tanqueos sin horómetro se suman al tramo siguiente que sí lo tenga. El primero
+ * del periodo repone lo de antes: no tiene contra qué medirse aquí.
+ */
+function TanqueosMaquina({ nombre, tq, rango, periodo, onClose }: {
+  nombre: string
+  tq: ConsumoTanques | null
+  rango: RangoSemaforo | null
+  periodo: string
+  onClose: () => void
+}) {
+  const columnas: ColumnaGalHora[] = []
+  let acumulado = 0
+  let hAnterior: number | null = null
+  for (const [i, tr] of (tq?.tramos ?? []).entries()) {
+    if (tr.cuenta) acumulado += tr.galones
+    let galHora: number | null = null
+    let sinGalHora = 'sin horómetro'
+    if (tr.horasDesdeAnterior != null && tr.horasDesdeAnterior > 0 && tr.cuenta) {
+      galHora = Math.round((acumulado / tr.horasDesdeAnterior) * 100) / 100
+    } else if (tr.nota?.startsWith('primer')) sinGalHora = 'repone lo de antes'
+    else if (tr.nota?.startsWith('antes')) sinGalHora = 'antes del 1.er horómetro'
+    else if (tr.horometro != null && tr.horasDesdeAnterior === 0) sinGalHora = 'horómetro igual'
+    const bueno = tr.horasDesdeAnterior != null || tr.nota?.startsWith('primer')
+    columnas.push({
+      codigo: String(i),
+      nombre: fmtFechaHora(tr.cuando),
+      galones: tr.galones,
+      horas: tr.horasDesdeAnterior ?? 0,
+      galHora,
+      inicial: galHora != null ? hAnterior : null,
+      final: tr.horometro,
+      porSuma: false,
+      nivel: nivelDe(galHora, rango),
+      rango,
+      sinGalHora,
+    })
+    if (bueno && tr.horometro != null) hAnterior = tr.horometro
+    if (galHora != null) acumulado = 0
+  }
+  return (
+    <div className="modal-overlay open" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(920px, calc(100vw - 24px))' }}>
+        <div className="labor-detail-header">
+          <div>
+            <p className="eyebrow">Tanqueos · {periodo}</p>
+            <h3>{nombre}</h3>
+          </div>
+          <button type="button" className="modal-close-btn" onClick={onClose} aria-label="Cerrar">✕</button>
+        </div>
+        {!tq ? (
+          <p className="subtle-copy">Sin tanqueos registrados en la app en este periodo.</p>
+        ) : (
+          <>
+            <div className="dash-kpis">
+              <div className="dash-kpi"><span className="dash-kpi__val">{tq.gastado != null ? fmtN(tq.gastado) : '—'}</span><span className="dash-kpi__lbl">galones gastados</span></div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{tq.horas != null ? fmtN(tq.horas) : '—'}</span><span className="dash-kpi__lbl">horas entre tanqueos</span></div>
+              <div className="dash-kpi">
+                <span className="dash-kpi__val">{tq.galPorHora != null ? fmtN(tq.galPorHora) : '—'}</span>
+                <span className="dash-kpi__lbl">gal/h del periodo{rango ? ` · rango ${describirRango(rango)}` : ''}</span>
+              </div>
+              <div className="dash-kpi"><span className="dash-kpi__val">{fmtN(tq.cargado)}</span><span className="dash-kpi__lbl">galones cargados</span></div>
+            </div>
+            {tq.problema && <p className="mov-alerta">⚠ {tq.problema}.</p>}
+            <GraficaGalHora
+              columnas={columnas}
+              titulo="Cada tanqueo y su eficiencia desde el anterior"
+              rotuloColumna="Tanqueo"
+            />
+            <p className="field-hint">
+              Cada tanqueo repone lo gastado desde el anterior: su gal/h = galones ÷ horas entre los dos
+              horómetros. El primero del periodo repone lo gastado antes y no se mide aquí.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

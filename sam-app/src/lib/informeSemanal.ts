@@ -1,4 +1,5 @@
 import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
+import { consumoTanqueATanque } from './consumoHora'
 
 /**
  * Informe semanal por máquina: horas trabajadas y rendimiento del combustible.
@@ -50,8 +51,14 @@ export interface FilaSemanal {
   horometroFinal: number | null
   /** Último válido − primero válido. `null` si no hay dos lecturas buenas. */
   horas: number | null
+  /** Todo lo que se le cargó en la semana. */
   galones: number
-  /** Galones por hora. El número que de verdad se compara entre semanas. */
+  /**
+   * Lo GASTADO tanque a tanque (7-oct-2026): los galones de la semana menos los
+   * del primer tanqueo, que reponen lo gastado antes. `null` con un solo tanqueo.
+   */
+  galonesGastados: number | null
+  /** Gastado ÷ horas entre el primer y el último tanqueo. El número que se compara entre semanas. */
   galonesPorHora: number | null
   insumos: Map<string, { unidad: string; cantidad: number }>
   eventos: EventoMaquina[]
@@ -183,6 +190,11 @@ export function armarInformeSemanal(input: {
       ? Math.round((final - inicial) * 10) / 10
       : null
     const galones = Math.round(eventos.reduce((t, e) => t + e.galones, 0) * 100) / 100
+    // Gal/hora TANQUE A TANQUE, la misma regla de los tableros (`lib/consumoHora`).
+    const tq = consumoTanqueATanque(eventos.map((e) => ({
+      maquina: equipo, cuando: e.cuando, horometro: e.horometroSospechoso ? null : e.horometro,
+      galones: e.galones, fuente: e.tipo === 'TANQUEO' ? 'Tanqueo' as const : 'Entrega' as const, detalle: e.operario,
+    })), 7).get(equipo)
 
     const insumos = new Map<string, { unidad: string; cantidad: number }>()
     for (const e of eventos) {
@@ -209,9 +221,8 @@ export function armarInformeSemanal(input: {
       horometroFinal: final,
       horas,
       galones,
-      galonesPorHora: horas != null && horas > 0 && galones > 0
-        ? Math.round((galones / horas) * 100) / 100
-        : null,
+      galonesGastados: tq?.gastado ?? null,
+      galonesPorHora: tq?.galPorHora ?? null,
       insumos,
       eventos,
       sospechosos: sospechosos.filter(Boolean).length,

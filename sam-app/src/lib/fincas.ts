@@ -13,7 +13,7 @@ import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, R
  * esconde con esta sola llave. La base lo sigue guardando: se prende cambiándola a
  * `true`, sin migraciones.
  */
-export const VER_PLATA = false
+export const VER_PLATA = true
 
 export type NivelOportunidad = 'ideal' | 'normal' | 'tardia'
 

@@ -2792,10 +2792,83 @@ export async function loadKardexReporte(opts?: { desde?: string; hasta?: string;
  * `desde`/`hasta` son días (`YYYY-MM-DD`) en hora de Colombia.
  */
 export async function loadTanqueos(desde: string, hasta: string): Promise<Tanqueo[]> {
+  return tanqueosEntre(desde, hasta)
+}
+
+/**
+ * Los tanqueos de los `dias` ANTES de `desde`: el último de cada máquina es el
+ * punto de partida del primer tanqueo del periodo (se mide contra el tanqueo del
+ * mes o la quincena anterior, pedido del 7-oct-2026).
+ */
+export async function loadTanqueosPrevios(desde: string, dias = 45): Promise<Tanqueo[]> {
+  const ini = new Date(Date.parse(`${desde}T12:00:00Z`) - dias * 86400000).toISOString().slice(0, 10)
+  const fin = new Date(Date.parse(`${desde}T12:00:00Z`) - 86400000).toISOString().slice(0, 10)
+  return tanqueosEntre(ini, fin)
+}
+
+/* ── Comentarios a los tanqueos (7-oct-2026) ──────────────────────────────
+ * «Que Diego pueda poner comentarios a los datos que él vea desfasados y que
+ * queden guardados». Migración 20261007120000_combustible_comentarios.
+ */
+export interface ComentarioCombustible {
+  id: string
+  maquina: string
+  fuente: 'Entrega' | 'Tanqueo'
+  origenId: string
+  tanqueoEn: string | null
+  comentario: string
+  autorId: string | null
+  autorNombre: string | null
+  createdAt: string
+}
+
+/** Comentarios vigentes de los tanqueos entre dos días (`YYYY-MM-DD`, hora de Colombia). */
+export async function loadComentariosCombustible(desde: string, hasta: string): Promise<ComentarioCombustible[]> {
+  const { data, error } = await supabase
+    .from('combustible_comentarios')
+    .select('*')
+    .eq('anulado', false)
+    .gte('tanqueo_en', `${desde}T00:00:00-05:00`)
+    .lte('tanqueo_en', `${hasta}T23:59:59-05:00`)
+    .order('created_at', { ascending: true })
+    .limit(2000)
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => ({
+    id: String(r.id), maquina: String(r.maquina), fuente: r.fuente === 'Tanqueo' ? 'Tanqueo' : 'Entrega',
+    origenId: String(r.origen_id), tanqueoEn: r.tanqueo_en ? String(r.tanqueo_en) : null,
+    comentario: String(r.comentario ?? ''), autorId: r.autor_id ? String(r.autor_id) : null,
+    autorNombre: r.autor_nombre ? String(r.autor_nombre) : null, createdAt: String(r.created_at ?? ''),
+  }))
+}
+
+export async function crearComentarioCombustible(input: {
+  maquina: string; fuente: 'Entrega' | 'Tanqueo'; origenId: string; tanqueoEn: string
+  comentario: string; autorId?: string; autorNombre?: string
+}): Promise<ComentarioCombustible> {
+  const { data, error } = await supabase.from('combustible_comentarios').insert({
+    maquina: input.maquina, fuente: input.fuente, origen_id: input.origenId, tanqueo_en: input.tanqueoEn,
+    comentario: input.comentario.trim(), autor_id: input.autorId ?? null, autor_nombre: input.autorNombre ?? null,
+  }).select('*').single()
+  if (error || !data) throw new Error(error?.message || 'No se pudo guardar el comentario')
+  const r = data as Record<string, unknown>
+  return {
+    id: String(r.id), maquina: input.maquina, fuente: input.fuente, origenId: input.origenId, tanqueoEn: input.tanqueoEn,
+    comentario: String(r.comentario), autorId: input.autorId ?? null, autorNombre: input.autorNombre ?? null,
+    createdAt: String(r.created_at ?? new Date().toISOString()),
+  }
+}
+
+/** Se anula, no se borra: queda la historia. */
+export async function anularComentarioCombustible(id: string, por?: string): Promise<void> {
+  const { error } = await supabase.from('combustible_comentarios').update({ anulado: true, anulado_por: por ?? null }).eq('id', id)
+  if (error) throw new Error(error.message || 'No se pudo quitar el comentario')
+}
+
+async function tanqueosEntre(desde: string, hasta: string): Promise<Tanqueo[]> {
   const [ent, tq] = await Promise.all([
     supabase
       .from('insumos_solicitudes')
-      .select('equipo_codigo,horometro,entregado_en,created_at,operario_nombre,items:insumos_solicitud_items(insumo_nombre,cantidad,cantidad_despachada)')
+      .select('id,equipo_codigo,horometro,entregado_en,created_at,operario_nombre,items:insumos_solicitud_items(insumo_nombre,cantidad,cantidad_despachada)')
       .not('equipo_codigo', 'is', null)
       .neq('estado', 'CANCELADA')
       .gte('entregado_en', `${desde}T00:00:00-05:00`)
@@ -2803,7 +2876,7 @@ export async function loadTanqueos(desde: string, hasta: string): Promise<Tanque
       .limit(5000),
     supabase
       .from('combustible_externo')
-      .select('equipo_codigo,horometro,galones,created_at,fecha,operario_nombre')
+      .select('id,equipo_codigo,horometro,galones,created_at,fecha,operario_nombre')
       .not('equipo_codigo', 'is', null)
       .neq('estado', 'RECHAZADO')
       .gte('fecha', desde)
@@ -2820,7 +2893,7 @@ export async function loadTanqueos(desde: string, hasta: string): Promise<Tanque
       .reduce((s, it) => s + Number(it.cantidad_despachada ?? it.cantidad ?? 0), 0)
     if (!(galones > 0)) continue
     out.push({
-      maquina: String(r.equipo_codigo), cuando: String(r.entregado_en ?? r.created_at),
+      id: String(r.id), maquina: String(r.equipo_codigo), cuando: String(r.entregado_en ?? r.created_at),
       horometro: h(r.horometro), galones, fuente: 'Entrega', detalle: String(r.operario_nombre ?? ''),
     })
   }
@@ -2828,7 +2901,7 @@ export async function loadTanqueos(desde: string, hasta: string): Promise<Tanque
     const galones = Number(r.galones ?? 0)
     if (!(galones > 0)) continue
     out.push({
-      maquina: String(r.equipo_codigo), cuando: String(r.created_at ?? `${r.fecha}T12:00:00-05:00`),
+      id: String(r.id), maquina: String(r.equipo_codigo), cuando: String(r.created_at ?? `${r.fecha}T12:00:00-05:00`),
       horometro: h(r.horometro), galones, fuente: 'Tanqueo', detalle: String(r.operario_nombre ?? ''),
     })
   }

@@ -190,11 +190,16 @@ export function armarInformeSemanal(input: {
       ? Math.round((final - inicial) * 10) / 10
       : null
     const galones = Math.round(eventos.reduce((t, e) => t + e.galones, 0) * 100) / 100
-    // Gal/hora TANQUE A TANQUE, la misma regla de los tableros (`lib/consumoHora`).
-    const tq = consumoTanqueATanque(eventos.map((e) => ({
+    // Gal/hora TANQUE A TANQUE, la misma regla de los tableros (`lib/consumoHora`):
+    // el primer tanqueo de la semana se mide contra el último de las semanas de antes.
+    const aTanqueo = (e: EventoMaquina) => ({
       maquina: equipo, cuando: e.cuando, horometro: e.horometroSospechoso ? null : e.horometro,
       galones: e.galones, fuente: e.tipo === 'TANQUEO' ? 'Tanqueo' as const : 'Entrega' as const, detalle: e.operario,
-    })), 7).get(equipo)
+    })
+    const previos = [...porClave.entries()]
+      .filter(([k]) => k.split('|')[0] === equipo && Number(k.split('|')[1]) < Number(semanaTxt))
+      .flatMap(([, evs]) => evs.map(aTanqueo))
+    const tq = consumoTanqueATanque(eventos.map(aTanqueo), 7, previos).get(equipo)
 
     const insumos = new Map<string, { unidad: string; cantidad: number }>()
     for (const e of eventos) {

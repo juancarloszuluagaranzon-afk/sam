@@ -6,7 +6,10 @@ import {
   loadConsumo, loadHectareasPorRango, loadHorasDelMes, loadHorasPorRangoMes, loadReferencias,
   type ConsumoFila, type ReferenciaEquipo,
 } from '../services/consumoApi'
-import { loadSemaforos, loadTanqueos } from '../services/samApi'
+import {
+  anularComentarioCombustible, crearComentarioCombustible, loadComentariosCombustible,
+  loadSemaforos, loadTanqueos, loadTanqueosPrevios, type ComentarioCombustible,
+} from '../services/samApi'
 import { consumoTanqueATanque, diasDelRango, type ConsumoTanques } from '../lib/consumoHora'
 import { NIVEL, describirRango, nivelDe, rangoDe, type RangoSemaforo } from '../lib/semaforo'
 import { GraficaGalHora, type ColumnaGalHora } from './GraficaGalHora'
@@ -93,6 +96,8 @@ export function ConsumoDashboardTab() {
   const [tanques, setTanques] = useState<Map<string, ConsumoTanques>>(new Map())
   /** La máquina cuyos tanqueos se están mirando (al tocar su barra). */
   const [verMaq, setVerMaq] = useState<string | null>(null)
+  /** Comentarios a los tanqueos del periodo (los anota Diego, 7-oct-2026). */
+  const [comentarios, setComentarios] = useState<ComentarioCombustible[]>([])
   const [mesSel, setMesSel] = useState<string>('')
   // Filtros de periodo — los MISMOS de Operación general e Insumos y materiales
   // (lib/periodos). Pedido del cliente con captura (21-sep-2026): «ponle estos
@@ -195,8 +200,10 @@ export function ConsumoDashboardTab() {
       if (!vivo) return
       setExtremos(r.extremos)
       loadHectareasPorRango(desde, hasta).then((h) => { if (vivo) setHectareas(h) }).catch(() => { /* sin área */ })
-      loadTanqueos(desde, hasta)
-        .then((tq) => { if (vivo) setTanques(consumoTanqueATanque(tq, diasDelRango(desde, hasta))) })
+      // El primer tanqueo del periodo se mide contra el último del periodo anterior.
+      loadComentariosCombustible(desde, hasta).then((c) => { if (vivo) setComentarios(c) }).catch(() => { /* sin comentarios */ })
+      Promise.all([loadTanqueos(desde, hasta), loadTanqueosPrevios(desde)])
+        .then(([tq, prev]) => { if (vivo) setTanques(consumoTanqueATanque(tq, diasDelRango(desde, hasta), prev)) })
         .catch(() => { if (vivo) setTanques(new Map()) })
       if (cierre.size > 0) { setHoras(cierre); setSinRango([]); return }
       setHoras(r.horas); setSinRango(r.cayeronASuma)
@@ -227,8 +234,8 @@ export function ConsumoDashboardTab() {
     return [...m.entries()].map(([codigo, v]) => {
       // 🔴 TANQUE A TANQUE (7-oct-2026, regla de Iván): si la máquina tiene
       // tanqueos en la app, el gasto y las horas salen de ellos — galones de los
-      // tanqueos del periodo menos el primero, contra el horómetro del último menos
-      // el del primero. Con un solo tanqueo no hay medida (se mide con el
+      // tanqueos del periodo, contra el horómetro del último menos el del último
+      // tanqueo del periodo ANTERIOR. Sin tanqueo anterior no hay medida (se mide con el
       // siguiente). Lo de antes (cierre mensual / horómetros del mes) queda solo
       // para los meses del formato en papel, que no tienen tanqueos.
       const tq = tanques.get(codigo)
@@ -421,6 +428,7 @@ export function ConsumoDashboardTab() {
                 galHora: m.horasIncompletas ? null : m.galHora,
                 inicial: m.inicial, final: m.final,
                 porSuma: !m.porTanque && sinRango.includes(m.codigo),
+                marca: (() => { const n = comentarios.filter((c) => c.maquina === m.codigo).length; return n ? `💬 ${n}` : undefined })(),
                 rango, nivel: m.horasIncompletas ? null : nivelDe(m.galHora, rango),
               }
             })}
@@ -428,9 +436,10 @@ export function ConsumoDashboardTab() {
           />
           {tanques.size > 0 && (
             <p className="field-hint" style={{ marginTop: 4 }}>
-              Consumo entre tanqueos: cada tanqueo repone lo gastado desde el anterior, así que se cuentan
-              los galones del periodo sin el primer tanqueo, contra las horas del primero al último. Toca
-              una máquina para ver cada tanqueo y su eficiencia.
+              Consumo entre tanqueos: cada tanqueo repone lo gastado desde el anterior. Se cuentan los
+              galones de los tanqueos del periodo contra las horas desde el último tanqueo del periodo
+              anterior hasta el último de este. Toca una máquina para ver cada tanqueo, su eficiencia y
+              dejar comentarios.
             </p>
           )}
           {verMaq && (
@@ -439,6 +448,8 @@ export function ConsumoDashboardTab() {
               tq={tanques.get(verMaq) ?? null}
               rango={rangoDe(rangos, 'gal_hora', equipoNombre.get(verMaq) ?? verMaq)}
               periodo={etiquetaPeriodo}
+              comentarios={comentarios.filter((c) => c.maquina === verMaq)}
+              onComentarios={(cambio) => setComentarios(cambio)}
               onClose={() => setVerMaq(null)}
             />
           )}
@@ -538,46 +549,91 @@ export default ConsumoDashboardTab
  * entre tanqueos en el mes o en la quincena»).
  *
  * Cada columna es un tanqueo: sus galones reponen lo gastado desde el tanqueo
- * anterior, así que su gal/h = galones ÷ (horómetro − horómetro anterior). Los
- * tanqueos sin horómetro se suman al tramo siguiente que sí lo tenga. El primero
- * del periodo repone lo de antes: no tiene contra qué medirse aquí.
+ * anterior, así que su gal/h = galones ÷ (horómetro − horómetro anterior). El
+ * PRIMERO se mide contra el último tanqueo del periodo anterior (mes o quincena
+ * de antes). Los tanqueos sin horómetro se suman al tramo siguiente que sí lo tenga.
+ *
+ * COMENTARIOS: al tocar un tanqueo se le puede dejar una nota («ese día el
+ * horómetro estaba dañado», «se tanqueó la guadañadora con el mismo vale»…). Se
+ * guardan en la base con quién y cuándo; se anulan, no se borran. Lo pidió Iván
+ * para Diego, que revisa los datos desfasados.
  */
-function TanqueosMaquina({ nombre, tq, rango, periodo, onClose }: {
+function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentarios, onClose }: {
   nombre: string
   tq: ConsumoTanques | null
   rango: RangoSemaforo | null
   periodo: string
+  comentarios: ComentarioCombustible[]
+  /** Recibe una función que actualiza la lista completa de comentarios del tablero. */
+  onComentarios: (cambio: (prev: ComentarioCombustible[]) => ComentarioCombustible[]) => void
   onClose: () => void
 }) {
+  const { session, setError } = useAppData()
+  const [sel, setSel] = useState<number | null>(null)
+  const [texto, setTexto] = useState('')
+  const [guardando, setGuardando] = useState(false)
+
+  const tramos = (tq?.tramos ?? []).filter((tr) => !tr.antes)
+  const llave = (t: { fuente: string; id?: string }) => `${t.fuente}|${t.id ?? ''}`
+  const deTanqueo = (t: { fuente: string; id?: string }) => comentarios.filter((c) => `${c.fuente}|${c.origenId}` === llave(t))
+
   const columnas: ColumnaGalHora[] = []
   let acumulado = 0
-  let hAnterior: number | null = null
-  for (const [i, tr] of (tq?.tramos ?? []).entries()) {
+  for (const [i, tr] of tramos.entries()) {
     if (tr.cuenta) acumulado += tr.galones
     let galHora: number | null = null
     let sinGalHora = 'sin horómetro'
     if (tr.horasDesdeAnterior != null && tr.horasDesdeAnterior > 0 && tr.cuenta) {
       galHora = Math.round((acumulado / tr.horasDesdeAnterior) * 100) / 100
-    } else if (tr.nota?.startsWith('primer')) sinGalHora = 'repone lo de antes'
+    } else if (tr.nota?.startsWith('sin tanqueo anterior')) sinGalHora = 'sin tanqueo anterior'
     else if (tr.nota?.startsWith('antes')) sinGalHora = 'antes del 1.er horómetro'
     else if (tr.horometro != null && tr.horasDesdeAnterior === 0) sinGalHora = 'horómetro igual'
-    const bueno = tr.horasDesdeAnterior != null || tr.nota?.startsWith('primer')
+    const n = deTanqueo(tr).length
     columnas.push({
       codigo: String(i),
       nombre: fmtFechaHora(tr.cuando),
       galones: tr.galones,
       horas: tr.horasDesdeAnterior ?? 0,
       galHora,
-      inicial: galHora != null ? hAnterior : null,
+      inicial: tr.horometroAnterior,
       final: tr.horometro,
       porSuma: false,
       nivel: nivelDe(galHora, rango),
       rango,
       sinGalHora,
+      marca: n ? `💬 ${n}` : undefined,
+      sel: sel === i,
     })
-    if (bueno && tr.horometro != null) hAnterior = tr.horometro
     if (galHora != null) acumulado = 0
   }
+  const partida = (tq?.tramos ?? []).find((tr) => tr.antes)
+  const escogido = sel != null ? tramos[sel] : null
+  const colEscogida = sel != null ? columnas[sel] : null
+
+  async function guardar() {
+    if (!escogido?.id || !texto.trim() || !tq) return
+    setGuardando(true)
+    try {
+      const nuevo = await crearComentarioCombustible({
+        maquina: tq.maquina, fuente: escogido.fuente, origenId: escogido.id, tanqueoEn: escogido.cuando,
+        comentario: texto, autorId: session?.id, autorNombre: session?.name,
+      })
+      onComentarios((prev) => [...prev, nuevo])
+      setTexto('')
+    } catch (e) {
+      setError((e as Error).message)
+    } finally { setGuardando(false) }
+  }
+  async function quitar(c: ComentarioCombustible) {
+    if (!window.confirm('¿Quitar este comentario? Queda anulado en el historial.')) return
+    try {
+      await anularComentarioCombustible(c.id, session?.id)
+      onComentarios((prev) => prev.filter((x) => x.id !== c.id))
+    } catch (e) { setError((e as Error).message) }
+  }
+  const puedeQuitar = (c: ComentarioCombustible) =>
+    c.autorId === session?.id || session?.role === 'owner' || session?.role === 'administracion'
+
   return (
     <div className="modal-overlay open" onClick={onClose}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 'min(920px, calc(100vw - 24px))' }}>
@@ -604,13 +660,60 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, onClose }: {
             {tq.problema && <p className="mov-alerta">⚠ {tq.problema}.</p>}
             <GraficaGalHora
               columnas={columnas}
-              titulo="Cada tanqueo y su eficiencia desde el anterior"
+              titulo="Cada tanqueo y su eficiencia desde el anterior · toca uno para comentarlo"
               rotuloColumna="Tanqueo"
+              onVer={(codigo) => { setSel(Number(codigo)); setTexto('') }}
             />
             <p className="field-hint">
-              Cada tanqueo repone lo gastado desde el anterior: su gal/h = galones ÷ horas entre los dos
-              horómetros. El primero del periodo repone lo gastado antes y no se mide aquí.
+              Cada tanqueo repone lo gastado desde el anterior: su gal/h = galones ÷ horas entre los dos horómetros.
+              {partida
+                ? <> El primero se mide contra el último tanqueo del periodo anterior ({fmtFechaHora(partida.cuando)}, horómetro {partida.horometro != null ? fmtN(partida.horometro) : '—'}).</>
+                : <> Esta máquina no tiene tanqueos antes del periodo: el primero es el punto de partida.</>}
             </p>
+
+            <div className="tq-coment">
+              <p className="eyebrow" style={{ margin: 0 }}>Comentarios</p>
+              {escogido && colEscogida ? (
+                <>
+                  <p style={{ margin: '6px 0' }}>
+                    <strong>{fmtFechaHora(escogido.cuando)}</strong> · {fmtN(escogido.galones)} gal
+                    {colEscogida.galHora != null ? ` · ${fmtN(colEscogida.galHora)} gal/h` : ''}
+                    {escogido.horometro != null ? ` · horómetro ${fmtN(escogido.horometro)}` : ''}
+                    {escogido.detalle ? ` · ${escogido.detalle}` : ''}
+                  </p>
+                  {deTanqueo(escogido).map((c) => (
+                    <div key={c.id} className="tq-coment__item">
+                      {c.comentario}
+                      <small>
+                        {c.autorNombre ?? c.autorId ?? '—'} · {fmtFechaHora(c.createdAt)}
+                        {puedeQuitar(c) && <> · <button type="button" className="inline-button" style={{ padding: '0 6px' }} onClick={() => void quitar(c)}>Quitar</button></>}
+                      </small>
+                    </div>
+                  ))}
+                  {escogido.id ? (
+                    <>
+                      <textarea className="base-input" placeholder="¿Qué se ve desfasado en este tanqueo? Queda guardado con tu nombre."
+                        value={texto} onChange={(e) => setTexto(e.target.value)} disabled={guardando} maxLength={1000} />
+                      <div className="modal-footer" style={{ marginTop: 6 }}>
+                        <button type="button" className="inline-button" onClick={() => setSel(null)} disabled={guardando}>Cerrar comentario</button>
+                        <button type="button" className="primary-button" onClick={() => void guardar()} disabled={guardando || !texto.trim()}>
+                          {guardando ? 'Guardando…' : 'Guardar comentario'}
+                        </button>
+                      </div>
+                    </>
+                  ) : <p className="field-hint">Este tanqueo no se puede comentar (sin identificador).</p>}
+                </>
+              ) : comentarios.length > 0 ? (
+                comentarios.map((c) => (
+                  <div key={c.id} className="tq-coment__item">
+                    <strong>{c.tanqueoEn ? fmtFechaHora(c.tanqueoEn) : ''}</strong> · {c.comentario}
+                    <small>{c.autorNombre ?? c.autorId ?? '—'} · {fmtFechaHora(c.createdAt)}</small>
+                  </div>
+                ))
+              ) : (
+                <p className="field-hint">Toca un tanqueo de la gráfica para dejarle un comentario.</p>
+              )}
+            </div>
           </>
         )}
       </div>

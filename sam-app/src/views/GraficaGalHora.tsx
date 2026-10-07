@@ -33,6 +33,10 @@ export interface ColumnaGalHora {
   rango: RangoSemaforo | null
   /** Qué decir encima cuando no hay gal/h (por defecto «sin horas»). */
   sinGalHora?: string
+  /** Marca bajo el nombre (p. ej. «💬 2» = tiene comentarios). */
+  marca?: string
+  /** Columna escogida (resaltada). */
+  sel?: boolean
 }
 
 const ALTO_BARRAS = 170 // px del área de barras
@@ -75,7 +79,7 @@ export function GraficaGalHora({ columnas, onVer, titulo = 'Galones y galones po
             const alto = Math.max((c.galones / max) * ALTO_BARRAS, 3)
             const adentro = alto >= 30 // si no cabe el número dentro, va encima
             return (
-              <div key={c.codigo} className={`ggh__col${onVer ? ' ggh__col--ver' : ''}`} style={{ height: ALTO_BARRAS + 44 }}
+              <div key={c.codigo} className={`ggh__col${onVer ? ' ggh__col--ver' : ''}${c.sel ? ' ggh__col--sel' : ''}`} style={{ height: ALTO_BARRAS + 44 }}
                    role={onVer ? 'button' : undefined} tabIndex={onVer ? 0 : undefined}
                    onClick={onVer ? () => onVer(c.codigo) : undefined}
                    onKeyDown={onVer ? (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onVer(c.codigo) } } : undefined}
@@ -99,7 +103,9 @@ export function GraficaGalHora({ columnas, onVer, titulo = 'Galones y galones po
           <div className="ggh__rot">{rotuloColumna}</div>
           {cols.map((c) => (
             <div key={c.codigo} className={`ggh__cel ggh__cel--maq${onVer ? ' ggh__col--ver' : ''}`}
-                 onClick={onVer ? () => onVer(c.codigo) : undefined}>{c.nombre}</div>
+                 onClick={onVer ? () => onVer(c.codigo) : undefined}>
+              {c.nombre}{c.marca && <span className="ggh__marca">{c.marca}</span>}
+            </div>
           ))}
 
           <div className="ggh__rot">Horómetro inicial</div>

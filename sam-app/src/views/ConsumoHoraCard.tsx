@@ -9,7 +9,7 @@ import {
   consumoTanqueATanque, diasDelRango,
   type ConsumoTanques, type Tanqueo,
 } from '../lib/consumoHora'
-import { loadSemaforos, loadTanqueos } from '../services/samApi'
+import { loadSemaforos, loadTanqueos, loadTanqueosPrevios } from '../services/samApi'
 
 /** Una barra: el consumo tanque a tanque de la máquina, con su nombre. */
 type FilaConsumoHora = ConsumoTanques & {
@@ -44,6 +44,8 @@ export function ConsumoHoraCard({
   unSoloDia: boolean
 }) {
   const [otras, setOtras] = useState<Tanqueo[] | null>(null)
+  /** Tanqueos de antes del periodo: el punto de partida del primero. */
+  const [previos, setPrevios] = useState<Tanqueo[]>([])
   const [ver, setVer] = useState<FilaConsumoHora | null>(null)
   // Rangos del semáforo: vienen de la base (el cliente los ajusta). Si no cargan,
   // la gráfica sigue igual que antes, sin colores — nunca inventa un verde.
@@ -57,8 +59,8 @@ export function ConsumoHoraCard({
   useEffect(() => {
     let vivo = true
     setOtras(null)
-    loadTanqueos(desde, hasta)
-      .then((l) => { if (vivo) setOtras(l) })
+    Promise.all([loadTanqueos(desde, hasta), loadTanqueosPrevios(desde)])
+      .then(([l, p]) => { if (vivo) { setOtras(l); setPrevios(p) } })
       .catch(() => { if (vivo) setOtras([]) })
     return () => { vivo = false }
   }, [desde, hasta])
@@ -67,7 +69,7 @@ export function ConsumoHoraCard({
     // Las máquinas que recibieron combustible en el periodo (las de la torta); el
     // consumo de cada una sale de sus tanqueos.
     const conCombustible = combustiblePorMaquina(movs, catalogo, nombreMaq).map((p) => p.id)
-    const tq = consumoTanqueATanque(otras ?? [], diasDelRango(desde, hasta))
+    const tq = consumoTanqueATanque(otras ?? [], diasDelRango(desde, hasta), previos)
     const maquinas = new Set([...conCombustible, ...tq.keys()])
     return [...maquinas].map((maquina) => {
       const c = tq.get(maquina) ?? {
@@ -78,7 +80,7 @@ export function ConsumoHoraCard({
       return { ...c, nombre: nombreMaq(maquina), galones: medido ? c.gastado! : c.cargado, medido }
     }).filter((f) => f.galones > 0 || f.cargado > 0)
       .sort((a, b) => Number(b.medido) - Number(a.medido) || b.galones - a.galones)
-  }, [movs, catalogo, nombreMaq, otras, desde, hasta])
+  }, [movs, catalogo, nombreMaq, otras, previos, desde, hasta])
 
   /** Ganchos entregados a cada máquina en el periodo (unidades). */
   const ganchos = useMemo(() => {
@@ -121,16 +123,16 @@ export function ConsumoHoraCard({
         <p>
           La barra es el combustible <strong>gastado</strong> en el periodo, medido
           <strong> tanque a tanque</strong>: cada tanqueo repone lo que se gastó desde el
-          anterior, así que se suman los galones de los tanqueos del periodo menos el primero.
+          anterior, así que se suman los galones de los tanqueos del periodo.
         </p>
         <p>
-          Las horas son el horómetro del <strong>último tanqueo</strong> menos el del
-          <strong> primero</strong>. Al tocar una máquina se ve cada tanqueo, sus horas y qué
-          no entró en la cuenta.
+          Las horas son el horómetro del <strong>último tanqueo</strong> menos el del último
+          tanqueo del <strong>periodo anterior</strong> (el punto de partida). Al tocar una
+          máquina se ve cada tanqueo, sus horas y qué no entró en la cuenta.
         </p>
         <p>
-          Con <strong>un solo tanqueo</strong> en el periodo (lo normal en «Hoy») no hay contra
-          qué medir: la barra sale en gris con lo cargado y se mide con el tanqueo siguiente.
+          Si la máquina no tiene tanqueo anterior con horómetro, no hay contra qué medir: la
+          barra sale en gris con lo cargado.
         </p>
       </Ayuda>
 
@@ -176,7 +178,7 @@ export function ConsumoHoraCard({
                     className={`dash-galh${s?.gal ? ` dash-galh--${s.gal}` : ''}`}
                     title={[
                       s?.gal && s.rangoGal ? `${NIVEL[s.gal].texto} (${describirRango(s.rangoGal)})` : 'sin rango para esta máquina',
-                      `${nfGrafico(f.horas ?? 0, 1)} h entre el primer y el último tanqueo`,
+                      `${nfGrafico(f.horas ?? 0, 1)} h desde el tanqueo anterior al periodo`,
                     ].join(' · ')}
                   >
                     {s?.gal && `${NIVEL[s.gal].icono} `}{nfGrafico(f.galPorHora, 2)} gal/h
@@ -201,7 +203,7 @@ export function ConsumoHoraCard({
             ) })}
           </div>
           {unSoloDia && (
-            <p className="dash-galha__nota">Un solo día: con un solo tanqueo no hay contra qué medir; se mide con el tanqueo siguiente (escoge un rango de varios días).</p>
+            <p className="dash-galha__nota">Un solo día: lo cargado hoy repone lo gastado desde el tanqueo anterior.</p>
           )}
         </>
       )}
@@ -250,12 +252,12 @@ export function ConsumoHoraCard({
               )
             })()}
             <div className="dash-galh__lecturas">
-              <LecturaFila titulo="Primer tanqueo (inicial)" l={ver.inicial} />
+              <LecturaFila titulo="Punto de partida (tanqueo anterior)" l={ver.inicial} />
               <LecturaFila titulo="Último tanqueo (final)" l={ver.final} />
             </div>
             <p className="field-hint" style={{ marginTop: 10 }}>
               Cada tanqueo repone lo que se gastó desde el anterior: el gastado son los galones de los
-              tanqueos del periodo menos el primero, y las horas, el horómetro del último menos el del primero.
+              tanqueos del periodo, y las horas, el horómetro del último menos el del tanqueo anterior al periodo.
             </p>
             <p className="eyebrow" style={{ marginTop: 14 }}>Tanqueos del periodo ({ver.tramos.length})</p>
             <div className="dash-galh__desc">

@@ -421,6 +421,14 @@ eso la pantalla de Horómetros mostraba la PUMA 2302 quieta 16 días. ⚠️ Sig
 máquinas con **lectura manual vieja** (la manual manda siempre: PUMA 2101 del 4-ago, VALTRA
 9902 del 20-ago) — pendiente de decisión del cliente.
 
+🔴 **Una labor rechazada ya no aporta ni horas ni horómetro** (16-oct-2026). Rechazar deja la
+labor CANCELADA y sacaba las hectáreas, pero su tramo de `labor_sesiones` seguía sumando en
+Eficiencia de maquinaria y su horómetro final seguía votando en `equipo_horometro_v` (que es
+la referencia del gal/hora). Eficiencia salta los tramos de canceladas
+(`loadHorasPorRangoMes`) y la vista las excluye con `20261016150000_horometro_sin_canceladas.sql`.
+El gal/hora **tanque a tanque** no cambia: sale de los tanqueos, no de las labores. Detalle y
+cifras en `managing-taller` y `capturing-gotchas`.
+
 ## ✅ Semáforos de gal/hora y ganchos/hora por máquina (21-sep-2026, commit `6029b5a`)
 
 Pedido: *«semáforos en el análisis de combustible y ganchos»*, con esta tabla del cliente

@@ -43,6 +43,15 @@ Y **la lectura manual manda siempre** (`equipos.horometro_manual`): es una
 corrección humana explícita, ningún criterio automático la pisa. Es la salida
 cuando el algoritmo no acierta.
 
+🔴 **Una labor CANCELADA (rechazada) no da lectura** (16-oct-2026, migración
+`20261016150000_horometro_sin_canceladas.sql`, la corre el dueño en Studio). La
+rama de labores no filtraba el estado — las de entregas y órdenes sí — y la prueba
+de U039 en la TRC-1 (1236) quedó como lectura vigente de la máquina estando ya
+rechazada. Muchas se rechazan justo por el horómetro (`4490 → 1190`). Medido ese
+día: 47 canceladas con horómetro en 16 máquinas, 3 entre las 12 últimas
+(votando la magnitud), ninguna vigente. ⚠️ `equipo_horometro_dudoso_v` todavía las
+lista; es solo la lista de revisión.
+
 Las lecturas descartadas no se esconden: salen en `equipo_horometro_dudoso_v`,
 en el banner de `MaquinasTab` y en un badge por máquina (**"⚠ N lectura(s)
 dudosa(s)"**). Es una decisión, no un descuido: ignorarlas en silencio dejaría la
@@ -458,6 +467,15 @@ dentro del mes.
 
 El umbral 0,5 **se eligió midiendo, no a ojo**: 0,0 deja el total del mes en
 −11%, 0,7 y 1,0 en +10%, y 0,5 en +3%.
+
+🔴 **Los tramos de labores CANCELADAS no entran** (16-oct-2026). `labor_sesiones`
+es inmutable y no se entera del rechazo; `loadHorasPorRangoMes` trae aparte los
+ids `estado = 'CANCELADA'` y los salta (no se puede preguntar por id: un
+`asignacion_id` que no sea uuid tumba el `in` con 400). Medido: 45 tramos de 44
+canceladas, 68,5 h sumables; en los meses sin cierre cambia 29,6 h en 6
+máquina-mes (sep: CASE903 −7,6, VALTRA9902 −2,4, CASE1102 −2,1; oct: CASE1303
+−6,1, CASE903 −1,6; jun: VALTRA9904 −9,8). Casi siempre la lectura cancelada cae
+DENTRO del rango del mes y no lo mueve; pesa cuando es la primera o la última.
 
 **Validado contra el cierre manual de julio de 2026** — el único mes que lo
 tiene, y por eso es el patrón de oro:

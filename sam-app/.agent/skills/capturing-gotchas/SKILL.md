@@ -65,7 +65,9 @@ mostrar, y el flujo completo destapó una tercera de dos meses de antigüedad.
 6. **Borrar la prueba COMPLETA, no solo la labor.** Medido el 16-oct-2026 (prueba de U039 en la
    TRC-1): rechazar la labor la saca de las hectáreas, pero su fila de `labor_sesiones` seguía
    sumando horas en Eficiencia de maquinaria y su `horometro_final` seguía siendo la lectura vigente
-   de la máquina (`equipo_horometro_v` no descarta las CANCELADAS). Respaldar y borrar en orden:
+   de la máquina. ✅ Ya no (mismo día): Eficiencia salta las CANCELADAS y `equipo_horometro_v` las
+   excluye desde `20261016150000_horometro_sin_canceladas.sql` — ver «Rechazar no es borrar» abajo.
+   Igual se borra la prueba entera: deja chequeos y filas sueltas. Respaldar y borrar en orden:
    `labor_sesiones` → `chequeos` (arrastra `chequeo_respuestas`) → `asignaciones`, y verificar con
    `equipo_horometro_v` que la máquina volvió a su lectura real.
 
@@ -122,3 +124,34 @@ llamar justo después de escribir, antes de los 500 ms del debounce.
 **Cómo medir un reloj:** `date -u '+%H:%M:%S'; curl -sI https://www.google.com | grep -i '^date:'`
 en el aparato y en el VPS (`timedatectl`). Cualquier «a mí no me sale lo que el otro registró»
 empieza por aquí.
+
+## Rechazar no es borrar: lo que ya salió de la labor sigue vivo (16-oct-2026)
+
+Rechazar deja la labor en `estado = 'CANCELADA'` + `aprobacion = 'RECHAZADA'`, y **todo lo que
+lee `asignaciones` filtrando por estado** la suelta solo (hectáreas, planilla, Resumen). Pero hay
+dos clases de lectores que no se enteran:
+
+1. **Tablas de eventos inmutables.** `labor_sesiones` guarda el tramo al CERRAR y nunca se
+   actualiza: no sabe que después la labor se rechazó. No tiene FK a `asignaciones`
+   (`asignacion_id` es texto), así que tampoco se puede embeber el estado — hay que cruzarlo a
+   mano. Eficiencia de maquinaria (`loadHorasPorRangoMes`) ahora salta las CANCELADAS.
+2. **Vistas con varias fuentes en `UNION`**, donde cada rama lleva su propio filtro.
+   `equipo_horometro_v` filtraba `CANCELADA` en solicitudes y `ANULADA` en órdenes, pero no en
+   labores. Al copiar una rama para agregar una fuente, revisar el filtro de estado de cada una.
+
+Medido ese día: **55 labores canceladas** (41 rechazadas; de las 14 canceladas sin rechazo, 6 con
+tramo tienen una gemela COMPLETADA con el mismo horómetro — eran duplicadas); 45 tramos de 44 de ellas en `labor_sesiones` = 68,5 h sumables;
+47 con horómetro final entraban a la vista. Y muchas se rechazan justo POR el horómetro
+(`4490 → 1190`, `10733,2 → 1073,5`): son las lecturas que menos deben servir de referencia.
+
+⚠️ **Sigue igual**: `equipo_horometro_dudoso_v` (la lista de lecturas descartadas del taller)
+todavía lista lecturas de labores canceladas. Es solo una lista para revisar, no una referencia.
+
+🔴 **Al agregar un lector nuevo de algo que nace de una labor** (horas, horómetro, combustible
+por labor): preguntarse qué pasa si la labor se rechaza mañana.
+
+**Cómo medirlo** (sin tocar nada): con la llave anon de `sam-app/.env`, traer `asignaciones`
+(`id,estado`) y `labor_sesiones` (`asignacion_id,horas,...`) completas — el servidor no recorta
+filas — y cruzar por id en Node. La vista se comprueba replicándola en JS y comparando contra
+`equipo_horometro_v`: el 16-oct las 23 máquinas dieron igual, prueba de que la migración
+`20260918140000` era la definición vigente.

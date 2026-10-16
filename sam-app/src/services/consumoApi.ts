@@ -112,6 +112,12 @@ export async function loadHorasDelMes(mes: string): Promise<Map<string, number>>
  * tiene): error medio **24% contra 30%** del método viejo, **13 de 20 máquinas
  * dentro del 10%** contra 9, y varias exactas (CASE1301 380=380, CASE902
  * 263=263). El total del mes queda en +3%.
+ *
+ * 🔴 **Una labor CANCELADA no aporta horas** (16-oct-2026). `labor_sesiones` es
+ * inmutable: guarda el tramo al cerrar y no se entera de que después la labor se
+ * rechazó. Las hectáreas de una rechazada ya no contaban y sus horas sí — y
+ * muchas se rechazan justo POR el horómetro (`4490 → 1190`, `10733,2 → 1073,5`).
+ * Medido ese día: 45 tramos de 44 labores canceladas, 68,5 h sumables.
  */
 export async function loadHorasPorRangoMes(desde: string, hasta: string): Promise<{
   horas: Map<string, number>
@@ -120,20 +126,24 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
   /** Primera y última lectura BUENA del mes: el horómetro inicial y el final. */
   extremos: Map<string, { inicial: number; final: number }>
 }> {
-  const { data, error } = await supabase
-    .from('labor_sesiones')
-    .select('equipo_codigo,fecha,horometro_inicial,horometro_final,horas')
-    .gte('fecha', desde).lte('fecha', hasta)
-    .order('fecha', { ascending: true })
+  const [{ data, error }, canceladas] = await Promise.all([
+    supabase
+      .from('labor_sesiones')
+      .select('asignacion_id,equipo_codigo,fecha,horometro_inicial,horometro_final,horas')
+      .gte('fecha', desde).lte('fecha', hasta)
+      .order('fecha', { ascending: true }),
+    idsLaboresCanceladas(),
+  ])
   if (error || !data) return { horas: new Map(), cayeronASuma: [], extremos: new Map() }
 
   type Lect = { fecha: string; h: number }
   const porEquipo = new Map<string, { lecturas: Lect[]; suma: number }>()
 
   for (const r of data as {
-    equipo_codigo?: string; fecha?: string
+    asignacion_id?: string; equipo_codigo?: string; fecha?: string
     horometro_inicial?: number; horometro_final?: number; horas?: number
   }[]) {
+    if (r.asignacion_id && canceladas.has(String(r.asignacion_id))) continue
     const eq = r.equipo_codigo
     const fecha = r.fecha
     if (!eq || !fecha) continue
@@ -182,6 +192,25 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
   }
 
   return { horas, cayeronASuma, extremos }
+}
+
+/**
+ * Ids de las labores CANCELADAS (rechazadas o anuladas).
+ *
+ * Van todas en una consulta: son pocas (55 de 5.414 el 16-oct-2026). Por id no
+ * se puede preguntar — `labor_sesiones.asignacion_id` es texto libre y un id que
+ * no sea uuid tumba el `in` entero con un 400.
+ * Si no se pueden leer, se cuenta todo como antes: un tablero con unas horas de
+ * más es mejor que uno sin horas.
+ */
+async function idsLaboresCanceladas(): Promise<Set<string>> {
+  const { data, error } = await supabase
+    .from('asignaciones').select('id').eq('estado', 'CANCELADA')
+  if (error || !data) {
+    console.warn('[consumo] no se pudieron leer las labores canceladas; se cuentan todas', error)
+    return new Set()
+  }
+  return new Set((data as { id?: string }[]).map((r) => String(r.id ?? '')).filter(Boolean))
 }
 
 

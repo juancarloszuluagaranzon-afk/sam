@@ -2,7 +2,7 @@ import { unidadDeLabor, formatArea, esPorHoras, nombreUnidad } from '../lib/text
 import { CampoLista } from '../components/CampoPlaca'
 import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
 import { fmtHora } from '../lib/fechas'
-import { useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 
 // Visor y gestión de mapas offline. Imports ESTÁTICOS a propósito (NO lazy):
@@ -70,7 +70,7 @@ import { LaborFilterDrawer } from '../components/LaborFilterDrawer'
 import { BotonManual } from '../components/BotonManual'
 import { filaMaestro } from '../lib/areaSuerte'
 import { faltaModalidad, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
-import { puedeEditarLabores } from '../lib/editores'
+import { laborAprobada, puedeEditarEstaLabor, puedeEditarLabores } from '../lib/editores'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'cartera' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
 
@@ -434,9 +434,12 @@ export function SupervisorView({
     editAssignment: handleEditAssignment,
   } = useAssignmentActions()
 
-  // 🔴 Editar o eliminar labores (programadas o tomadas en campo): SOLO Carlos
-  // David (2-oct-2026). Ver src/lib/editores.ts.
-  const canEditAssignments = puedeEditarLabores(session)
+  // 🔴 Labores (programadas o tomadas en campo), 16-oct-2026 — ver src/lib/editores.ts:
+  // EDITAR: el supervisor mientras la labor no esté aprobada; Carlos David siempre.
+  // ELIMINAR: solo Carlos David.
+  const puedeEliminarLabores = puedeEditarLabores(session)
+  const puedeEditarLabor = useCallback((a: Assignment) => puedeEditarEstaLabor(session, a), [session])
+  const veAccionesLabores = puedeEliminarLabores || session?.role === 'supervisor'
   // Limpiar pendientes viejas es cancelar (reversible), no editar: sigue por rol.
   const canCleanStale =
     session?.role === 'supervisor' || session?.role === 'owner' || session?.role === 'administracion'
@@ -2086,7 +2089,7 @@ export function SupervisorView({
           defaultQuincena={summaryQuincena}
           todayKey={todayKey}
           onClose={() => setSelectedEntity(null)}
-          canEdit={canEditAssignments}
+          canEdit={puedeEditarLabor}
           equipment={sortedEquipment}
           maestro={maestro}
           onSaveAssignment={handleEditAssignment}
@@ -2647,7 +2650,7 @@ export function SupervisorView({
                       <th>Ingenio</th>
                       <th>Estado</th>
                       <th>Operador</th>
-                      {canEditAssignments && <th>Acciones</th>}
+                      {veAccionesLabores && <th>Acciones</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -2674,25 +2677,29 @@ export function SupervisorView({
                           <td>{ingenioLabel}</td>
                           <td><span className={`status-chip ${meta.tone}`}>{meta.label}</span></td>
                           <td>{a.operatorName}</td>
-                          {canEditAssignments && (
+                          {veAccionesLabores && (
                             <td>
                               <div className="report-row-actions">
                                 <button
                                   type="button"
                                   className="inline-button"
                                   onClick={() => setSelectedLabor(a)}
-                                  title="Editar área, operario u otros datos"
+                                  title={puedeEditarLabor(a)
+                                    ? 'Editar área, operario u otros datos'
+                                    : 'Aprobada: solo Carlos David la corrige'}
                                 >
-                                  Editar
+                                  {puedeEditarLabor(a) ? 'Editar' : 'Ver'}
                                 </button>
-                                <button
-                                  type="button"
-                                  className="inline-button maestro-delete-btn"
-                                  onClick={() => { setDeleteReportTarget(a); setError('') }}
-                                  title="Eliminar esta línea (permanente)"
-                                >
-                                  Eliminar
-                                </button>
+                                {puedeEliminarLabores && (
+                                  <button
+                                    type="button"
+                                    className="inline-button maestro-delete-btn"
+                                    onClick={() => { setDeleteReportTarget(a); setError('') }}
+                                    title="Eliminar esta línea (permanente)"
+                                  >
+                                    Eliminar
+                                  </button>
+                                )}
                               </div>
                             </td>
                           )}
@@ -3796,7 +3803,15 @@ export function SupervisorView({
                     )}
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    {canEditAssignments && !editingLabor && (
+                    {!editingLabor && session?.role === 'supervisor' && laborAprobada(selectedLabor) && (
+                      <span
+                        className="liberada-badge"
+                        title="Ya está aprobada. Si hay que corregirla, avísale a Carlos David."
+                      >
+                        🔒 Aprobada · la corrige Carlos David
+                      </span>
+                    )}
+                    {puedeEditarLabor(selectedLabor) && !editingLabor && (
                       <button
                         type="button"
                         className="inline-button"

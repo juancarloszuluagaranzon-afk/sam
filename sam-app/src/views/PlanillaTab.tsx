@@ -4,7 +4,7 @@ import { fmtHora } from '../lib/fechas'
 import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
-import { puedeEditarLabores } from '../lib/editores'
+import { puedeEditarEstaLabor, puedeEditarLabores } from '../lib/editores'
 import type { Assignment } from '../domain/sam'
 import { deleteAssignment, formatTime, getIdSuerte } from '../services/samApi'
 import { avanceCerradoPorSuerte, areaDelDia, cuentaEnPlanilla, horasDeLabor, MOTIVO_HOROMETRO } from '../lib/planilla'
@@ -1042,7 +1042,7 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                           className="inline-button"
                           onClick={() => { onEditLabor(a); setCellDetail(null) }}
                         >
-                          {puedeEditarLabores(session) ? 'Editar' : 'Ver'}
+                          {puedeEditarEstaLabor(session, a) ? 'Editar' : 'Ver'}
                         </button>
                       )}
                       {/* Eliminar una labor: solo Carlos David (src/lib/editores.ts). */}

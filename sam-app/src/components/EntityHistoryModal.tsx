@@ -82,7 +82,8 @@ interface EntityHistoryModalProps {
   // página: matchesSummaryFilter('HOY') compara contra todayKey.
   todayKey?: string
   onClose: () => void
-  canEdit?: boolean
+  // Por LABOR: el supervisor edita solo lo que no está aprobado (src/lib/editores.ts).
+  canEdit?: (a: Assignment) => boolean
   equipment?: Equipment[]
   // Maestro para que el AssignmentDetailModal pueda resolver el ingenio.
   maestro?: MaestroRow[]

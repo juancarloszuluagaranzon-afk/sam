@@ -257,6 +257,35 @@ assignmentOperatorId === sessionId ||
 assignmentOperatorName === sessionName
 ```
 
+## 🔴 Quién EDITA y quién ELIMINA una labor [2026-10-16]
+
+Regla de Iván (16-oct-2026): **«los supervisores sí pueden editar las labores hasta antes de que
+las aprueben; ya después de aprobadas no»** — igual para programadas (ASIGNADA) y tomadas en
+campo (LIBRE). Corrige el cambio del 2-oct (`ceed846`, «solo Carlos David edita»), que quedó
+demasiado amplio: dejó a los supervisores sin editar NUNCA. Todo vive en `src/lib/editores.ts`:
+
+| Quién | Editar | Eliminar |
+|---|---|---|
+| Carlos David (`EDITORES_LABORES` = `U005`) | siempre | siempre |
+| `supervisor` | mientras **no** esté aprobada | no |
+| owner, otros de administración, operario | no | no |
+
+- 🔴 **«Aprobada» = `laborAprobada(a)` = `approval==='APROBADA'` Y estado `COMPLETADA`/`PARCIAL`.**
+  Mirar solo `approval` miente: las programadas y las tomadas en campo **nacen** `APROBADA` (no hay
+  nada que aprobar) y el cierre (`finishAssignment`) las pasa a `PENDIENTE`. Con solo `approval`, el
+  supervisor no podría corregir ni una programada sin empezar. La RECHAZADA (queda `CANCELADA`) no
+  cuenta como aprobada.
+- Por labor: `puedeEditarEstaLabor(session, a)`. Se usa en el modal de la labor (`selectedLabor`,
+  al que llegan Labores, Reporte, Planilla y Facturación), en la columna Acciones del Reporte
+  («Editar»/«Ver»), en la Planilla y en `EntityHistoryModal`→`AssignmentDetailModal` (`canEdit` es
+  una FUNCIÓN por labor). Respaldo en `editAssignment` por si quedó abierta una pantalla vieja.
+- Si el supervisor abre una aprobada ve el chip **«🔒 Aprobada · la corrige Carlos David»** en vez
+  de un botón que desaparece sin explicación.
+- Sigue aparte: los **hm y las horas** solo los corrige administración (trigger en la base). La
+  regla de editar es **solo del front** (no hay guardia en la base).
+- Probado con 15 casos (ASIGNADA y LIBRE × 7 estados + eliminar). Falta probarlo entrando con un
+  supervisor real en celular — ver `capturing-gotchas`.
+
 ## Haciendas y suertes (maestro)
 
 - `haciendaCode` es numérico (ej: `103`, `105`, `108`, `126`)

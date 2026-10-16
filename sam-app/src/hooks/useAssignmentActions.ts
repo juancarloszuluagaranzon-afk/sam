@@ -8,7 +8,7 @@ import { updateAssignment, createAssignment, executionDateKey, createLaborSesion
 import { isSameCycle } from '../utils/suerteCycle'
 import { unidadDeLabor, formatArea, esPorHoras, aMayus } from '../lib/texto'
 import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
-import { puedeEditarLabores } from '../lib/editores'
+import { laborAprobada, puedeEditarEstaLabor } from '../lib/editores'
 
 type FinishDraft = { area: string; notes: string; horometroFinal: string; isComplete: boolean; administrador?: string; modalidad?: string }
 
@@ -667,12 +667,16 @@ export function useAssignmentActions() {
   }
 
   async function editAssignment(assignment: Assignment, patch: EditPatch) {
-    // 🔴 Editar una labor ya registrada (programada o tomada en campo) es SOLO de
-    // Carlos David (2-oct-2026: «los supervisores no»). Los botones ya no se le
-    // muestran a nadie más; esto es el respaldo por si una pantalla vieja quedó
+    // 🔴 Editar una labor (programada o tomada en campo): el supervisor puede
+    // mientras NO esté aprobada; aprobada, solo Carlos David (16-oct-2026). Los
+    // botones ya se esconden; esto es el respaldo por si una pantalla vieja quedó
     // abierta. Ver src/lib/editores.ts.
-    if (!puedeEditarLabores(session)) {
-      setError('Solo Carlos David puede editar las labores registradas. Avísale a él.')
+    if (!puedeEditarEstaLabor(session, assignment)) {
+      setError(
+        session?.role === 'supervisor' && laborAprobada(assignment)
+          ? 'Esta labor ya está aprobada: solo Carlos David puede corregirla. Avísale a él.'
+          : 'Solo los supervisores (antes de aprobar) y Carlos David pueden editar labores.',
+      )
       return false
     }
     // 🔴 Los HECTÓMETROS (acequias) y las HORAS (oficios varios) solo los corrige

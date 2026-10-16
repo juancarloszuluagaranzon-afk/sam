@@ -16,7 +16,8 @@ interface EditPatch {
 interface Props {
   assignment: Assignment | null
   onClose: () => void
-  canEdit?: boolean
+  // Por LABOR: el supervisor edita solo lo que no está aprobado (src/lib/editores.ts).
+  canEdit?: (a: Assignment) => boolean
   equipment?: Equipment[]
   // Maestro pasa para resolver el ingenio de la suerte. Si no se pasa, no se
   // muestra el ingenio (no falla, solo lo omite).
@@ -108,7 +109,7 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
       ? 'Rechazada'
       : null
 
-  const showEditButton = canEdit && onSave && !editing
+  const showEditButton = !!canEdit?.(a) && onSave && !editing
 
   async function handleSave() {
     if (!onSave) return

@@ -498,7 +498,9 @@ Y probar el flujo entero destapó un tercer defecto que llevaba **dos meses** si
 nadie lo viera: el mapeo de `EN_CURSO`.
 
 **La regla:** antes de decir «ya está», entrar con un usuario del rol que lo usa
-(`U058` es el de pruebas), en **modo celular**, hacer el flujo completo en la pantalla
+(usuarios de prueba, todos con `es_prueba = true`: `U039` «Operador pruebas» y `U041` «Operador
+Pruebas 2» = operario; `U058` «MECANICO PRUEBAS» = taller; `U040` «Supervisor Pruebas», inactivo),
+en **modo celular**, hacer el flujo completo en la pantalla
 real —incluido el paso que falló— y **medir el resultado donde queda guardado** (la
 fila en la base, el archivo en el servidor). Un componente que funciona aislado es una
 hipótesis, no una verificación. Ver `capturing-gotchas`.

@@ -53,14 +53,21 @@ está»*. Dentro del formulario real había dos fallas que el componente aislado
 mostrar, y el flujo completo destapó una tercera de dos meses de antigüedad.
 
 **Antes de decir «ya está»:**
-1. Entrar con un usuario **del rol que lo usa** (`U058` es el de pruebas; se le cambia
-   el rol por unos minutos y se le devuelve).
+1. Entrar con un usuario **del rol que lo usa**. Usuarios de prueba (`app_usuarios.es_prueba`):
+   `U039` «Operador pruebas» y `U041` «Operador Pruebas 2» (operario), `U058` «MECANICO PRUEBAS»
+   (taller; se le cambia el rol por unos minutos y se le devuelve), `U040` «Supervisor Pruebas»
+   (inactivo).
 2. En **modo celular**, que es donde vive el cliente.
 3. Hacer **el flujo completo** en la pantalla real, incluido el paso exacto que falló.
 4. **Medir donde queda guardado**: la fila en la base, el archivo en el servidor. No
    la pantalla.
 5. **En producción**, después del deploy, otra vez.
-6. Borrar la prueba.
+6. **Borrar la prueba COMPLETA, no solo la labor.** Medido el 16-oct-2026 (prueba de U039 en la
+   TRC-1): rechazar la labor la saca de las hectáreas, pero su fila de `labor_sesiones` seguía
+   sumando horas en Eficiencia de maquinaria y su `horometro_final` seguía siendo la lectura vigente
+   de la máquina (`equipo_horometro_v` no descarta las CANCELADAS). Respaldar y borrar en orden:
+   `labor_sesiones` → `chequeos` (arrastra `chequeo_respuestas`) → `asignaciones`, y verificar con
+   `equipo_horometro_v` que la máquina volvió a su lectura real.
 
 ## Un push que Vercel no recibió (18-sep-2026)
 

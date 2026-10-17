@@ -31,6 +31,44 @@ import { leerKmlPoligonos } from './kmlPoligonos'
 
 const ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
 
+/**
+ * 🛰 Capas satelitales Sentinel (Copernicus, ESA — gratis), 17-oct-2026.
+ *
+ * Las sirve el proxy YA PUBLICADO de AgroCampo (la app de Riopaila de Iván):
+ * mismas claves, misma cuota, ningún secreto nuevo aquí. Es un mosaico de los
+ * últimos 30 días con el mejor píxel sin nube; el proxy responde vacío fuera de
+ * z 9–16, por eso `maxNativeZoom: 16` (de ahí en adelante Leaflet agranda).
+ * Catálogo y colores: agrocampo-repo/src/services/sentinel2.ts; evalscripts:
+ * agrocampo-repo/api/s2-tile.ts. Si algún día ASM necesita sus propias claves,
+ * se copia ese `api/s2-tile.ts` y se cambia `SAT_BASE` a '/api/s2-tile'.
+ */
+const SAT_BASE = 'https://agrocampo-seven.vercel.app/api/s2-tile'
+const SAT_DIAS = 30
+const SAT_VER = 5
+type CapaSat = { key: string; nombre: string; opacity: number; ramp: string[] | null; etiquetas: string[]; explica: string; radar?: boolean }
+const CAPAS_SAT: CapaSat[] = [
+  { key: 'COLOR', nombre: 'Foto reciente', opacity: 1, ramp: null, etiquetas: [],
+    explica: 'Foto real de los últimos 30 días (detalle 10 m): avance de cosecha, quemas, encharcamientos.' },
+  { key: 'NDVI', nombre: 'Vigor de la caña', opacity: 0.9,
+    ramp: ['#a50026', '#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#addd8e', '#78c679', '#41ab5d', '#238b45', '#005a32'],
+    etiquetas: ['Suelo / estrés', 'Medio', 'Vigorosa'],
+    explica: 'Qué tan verde y densa está la caña (NDVI). Rojo = suelo o estrés; verde oscuro = vigorosa.' },
+  { key: 'NDMI', nombre: 'Humedad de la planta', opacity: 0.85,
+    ramp: ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#abdda4', '#66c2a5', '#3288bd'],
+    etiquetas: ['Seca', '', 'Bien hidratada'],
+    explica: 'Agua en la planta (NDMI): cae antes que el vigor, sirve de semáforo de riego.' },
+  { key: 'NDRE', nombre: 'Nitrógeno (caña adulta)', opacity: 0.9,
+    ramp: ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850'],
+    etiquetas: ['N bajo', 'Medio', 'N alto'],
+    explica: 'Nitrógeno en caña grande (NDRE), donde el vigor ya no distingue. Orienta la fertilización.' },
+  { key: 'HUMEDAD_RADAR', nombre: 'Humedad del suelo (radar)', opacity: 0.85, radar: true,
+    ramp: ['#8c510a', '#bf812d', '#dfc27d', '#f6e8c3', '#c7eae5', '#80cdc1', '#35978f', '#01665e'],
+    etiquetas: ['Seco', '', 'Húmedo'],
+    explica: 'Radar Sentinel-1: atraviesa las nubes. Marrón = suelo seco; verde azulado = húmedo. Más fresco que la foto.' },
+]
+const urlSat = (k: string) => `${SAT_BASE}?z={z}&x={x}&y={y}&p=${k}&d=${SAT_DIAS}&v=${SAT_VER}`
+const fechaCorta = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+
 type Modo = { tipo: 'ultima' } | { tipo: 'edad' } | { tipo: 'labor'; llave: string }
 
 /** Colores fijos por labor: la misma labor siempre del mismo color. */
@@ -96,6 +134,9 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   const [selId, setSelId] = useState<string | null>(null)
   const [verPlano, setVerPlano] = useState(false)
   const [plano, setPlano] = useState<MapaConfig | null>(null)
+  // 🛰 Capa satelital encima de la foto base ('' = solo la foto ESRI de siempre).
+  const [capaSat, setCapaSat] = useState('')
+  const [infoSat, setInfoSat] = useState<{ fecha: string; nubes: number; radar: string | null } | null>(null)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
   // Pantalla completa (pedido del cliente, 23-sep): el mapa en la página va a la
@@ -110,6 +151,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   const lienzoRef = useRef<L.Canvas | null>(null)
   const etiquetasRef = useRef<L.LayerGroup | null>(null)
   const planoRef = useRef<L.TileLayer | null>(null)
+  const satRef = useRef<L.TileLayer | null>(null)
   const gpsRef = useRef<L.CircleMarker | null>(null)
   const encuadradoRef = useRef(false)
 
@@ -158,6 +200,35 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
       }).addTo(map)
     }
   }, [verPlano, plano])
+
+  // 🛰 Capa Sentinel: entre la foto base y el plano/polígonos.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    satRef.current?.remove(); satRef.current = null
+    const capa = CAPAS_SAT.find((c) => c.key === capaSat)
+    if (!capa) return
+    satRef.current = L.tileLayer(urlSat(capa.key), {
+      maxZoom: 19, maxNativeZoom: 16, minNativeZoom: 9, opacity: capa.opacity, zIndex: 2,
+    }).addTo(map)
+  }, [capaSat])
+
+  // La fecha de la imagen que se está viendo: una consulta por finca (el mapa ya
+  // está encuadrado en ella cuando se toca el selector). Sin señal no dice fecha
+  // y la capa igual sale si quedó en la caché del navegador.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!capaSat || infoSat || !map) return
+    const b = map.getBounds()
+    const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((n) => n.toFixed(4)).join(',')
+    let vivo = true
+    fetch(`${SAT_BASE}?op=info&bbox=${bbox}&d=${SAT_DIAS}`).then((r) => r.json())
+      .then((j: { reciente?: { fecha: string; nubes: number } | null; radar?: { fecha: string } | null }) => {
+        if (vivo && j.reciente) setInfoSat({ fecha: j.reciente.fecha, nubes: j.reciente.nubes, radar: j.radar?.fecha ?? null })
+      })
+      .catch(() => { /* sin señal: la leyenda queda sin fecha */ })
+    return () => { vivo = false }
+  }, [capaSat, infoSat])
 
   // Los pedazos, pintados según el modo.
   useEffect(() => {
@@ -280,6 +351,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
 
   const sel = piezas.find((p) => p.id === selId) ?? null
   const selSuerte = sel?.suerteId ? suerteDe.get(sel.suerteId) ?? null : null
+  const capaSel = CAPAS_SAT.find((c) => c.key === capaSat) ?? null
   const sinAsignar = piezas.filter((p) => !p.suerteId).length
   const sinMapa = suertes.filter((s) => !piezas.some((p) => p.suerteId === s.id))
 
@@ -293,6 +365,12 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
           <i style={{ background: colorLabor(l.llave) }} aria-hidden="true" />{nombreLabor(l.nombre)}
         </button>
       ))}
+      {/* 🛰 Satélite: un desplegable, no cinco botones — en celular no caben. */}
+      <select className={`af-mapa-sat${capaSat ? ' af-mapa-sat--on' : ''}`} value={capaSat}
+              onChange={(e) => setCapaSat(e.target.value)} aria-label="Imagen satelital" title="Imagen satelital Sentinel (ESA)">
+        <option value="">🛰 Satélite: foto base</option>
+        {CAPAS_SAT.map((c) => <option key={c.key} value={c.key}>🛰 {c.nombre}</option>)}
+      </select>
     </div>
   )
   const ficha = sel && (
@@ -326,10 +404,16 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
         )}
         {/* En pantalla completa la ficha sube desde abajo, encima del mapa. */}
         {grande && ficha && <div className="af-mapa__hoja">{ficha}</div>}
-        {grande && !ficha && <div className="af-mapa__leyenda-flot"><Leyenda modo={modo} labores={labores} /></div>}
+        {grande && !ficha && (
+          <div className="af-mapa__leyenda-flot">
+            <Leyenda modo={modo} labores={labores} />
+            {capaSel && <LeyendaSat capa={capaSel} info={infoSat} />}
+          </div>
+        )}
       </div>
 
       {!grande && <Leyenda modo={modo} labores={labores} />}
+      {!grande && capaSel && <LeyendaSat capa={capaSel} info={infoSat} />}
       {error && <p className="feedback error">{error}</p>}
 
       {!grande && ficha}
@@ -367,6 +451,26 @@ function Leyenda({ modo, labores }: { modo: Modo; labores: { llave: string; nomb
       {labores.length === 0 ? <span>Todavía no hay labores registradas en esta finca.</span>
         : labores.map((l) => <span key={l.llave}><i style={{ background: colorLabor(l.llave) }} />{nombreLabor(l.nombre)}</span>)}
       <span><i className="af-mapa-leyenda__vacio" />sin labores</span>
+    </div>
+  )
+}
+
+/** Leyenda de la capa satelital: la escala de colores, la fecha de la imagen y qué significa. */
+function LeyendaSat({ capa, info }: { capa: CapaSat; info: { fecha: string; nubes: number; radar: string | null } | null }) {
+  const fecha = capa.radar ? info?.radar : info?.fecha
+  return (
+    <div className="af-mapa-satley">
+      {capa.ramp && (
+        <>
+          <div className="af-mapa-satley__barra" style={{ background: `linear-gradient(to right, ${capa.ramp.join(', ')})` }} />
+          <div className="af-mapa-satley__rot">{capa.etiquetas.map((t, i) => <span key={i}>{t}</span>)}</div>
+        </>
+      )}
+      <span>
+        🛰 {capa.nombre} · {capa.radar ? 'Sentinel-1 (radar)' : 'Sentinel-2'}
+        {fecha ? ` · imagen del ${fechaCorta(fecha)}` : ` · últimos ${SAT_DIAS} días`}
+        {!capa.radar && info ? ` · ${info.nubes} % nubes` : ''}. {capa.explica}
+      </span>
     </div>
   )
 }

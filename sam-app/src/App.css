@@ -9820,3 +9820,15 @@ td.planilla-vacio:hover { background: #fde047; }
 .flota-editar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 10px; }
 .flota-editar-grid label { display: grid; gap: 3px; font-size: 0.82rem; }
 .flota-editar--ancho { grid-column: 1 / -1; }
+
+/* 🛰 Capa satelital del mapa de la finca (17-oct-2026): el desplegable va en la
+   barra de modos y la leyenda es una barra de colores con sus rótulos. */
+.af-mapa-sat {
+  border: 1px solid var(--color-divider); border-radius: 999px; padding: 5px 10px;
+  font-size: 0.78rem; font-weight: 700; background: var(--color-surface, #fff); color: inherit;
+  max-width: 100%;
+}
+.af-mapa-sat--on { background: #1d4ed8; color: #fff; border-color: transparent; }
+.af-mapa-satley { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--color-ink-mid); }
+.af-mapa-satley__barra { height: 10px; border-radius: 5px; }
+.af-mapa-satley__rot { display: flex; justify-content: space-between; font-size: 0.72rem; }

@@ -157,6 +157,17 @@ enlaces del dueño no cambian.
 Pedido del cliente para **RIOGRANDE II** (hacienda 627, Ingenio Risaralda, vereda Molina, Toro):
 banner grande con el título + mapa donde se ve el avance. Ideas del geovisor de AgroControl.
 
+- 🛰 **Capas satelitales Sentinel** (17-oct-2026, traídas de AgroCampo para la reunión con Cristian):
+  desplegable «🛰 Satélite» en la barra de modos → Foto reciente (color real 10 m), Vigor (NDVI),
+  Humedad de la planta (NDMI), Nitrógeno en caña adulta (NDRE) y Humedad del suelo por radar
+  (Sentinel-1, atraviesa nubes). Mosaico de los últimos 30 días. Las teselas las sirve el proxy
+  **ya publicado de AgroCampo** (`https://agrocampo-seven.vercel.app/api/s2-tile`, Copernicus
+  gratis, claves de Iván allá): cero secretos en ASM. `op=info` da la fecha y % de nubes de la
+  imagen que se ve (leyenda `LeyendaSat`). El proxy responde vacío fuera de z 9–16 →
+  `maxNativeZoom: 16`. Si ASM necesita claves propias: copiar `agrocampo-repo/api/s2-tile.ts`
+  a `sam-app/api/`, poner `SENTINEL_HUB_CLIENT_ID/SECRET` en Vercel, excluir `/api` del rewrite
+  de `vercel.json` y cambiar `SAT_BASE` a `/api/s2-tile`. Medido 17-oct sobre Riogrande II:
+  imagen despejada del 14-oct (33 % nubes), radar del 13-oct, tesela NDVI en ~2 s.
 - `views/fincas/MapaFinca.tsx`: satélite ESRI + (botón ▦) el plano del ingenio desde `mapas`
   (se busca por el nombre del ingenio). Polígonos en canvas, número de suerte encima con zoom ≥ 15,
   tocar = ficha (edad desde el corte, último corte, n.º de corte, TCH/toneladas/rendimiento/edad de
@@ -228,10 +239,12 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
 
 - `oportunidad`: se CALCULA, no se guarda. Hecha → días del corte al primer reporte aceptado;
   sin hacer → con HOY («tardía» = se pasó la ventana y sigue sin hacerse). Sin ventana → null (no se
-  inventa). El paquete inicial solo trae ventanas documentadas: roturación soca 16/30, fertilización
-  soca 45/60, fertilización plantilla **30/60** desde la siembra (era 60/90; se corrigió el 16-oct-2026
-  con Cenicaña, Serie Técnica 21 — migración `20261016180000`). Convención: (inicio, fin) de la
-  ventana → (`ventana_ideal`, `ventana_normal`).
+  inventa). Ventanas vigentes: roturación soca 16/30; **fertilización soca 30/45** (era 45/60;
+  17-oct-2026, migración `20261017120000` — es la misma regla de AgroCampo `shared/edadLote.ts`:
+  `EDAD_EN_VENTANA = 30`, `EDAD_APURA = 45`, y Cenicaña ST21 dice ~30 DDC); **fertilización
+  plantilla 30/60** desde la siembra (era 60/90; 16-oct, migración `20261016180000`, Cenicaña ST21).
+  Convención: (inicio, fin) de la ventana → (`ventana_ideal`, `ventana_normal`): hasta ideal = ideal,
+  hasta normal = normal, más = tardía.
 - `cuentaFinca`: anticipos − gastos − honorarios (sin anulados).
 - `presupuestoFinca`: ciclos ABIERTOS; ejecutado = gastos de sus labores + gastos a mano de esas
   suertes desde el corte.

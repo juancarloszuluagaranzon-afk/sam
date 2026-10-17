@@ -155,3 +155,19 @@ por labor): preguntarse qué pasa si la labor se rechaza mañana.
 filas — y cruzar por id en Node. La vista se comprueba replicándola en JS y comparando contra
 `equipo_horometro_v`: el 16-oct las 23 máquinas dieron igual, prueba de que la migración
 `20260918140000` era la definición vigente.
+
+## El rango del horómetro no es de nadie: es de la máquina (17-oct-2026)
+
+Al armar el informe de eficiencia (`lib/eficiencia.ts`) la primera versión le calculaba al
+operario «su horómetro final − inicial del día». Medido en la CASE 1302 del 2-sep-2026:
+Rodríguez trabajó antes Y después de Castillo, así que su rango abarcaba el turno del otro:
+**21 h para él + 7,2 h para Castillo = 28 h en un día de 21**. La máquina sí anduvo 21 h
+(ese rango es correcto para la MÁQUINA); al operario solo se le acredita la **unión de sus
+tramos** (12,8 h). Regla: el rango final − inicial del día es de la máquina; lo de cada
+persona sale de SUS tramos, sin contar dos veces lo que se traslapa.
+
+Y la segunda lección: la primera versión daba un total de julio casi igual al cierre manual
+(−3 %) y parecía perfecta, pero era porque los dedazos inflaban unas máquinas (CASE 1304:
+592 h por 279) y compensaban lo que faltaba en otras. Arreglados los dedazos, el total quedó
+**−17 %** y ESE es el número honesto: el cierre cuenta todo lo que anduvo la máquina, la app
+solo los días con labores cerradas. **Un total que cuadra no prueba que las partes cuadren.**

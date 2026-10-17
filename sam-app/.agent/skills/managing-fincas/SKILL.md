@@ -245,6 +245,16 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
   plantilla 30/60** desde la siembra (era 60/90; 16-oct, migración `20261016180000`, Cenicaña ST21).
   Convención: (inicio, fin) de la ventana → (`ventana_ideal`, `ventana_normal`): hasta ideal = ideal,
   hasta normal = normal, más = tardía.
+- 🌱 **Ventana POR VARIEDAD** (17-oct-2026, migración `20261017150000`, punto B de la reunión con
+  Cristian): `af_paquete.variedad` (NULL = todas). Al abrir un ciclo, `af__abrir_ciclo` toma por cada
+  labor la fila de la variedad de la suerte si existe (`af_variedad_coincide`: «1940» = «CC 01-1940»)
+  y si no la genérica — `DISTINCT ON (labor, aplica, unidad)`, nunca dos fertilizaciones. Cargadas
+  para SOCA desde las curvas de N de Cenicaña: **CC 01-1940 20/46 · CC 05-430 7/26 · CC 11-595
+  11/31**; plantilla sigue 30/60 hasta que Iván confirme. Se editan en «Paquete de labores» (campo
+  Variedad). ⚠️ **Medido al aplicarla: 0 de las 11 suertes de Riogrande II tiene `variedad`** → las
+  ventanas por variedad no aplican hasta llenarla (por SQL con `af.via_funcion` o agregando un campo
+  de edición de suerte; hoy solo se pone al crear la suerte, `af_agregar_suertes`). Probado en
+  transacción: suerte «cc 01-1940» → una sola fertilización con 20/46.
 - `cuentaFinca`: anticipos − gastos − honorarios (sin anulados).
 - `presupuestoFinca`: ciclos ABIERTOS; ejecutado = gastos de sus labores + gastos a mano de esas
   suertes desde el corte.

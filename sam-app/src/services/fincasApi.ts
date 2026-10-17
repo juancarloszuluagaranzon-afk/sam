@@ -64,6 +64,8 @@ export interface LaborPaquete {
   aplica: 'SOCA' | 'PLANTILLA' | 'AMBOS'; orden: number; activa: boolean
   /** Varias pasadas por ciclo (riego, malezas): el total no se topa al área y no se cierra sola. */
   repetible: boolean
+  /** NULL = todas las variedades. Con valor, esta fila manda sobre la genérica para esa variedad (17-oct-2026). */
+  variedad: string | null
 }
 export interface LaborCiclo {
   id: string; cicloId: string; labor: string; unidad: string
@@ -268,7 +270,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       id: String(x.id), labor: String(x.labor), unidad: String(x.unidad ?? 'ha'), cantidadPorHa: num(x.cantidad_por_ha),
       costoUnitario: num(x.costo_unitario), ventanaIdeal: numN(x.ventana_ideal), ventanaNormal: numN(x.ventana_normal),
       aplica: (x.aplica as LaborPaquete['aplica']) ?? 'AMBOS', orden: num(x.orden), activa: x.activa !== false,
-      repetible: x.repetible === true,
+      repetible: x.repetible === true, variedad: txt(x.variedad),
     })),
   }
 }
@@ -307,6 +309,8 @@ export async function guardarPaquete(p: Partial<LaborPaquete> & { labor: string 
       labor: p.labor.trim().toUpperCase(), unidad: p.unidad ?? 'ha', cantidad_por_ha: p.cantidadPorHa ?? 1,
       costo_unitario: p.costoUnitario ?? 0, ventana_ideal: p.ventanaIdeal ?? null, ventana_normal: p.ventanaNormal ?? null,
       aplica: p.aplica ?? 'AMBOS', orden: p.orden ?? 100, activa: p.activa ?? true, repetible: p.repetible ?? false,
+      // Se manda siempre (vacío = todas): así la base sabe que se quiso borrar.
+      variedad: p.variedad?.trim().toUpperCase() ?? '',
     },
   }))
 }

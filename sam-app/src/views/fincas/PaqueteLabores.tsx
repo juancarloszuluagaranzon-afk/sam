@@ -30,7 +30,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
         <div><p className="eyebrow">Plantilla</p><h2>Paquete de labores</h2></div>
         <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, aplica: 'AMBOS', orden: 100, activa: true, repetible: false })}>+ Labor</button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada ciclo: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Cambiarlo no toca los ciclos ya abiertos.</p>
+      <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada ciclo: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Una labor puede tener una ventana distinta por <b>variedad</b> (curvas de Cenicaña): esa fila manda para las suertes de esa variedad. Cambiarlo no toca los ciclos ya abiertos.</p>
       {error && <p className="feedback error">{error}</p>}
 
       {editando && (
@@ -51,6 +51,13 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
               <select id="af-p-aplica" value={editando.aplica ?? 'AMBOS'} onChange={(e) => setEditando({ ...editando, aplica: e.target.value as LaborPaquete['aplica'] })}>
                 <option value="AMBOS">Soca y plantilla</option><option value="SOCA">Solo soca</option><option value="PLANTILLA">Solo plantilla</option>
               </select>
+            </label>
+            {/* Ventana POR VARIEDAD (17-oct-2026): una fila con variedad manda sobre la genérica
+                para las suertes de esa variedad; las demás siguen con la genérica. */}
+            <label>Variedad (opcional)
+              <input id="af-p-variedad" value={editando.variedad ?? ''} autoCapitalize="characters"
+                     onChange={(e) => setEditando({ ...editando, variedad: e.target.value.toUpperCase() })}
+                     placeholder="todas · ej. CC 01-1940" />
             </label>
             <label>Orden<input id="af-p-orden" inputMode="numeric" value={String(editando.orden ?? 100)} onChange={(e) => setEditando({ ...editando, orden: Number(e.target.value) || 100 })} /></label>
             <label className="af-form__ancho af-check">
@@ -73,7 +80,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
               {d.paquete.map((p) => (
                 <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
                   <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}{p.repetible ? ' · varias pasadas' : ''}</small></td>
-                  <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}</small></td>
+                  <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}{p.variedad ? <><br />🌱 {p.variedad}</> : ''}</small></td>
                   {VER_PLATA && <td>{p.costoUnitario > 0 ? `${fmtPesos(p.costoUnitario)} / ${p.unidad}` : <span className="af-rojo">sin costo</span>}</td>}
                   <td><small>{p.ventanaIdeal != null && p.ventanaNormal != null ? `ideal ≤${p.ventanaIdeal} · normal ≤${p.ventanaNormal} días` : 'sin ventana'}</small></td>
                   <td className="af-td-acc">

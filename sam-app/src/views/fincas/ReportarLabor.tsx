@@ -5,15 +5,21 @@ import {
   avisarPendientes, enviarOEncolarReporte, reportesPendientes, sincronizarReportes,
   EVENTO_PENDIENTES, type ReportePendiente,
 } from '../../lib/outboxFincas'
-import { avanceLabor, cicloAbiertoDe, fmtCant } from '../../lib/fincas'
+import { avanceLabor, cicloAbiertoDe, fmtCant, PEDIR_UBICACION } from '../../lib/fincas'
 import { fmtFechaHora } from '../../lib/fechas'
 
 
-type Gps = { estado: 'buscando' } | { estado: 'ok'; lat: number; lng: number; precision: number } | { estado: 'no'; motivo: string }
+type Gps =
+  | { estado: 'apagada' }
+  | { estado: 'buscando' }
+  | { estado: 'ok'; lat: number; lng: number; precision: number }
+  | { estado: 'no'; motivo: string }
 
 /**
- * Reportar una labor desde el campo. La prueba va completa: foto obligatoria,
- * ubicación del celular y —al guardar— la hora del SERVIDOR, no la del aparato.
+ * Reportar una labor desde el campo. La prueba va completa: foto obligatoria y
+ * —al guardar— la hora del SERVIDOR, no la del aparato. La ubicación del celular
+ * está APAGADA de momento (`PEDIR_UBICACION`, 16-oct-2026): Julio reporta aunque
+ * no esté en la finca.
  * El reporte queda POR ACEPTAR: otra persona lo verifica antes de que cuente.
  *
  * SIN SEÑAL no se pierde nada: el reporte y su foto quedan guardados en el
@@ -29,7 +35,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   const [nota, setNota] = useState('')
   const [foto, setFoto] = useState<File | null>(null)
   const [vista, setVista] = useState<string | null>(null)
-  const [gps, setGps] = useState<Gps>({ estado: 'buscando' })
+  const [gps, setGps] = useState<Gps>(PEDIR_UBICACION ? { estado: 'buscando' } : { estado: 'apagada' })
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [listo, setListo] = useState('')
@@ -52,7 +58,9 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   }, [refrescarPendientes])
 
   // La ubicación se pide al abrir: cuando el operario termine de llenar, ya está.
+  // Apagada de momento: ni se pide el permiso (el celular no pregunta nada).
   useEffect(() => {
+    if (!PEDIR_UBICACION) return
     if (!('geolocation' in navigator)) { setGps({ estado: 'no', motivo: 'este celular no da ubicación' }); return }
     navigator.geolocation.getCurrentPosition(
       (p) => setGps({ estado: 'ok', lat: p.coords.latitude, lng: p.coords.longitude, precision: Math.round(p.coords.accuracy) }),
@@ -165,11 +173,13 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
             }} />
           </label>
           {vista && <img className="af-foto af-foto--grande" src={vista} alt="foto de la labor" />}
-          <p className={`af-gps af-gps--${gps.estado}`}>
-            {gps.estado === 'buscando' ? '⌖ Tomando la ubicación…'
-              : gps.estado === 'ok' ? `⌖ Ubicación tomada (±${gps.precision} m)`
-              : `⌖ Sin ubicación: ${gps.motivo}. El reporte sale marcado así.`}
-          </p>
+          {gps.estado !== 'apagada' && (
+            <p className={`af-gps af-gps--${gps.estado}`}>
+              {gps.estado === 'buscando' ? '⌖ Tomando la ubicación…'
+                : gps.estado === 'ok' ? `⌖ Ubicación tomada (±${gps.precision} m)`
+                : `⌖ Sin ubicación: ${gps.motivo}. El reporte sale marcado así.`}
+            </p>
+          )}
           <label className="af-form__ancho">Nota (opcional)
             <input id="af-rep-nota" value={nota} onChange={(e) => setNota(e.target.value)} placeholder="Ej.: quedó pendiente la cabecera norte" />
           </label>

@@ -15,6 +15,18 @@ import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, R
  */
 export const VER_PLATA = true
 
+/**
+ * 🔴 La UBICACIÓN del reporte está APAGADA «de momento» (16-oct-2026). Iván:
+ * «debo permitir que Julio pueda registrar sus labores así no esté en la finca;
+ * de momento no le actives la ubicación». Con la llave en `false`: «Reportar
+ * labor» no pide el permiso del GPS ni muestra el aviso «Sin ubicación…», «Por
+ * aceptar» no marca en rojo los reportes sin ubicación, y los textos del dueño ya
+ * no prometen «foto y ubicación». La base nunca la exigió (`af__reportar` solo
+ * guarda `lat`/`lng` si llegan). Se prende cambiándola a `true`, sin migraciones.
+ * El botón «dónde estoy» del mapa no depende de esto: solo se usa si se toca.
+ */
+export const PEDIR_UBICACION = false
+
 export type NivelOportunidad = 'ideal' | 'normal' | 'tardia'
 
 /** Días entre dos fechas 'YYYY-MM-DD' (b − a). */
@@ -223,7 +235,7 @@ export function resumenParaDueno(finca: Finca, d: DatosFincas, hoy: string, nomb
   if (tardias.length) {
     lineas.push('', `Atrasadas: ${tardias.map((f) => `${f.labor.labor.toLowerCase()} suerte ${f.suerte.codigo}`).join(', ')}`)
   }
-  lineas.push('', 'Cada labor tiene foto, ubicación y quién la aceptó. — AgroServicios Morales')
+  lineas.push('', `Cada labor tiene foto${PEDIR_UBICACION ? ', ubicación' : ''} y quién la aceptó. — AgroServicios Morales`)
   return lineas.join('\n')
 }
 

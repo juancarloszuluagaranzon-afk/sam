@@ -139,12 +139,13 @@ entero pasa por funciones `security definer` que reciben `p_token`:
   `af_anular_labor`, `af_registrar_movimiento` (+ las cuatro de antes con `p_token` primero).
 - ⚠️ Soporte en «Ver como» un supervisor NO entra a Fincas sin el PIN de esa persona (a propósito).
 
-## 🔴 Dos cosas APAGADAS «de momento» (23-sep-2026) — se prenden sin migración
+## 🔴 Interruptores «de momento» — se prenden/apagan sin migración
 
-| Qué | Por qué | Dónde se prende |
-|---|---|---|
-| **La plata** (cuenta, presupuesto, costos, honorario, «se cargan $X») | «quita lo de las transferencias, de momento no valoremos nada» | `VER_PLATA` en `lib/fincas.ts` → `true` (la base lo sigue guardando) |
-| **El PIN para entrar a Fincas** | «déjame ver sin el PIN, después lo volvemos a mostrar» | `update af_config set valor = 'true' where clave = 'pin_requerido'` — las sesiones abiertas SIN PIN (`af_sesiones.sin_pin`) dejan de servir al instante y la app vuelve a pedirlo |
+| Qué | Estado | Por qué | Dónde se cambia |
+|---|---|---|---|
+| **La plata** (cuenta, presupuesto, costos, honorario, «se cargan $X») | ✅ PRENDIDA desde el 6-oct (`675cca2`); estuvo apagada desde el 23-sep | «quita lo de las transferencias, de momento no valoremos nada» | `VER_PLATA` en `lib/fincas.ts` (la base lo guarda siempre) |
+| **El PIN para entrar a Fincas** | ⛔ apagado (23-sep) | «déjame ver sin el PIN, después lo volvemos a mostrar» | `update af_config set valor = 'true' where clave = 'pin_requerido'` — las sesiones abiertas SIN PIN (`af_sesiones.sin_pin`) dejan de servir al instante y la app vuelve a pedirlo |
+| **La UBICACIÓN del reporte** | ⛔ apagada (16-oct) | «debo permitir que Julio pueda registrar sus labores así no esté en la finca; de momento no le actives la ubicación» | `PEDIR_UBICACION` en `lib/fincas.ts`. Apagada: «Reportar labor» no pide el permiso del GPS ni muestra «Sin ubicación…», «Por aceptar» no marca en rojo, y el portal, el mensaje del enlace y el resumen de WhatsApp no prometen «ubicación». La base nunca la exigió (`af__reportar` guarda `lat`/`lng` solo si llegan; no hay geocerca). El botón «dónde estoy» del mapa es aparte |
 
 ⚠️ Con el PIN apagado, `af_abrir_sesion_sin_pin(usuario)` da una llave a cualquier usuario del
 personal (owner/administración/supervisor) que se nombre: es la concesión que se aceptó. Los

@@ -1,25 +1,43 @@
 import { useState } from 'react'
 import type { CtxFincas } from './FincasView'
-import { crearAccesoDueno, enlaceDueno, mensajeDeError, revocarAccesoDueno, type Finca } from '../../services/fincasApi'
+import {
+  asignarDuenoFinca, crearAccesoDueno, enlaceDueno, mensajeDeError, quitarDuenoFinca, revocarAccesoDueno, type Finca,
+} from '../../services/fincasApi'
 import { fmtFechaHora } from '../../lib/fechas'
 import { evidenciaDeLabor, VER_PLATA } from '../../lib/fincas'
+import { useAppData } from '../../context/AppDataContext'
+import { SearchableSelect } from '../../components/SearchableSelect'
 
 /**
- * El acceso directo del dueño de la tierra (solo administración).
+ * El acceso del dueño de la tierra (solo administración). Dos caminos que conviven:
  *
- * 🔴 El enlace se muestra UNA vez: la base guarda solo su huella, así que ni
- * soporte ni nadie lo puede volver a leer. Si se pierde o se reenvió, se quita
- * y se crea otro. Cada vez que el dueño lo abre queda registrado.
+ * 1. **Usuario y PIN** (17-oct-2026): se crea el usuario con rol «Dueño de finca»
+ *    (Más → Usuarios) y aquí se le liga la finca. Entra como cualquiera y ve solo
+ *    sus fincas, con el tablero macro de su negocio. Es el camino nuevo.
+ * 2. **Enlace personal** (22-sep-2026): sin usuario ni PIN, una finca. 🔴 El enlace
+ *    se muestra UNA vez: la base guarda solo su huella. Si se pierde o se reenvió,
+ *    se quita y se crea otro. Cada vez que el dueño lo abre queda registrado.
  */
 export function AccesoDueno({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
+  const { users } = useAppData()
   const accesos = ctx.datos.accesos.filter((a) => a.fincaId === finca.id)
   const activos = accesos.filter((a) => !a.revocadoEn)
   const cancelados = accesos.length - activos.length
+  const duenos = ctx.datos.duenos.filter((d) => d.fincaId === finca.id)
+  const candidatos = users
+    .filter((u) => u.role === 'dueno_finca' && u.active !== false && !duenos.some((d) => d.usuarioId === u.id))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const [usuarioSel, setUsuarioSel] = useState('')
   const [nombre, setNombre] = useState(finca.duenoNombre)
   const [nuevo, setNuevo] = useState<string | null>(null)
   const [copiado, setCopiado] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState('')
+
+  async function hacer(fn: () => Promise<void>) {
+    setOcupado(true); setError('')
+    try { await fn(); await ctx.recargar() } catch (e) { setError(mensajeDeError(e)) } finally { setOcupado(false) }
+  }
 
   async function crear() {
     setOcupado(true); setError(''); setCopiado(false)
@@ -27,12 +45,6 @@ export function AccesoDueno({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
       setNuevo(enlaceDueno(await crearAccesoDueno(finca.id, nombre.trim() || finca.duenoNombre, ctx.token)))
       await ctx.recargar()
     } catch (e) { setError(mensajeDeError(e)) } finally { setOcupado(false) }
-  }
-
-  async function quitar(id: string, quien: string) {
-    if (!window.confirm(`¿Quitar el acceso de ${quien}? El enlace deja de abrir de inmediato.`)) return
-    setOcupado(true); setError('')
-    try { await revocarAccesoDueno(id, ctx.token); await ctx.recargar() } catch (e) { setError(mensajeDeError(e)) } finally { setOcupado(false) }
   }
 
   async function copiar(texto: string) {
@@ -45,9 +57,53 @@ export function AccesoDueno({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
 
   return (
     <div className="af-card af-card--ancha af-acceso">
-      <h3>Acceso directo del dueño</h3>
+      <h3>Acceso del dueño</h3>
+
+      {/* ── Camino 1: usuario y PIN ── */}
       <p className="af-nota" style={{ marginTop: 0 }}>
-        Con su enlace personal el dueño ve esta misma página desde su celular, sin usuario ni PIN, y SOLO su finca.
+        <b>Con usuario y PIN:</b> el dueño entra como cualquiera y ve solo sus fincas, con el resumen de su negocio.
+        El usuario se crea en <b>Más → Usuarios</b> con el rol «Dueño de finca»; aquí se le liga esta finca.
+      </p>
+      {duenos.length > 0 && (
+        <ul className="af-lista">
+          {duenos.map((d) => (
+            <li key={d.usuarioId} className="af-mov">
+              <span className="af-foto af-foto--vacia">👤</span>
+              <span>
+                <b>{d.nombre}</b>
+                <small>usuario {d.usuarioId}{d.activo ? '' : ' · INACTIVO'}{d.creadoEn ? ` · ligado ${fmtFechaHora(d.creadoEn)}` : ''}</small>
+              </span>
+              <button type="button" className="af-link" disabled={ocupado}
+                      onClick={() => { if (window.confirm(`¿Quitarle la finca ${finca.nombre} a ${d.nombre}? Deja de verla al instante.`)) void hacer(() => quitarDuenoFinca(finca.id, d.usuarioId, ctx.token)) }}>
+                Quitar
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="af-mini-form">
+        <label>Ligar un usuario dueño
+          {candidatos.length === 0 ? (
+            <small className="af-nota">No hay usuarios con rol «Dueño de finca» sin ligar. Créelo en Más → Usuarios.</small>
+          ) : (
+            <SearchableSelect value={usuarioSel} onChange={setUsuarioSel}
+                              options={candidatos.map((u) => ({ value: u.id, label: `${u.name} (${u.id})` }))} />
+          )}
+        </label>
+        {candidatos.length > 0 && (
+          <div className="af-acciones">
+            <button type="button" className="primary-button" disabled={ocupado || !usuarioSel}
+                    onClick={() => void hacer(async () => { await asignarDuenoFinca(finca.id, usuarioSel, ctx.token); setUsuarioSel('') })}>
+              Ligar a esta finca
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ── Camino 2: enlace personal ── */}
+      <h3 style={{ marginTop: 16 }}>Enlace personal (sin usuario)</h3>
+      <p className="af-nota" style={{ marginTop: 0 }}>
+        Con su enlace el dueño ve esta misma página desde su celular, sin usuario ni PIN, y SOLO esta finca.
       </p>
 
       {nuevo ? (
@@ -66,7 +122,7 @@ export function AccesoDueno({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
             <input id="af-acceso-nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Nombre del dueño o socio" />
           </label>
           <div className="af-acciones">
-            <button type="button" className="primary-button" disabled={ocupado} onClick={() => void crear()}>
+            <button type="button" className="inline-button" disabled={ocupado} onClick={() => void crear()}>
               {activos.length ? 'Crear otro enlace' : 'Crear enlace para el dueño'}
             </button>
           </div>
@@ -87,7 +143,10 @@ export function AccesoDueno({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
                     : 'todavía no lo ha abierto'}
                 </small>
               </span>
-              <button type="button" className="af-link" disabled={ocupado} onClick={() => void quitar(a.id, a.nombre)}>Quitar acceso</button>
+              <button type="button" className="af-link" disabled={ocupado}
+                      onClick={() => { if (window.confirm(`¿Quitar el acceso de ${a.nombre}? El enlace deja de abrir de inmediato.`)) void hacer(() => revocarAccesoDueno(a.id, ctx.token)) }}>
+                Quitar acceso
+              </button>
             </li>
           ))}
         </ul>

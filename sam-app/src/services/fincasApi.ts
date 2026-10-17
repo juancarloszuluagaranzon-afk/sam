@@ -112,7 +112,10 @@ export interface CargaFincas extends DatosFincas {
   nombres: Record<string, string>
   poligonos: Poligono[]
   maquinaria: LaborMaquina[]
+  /** Dueños con USUARIO (rol dueno_finca) de cada finca; solo administración lo recibe (17-oct-2026). */
+  duenos: DuenoFinca[]
 }
+export interface DuenoFinca { fincaId: string; usuarioId: string; nombre: string; activo: boolean; creadoEn: string }
 
 const num = (v: unknown): number => Number(v ?? 0)
 const numN = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
@@ -210,6 +213,10 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
     accesos: arr('accesos').map((x) => ({
       id: String(x.id), fincaId: String(x.finca_id), nombre: String(x.nombre), creadoPor: String(x.creado_por),
       creadoEn: String(x.creado_en), revocadoEn: txt(x.revocado_en), ultimoUso: txt(x.ultimo_uso), usos: num(x.usos),
+    })),
+    duenos: arr('duenos').map((x) => ({
+      fincaId: String(x.finca_id), usuarioId: String(x.usuario_id), nombre: String(x.nombre ?? x.usuario_id),
+      activo: x.activo !== false, creadoEn: String(x.creado_en ?? ''),
     })),
     fincas: arr('fincas').map((x) => ({
       id: String(x.id), nombre: String(x.nombre), duenoNombre: String(x.dueno_nombre),
@@ -419,4 +426,13 @@ export async function subirFotoFinca(file: File, carpeta: 'reportes' | 'soportes
   const { error } = await supabase.storage.from('avatars').upload(path, liviana, { upsert: false, contentType: liviana.type || 'image/jpeg' })
   if (error) throw new Error(error.message)
   return supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl
+}
+
+// ── Dueños con usuario (17-oct-2026) ─────────────────────────────────────────
+/** Administración liga un usuario con rol «Dueño de finca» a una finca: desde ahí la ve al entrar. */
+export async function asignarDuenoFinca(fincaId: string, usuarioId: string, token: string) {
+  await lanzar(supabase.rpc('af_asignar_dueno', { p_token: token, p_finca: fincaId, p_usuario: usuarioId }))
+}
+export async function quitarDuenoFinca(fincaId: string, usuarioId: string, token: string) {
+  await lanzar(supabase.rpc('af_quitar_dueno', { p_token: token, p_finca: fincaId, p_usuario: usuarioId }))
 }

@@ -371,7 +371,7 @@ function AppContent() {
       // La llave del módulo de fincas sale del MISMO PIN que acaba de escribir: así
       // no se lo vuelve a pedir. Si falla (sin señal, etc.) no estorba el ingreso:
       // Fincas lo pide cuando lo abra.
-      if (isSupervisorOrOwner(user.role)) {
+      if (isSupervisorOrOwner(user.role) || user.role === 'dueno_finca') {
         void abrirSesionFincas(user.id, pin)
           .then((llave) => { if (llave) guardarLlavePersonal(user.id, llave) })
           .catch(() => {})
@@ -568,6 +568,18 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <AnalistaView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  // Rol DUEÑO DE FINCA (17-oct-2026) → su portal: solo sus fincas, en solo lectura,
+  // con el tablero macro de su negocio. Es la misma vista del enlace personal,
+  // pero entrando con usuario y PIN (la base filtra por `af_finca_duenos`).
+  if (session.role === 'dueno_finca') {
+    return (
+      <>
+        {impersonationBar}
+        <PortalDueno usuario={session} onSalir={() => saveSession(null)} />
       </>
     )
   }

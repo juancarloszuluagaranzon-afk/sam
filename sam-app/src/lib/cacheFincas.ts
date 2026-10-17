@@ -22,7 +22,7 @@ const PREFIJO = 'fincas:carga:'
 
 const VACIA: CargaFincas = {
   rol: '', nombres: {}, accesos: [], fincas: [], suertes: [], ciclos: [], labores: [],
-  reportes: [], movimientos: [], paquete: [], poligonos: [], maquinaria: [],
+  reportes: [], movimientos: [], paquete: [], poligonos: [], maquinaria: [], duenos: [],
 }
 
 export interface CargaGuardada { datos: CargaFincas; guardadaEn: string }

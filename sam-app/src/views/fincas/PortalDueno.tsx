@@ -2,21 +2,35 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import logoAgromorales from '../../assets/logo-agromorales.jpeg'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { PantallaSegura } from '../../components/PantallaSegura'
-import { cargarFincas, esSinSesion, guardarLlaveDueno, type CargaFincas } from '../../services/fincasApi'
+import {
+  abrirSesionSinPin, cargarFincas, esSinSesion, guardarLlaveDueno, guardarLlavePersonal, leerLlavePersonal,
+  mensajeDeError, type CargaFincas,
+} from '../../services/fincasApi'
+import { esFalloDeRed } from '../../lib/outboxInsumos'
 import { hoyBogota } from '../../lib/periodos'
 import { fmtFechaHora } from '../../lib/fechas'
 import { FincaDetalle } from './FincaDetalle'
 import type { CtxFincas } from './FincasView'
 import { InstalarApp } from './InstalarApp'
 import { AvisosFinca } from './AvisosFinca'
-import { evidenciaDeLabor, hechosDeFinca, fmtCant, nombreLabor } from '../../lib/fincas'
+import {
+  evidenciaDeLabor, hechosDeFinca, fmtCant, fmtPesosCorto, macroDueno, nombreLabor, VER_PLATA,
+  type MacroFinca,
+} from '../../lib/fincas'
 import { prepararInstalacionDueno } from './llaveDueno'
+import type { UserProfile } from '../../domain/sam'
 
 /**
- * La vista del DUEÑO DE LA TIERRA (22-sep-2026): entra con su enlace personal,
- * sin usuario ni PIN, y ve SOLO su finca — lo decide la base con la llave del
- * enlace, no esta pantalla. Es la misma «Lo que ve el dueño» de la administración,
- * en solo lectura: las mismas cifras que usa ASM, no una versión preparada.
+ * La vista del DUEÑO DE LA TIERRA: ve SOLO sus fincas, en solo lectura, con las
+ * mismas cifras que usa ASM (no una versión preparada). Entra por dos caminos:
+ *
+ * - **Con su enlace personal** (22-sep-2026, `llave`): sin usuario ni PIN, una
+ *   finca. Lo decide la base con la llave del enlace, no esta pantalla.
+ * - **Con usuario y PIN** (17-oct-2026, `usuario`, rol `dueno_finca`): como otra
+ *   vista de AgroMorales, segmentada por las fincas que administración le ligó
+ *   (`af_finca_duenos`). Arranca con el TABLERO MACRO de su negocio —fincas,
+ *   área, edad y ciclo de la caña, labores atrasadas, su cuenta— y de ahí baja a
+ *   cada finca. Pedido de Iván: «una data macro de lo que es su negocio».
  */
 
 type Estado = 'cargando' | 'listo' | 'cancelado' | 'sin-red'
@@ -28,35 +42,56 @@ type Estado = 'cargando' | 'listo' | 'cancelado' | 'sin-red'
  * y la segunda leería la hora que acaba de escribir la primera.
  */
 const visitas = new Map<string, string | null>()
-function visitaAnterior(llave: string): string | null {
-  if (!visitas.has(llave)) {
-    const clave = `sam:af-visto:${llave.slice(0, 12)}`
+function visitaAnterior(clave: string): string | null {
+  if (!visitas.has(clave)) {
+    const k = `sam:af-visto:${clave.slice(0, 12)}`
     let antes: string | null = null
-    try { antes = window.localStorage.getItem(clave); window.localStorage.setItem(clave, new Date().toISOString()) } catch { /* sin almacenamiento */ }
-    visitas.set(llave, antes)
+    try { antes = window.localStorage.getItem(k); window.localStorage.setItem(k, new Date().toISOString()) } catch { /* sin almacenamiento */ }
+    visitas.set(clave, antes)
   }
-  return visitas.get(llave) ?? null
+  return visitas.get(clave) ?? null
 }
 
 /** Cada cuánto se trae lo último mientras la tiene abierta (y a la vista). */
 const CADA_MS = 2 * 60 * 1000
 
-export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => void }) {
+export function PortalDueno({ llave, usuario, onSalir }: { llave?: string; usuario?: UserProfile; onSalir: () => void }) {
+  const porUsuario = !!usuario
+  const [token, setToken] = useState<string | null>(() => (usuario ? leerLlavePersonal(usuario.id) : llave ?? null))
   const [datos, setDatos] = useState<CargaFincas | null>(null)
   const [estado, setEstado] = useState<Estado>('cargando')
+  const [motivo, setMotivo] = useState('')
   const [actualizado, setActualizado] = useState<string | null>(null)
+  const [fincaSel, setFincaSel] = useState<string | null>(null)
+
+  // Dueño con usuario y sin llave del módulo: se abre con su usuario (el PIN está
+  // apagado «de momento»; si la base lo vuelve a exigir, App.tsx ya la abrió con el
+  // PIN del ingreso). Si la base lo rechaza, se dice por qué.
+  useEffect(() => {
+    if (!usuario || token) return
+    let vivo = true
+    abrirSesionSinPin(usuario.id)
+      .then((t) => { if (!vivo) return; guardarLlavePersonal(usuario.id, t); setToken(t) })
+      .catch((e) => { if (!vivo) return; setMotivo(mensajeDeError(e)); setEstado(esFalloDeRed(e) ? 'sin-red' : 'cancelado') })
+    return () => { vivo = false }
+  }, [usuario, token])
 
   const recargar = useCallback(async () => {
+    if (!token) return
     try {
-      const d = await cargarFincas(llave)
+      const d = await cargarFincas(token)
       setDatos(d); setEstado('listo'); setActualizado(new Date().toISOString())
     } catch (e) {
-      if (esSinSesion(e)) { guardarLlaveDueno(null); setDatos(null); setEstado('cancelado') }
-      else setEstado((s) => (s === 'listo' ? 'listo' : 'sin-red'))
+      if (esSinSesion(e)) {
+        // Con usuario, la llave vencida se renueva sola; con enlace, se acabó.
+        if (usuario) { guardarLlavePersonal(usuario.id, null); setToken(null) }
+        else { guardarLlaveDueno(null); setDatos(null); setEstado('cancelado') }
+      } else setEstado((s) => (s === 'listo' ? 'listo' : 'sin-red'))
     }
-  }, [llave])
+  }, [token, usuario])
 
   useEffect(() => {
+    if (!token) return
     const traer = () => { void recargar() }
     traer()
     // Al volver a la app (la tenía en segundo plano) se trae lo último…
@@ -67,31 +102,41 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
       if (document.visibilityState === 'visible' && navigator.onLine) traer()
     }, CADA_MS)
     return () => { document.removeEventListener('visibilitychange', alVolver); window.clearInterval(reloj) }
-  }, [recargar])
+  }, [recargar, token])
 
-  // Novedades desde la última visita (lo que entró al sistema después).
-  const antes = useMemo(() => visitaAnterior(llave), [llave])
+  const hoy = hoyBogota()
+  const fincas = useMemo(() => datos?.fincas ?? [], [datos])
+  // Enlace: su única finca. Usuario: la que escogió; con una sola, esa de una vez.
+  const finca = porUsuario
+    ? (fincas.find((f) => f.id === fincaSel) ?? (fincas.length === 1 ? fincas[0] : null))
+    : (fincas[0] ?? null)
+  const macro = useMemo(() => (porUsuario && datos ? macroDueno(datos, hoy) : null), [porUsuario, datos, hoy])
+
+  // Novedades desde la última visita (lo que entró al sistema después), en todas sus fincas.
+  const claveVisita = usuario ? `u:${usuario.id}` : (llave ?? '')
+  const antes = useMemo(() => visitaAnterior(claveVisita), [claveVisita])
   const [novedadesVistas, setNovedadesVistas] = useState(false)
-
-  const finca = datos?.fincas[0] ?? null
   const novedades = useMemo(() => {
-    if (!datos || !finca || !antes) return []
-    return hechosDeFinca(finca.id, datos, (id) => datos.nombres[id] ?? 'AgroServicios Morales')
+    if (!datos || !antes) return []
+    return fincas
+      .flatMap((f) => hechosDeFinca(f.id, datos, (id) => datos.nombres[id] ?? 'AgroServicios Morales'))
       .filter((h) => h.registradoEn > antes)
-  }, [datos, finca, antes])
+  }, [datos, fincas, antes])
   const resaltar = useMemo(
     () => (novedadesVistas ? undefined : new Set(novedades.map((h) => h.suerteCodigo))),
     [novedades, novedadesVistas])
-  // El ícono que ella instale lleva el nombre de SU finca (y en iPhone, su enlace).
+  // Con enlace: el ícono que instale lleva el nombre de SU finca (y en iPhone, su enlace).
   const nombreFinca = finca?.nombre ?? null
-  useEffect(() => { if (nombreFinca) prepararInstalacionDueno(llave, nombreFinca) }, [llave, nombreFinca])
-  const ctx: CtxFincas | null = datos && finca ? {
-    datos, recargar, token: llave, usuario: '', esAdmin: false, puedeReportar: false, modoDueno: true, resaltar,
+  useEffect(() => { if (!porUsuario && llave && nombreFinca) prepararInstalacionDueno(llave, nombreFinca) }, [porUsuario, llave, nombreFinca])
+
+  const ctx: CtxFincas | null = datos && token ? {
+    datos, recargar, token, usuario: usuario?.id ?? '', esAdmin: false, puedeReportar: false, modoDueno: true, resaltar,
     nombre: (id: string) => datos.nombres[id] ?? 'AgroServicios Morales',
-    hoy: hoyBogota(), abrirFinca: () => {}, ir: () => {},
+    hoy, abrirFinca: (id: string) => setFincaSel(id), ir: () => {},
   } : null
 
   function salir() {
+    if (porUsuario) { onSalir(); return }
     if (!window.confirm('¿Quitar la vista de la finca de este celular? Para volver a entrar necesitará el enlace otra vez.')) return
     guardarLlaveDueno(null)
     onSalir()
@@ -104,20 +149,22 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
           <div className="brand-info">
             <img src={logoAgromorales} alt="AgroMorales" className="header-logo" />
             <div>
-              <strong>{finca ? finca.nombre : 'AgroMorales'}</strong>
-              <span>Su finca a la vista · AgroServicios Morales</span>
+              <strong>{porUsuario ? (finca && fincaSel ? finca.nombre : 'Sus fincas') : (finca ? finca.nombre : 'AgroMorales')}</strong>
+              <span>{porUsuario ? `${usuario!.name} · AgroServicios Morales` : 'Su finca a la vista · AgroServicios Morales'}</span>
             </div>
           </div>
         </div>
         <div className="topbar-actions">
           <ThemeToggle />
+          {porUsuario && <a className="inline-button" href="/manuales/manual-fincas.html" target="_blank" rel="noopener">📖 Manual</a>}
+          {porUsuario && <button type="button" className="inline-button" onClick={salir}>Salir</button>}
         </div>
       </header>
 
       <section className="af-cuerpo">
-        {finca && estado === 'listo' && <InstalarApp nombreFinca={finca.nombre} />}
-        {finca && estado === 'listo' && <AvisosFinca llave={llave} nombreFinca={finca.nombre} />}
-        {finca && !novedadesVistas && novedades.length > 0 && antes && (
+        {!porUsuario && finca && estado === 'listo' && <InstalarApp nombreFinca={finca.nombre} />}
+        {!porUsuario && llave && finca && estado === 'listo' && <AvisosFinca llave={llave} nombreFinca={finca.nombre} />}
+        {!novedadesVistas && novedades.length > 0 && antes && (
           <div className="af-novedades" role="status">
             <div>
               <b>🆕 {novedades.length} novedad{novedades.length === 1 ? '' : 'es'} desde su última visita</b>
@@ -136,24 +183,38 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
             <button type="button" className="inline-button" onClick={() => setNovedadesVistas(true)}>Entendido</button>
           </div>
         )}
+
         {estado === 'cancelado' ? (
           <div className="af-card af-vacio">
-            <h3>Este enlace ya no está activo</h3>
-            <p>Pida uno nuevo a AgroServicios Morales.</p>
-            <button type="button" className="inline-button" onClick={onSalir}>Ir al inicio de la app</button>
+            <h3>{porUsuario ? 'Su usuario todavía no tiene acceso a sus fincas' : 'Este enlace ya no está activo'}</h3>
+            <p>{porUsuario ? `${motivo ? `${motivo}. ` : ''}Pídale a AgroServicios Morales que le asigne su finca.` : 'Pida uno nuevo a AgroServicios Morales.'}</p>
+            <button type="button" className="inline-button" onClick={onSalir}>{porUsuario ? 'Salir' : 'Ir al inicio de la app'}</button>
           </div>
         ) : estado === 'sin-red' && !datos ? (
           <div className="af-card af-vacio">
             <h3>No hay conexión</h3>
-            <p>La información de su finca se trae en vivo. Revise la señal e intente otra vez.</p>
+            <p>La información de sus fincas se trae en vivo. Revise la señal e intente otra vez.</p>
             <button type="button" className="primary-button" onClick={() => { setEstado('cargando'); void recargar() }}>Intentar otra vez</button>
           </div>
         ) : !ctx ? (
-          <p className="subtle-copy">{estado === 'listo' ? 'Este enlace no tiene una finca asignada.' : 'Cargando su finca…'}</p>
+          <p className="subtle-copy">Cargando sus fincas…</p>
+        ) : porUsuario && fincas.length === 0 ? (
+          <div className="af-card af-vacio">
+            <h3>Todavía no tiene fincas asignadas</h3>
+            <p>Su usuario está creado, pero AgroServicios Morales aún no le ha ligado ninguna finca. Apenas lo haga, las verá aquí.</p>
+          </div>
         ) : (
-          <PantallaSegura nombre="Su finca">
-            <FincaDetalle ctx={ctx} fincaId={finca!.id} onVolver={() => {}} onEditar={() => {}} />
-          </PantallaSegura>
+          <>
+            {macro && <TableroDueno macro={macro} sel={finca?.id ?? null} onAbrir={(id) => setFincaSel(id)} />}
+            {finca ? (
+              <PantallaSegura nombre="Su finca">
+                <FincaDetalle ctx={ctx} fincaId={finca.id}
+                              onVolver={() => setFincaSel(null)} onEditar={() => {}} />
+              </PantallaSegura>
+            ) : !porUsuario ? (
+              <p className="subtle-copy">Este enlace no tiene una finca asignada.</p>
+            ) : null}
+          </>
         )}
 
         {datos && (
@@ -164,11 +225,54 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
             </p>
             <div className="af-acciones">
               <button type="button" className="inline-button" onClick={() => void recargar()}>Actualizar</button>
-              <button type="button" className="af-link" onClick={salir}>Quitar de este celular</button>
+              {!porUsuario && <button type="button" className="af-link" onClick={salir}>Quitar de este celular</button>}
             </div>
           </footer>
         )}
       </section>
     </main>
+  )
+}
+
+/** La «data macro» del negocio del dueño: el total y una línea por finca. */
+function TableroDueno({ macro, sel, onAbrir }: { macro: ReturnType<typeof macroDueno>; sel: string | null; onAbrir: (id: string) => void }) {
+  const t = macro.total
+  const linea = (m: MacroFinca) => [
+    m.finca.municipio, `${m.suertes} suerte${m.suertes === 1 ? '' : 's'}`, `${fmtCant(m.areaHa)} ha`,
+    m.edadMeses != null ? `caña de ${m.edadMeses} meses` : null,
+    m.cicloMeses != null ? `corte a corte ${m.cicloMeses} meses` : null,
+    m.tch != null ? `TCH ${m.tch}` : null,
+    m.ultimoCorte ? `último corte ${m.ultimoCorte}` : null,
+    `${m.laboresHechas} labor${m.laboresHechas === 1 ? '' : 'es'} hecha${m.laboresHechas === 1 ? '' : 's'}`,
+    m.laboresEnCurso ? `${m.laboresEnCurso} en curso` : null,
+    m.laboresTardias ? `⚠ ${m.laboresTardias} atrasada${m.laboresTardias === 1 ? '' : 's'}` : null,
+    m.porAceptar ? `${m.porAceptar} por aceptar` : null,
+    VER_PLATA && m.saldo != null ? `saldo ${fmtPesosCorto(m.saldo)}` : null,
+  ].filter(Boolean).join(' · ')
+  return (
+    <div className="af-card af-card--ancha">
+      <div className="af-cab af-cab--chica">
+        <div><p className="eyebrow">Su negocio</p><h2>{t.fincas === 1 ? '1 finca' : `${t.fincas} fincas`} · {fmtCant(t.areaHa)} ha</h2></div>
+      </div>
+      <div className="af-ficha__datos">
+        <div><b>{t.suertes}</b><span>suertes</span></div>
+        <div><b>{fmtCant(t.areaHa)} ha</b><span>área total</span></div>
+        <div><b>{t.edadMeses ?? '—'}</b><span>meses de edad de la caña</span></div>
+        <div><b className={t.laboresTardias ? 'af-rojo' : ''}>{t.laboresTardias}</b><span>labores atrasadas</span></div>
+        <div><b>{t.porAceptar}</b><span>reportes por aceptar</span></div>
+        {VER_PLATA && t.saldo != null && <div><b>{fmtPesosCorto(t.saldo)}</b><span>saldo de su cuenta</span></div>}
+      </div>
+      <ul className="af-lista">
+        {macro.fincas.map((m) => (
+          <li key={m.finca.id} className="af-mov" style={sel === m.finca.id ? { outline: '2px solid #16a34a', borderRadius: 10 } : undefined}>
+            <span className="af-foto af-foto--vacia">🌱</span>
+            <span><b>{m.finca.nombre}</b><small>{linea(m)}</small></span>
+            {macro.fincas.length > 1 && (
+              <button type="button" className="inline-button" onClick={() => onAbrir(m.finca.id)}>{sel === m.finca.id ? 'Viendo' : 'Ver finca'}</button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

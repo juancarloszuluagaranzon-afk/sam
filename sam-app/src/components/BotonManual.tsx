@@ -55,6 +55,9 @@ function manualesDe(rol?: Role): Manual[] {
     case 'administracion':
     case 'soporte':
       return [MANUALES.fincas, MANUALES.analista, MANUALES.supervisor, MANUALES.operario, MANUALES.taller, MANUALES.conductor]
+    // El dueño de la tierra que entra con usuario: su guía es la de fincas.
+    case 'dueno_finca':
+      return [MANUALES.fincas]
     default:
       return [MANUALES.operario]
   }

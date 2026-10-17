@@ -4,7 +4,7 @@
  * Todo lo que el dueño ve sale de aquí, y de UNA foto de los datos: el Inicio, la
  * finca y la cuenta no pueden contradecirse porque usan las mismas funciones.
  */
-import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, ReporteCampo } from '../services/fincasApi'
+import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, ReporteCampo, SuerteFinca } from '../services/fincasApi'
 
 /**
  * 🔴 La plata está APAGADA «de momento» (23-sep-2026). El cliente pidió: «quita lo
@@ -367,4 +367,83 @@ const TILDES: Record<string, string> = { FERTILIZACION: 'Fertilización', FUMIGA
 export function nombreLabor(n: string): string {
   const s = n.trim().toLowerCase()
   return TILDES[llaveLabor(n)] ?? (s.charAt(0).toUpperCase() + s.slice(1))
+}
+
+// ── La «data macro» del dueño (17-oct-2026) ──────────────────────────────────
+/**
+ * Lo que un dueño de la tierra quiere ver de UNA finca de un vistazo: área, cuántas
+ * suertes, qué edad tiene la caña, cada cuánto se corta, el último TCH que reportó el
+ * ingenio, si las labores van a tiempo y cómo va su cuenta. Todo sale de la misma foto
+ * de datos que usa el resto del módulo: no es una versión preparada.
+ */
+export interface MacroFinca {
+  finca: Finca
+  suertes: number
+  areaHa: number
+  /** Edad de la caña hoy, en meses, ponderada por área (ciclo abierto o dato del ingenio). */
+  edadMeses: number | null
+  /** La fecha de corte más reciente entre las suertes. */
+  ultimoCorte: string | null
+  /** Corte a corte, en meses, de los ciclos ya CERRADOS (si no hay, null). */
+  cicloMeses: number | null
+  /** TCH del último corte según el ingenio, ponderado por área. */
+  tch: number | null
+  laboresHechas: number
+  laboresEnCurso: number
+  laboresTardias: number
+  porAceptar: number
+  /** La cuenta del dueño (anticipos − gastos − honorarios); null con la plata apagada. */
+  saldo: number | null
+}
+
+export function macroFinca(f: Finca, d: DatosFincas, hoy: string): MacroFinca {
+  const suertes = d.suertes.filter((s) => s.fincaId === f.id && s.activa)
+  const areaHa = Math.round(suertes.reduce((t, s) => t + s.areaHa, 0) * 100) / 100
+  const pond = (valor: (s: SuerteFinca) => number | null) => {
+    let num = 0, den = 0
+    for (const s of suertes) { const v = valor(s); if (v != null && s.areaHa > 0) { num += v * s.areaHa; den += s.areaHa } }
+    return den > 0 ? Math.round((num / den) * 10) / 10 : null
+  }
+  const corteDe = (s: SuerteFinca) => cicloAbiertoDe(s.id, d.ciclos)?.fechaCorte ?? s.datosIngenio?.fUltCorte ?? null
+  const edadMesesF = pond((s) => edadMeses(corteDe(s), hoy))
+  const cortes = suertes.map(corteDe).filter((x): x is string => !!x).sort()
+  const cerrados = d.ciclos.filter((c) => c.estado === 'CERRADO' && c.fechaCierre && suertes.some((s) => s.id === c.suerteId))
+  const cicloMeses = cerrados.length
+    ? Math.round((cerrados.reduce((t, c) => t + diasEntre(c.fechaCorte, c.fechaCierre!), 0) / cerrados.length / 30.4) * 10) / 10
+    : null
+  const abiertos = d.ciclos.filter((c) => c.estado === 'ABIERTO' && suertes.some((s) => s.id === c.suerteId))
+  let hechas = 0, enCurso = 0, tardias = 0
+  for (const c of abiertos) {
+    for (const l of d.labores.filter((x) => x.cicloId === c.id && x.estado !== 'ANULADA')) {
+      if (l.estado === 'TERMINADA') hechas++
+      else if (l.estado === 'EN_CURSO') enCurso++
+      if (oportunidad(l, c, d.reportes, hoy)?.nivel === 'tardia') tardias++
+    }
+  }
+  const laboresIds = new Set(d.labores.filter((l) => abiertos.some((c) => c.id === l.cicloId)).map((l) => l.id))
+  return {
+    finca: f, suertes: suertes.length, areaHa,
+    edadMeses: edadMesesF, ultimoCorte: cortes[cortes.length - 1] ?? null, cicloMeses,
+    tch: pond((s) => s.datosIngenio?.tch ?? null),
+    laboresHechas: hechas, laboresEnCurso: enCurso, laboresTardias: tardias,
+    porAceptar: d.reportes.filter((r) => r.estado === 'PENDIENTE' && laboresIds.has(r.laborId)).length,
+    saldo: VER_PLATA ? cuentaFinca(f.id, d.movimientos).saldo : null,
+  }
+}
+
+/** Todas las fincas del dueño y el total de su negocio. */
+export function macroDueno(d: DatosFincas, hoy: string): { fincas: MacroFinca[]; total: { fincas: number; suertes: number; areaHa: number; edadMeses: number | null; laboresTardias: number; porAceptar: number; saldo: number | null } } {
+  const fincas = d.fincas.filter((f) => f.activa !== false).map((f) => macroFinca(f, d, hoy))
+  const area = fincas.reduce((t, m) => t + m.areaHa, 0)
+  const conEdad = fincas.filter((m) => m.edadMeses != null && m.areaHa > 0)
+  const edad = conEdad.length ? Math.round((conEdad.reduce((t, m) => t + m.edadMeses! * m.areaHa, 0) / conEdad.reduce((t, m) => t + m.areaHa, 0)) * 10) / 10 : null
+  return {
+    fincas,
+    total: {
+      fincas: fincas.length, suertes: fincas.reduce((t, m) => t + m.suertes, 0), areaHa: Math.round(area * 100) / 100,
+      edadMeses: edad, laboresTardias: fincas.reduce((t, m) => t + m.laboresTardias, 0),
+      porAceptar: fincas.reduce((t, m) => t + m.porAceptar, 0),
+      saldo: VER_PLATA ? fincas.reduce((t, m) => t + (m.saldo ?? 0), 0) : null,
+    },
+  }
 }

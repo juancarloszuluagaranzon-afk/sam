@@ -119,6 +119,7 @@ function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'conductor_madera') return 'Conductor de madera'
   if (role === 'analista_insumos') return 'Analista de insumos y materiales'
   if (role === 'taller') return 'Taller'
+  if (role === 'dueno_finca') return 'Dueño de finca'
   return 'Operador'
 }
 
@@ -3036,6 +3037,7 @@ export function SupervisorView({
                         <option value="conductor_madera">Conductor de madera</option>
                       <option value="analista_insumos">Analista de insumos y materiales</option>
                       <option value="taller">Taller / mecanico</option>
+                      <option value="dueno_finca">Dueño de finca (solo ve sus fincas)</option>
                       <option value="administracion">Administración</option>
                       <option value="owner">Propietario</option>
                       <option value="soporte">Soporte</option>

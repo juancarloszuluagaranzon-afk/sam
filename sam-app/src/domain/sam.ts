@@ -309,6 +309,8 @@ export interface FlotaFirmaDia {
 
 /** Lo que se puede corregir de un servicio mientras su día no esté firmado. */
 export interface EditarFlotaServicioInput {
+  /** Foto de evidencia puesta o cambiada después (16-oct-2026, Julián: desde la galería). */
+  evidenciaUrl?: string
   fecha?: string
   vehiculo?: string
   tipoServicio?: string

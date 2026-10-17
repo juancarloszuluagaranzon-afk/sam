@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
-import { editarFlotaServicio } from '../services/samApi'
+import { editarFlotaServicio, uploadImagenFlota } from '../services/samApi'
 import { aMayus } from '../lib/texto'
 import type { EditarFlotaServicioInput, FlotaServicio } from '../domain/sam'
 
@@ -40,6 +40,23 @@ function valorDe(s: FlotaServicio, k: keyof EditarFlotaServicioInput): string {
 export function FlotaEditarServicio({ servicio: s, onClose, onSaved }: { servicio: FlotaServicio; onClose: () => void; onSaved: () => void }) {
   const { busy, setBusy, setError, setInfo } = useAppData()
   const [form, setForm] = useState<Record<string, string>>(() => Object.fromEntries(CAMPOS.map((c) => [c.k, valorDe(s, c.k)])))
+  // 🔴 El aviso va DENTRO de la ventana: con `setError` quedaba detrás del modal y
+  // «Guardar» parecía no hacer nada (lo mismo de la firma del día, 16-oct-2026).
+  const [aviso, setAviso] = useState('')
+  // La foto se puede poner o cambiar DESPUÉS, desde la galería (16-oct-2026, Iván:
+  // «que Julián pueda subir las imágenes después, de la galería del celular»).
+  const fotoRef = useRef<HTMLInputElement>(null)
+  const [foto, setFoto] = useState<File | null>(null)
+  const [fotoPreview, setFotoPreview] = useState('')
+  useEffect(() => () => { if (fotoPreview) URL.revokeObjectURL(fotoPreview) }, [fotoPreview])
+
+  function onFoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) { setAviso('Escoja una imagen.'); return }
+    setAviso(''); setFoto(file); setFotoPreview(URL.createObjectURL(file))
+  }
 
   async function guardar() {
     const cambios: EditarFlotaServicioInput = {}
@@ -48,22 +65,23 @@ export function FlotaEditarServicio({ servicio: s, onClose, onSaved }: { servici
       if (nuevo === valorDe(s, c.k)) continue
       if (c.tipo === 'num') {
         const n = nuevo.trim() === '' ? null : Number(nuevo.replace(',', '.'))
-        if (n != null && !Number.isFinite(n)) { setError(`${c.label}: escribe un número.`); return }
+        if (n != null && !Number.isFinite(n)) { setAviso(`${c.label}: escriba un número.`); return }
         ;(cambios as Record<string, unknown>)[c.k] = n
       } else {
         ;(cambios as Record<string, unknown>)[c.k] = nuevo
       }
     }
-    if (Object.keys(cambios).length === 0) { onClose(); return }
-    setBusy(true); setError('')
+    if (Object.keys(cambios).length === 0 && !foto) { onClose(); return }
+    setBusy(true); setError(''); setAviso('')
     try {
+      if (foto) cambios.evidenciaUrl = await uploadImagenFlota(s.id, foto, 'evidencia')
       const ok = await editarFlotaServicio(s.id, cambios, s.kmInicial, s.kmFinal)
-      if (!ok) { setError('No se guardó: el día de este servicio ya está firmado.'); return }
-      setInfo('Servicio corregido.')
+      if (!ok) { setAviso('No se guardó: el día de este servicio ya está firmado. Para corregirlo, administración tiene que quitar la firma del día.'); return }
+      setInfo(foto && Object.keys(cambios).length === 1 ? 'Foto guardada.' : 'Servicio corregido.')
       onSaved()
       onClose()
     } catch (e) {
-      setError((e as Error).message)
+      setAviso(`No se pudo guardar. ${(e as Error).message}`)
     } finally { setBusy(false) }
   }
 
@@ -92,7 +110,22 @@ export function FlotaEditarServicio({ servicio: s, onClose, onSaved }: { servici
             </label>
           ))}
         </div>
-        <p className="field-hint">Se puede corregir mientras el día no esté firmado. El total de km se recalcula solo.</p>
+        <div className="flota-comprobante">
+          <span className="flota-comprobante__lbl">📷 Foto de evidencia <span className="field-optional">(se puede poner o cambiar después)</span></span>
+          <div className="flota-foto-row">
+            {(fotoPreview || s.evidenciaUrl) && (
+              <img src={fotoPreview || s.evidenciaUrl!} alt="evidencia" className="flota-foto-thumb" />
+            )}
+            <button type="button" className="inline-button" onClick={() => fotoRef.current?.click()} disabled={busy}>
+              {foto || s.evidenciaUrl ? 'Cambiar foto' : '📷 Poner foto (cámara o galería)'}
+            </button>
+            {foto && <button type="button" className="inline-button" onClick={() => { setFoto(null); setFotoPreview('') }} disabled={busy}>Quitar la nueva</button>}
+            {/* Sin `capture`: el celular ofrece la cámara Y la galería. */}
+            <input ref={fotoRef} type="file" accept="image/*" hidden onChange={onFoto} />
+          </div>
+        </div>
+        <p className="field-hint">Se puede corregir —también la foto— mientras el día no esté firmado. El total de km se recalcula solo.</p>
+        {aviso && <p className="feedback error" role="alert">{aviso}</p>}
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void guardar()} disabled={busy}>{busy ? 'Guardando…' : 'Guardar cambios'}</button>

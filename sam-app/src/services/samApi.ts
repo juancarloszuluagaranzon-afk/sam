@@ -3954,6 +3954,7 @@ export async function editarFlotaServicio(id: string, cambios: EditarFlotaServic
     ['horaLlegadaOrigen', 'hora_llegada_origen'], ['horaEspera', 'hora_espera'], ['observacion', 'observacion'],
   ]
   for (const [k, col] of mapa) if (cambios[k] !== undefined) p[col] = txt(cambios[k] as string)
+  if (cambios.evidenciaUrl) p.evidencia_url = cambios.evidenciaUrl
   if (cambios.numPeajes !== undefined) p.num_peajes = cambios.numPeajes
   if (cambios.otrosGastos !== undefined) p.otros_gastos = cambios.otrosGastos
   if (cambios.kmInicial !== undefined) p.km_inicial = cambios.kmInicial

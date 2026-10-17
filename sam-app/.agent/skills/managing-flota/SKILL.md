@@ -416,6 +416,16 @@ de 134 registrados solo 57 tenían firma, y dejaba viajes SIN TERMINAR (el cierr
   anula con motivo y libera los servicios).
 - Excel CDA-F-68: bloque «FIRMA DE RECIBIDO DE LA PLANILLA DEL DÍA» (imagen por día; «⚠ SIN FIRMA
   DEL DÍA» si falta); la hoja Respaldo usa la firma del día. Las firmas viejas por servicio se respetan.
+- **16-oct-2026 — foto después y avisos visibles** (Julián: «firma y no me deja guardar»; Iván:
+  «que pueda subir las imágenes después, de la galería»):
+  - 🔴 Los avisos de `FlotaFirmarDia`, `FlotaCerrarViaje` y `FlotaEditarServicio` van DENTRO de la
+    ventana (`aviso` local). Con `setError` salían en el banner de la página, DETRÁS del modal:
+    Julián dejaba vacío «Nombre y cédula de quien recibe», tocaba «Firmar» y «no pasaba nada». En
+    la firma, además, el cursor salta a esa casilla. **Un modal nuevo: su aviso adentro.**
+  - Fotos sin `capture`: el celular ofrece cámara Y galería (cerrar viaje y editar).
+  - `FlotaEditarServicio` permite **poner o cambiar la foto de evidencia** mientras el día no esté
+    firmado (`evidenciaUrl` en `editarFlotaServicio` → `evidencia_url`, con el mismo guard de firma).
+    Después de firmar, administración quita la firma del día para corregir.
 - Probado con servicios de prueba (conductor `PRUEBA-CLAUDE`, todo borrado): editar ✓, firmar 2 ✓,
   segunda firma rechazada ✓, editar tras firmar rechazado ✓, quitar firma → editable ✓.
   ⚠️ Los archivos del depósito en este servidor son CARPETAS en disco

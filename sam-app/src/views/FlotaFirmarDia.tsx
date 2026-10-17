@@ -22,16 +22,25 @@ export function FlotaFirmarDia({ fecha, conductorId, conductorNombre, servicios,
 }) {
   const { busy, setBusy, setError, setInfo, session } = useAppData()
   const [nombre, setNombre] = useState('')
+  // 🔴 El aviso va DENTRO de la ventana (16-oct-2026). Con `setError` salía en el
+  // banner de la página, DETRÁS del modal: Julián firmaba sin el nombre, tocaba
+  // «Firmar» y «no pasaba nada» — el motivo estaba escondido.
+  const [aviso, setAviso] = useState('')
+  const nombreRef = useRef<HTMLInputElement>(null)
   const firmaRef = useRef<FirmaPadHandle>(null)
   const totalKm = servicios.reduce((a, s) => a + (s.totalKm ?? 0), 0)
   const [y, m, d] = fecha.split('-')
 
   async function firmar() {
-    if (!nombre.trim()) { setError('Escribe el nombre y la cédula de quien recibe.'); return }
-    setBusy(true); setError('')
+    if (!nombre.trim()) {
+      setAviso('Falta el nombre y la cédula de quien recibe: escríbalos en la casilla de arriba de la firma.')
+      nombreRef.current?.focus()
+      return
+    }
+    setBusy(true); setError(''); setAviso('')
     try {
       const firma = await firmaRef.current?.exportar()
-      if (!firma) { setError('Falta la firma.'); return }
+      if (!firma) { setAviso('Falta la firma: que quien recibe firme en el recuadro blanco.'); return }
       const n = await firmarDiaFlota({
         conductorId, conductorNombre, fecha, formato: 'IMECOL', firma, firmaNombre: nombre,
         servicioIds: servicios.map((s) => s.id), creadoPor: session?.id,
@@ -40,7 +49,7 @@ export function FlotaFirmarDia({ fecha, conductorId, conductorNombre, servicios,
       onSaved()
       onClose()
     } catch (e) {
-      setError((e as Error).message)
+      setAviso(`No se pudo firmar. ${(e as Error).message}`)
     } finally { setBusy(false) }
   }
 
@@ -69,11 +78,13 @@ export function FlotaFirmarDia({ fecha, conductorId, conductorNombre, servicios,
 
         <div className="flota-comprobante">
           <span className="flota-comprobante__lbl">✍️ Firma de quien recibe la planilla del día</span>
-          <input type="text" className="flota-firma-nombre" placeholder="Nombre y cédula de quien recibe"
-            autoCapitalize="characters" value={nombre} onChange={(e) => setNombre(aMayus(e.target.value))} disabled={busy} />
+          <input ref={nombreRef} type="text" className="flota-firma-nombre" placeholder="Nombre y cédula de quien recibe"
+            autoCapitalize="characters" value={nombre} aria-invalid={!!aviso && !nombre.trim()}
+            onChange={(e) => { setNombre(aMayus(e.target.value)); if (aviso) setAviso('') }} disabled={busy} />
           <FirmaPad ref={firmaRef} disabled={busy} />
         </div>
         <p className="field-hint">Al firmar, los servicios de este día quedan cerrados y ya no se pueden corregir.</p>
+        {aviso && <p className="feedback error" role="alert">{aviso}</p>}
 
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>

@@ -45,6 +45,9 @@ export function FlotaCerrarViaje({
   // no borrarla: el cierre la reescribe entera.
   const [observacion, setObservacion] = useState(viaje.observacion ?? '')
   const [firmaNombre, setFirmaNombre] = useState('')
+  // El aviso va DENTRO de la ventana: con `setError` quedaba detrás del modal
+  // (lo mismo que dejó a Julián sin poder firmar la planilla, 16-oct-2026).
+  const [aviso, setAviso] = useState('')
 
   const firmaRef = useRef<FirmaPadHandle>(null)
   const fotoRef = useRef<HTMLInputElement>(null)
@@ -55,7 +58,8 @@ export function FlotaCerrarViaje({
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    if (!file.type.startsWith('image/')) { setError('Selecciona una imagen.'); return }
+    if (!file.type.startsWith('image/')) { setAviso('Selecciona una imagen.'); return }
+    setAviso('')
     setFoto(file)
     setFotoPreview(URL.createObjectURL(file))
   }
@@ -79,7 +83,7 @@ export function FlotaCerrarViaje({
       `El kilómetro final (${n0(fin!)}) es menor que el inicial (${n0(ini!)}).\n\n` +
       'La planilla saldría con kilómetros en negativo. ¿Seguro?')) return
 
-    setBusy(true); setError('')
+    setBusy(true); setError(''); setAviso('')
     try {
       let firmaUrl: string | undefined
       let evidenciaUrl: string | undefined
@@ -102,7 +106,7 @@ export function FlotaCerrarViaje({
       onClose()
     } catch (err) {
       const e = err as { message?: string }
-      setError(`No se pudo cerrar el viaje. (${e?.message ?? 'error'})`)
+      setAviso(`No se pudo ${esImecol ? 'terminar el servicio' : 'cerrar el viaje'}. (${e?.message ?? 'error'})`)
     } finally { setBusy(false) }
   }
 
@@ -175,10 +179,12 @@ export function FlotaCerrarViaje({
           <div className="flota-foto-row">
             {fotoPreview && <img src={fotoPreview} alt="evidencia" className="flota-foto-thumb" />}
             <button type="button" className="inline-button" onClick={() => fotoRef.current?.click()} disabled={busy}>
-              {foto ? 'Cambiar foto' : '📷 Tomar foto'}
+              {foto ? 'Cambiar foto' : '📷 Foto (cámara o galería)'}
             </button>
             {foto && <button type="button" className="inline-button" onClick={() => { setFoto(null); setFotoPreview('') }} disabled={busy}>Quitar</button>}
-            <input ref={fotoRef} type="file" accept="image/*" capture="environment" hidden onChange={onFoto} />
+            {/* Sin `capture`: el celular ofrece la cámara Y la galería (16-oct-2026,
+                «que Julián pueda subir las imágenes de la galería del celular»). */}
+            <input ref={fotoRef} type="file" accept="image/*" hidden onChange={onFoto} />
           </div>
         </div>
 
@@ -198,6 +204,8 @@ export function FlotaCerrarViaje({
           <FirmaPad ref={firmaRef} disabled={busy} />
         </div>
         )}
+
+        {aviso && <p className="feedback error" role="alert">{aviso}</p>}
 
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onClose} disabled={busy}>Cancelar</button>

@@ -39,6 +39,42 @@ export function cicloAbiertoDe(suerteId: string, ciclos: Ciclo[]): Ciclo | null 
 }
 
 /**
+ * Los reportes de la base MÁS los que esperan señal en este celular, contados como
+ * POR ACEPTAR (16-oct-2026). Sin esto, lo guardado sin señal no bajaba el «faltan»
+ * y la pantalla invitaba a registrarlo otra vez; en riego o malezas el duplicado
+ * entraba como otra pasada. Uno que ya llegó a la base (misma id) no se cuenta dos veces.
+ */
+export function reportesConCola(
+  reportes: ReporteCampo[],
+  cola: { id: string; laborId: string; cantidad: number; fecha: string; usuario: string; queuedAt: string }[],
+): ReporteCampo[] {
+  const ya = new Set(reportes.map((r) => r.id))
+  return [...reportes, ...cola.filter((p) => !ya.has(p.id)).map((p): ReporteCampo => ({
+    id: p.id, laborId: p.laborId, cantidad: p.cantidad, fecha: p.fecha, fotoUrl: '',
+    lat: null, lng: null, precisionM: null, nota: null, reportadoPor: p.usuario, estado: 'PENDIENTE',
+    revisadoPor: null, revisadoEn: null, motivoRechazo: null, costoUnitario: null, createdAt: p.queuedAt,
+  }))]
+}
+
+/**
+ * Los reportes RECHAZADOS que esta persona todavía tiene que atender (16-oct-2026).
+ * Antes un rechazo solo se veía bajando a «Mis últimos reportes», sin aviso ni forma
+ * de corregirlo. Sale hasta que lo corrija («Corregir y reenviar») o diga que no
+ * hace falta: las dos cosas quedan en `atendidos`. Si la labor ya se cerró o se
+ * anuló, o el ciclo se cerró, ya no hay qué corregir.
+ */
+export function rechazosPorAtender(d: Pick<DatosFincas, 'reportes' | 'labores' | 'ciclos'>, usuario: string, atendidos: Set<string>): ReporteCampo[] {
+  return d.reportes
+    .filter((r) => r.estado === 'RECHAZADO' && r.reportadoPor === usuario && !atendidos.has(r.id))
+    .filter((r) => {
+      const l = d.labores.find((x) => x.id === r.laborId)
+      if (!l || l.estado === 'ANULADA' || l.estado === 'TERMINADA') return false
+      return d.ciclos.some((c) => c.id === l.cicloId && c.estado === 'ABIERTO')
+    })
+    .sort((a, b) => (b.revisadoEn ?? b.createdAt).localeCompare(a.revisadoEn ?? a.createdAt))
+}
+
+/**
  * Lo aceptado y lo que falta aceptar de una labor.
  * Varias pasadas (riego, malezas): `cantidadPlan` es UNA pasada; `restante` es lo
  * que falta de la pasada en curso (al completarla se abre otra entera) y

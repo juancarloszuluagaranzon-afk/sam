@@ -228,7 +228,9 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
 - `oportunidad`: se CALCULA, no se guarda. Hecha → días del corte al primer reporte aceptado;
   sin hacer → con HOY («tardía» = se pasó la ventana y sigue sin hacerse). Sin ventana → null (no se
   inventa). El paquete inicial solo trae ventanas documentadas: roturación soca 16/30, fertilización
-  soca 45/60, fertilización plantilla 60/90 (desde la siembra).
+  soca 45/60, fertilización plantilla **30/60** desde la siembra (era 60/90; se corrigió el 16-oct-2026
+  con Cenicaña, Serie Técnica 21 — migración `20261016180000`). Convención: (inicio, fin) de la
+  ventana → (`ventana_ideal`, `ventana_normal`).
 - `cuentaFinca`: anticipos − gastos − honorarios (sin anulados).
 - `presupuestoFinca`: ciclos ABIERTOS; ejecutado = gastos de sus labores + gastos a mano de esas
   suertes desde el corte.
@@ -260,6 +262,28 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
 - 🔴 Borrar también la **auditoría** que dejó la prueba (`af_auditoria`, incluidas las filas
   `DELETE` que genera la propia limpieza y los cambios del paquete): queda a nombre de los
   usuarios reales dueños de las llaves de prueba (U005/U002) y confunde al revisar quién hizo qué.
+
+## 🌱 «Sencillo pero funcional» — paquete 1 (16-oct-2026)
+
+Revisión de Iván con tres agentes (herramientas del mercado, agronomía Cenicaña y el código). Lo
+que se aplicó, todo para Julio (U033) en el campo:
+
+| Qué | Dónde |
+|---|---|
+| **Abre y reporta SIN SEÑAL**: cada carga buena se guarda (`lib/cacheFincas.ts`, en `db.meta`, rellenada contra la carga vacía — regla 2b). Sin señal, Fincas abre con ella y lo dice («📵 Sin señal: datos guardados el …»); al volver la señal recarga solo. Sin llave y sin señal espera la señal (no pide un PIN que no serviría). Al salir se borra (`App.tsx`, `borrarCargasFincas`) | `FincasView` |
+| El **supervisor entra directo a «Reportar labor»**; finca/suerte únicas quedan escogidas; las labores ya reportadas completas no salen como «faltan 0»; se explica si una suerte no tiene nada pendiente | `FincasView`, `ReportarLabor` |
+| **Lo guardado sin señal cuenta en «faltan»** (`reportesConCola`): ya no invita a duplicar | `lib/fincas.ts` |
+| **Cola en dos listas**: «⏳ Esperando señal» (sale sola) y «⚠ No salieron» (`esRechazo`: el servidor lo rechazó → ya NO se reintenta sin fin). Las dos con **Quitar** (confirma; borra también la foto guardada) | `lib/outboxFincas.ts`, `ReportarLabor` |
+| **Rechazos visibles**: «⚠ Le rechazaron…» arriba, con **Corregir y reenviar** (llena el formulario; la foto se vuelve a poner) y **No hace falta**. Lo atendido se guarda en el celular (`sam:af-rechazos-atendidos:<usuario>`). La pestaña dice «⚠ N por corregir» (`rechazosPorAtender`) | `ReportarLabor`, `FincasView` |
+| **Aceptar pide confirmación** (es definitivo) | `PorAceptar` |
+| **«Borrar caché» (Diagnóstico) ya NO borra los reportes de fincas** que esperan señal | `DiagnosticModal` |
+| Ventana de fertilización plantilla 30/60 y el aviso al dueño sin «ubicación» | migraciones `20261016180000`, `20261016170000` |
+
+Pendiente (paquete 2): hora del celular además de la del servidor («guardado 7:10 · llegó 18:40»),
+fecha de la foto para quien acepta, edad de la caña y fecha prevista de corte en la vista del dueño,
+aporque / control de *Diatraea* / madurante con ventana en el paquete, separar descepada (renovación)
+de roturación soca. NO conviene (revisión del mercado): IA que «verifica» fotos, QR en lotes,
+geocerca que bloquea, telemetría de máquinas, capturar por WhatsApp desde ya.
 
 ## Límites conocidos del MVP (decírselos al cliente)
 

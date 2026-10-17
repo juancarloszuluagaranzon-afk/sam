@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import logoAgromorales from '../../assets/logo-agromorales.jpeg'
 import { useAppData } from '../../context/AppDataContext'
 import { ThemeToggle } from '../../components/ThemeToggle'
@@ -8,7 +8,11 @@ import {
   leerLlavePersonal, mensajeDeError, type CargaFincas,
 } from '../../services/fincasApi'
 import { hoyBogota } from '../../lib/periodos'
-import { reportesPendientes, sincronizarReportes, EVENTO_PENDIENTES } from '../../lib/outboxFincas'
+import { esRechazo, reportesPendientes, sincronizarReportes, EVENTO_PENDIENTES } from '../../lib/outboxFincas'
+import { esFalloDeRed } from '../../lib/outboxInsumos'
+import { guardarCargaFincas, leerCargaFincas, leerRechazosAtendidos } from '../../lib/cacheFincas'
+import { rechazosPorAtender } from '../../lib/fincas'
+import { fmtFechaHora } from '../../lib/fechas'
 import { FincasInicio } from './FincasInicio'
 import { FincaDetalle } from './FincaDetalle'
 import { ReportarLabor } from './ReportarLabor'
@@ -54,36 +58,80 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
   const [token, setToken] = useState<string | null>(() => (session ? leerLlavePersonal(session.id) : null))
   const [datos, setDatos] = useState<CargaFincas | null>(null)
   const [cargando, setCargando] = useState(true)
-  const [tab, setTab] = useState<TabFincas>('inicio')
+  // El supervisor (Julio) viene a REPORTAR: entra directo ahí (16-oct-2026). El
+  // Inicio, con plata e indicadores, es para administración.
+  const [tab, setTab] = useState<TabFincas>(() => (session?.role === 'supervisor' ? 'reportar' : 'inicio'))
   const [fincaSel, setFincaSel] = useState<string | null>(null)
   const [editando, setEditando] = useState<'nueva' | string | null>(null)
   // Reportes hechos sin señal que todavía no salen: se avisa en la pestaña,
   // porque quien los registró tiene que saber que aún no han llegado.
   const [porEnviar, setPorEnviar] = useState(0)
+  // Los que el servidor rechazó estando en la cola: no salen solos.
+  const [noSalieron, setNoSalieron] = useState(0)
+  const [atendidos, setAtendidos] = useState<Set<string>>(() => (session ? leerRechazosAtendidos(session.id) : new Set()))
   // ¿Hay que pedir el PIN? Solo si la base lo exige (hoy está apagado «de momento»).
   const [pedirPin, setPedirPin] = useState(false)
+  // 🔴 SIN SEÑAL (16-oct-2026): se trabaja con la última carga guardada en el
+  // celular (`lib/cacheFincas`) y la pantalla lo dice. Antes, abrir Fincas sin
+  // cobertura dejaba «Cargando fincas…» para siempre y no se podía reportar.
+  const [sinSenal, setSinSenal] = useState(false)
+  const [guardadaEn, setGuardadaEn] = useState<string | null>(null)
+  // Sin llave y sin señal (la de 30 días venció): se espera la señal, no el PIN.
+  const [esperandoSenal, setEsperandoSenal] = useState(false)
+  const frescos = useRef(false)
+
+  // Mientras llega la carga en vivo, la guardada (si la hay) ya sirve.
+  useEffect(() => {
+    if (!session) return
+    let vivo = true
+    void leerCargaFincas(session.id).then((g) => {
+      if (!vivo || !g || frescos.current) return
+      setDatos((prev) => prev ?? g.datos)
+      setGuardadaEn(g.guardadaEn)
+      setCargando(false)
+    })
+    return () => { vivo = false }
+  }, [session])
 
   const recargar = useCallback(async () => {
     if (!token || !session) { setCargando(false); return }
     try {
-      setDatos(await cargarFincas(token))
+      const d = await cargarFincas(token)
+      frescos.current = true
+      setDatos(d); setSinSenal(false); setGuardadaEn(null)
+      void guardarCargaFincas(session.id, d)
     } catch (e) {
       if (esSinSesion(e)) { guardarLlavePersonal(session.id, null); setToken(null); setDatos(null) }
+      else if (esFalloDeRed(e)) {
+        // Sin señal: se sigue con lo que hay (en memoria o guardado), sin alarma roja.
+        setSinSenal(true)
+        if (!frescos.current) {
+          const g = await leerCargaFincas(session.id)
+          if (g) { setDatos((prev) => prev ?? g.datos); setGuardadaEn(g.guardadaEn) }
+          else setError('Sin señal, y este celular todavía no tiene las fincas guardadas: ábralas una vez con señal.')
+        }
+      }
       else setError(`No se pudieron cargar las fincas. ${mensajeDeError(e)}`)
     } finally { setCargando(false) }
   }, [token, session, setError])
   useEffect(() => { void recargar() }, [recargar])
 
   // Sin llave: primero se intenta entrar sin PIN (lo permite la base mientras el
-  // PIN esté apagado). Si la base lo vuelve a exigir, se pide como antes.
+  // PIN esté apagado). Si la base lo vuelve a exigir, se pide como antes. Sin
+  // señal NO se pide el PIN (tampoco serviría): se espera a que vuelva.
   useEffect(() => {
-    if (token || !session || pedirPin) return
+    if (token || !session || pedirPin || esperandoSenal) return
     let vivo = true
     abrirSesionSinPin(session.id)
       .then((t) => { if (!vivo) return; guardarLlavePersonal(session.id, t); setCargando(true); setToken(t) })
-      .catch((e) => { if (!vivo) return; if (esPinRequerido(e)) setPedirPin(true); else { setPedirPin(true); setError(mensajeDeError(e)) } })
+      .catch((e) => {
+        if (!vivo) return
+        if (esFalloDeRed(e)) setEsperandoSenal(true)
+        else if (esPinRequerido(e)) setPedirPin(true)
+        else { setPedirPin(true); setError(mensajeDeError(e)) }
+      })
     return () => { vivo = false }
-  }, [token, session, pedirPin, setError])
+  }, [token, session, pedirPin, esperandoSenal, setError])
 
   // 🔴 Lo pendiente sale SOLO al abrir Fincas con señal, no únicamente cuando el
   // celular cambia de estado: el caso normal es reportar en el campo sin
@@ -91,7 +139,13 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
   // evento «volvió la señal», el reporte se quedaría esperando sin que nadie lo
   // supiera.
   useEffect(() => {
-    const contar = () => { void reportesPendientes().then((p) => setPorEnviar(p.length)) }
+    const contar = () => {
+      void reportesPendientes().then((p) => {
+        setPorEnviar(p.filter((x) => !esRechazo(x)).length)
+        setNoSalieron(p.filter((x) => esRechazo(x)).length)
+      })
+      if (session) setAtendidos(leerRechazosAtendidos(session.id))
+    }
     const intentar = () => {
       void (async () => {
         const p = await reportesPendientes()
@@ -99,14 +153,24 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
         contar()
       })()
     }
+    // Volvió la señal: sale lo pendiente y se trae lo último, aunque no hubiera
+    // nada en cola (la pantalla venía de la copia guardada).
+    const alVolver = () => {
+      setEsperandoSenal(false)
+      void (async () => {
+        if ((await reportesPendientes()).length > 0) await sincronizarReportes()
+        await recargar()
+        contar()
+      })()
+    }
     intentar()
     window.addEventListener(EVENTO_PENDIENTES, contar)
-    window.addEventListener('online', intentar)
+    window.addEventListener('online', alVolver)
     return () => {
       window.removeEventListener(EVENTO_PENDIENTES, contar)
-      window.removeEventListener('online', intentar)
+      window.removeEventListener('online', alVolver)
     }
-  }, [recargar])
+  }, [recargar, session])
 
   if (!session) return null
 
@@ -123,11 +187,13 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
   } : null
 
   const porAceptar = datos?.reportes.filter((r) => r.estado === 'PENDIENTE').length ?? 0
+  // Lo que Julio tiene que corregir: lo rechazado en la cola + lo que le rechazaron.
+  const porCorregir = noSalieron + (datos ? rechazosPorAtender(datos, session.id, atendidos).length : 0)
   const TABS: { id: TabFincas; label: string; solo?: boolean }[] = [
     { id: 'inicio', label: 'Inicio' },
     { id: 'fincas', label: 'Fincas' },
     { id: 'aceptar', label: porAceptar ? `Por aceptar (${porAceptar})` : 'Por aceptar' },
-    { id: 'reportar', label: porEnviar ? `Reportar labor · ${porEnviar} por enviar` : 'Reportar labor' },
+    { id: 'reportar', label: `Reportar labor${porEnviar ? ` · ${porEnviar} por enviar` : ''}${porCorregir ? ` · ⚠ ${porCorregir} por corregir` : ''}` },
     { id: 'paquete', label: 'Paquete de labores', solo: true },
   ]
 
@@ -155,7 +221,7 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
         <nav className="af-nav" aria-label="Secciones de fincas">
           {TABS.filter((t) => !t.solo || esAdmin).map((t) => (
             <button key={t.id} type="button" aria-pressed={tab === t.id}
-                    className={(t.id === 'aceptar' && porAceptar) || (t.id === 'reportar' && porEnviar) ? 'af-nav__pend' : ''}
+                    className={(t.id === 'aceptar' && porAceptar) || (t.id === 'reportar' && (porEnviar || porCorregir)) ? 'af-nav__pend' : ''}
                     onClick={() => ctx?.ir(t.id)}>
               {t.label}
             </button>
@@ -165,9 +231,17 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
 
       {error && <div className="sync-error-banner" role="alert"><span>{error}</span></div>}
       {info && <div className="af-info" role="status">{info}</div>}
+      {sinSenal && token && datos && (
+        <div className="af-info" role="status">
+          📵 Sin señal: está viendo {guardadaEn ? `los datos guardados el ${fmtFechaHora(guardadaEn)}` : 'los datos de cuando hubo señal'}.
+          Lo que reporte queda guardado en el celular y sale solo cuando vuelva la señal.
+        </div>
+      )}
 
       <section className="af-cuerpo">
-        {!token && !pedirPin ? <p className="subtle-copy">Entrando a Fincas…</p> : !token ? (
+        {!token && esperandoSenal ? (
+          <p className="subtle-copy">📵 Sin señal. Para entrar a Fincas hace falta señal esta vez (su acceso de 30 días se renueva). Apenas haya cobertura, se abre solo.</p>
+        ) : !token && !pedirPin ? <p className="subtle-copy">Entrando a Fincas…</p> : !token ? (
           <ConfirmarPin usuario={session.id} nombre={session.name}
                         onListo={(t) => { guardarLlavePersonal(session.id, t); setCargando(true); setToken(t) }} />
         ) : cargando || !ctx ? <p className="subtle-copy">Cargando fincas…</p> : (

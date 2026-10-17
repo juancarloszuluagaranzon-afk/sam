@@ -58,6 +58,30 @@ function esFotoLocal(url: string): boolean {
   return typeof url === 'string' && url.startsWith(PREFIJO_LOCAL)
 }
 
+/**
+ * ¿El servidor lo RECHAZÓ (pasarse del área, ciclo ya cerrado, labor cerrada…) o
+ * le falta algo que no va a aparecer solo (la foto ya no está)? Esos NO salen
+ * aunque vuelva la señal (16-oct-2026): antes se reintentaban sin fin y seguían
+ * bajo «salen solos», con el contador de «por enviar» que nunca bajaba. Los
+ * errores de la base traen el código al frente («SUPERA_AREA: …»); una falla de
+ * red no («Failed to fetch», «timeout: …»). Sin llave o sesión vencida SÍ se
+ * resuelve solo (entrando a Fincas con señal): eso sigue esperando.
+ */
+export function esRechazo(p: { estado: string; errorMessage?: string }): boolean {
+  const m = p.errorMessage ?? ''
+  return p.estado === 'error' && /^[A-Z_]+:/.test(m) && !/^(SIN_LLAVE|SIN_SESION)\b/.test(m)
+}
+
+/** Quita un reporte de la cola (y su foto guardada), por decisión de quien lo hizo. */
+export async function quitarPendiente(outboxId: number): Promise<void> {
+  const item = await db.outbox.get(outboxId)
+  if (!item || item.type !== 'FINCA') return
+  const r = item.fincaOp?.payload as ReporteEncolado | undefined
+  if (r && esFotoLocal(r.fotoUrl)) await db.fotos.delete(r.fotoUrl.slice(PREFIJO_LOCAL.length))
+  await db.outbox.delete(outboxId)
+  avisarPendientes()
+}
+
 /** Guarda la foto en el equipo y devuelve el marcador que viaja en el reporte. */
 async function guardarFotoLocal(file: File, idReporte: string): Promise<string> {
   const localId = `finca-${idReporte}`
@@ -150,8 +174,9 @@ export function sincronizarReportes(): Promise<number> {
 let enVuelo: Promise<number> | null = null
 
 async function hacerEnvio(): Promise<number> {
+  // Lo RECHAZADO no se reintenta: espera a que la persona lo quite (ver `esRechazo`).
   const items = (await db.outbox.where('status').anyOf(['pending', 'error']).toArray())
-    .filter((i) => i.type === 'FINCA')
+    .filter((i) => i.type === 'FINCA' && !esRechazo({ estado: i.status, errorMessage: i.errorMessage }))
   let enviados = 0
   for (const item of items) {
     try {

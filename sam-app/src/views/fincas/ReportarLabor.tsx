@@ -2,11 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import { mensajeDeError } from '../../services/fincasApi'
 import {
-  avisarPendientes, enviarOEncolarReporte, reportesPendientes, sincronizarReportes,
+  avisarPendientes, enviarOEncolarReporte, esRechazo, quitarPendiente, reportesPendientes, sincronizarReportes,
   EVENTO_PENDIENTES, type ReportePendiente,
 } from '../../lib/outboxFincas'
-import { avanceLabor, cicloAbiertoDe, fmtCant, PEDIR_UBICACION } from '../../lib/fincas'
+import {
+  avanceLabor, cicloAbiertoDe, contextoReporte, fmtCant, PEDIR_UBICACION, rechazosPorAtender, reportesConCola,
+} from '../../lib/fincas'
+import { leerRechazosAtendidos, marcarRechazoAtendido } from '../../lib/cacheFincas'
 import { fmtFechaHora } from '../../lib/fechas'
+import type { ReporteCampo } from '../../services/fincasApi'
 
 
 type Gps =
@@ -45,6 +49,9 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   const [idReporte, setIdReporte] = useState(() => crypto.randomUUID())
   const [pendientes, setPendientes] = useState<ReportePendiente[]>([])
   const [enviandoCola, setEnviandoCola] = useState(false)
+  // Corrigiendo un reporte RECHAZADO: su id, para darlo por atendido al reenviar.
+  const [corrigiendo, setCorrigiendo] = useState<ReporteCampo | null>(null)
+  const [atendidos, setAtendidos] = useState<Set<string>>(() => leerRechazosAtendidos(usuario))
 
   const refrescarPendientes = useCallback(() => { void reportesPendientes().then(setPendientes) }, [])
   useEffect(() => {
@@ -70,15 +77,33 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   }, [])
   useEffect(() => () => { if (vista) URL.revokeObjectURL(vista) }, [vista])
 
+  // Lo que espera señal cuenta como POR ACEPTAR en «faltan» (si no, invita a
+  // registrarlo otra vez); lo que el servidor rechazó en la cola, no.
+  const cola = useMemo(() => pendientes.filter((p) => !esRechazo(p)), [pendientes])
+  const noSalieron = useMemo(() => pendientes.filter((p) => esRechazo(p)), [pendientes])
+  const reportes = useMemo(() => reportesConCola(d.reportes, cola), [d.reportes, cola])
+  const rechazos = useMemo(() => rechazosPorAtender(d, usuario, atendidos), [d, usuario, atendidos])
+
   const fincas = d.fincas.filter((f) => f.activa && d.suertes.some((s) => s.fincaId === f.id && cicloAbiertoDe(s.id, d.ciclos)))
   const suertes = d.suertes.filter((s) => s.fincaId === fincaId && s.activa && cicloAbiertoDe(s.id, d.ciclos))
   const ciclo = suerteId ? cicloAbiertoDe(suerteId, d.ciclos) : null
-  const labores = ciclo ? d.labores.filter((l) => l.cicloId === ciclo.id && l.estado !== 'ANULADA' && l.estado !== 'TERMINADA') : []
+  // Solo lo que todavía se puede reportar: una labor de una pasada ya reportada
+  // completa (aceptada o por aceptar) no sale como «faltan 0».
+  const labores = ciclo
+    ? d.labores.filter((l) => l.cicloId === ciclo.id && l.estado !== 'ANULADA' && l.estado !== 'TERMINADA'
+        && (l.repetible || avanceLabor(l, reportes).restante > 0.001))
+    : []
   const labor = labores.find((l) => l.id === laborId)
-  const avance = labor ? avanceLabor(labor, d.reportes) : null
+  const avance = labor ? avanceLabor(labor, reportes) : null
   const n = Number(cantidad.replace(',', '.'))
   const topePasada = d.suertes.find((s) => s.id === suerteId)?.areaHa ?? labor?.cantidadPlan ?? 0
   const misReportes = useMemo(() => d.reportes.filter((r) => r.reportadoPor === usuario).slice(0, 8), [d.reportes, usuario])
+
+  // Una sola opción = ya escogida (Riogrande es hoy la única finca): menos toques.
+  const unicaFinca = fincas.length === 1 ? fincas[0].id : ''
+  const unicaSuerte = suertes.length === 1 ? suertes[0].id : ''
+  useEffect(() => { if (unicaFinca && !fincaId) setFincaId(unicaFinca) }, [unicaFinca, fincaId])
+  useEffect(() => { if (unicaSuerte && !suerteId) setSuerteId(unicaSuerte) }, [unicaSuerte, suerteId])
 
   if (!puedeReportar) return <p className="subtle-copy">Su usuario no reporta labores de fincas.</p>
 
@@ -112,9 +137,37 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
         : 'Sin señal: quedó guardado en este celular con su foto. Se envía solo cuando vuelva la señal; no lo vuelva a registrar.')
       setLaborId(''); setCantidad(''); setNota(''); setFoto(null); setVista(null)
       setIdReporte(crypto.randomUUID())
+      // El reporte corregido reemplaza al rechazado: ese ya no sale «por corregir».
+      if (corrigiendo) { marcarRechazoAtendido(usuario, corrigiendo.id); setAtendidos(leerRechazosAtendidos(usuario)); setCorrigiendo(null) }
       refrescarPendientes(); avisarPendientes()
       if (enviado) await recargar()
     } catch (e) { setError(mensajeDeError(e)) } finally { setGuardando(false) }
+  }
+
+  /** Llena el formulario con el reporte rechazado, para corregirlo y reenviarlo. */
+  function corregir(r: ReporteCampo) {
+    const { suerte, finca } = contextoReporte(r, d)
+    if (!suerte || !finca) return
+    setFincaId(finca.id); setSuerteId(suerte.id); setLaborId(r.laborId)
+    setCantidad(String(r.cantidad)); setFecha(r.fecha); setNota(r.nota ?? '')
+    setFoto(null); setVista(null); setError(''); setListo('')
+    setCorrigiendo(r)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  function noHaceFalta(r: ReporteCampo) {
+    if (!window.confirm('¿Dejar este rechazo así, sin corregirlo? Deja de salir en la lista; el reporte rechazado no cuenta.')) return
+    marcarRechazoAtendido(usuario, r.id); setAtendidos(leerRechazosAtendidos(usuario)); avisarPendientes()
+    if (corrigiendo?.id === r.id) setCorrigiendo(null)
+  }
+
+  async function quitar(p: ReportePendiente) {
+    const texto = esRechazo(p)
+      ? `¿Quitar «${p.etiqueta}»? No salió y no va a salir solo. Se borra de este celular; si hay que reportarlo, vuelva a registrarlo bien.`
+      : `¿Quitar «${p.etiqueta}»? Todavía no ha salido: se borra de este celular con su foto y NO se envía.`
+    if (!window.confirm(texto)) return
+    await quitarPendiente(p.outboxId)
+    refrescarPendientes()
   }
 
   async function enviarCola() {
@@ -132,7 +185,41 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
   return (
     <div className="af-stack">
       <div className="af-cab"><div><p className="eyebrow">Campo</p><h2>Reportar una labor</h2></div></div>
+
+      {/* Lo rechazado va ARRIBA (16-oct-2026): antes solo se veía bajando a «Mis
+          últimos reportes», sin aviso y sin forma de corregirlo. */}
+      {rechazos.length > 0 && (
+        <div className="af-card af-card--espera">
+          <h3>⚠ Le rechazaron {rechazos.length === 1 ? 'un reporte' : `${rechazos.length} reportes`}</h3>
+          <ul className="af-lista">
+            {rechazos.map((r) => {
+              const { labor: l, suerte: s } = contextoReporte(r, d)
+              return (
+                <li key={r.id} className="af-mov">
+                  <img className="af-foto" src={r.fotoUrl} alt="evidencia" loading="lazy" />
+                  <span>
+                    <b>{l?.labor.toLowerCase()} · {fmtCant(r.cantidad)} {l?.unidad} · suerte {s?.codigo}</b>
+                    <small>hecha el {r.fecha} · rechazó {nombre(r.revisadoPor ?? '')}: «{r.motivoRechazo}»</small>
+                  </span>
+                  <span className="af-acciones" style={{ margin: 0 }}>
+                    <button type="button" className="inline-button" onClick={() => corregir(r)}>Corregir y reenviar</button>
+                    <button type="button" className="inline-button" onClick={() => noHaceFalta(r)}>No hace falta</button>
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
       <div className="af-card">
+        {corrigiendo && (
+          <p className="af-nota" style={{ marginTop: 0 }}>
+            ✏️ Corrigiendo el reporte rechazado («{corrigiendo.motivoRechazo}»). Revise los datos y vuelva a poner la foto —puede escogerla de la galería—.{' '}
+            <button type="button" className="inline-button" onClick={() => { setCorrigiendo(null); setLaborId(''); setCantidad(''); setNota('') }}>Cancelar corrección</button>
+          </p>
+        )}
+        {fincas.length === 0 && <p className="af-nota" style={{ marginTop: 0 }}>No hay fincas con un ciclo abierto para reportar. Lo abre administración.</p>}
         <div className="af-form">
           <label>Finca
             <select id="af-rep-finca" value={fincaId} onChange={(e) => { setFincaId(e.target.value); setSuerteId(''); setLaborId('') }}>
@@ -150,15 +237,22 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
             <select id="af-rep-labor" value={laborId} disabled={!suerteId} onChange={(e) => {
               setLaborId(e.target.value)
               const l = labores.find((x) => x.id === e.target.value)
-              if (l) { const a = avanceLabor(l, d.reportes); setCantidad(a.restante > 0 ? String(Math.round(a.restante * 100) / 100) : '') }
+              if (l) { const a = avanceLabor(l, reportes); setCantidad(a.restante > 0 ? String(Math.round(a.restante * 100) / 100) : '') }
             }}>
               <option value="">Escoja…</option>
-              {labores.map((l) => { const a = avanceLabor(l, d.reportes); return (
+              {labores.map((l) => { const a = avanceLabor(l, reportes); return (
                 <option key={l.id} value={l.id}>
                   {l.labor.toLowerCase()} · {l.repetible ? `pasada ${a.pasadaEnCurso} · ` : ''}faltan {fmtCant(a.restante)} {l.unidad}
                 </option>
               ) })}
             </select>
+            {fincaId && suertes.length === 0 && <small className="af-nota">Esta finca no tiene suertes con un ciclo abierto.</small>}
+            {suerteId && labores.length === 0 && (
+              <small className="af-nota">
+                Esta suerte no tiene labores pendientes en el plan del ciclo. Si se hizo una labor que no está en el plan,
+                pídale a administración que la agregue al paquete.
+              </small>
+            )}
           </label>
           <label>Cantidad hecha {labor ? `(${labor.unidad})` : ''}
             <input id="af-rep-cantidad" inputMode="decimal" value={cantidad} onChange={(e) => setCantidad(e.target.value)} placeholder="0" />
@@ -197,26 +291,48 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
         </div>
       </div>
 
-      {pendientes.length > 0 && (
+      {/* 🔴 Dos listas, no una (16-oct-2026): lo que ESPERA SEÑAL sale solo; lo que
+          el servidor RECHAZÓ no va a salir nunca y antes se quedaba ahí, bajo
+          «salen solos», reintentándose sin fin y sin forma de quitarlo. */}
+      {noSalieron.length > 0 && (
         <div className="af-card af-card--espera">
-          <h3>⏳ Esperando señal ({pendientes.length})</h3>
+          <h3>⚠ No salieron ({noSalieron.length})</h3>
+          <p className="af-nota" style={{ marginTop: 0 }}>
+            El servidor no los aceptó y no van a salir solos. Lea el motivo, quítelos y, si hace falta, vuelva a registrarlos bien.
+          </p>
+          <ul className="af-lista">
+            {noSalieron.map((p) => (
+              <li key={p.outboxId} className="af-mov">
+                <span className="af-foto af-foto--vacia">📷</span>
+                <span>
+                  <b>{p.etiqueta}</b>
+                  <small>hecha el {p.fecha} · {mensajeDeError({ message: p.errorMessage ?? '' })}</small>
+                </span>
+                <button type="button" className="inline-button" onClick={() => void quitar(p)}>Quitar</button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {cola.length > 0 && (
+        <div className="af-card af-card--espera">
+          <h3>⏳ Esperando señal ({cola.length})</h3>
           <p className="af-nota" style={{ marginTop: 0 }}>
             Están guardados en este celular, con su foto. Salen solos cuando haya cobertura: no los vuelva a registrar.
           </p>
           <ul className="af-lista">
-            {pendientes.map((p) => (
+            {cola.map((p) => (
               <li key={p.outboxId} className="af-mov">
                 <span className="af-foto af-foto--vacia">📷</span>
                 <span>
                   <b>{p.etiqueta}</b>
                   <small>
                     hecha el {p.fecha} · guardada {fmtFechaHora(p.queuedAt)}
-                    {p.estado === 'error' && p.errorMessage ? ` · no salió: ${mensajeDeError({ message: p.errorMessage })}` : ''}
+                    {p.estado === 'error' && p.errorMessage ? ` · todavía no sale: ${mensajeDeError({ message: p.errorMessage })}` : ''}
                   </small>
                 </span>
-                <span className={`af-chip ${p.estado === 'error' ? 'af-chip--mal' : 'af-chip--ojo'}`}>
-                  {p.estado === 'error' ? 'no salió' : 'por enviar'}
-                </span>
+                <button type="button" className="inline-button" onClick={() => void quitar(p)}>Quitar</button>
               </li>
             ))}
           </ul>

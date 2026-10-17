@@ -120,11 +120,14 @@ export function DiagnosticModal({
   }
 
   async function clearCacheAndReload() {
-    if (!window.confirm('Esto borra el cache local y recarga la app. ¿Continuar?')) return
+    if (!window.confirm('Esto borra el cache local y recarga la app. Los reportes de fincas que esperan señal se conservan. ¿Continuar?')) return
     setActionBusy(true)
     try {
       await db.assignments.clear()
-      await db.outbox.clear()
+      // 🔴 Los reportes de FINCAS que esperan señal NO se borran (16-oct-2026): son
+      // trabajo hecho en el campo, con su foto, que todavía no llegó a ninguna parte.
+      // Antes «Borrar caché» se los llevaba sin decir nada.
+      await db.outbox.filter((i) => i.type !== 'FINCA').delete()
       await db.meta.clear()
     } catch {
       // ignore

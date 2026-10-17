@@ -17,7 +17,10 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
   const [error, setError] = useState('')
   const pendientes = d.reportes.filter((r) => r.estado === 'PENDIENTE').sort((a, b) => a.createdAt.localeCompare(b.createdAt))
 
-  async function revisar(id: string, aceptar: boolean) {
+  async function revisar(id: string, aceptar: boolean, queEs = '') {
+    // Aceptar es definitivo (cuenta como hecho y, con costo, se carga al dueño; la
+    // base no deja deshacerlo): un toque suelto no puede bastar (16-oct-2026).
+    if (aceptar && !window.confirm(`¿Aceptar ${queEs}?\n\nQueda como hecho${VER_PLATA ? ' y, si tiene costo, se carga a la cuenta del dueño' : ''}. No se puede deshacer.`)) return
     setOcupado(id); setError('')
     try {
       await revisarReporte(id, aceptar, motivos[id] ?? '', token)
@@ -71,7 +74,8 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
                 </div>
               ) : (
                 <div className="af-acciones">
-                  <button type="button" className="primary-button" disabled={ocupado === r.id} onClick={() => void revisar(r.id, true)}>Aceptar</button>
+                  <button type="button" className="primary-button" disabled={ocupado === r.id}
+                          onClick={() => void revisar(r.id, true, `${labor?.labor.toLowerCase() ?? 'la labor'} · ${fmtCant(r.cantidad)} ${labor?.unidad ?? ''} · suerte ${suerte?.codigo ?? ''}`)}>Aceptar</button>
                   <button type="button" className="inline-button" onClick={() => setRechazando(r.id)}>Rechazar…</button>
                 </div>
               )}

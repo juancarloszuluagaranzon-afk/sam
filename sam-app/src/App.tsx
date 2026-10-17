@@ -10,6 +10,7 @@ import { PortalDueno } from './views/fincas/PortalDueno'
 import { tomarLlaveDueno } from './views/fincas/llaveDueno'
 import { modalidadEfectiva } from './lib/modalidad'
 import { abrirSesionFincas, cerrarSesionFincas, guardarLlavePersonal, leerLlavePersonal } from './services/fincasApi'
+import { borrarCargasFincas } from './lib/cacheFincas'
 import { ModoSwitch, leerModo, guardarModo, type Modo } from './components/ModoSwitch'
 import { SoporteShell } from './views/SoporteShell'
 import { InsumosView } from './views/InsumosView'
@@ -142,6 +143,8 @@ function AppContent() {
     if (!user && session) {
       const llave = leerLlavePersonal(session.id)
       if (llave) { guardarLlavePersonal(session.id, null); void cerrarSesionFincas(llave).catch(() => {}) }
+      // Y la copia de las fincas que se guardó para trabajar sin señal.
+      void borrarCargasFincas()
     }
     setSession(user ? { ...user } : null)
     setIsSideMenuOpen(false)

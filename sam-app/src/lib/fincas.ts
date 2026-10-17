@@ -27,6 +27,25 @@ export const VER_PLATA = true
  */
 export const PEDIR_UBICACION = false
 
+/**
+ * 🔴 La FOTO del reporte es OPCIONAL «de momento» (17-oct-2026). Iván: «de momento
+ * quítale la foto obligatoria, después lo volvemos a activar». Son DOS llaves y van
+ * juntas: esta (el formulario la pide o no) y la de la base, que es la que manda
+ * (`af_config.foto_requerida`, migración 20261017090000). Para volver a exigirla:
+ * `true` aquí y `update af_config set valor = 'true' where clave = 'foto_requerida'`.
+ * Sin foto, el gasto de un reporte aceptado tiene como soporte el propio reporte
+ * (aceptado por otra persona); los textos del dueño ya no prometen «foto».
+ */
+export const FOTO_OBLIGATORIA = false
+
+/** Qué evidencia lleva cada labor, para los textos del dueño («su foto y su ubicación»). */
+export function evidenciaDeLabor(): string {
+  const partes: string[] = []
+  if (FOTO_OBLIGATORIA) partes.push('su foto')
+  if (PEDIR_UBICACION) partes.push('su ubicación')
+  return partes.join(' y ')
+}
+
 export type NivelOportunidad = 'ideal' | 'normal' | 'tardia'
 
 /** Días entre dos fechas 'YYYY-MM-DD' (b − a). */
@@ -271,7 +290,12 @@ export function resumenParaDueno(finca: Finca, d: DatosFincas, hoy: string, nomb
   if (tardias.length) {
     lineas.push('', `Atrasadas: ${tardias.map((f) => `${f.labor.labor.toLowerCase()} suerte ${f.suerte.codigo}`).join(', ')}`)
   }
-  lineas.push('', `Cada labor tiene foto${PEDIR_UBICACION ? ', ubicación' : ''} y quién la aceptó. — AgroServicios Morales`)
+  const evidencia: string[] = []
+  if (FOTO_OBLIGATORIA) evidencia.push('foto')
+  if (PEDIR_UBICACION) evidencia.push('ubicación')
+  lineas.push('', evidencia.length
+    ? `Cada labor tiene ${evidencia.join(', ')} y quién la aceptó. — AgroServicios Morales`
+    : 'Cada labor dice quién la aceptó. — AgroServicios Morales')
   return lineas.join('\n')
 }
 

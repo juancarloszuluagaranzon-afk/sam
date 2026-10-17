@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import { mensajeDeError, revisarReporte } from '../../services/fincasApi'
-import { contextoReporte, diasEntre, fmtCant, fmtPesos, PEDIR_UBICACION, VER_PLATA } from '../../lib/fincas'
+import { contextoReporte, diasEntre, fmtCant, fmtPesos, FOTO_OBLIGATORIA, PEDIR_UBICACION, VER_PLATA } from '../../lib/fincas'
 import { fmtFechaHora } from '../../lib/fechas'
 
 /**
@@ -32,7 +32,7 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
   return (
     <div className="af-stack">
       <div className="af-cab"><div><p className="eyebrow">Verificación</p><h2>Por aceptar</h2></div></div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>Mire la foto{PEDIR_UBICACION ? ' y la ubicación' : ''} antes de aceptar. Lo aceptado cuenta como hecho{VER_PLATA ? ' y, si la labor tiene costo, se carga a la cuenta del dueño' : ' y se ve en el mapa de la finca'}.</p>
+      <p className="subtle-copy" style={{ marginTop: 0 }}>{FOTO_OBLIGATORIA ? `Mire la foto${PEDIR_UBICACION ? ' y la ubicación' : ''} antes de aceptar.` : 'Revise la foto, si la trae, y que la cantidad sea creíble antes de aceptar.'} Lo aceptado cuenta como hecho{VER_PLATA ? ' y, si la labor tiene costo, se carga a la cuenta del dueño' : ' y se ve en el mapa de la finca'}.</p>
       {error && <p className="feedback error">{error}</p>}
       {pendientes.length === 0 && <div className="af-card af-vacio"><p>✓ No hay reportes por aceptar.</p></div>}
       {pendientes.map((r) => {
@@ -41,9 +41,14 @@ export function PorAceptar({ ctx }: { ctx: CtxFincas }) {
         const valor = labor && labor.costoUnitarioPlan > 0 ? r.cantidad * labor.costoUnitarioPlan : 0
         return (
           <div key={r.id} className="af-card af-reporte">
-            <a href={r.fotoUrl} target="_blank" rel="noreferrer" className="af-reporte__foto">
-              <img src={r.fotoUrl} alt="foto de la labor" loading="lazy" />
-            </a>
+            {r.fotoUrl ? (
+              <a href={r.fotoUrl} target="_blank" rel="noreferrer" className="af-reporte__foto">
+                <img src={r.fotoUrl} alt="foto de la labor" loading="lazy" />
+              </a>
+            ) : (
+              // Foto opcional de momento (FOTO_OBLIGATORIA): se dice, no se dibuja una imagen rota.
+              <span className="af-reporte__foto af-foto--vacia" title="sin foto">📷 sin foto</span>
+            )}
             <div className="af-reporte__txt">
               <h3>{labor?.labor.toLowerCase()} · {fmtCant(r.cantidad)} {labor?.unidad}</h3>
               <p className="af-nota" style={{ margin: 0 }}>{finca?.nombre} · suerte {suerte?.codigo}{ciclo ? ` · ${diasEntre(ciclo.fechaCorte, r.fecha)} días del corte` : ''}</p>

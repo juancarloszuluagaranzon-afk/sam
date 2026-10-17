@@ -111,11 +111,13 @@ async function encolar(r: ReporteEncolado): Promise<void> {
  */
 export async function enviarOEncolarReporte(
   r: Omit<ReporteEncolado, 'fotoUrl'>,
-  foto: File,
+  // Sin foto (opcional de momento, `FOTO_OBLIGATORIA`): el reporte viaja con '' y
+  // la base guarda NULL — si la base la exige, responde SIN_FOTO y no se encola.
+  foto: File | null,
   token: string,
 ): Promise<{ enviado: boolean }> {
   const guardar = async () => {
-    await encolar({ ...r, fotoUrl: await guardarFotoLocal(foto, r.id) })
+    await encolar({ ...r, fotoUrl: foto ? await guardarFotoLocal(foto, r.id) : '' })
     return { enviado: false }
   }
   if (!navigator.onLine) return guardar()
@@ -123,7 +125,7 @@ export async function enviarOEncolarReporte(
     // Con señal mala, sin tope se queda en «Enviando…» para siempre. Al vencer
     // se trata como falta de red: a la cola, no a la basura.
     await conTope(90_000, (async () => {
-      const fotoUrl = await subirFotoFinca(foto, 'reportes')
+      const fotoUrl = foto ? await subirFotoFinca(foto, 'reportes') : ''
       await reportarLabor({ ...r, fotoUrl }, token)
     })())
     return { enviado: true }

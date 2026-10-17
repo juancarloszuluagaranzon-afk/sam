@@ -6,7 +6,7 @@ import {
   EVENTO_PENDIENTES, type ReportePendiente,
 } from '../../lib/outboxFincas'
 import {
-  avanceLabor, cicloAbiertoDe, contextoReporte, fmtCant, PEDIR_UBICACION, rechazosPorAtender, reportesConCola,
+  avanceLabor, cicloAbiertoDe, contextoReporte, fmtCant, FOTO_OBLIGATORIA, PEDIR_UBICACION, rechazosPorAtender, reportesConCola,
 } from '../../lib/fincas'
 import { leerRechazosAtendidos, marcarRechazoAtendido } from '../../lib/cacheFincas'
 import { fmtFechaHora } from '../../lib/fechas'
@@ -20,10 +20,10 @@ type Gps =
   | { estado: 'no'; motivo: string }
 
 /**
- * Reportar una labor desde el campo. La prueba va completa: foto obligatoria y
- * —al guardar— la hora del SERVIDOR, no la del aparato. La ubicación del celular
- * está APAGADA de momento (`PEDIR_UBICACION`, 16-oct-2026): Julio reporta aunque
- * no esté en la finca.
+ * Reportar una labor desde el campo: la foto y —al guardar— la hora del SERVIDOR,
+ * no la del aparato. Dos cosas APAGADAS de momento: la ubicación del celular
+ * (`PEDIR_UBICACION`, 16-oct-2026: Julio reporta aunque no esté en la finca) y la
+ * foto obligatoria (`FOTO_OBLIGATORIA`, 17-oct-2026: se puede reportar sin foto).
  * El reporte queda POR ACEPTAR: otra persona lo verifica antes de que cuente.
  *
  * SIN SEÑAL no se pierde nada: el reporte y su foto quedan guardados en el
@@ -115,11 +115,11 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
     labor && esHectarea(labor.unidad) && labor.repetible && n > topePasada + 0.001 && `Una pasada no puede pasar de ${fmtCant(topePasada)} ha (el área de la suerte).`,
     ciclo && fecha < ciclo.fechaCorte && `La fecha no puede ser antes del corte (${ciclo.fechaCorte}).`,
     fecha > hoy && 'La fecha no puede ser después de hoy.',
-    !foto && 'Tome la foto de la labor: sin foto no hay reporte.',
+    FOTO_OBLIGATORIA && !foto && 'Tome la foto de la labor: sin foto no hay reporte.',
   ].filter(Boolean) as string[]
 
   async function enviar() {
-    if (problemas.length || !labor || !foto) return
+    if (problemas.length || !labor || (FOTO_OBLIGATORIA && !foto)) return
     setGuardando(true); setError(''); setListo('')
     const suerte = d.suertes.find((s) => s.id === suerteId)
     const finca = d.fincas.find((f) => f.id === fincaId)
@@ -196,7 +196,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
               const { labor: l, suerte: s } = contextoReporte(r, d)
               return (
                 <li key={r.id} className="af-mov">
-                  <img className="af-foto" src={r.fotoUrl} alt="evidencia" loading="lazy" />
+                  {r.fotoUrl ? <img className="af-foto" src={r.fotoUrl} alt="evidencia" loading="lazy" /> : <span className="af-foto af-foto--vacia" title="sin foto">📷</span>}
                   <span>
                     <b>{l?.labor.toLowerCase()} · {fmtCant(r.cantidad)} {l?.unidad} · suerte {s?.codigo}</b>
                     <small>hecha el {r.fecha} · rechazó {nombre(r.revisadoPor ?? '')}: «{r.motivoRechazo}»</small>
@@ -263,7 +263,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
           {/* Sin `capture`: el celular ofrece la cámara Y la galería. Con la ubicación
               apagada (PEDIR_UBICACION) Julio reporta también desde la casa, y ahí la
               foto es la que tomó en el campo. `key` vacía el campo tras cada envío. */}
-          <label className="af-form__ancho">Foto de la labor (obligatoria) · tómela o escójala de la galería
+          <label className="af-form__ancho">Foto de la labor {FOTO_OBLIGATORIA ? "(obligatoria)" : "(opcional por ahora)"} · tómela o escójala de la galería
             <input key={idReporte} id="af-rep-foto" type="file" accept="image/*" onChange={(e) => {
               const f = e.target.files?.[0] ?? null
               setFoto(f); setVista(f ? URL.createObjectURL(f) : null)
@@ -352,7 +352,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
               const l = d.labores.find((x) => x.id === r.laborId)
               return (
                 <li key={r.id} className="af-mov">
-                  <img className="af-foto" src={r.fotoUrl} alt="evidencia" loading="lazy" />
+                  {r.fotoUrl ? <img className="af-foto" src={r.fotoUrl} alt="evidencia" loading="lazy" /> : <span className="af-foto af-foto--vacia" title="sin foto">📷</span>}
                   <span><b>{l?.labor.toLowerCase()} · {fmtCant(r.cantidad)} {l?.unidad}</b>
                     <small>{fmtFechaHora(r.createdAt)}{r.estado === 'RECHAZADO' ? ` · rechazado por ${nombre(r.revisadoPor ?? '')}: ${r.motivoRechazo}` : ''}</small></span>
                   <span className={`af-chip ${r.estado === 'ACEPTADO' ? 'af-chip--ok' : r.estado === 'PENDIENTE' ? 'af-chip--ojo' : 'af-chip--mal'}`}>

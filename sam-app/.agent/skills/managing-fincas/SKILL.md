@@ -145,6 +145,7 @@ entero pasa por funciones `security definer` que reciben `p_token`:
 |---|---|---|---|
 | **La plata** (cuenta, presupuesto, costos, honorario, «se cargan $X») | ✅ PRENDIDA desde el 6-oct (`675cca2`); estuvo apagada desde el 23-sep | «quita lo de las transferencias, de momento no valoremos nada» | `VER_PLATA` en `lib/fincas.ts` (la base lo guarda siempre) |
 | **El PIN para entrar a Fincas** | ⛔ apagado (23-sep) | «déjame ver sin el PIN, después lo volvemos a mostrar» | `update af_config set valor = 'true' where clave = 'pin_requerido'` — las sesiones abiertas SIN PIN (`af_sesiones.sin_pin`) dejan de servir al instante y la app vuelve a pedirlo |
+| **La FOTO obligatoria del reporte** | ⛔ apagada (17-oct) | «de momento quítale la foto obligatoria, después lo volvemos a activar» | DOS llaves, van juntas: `FOTO_OBLIGATORIA` en `lib/fincas.ts` (el formulario) y `af_config.foto_requerida` (la base, `af_foto_requerida()` en `af__reportar`; migración `20261017090000`). Volver a exigirla: `true` en las dos. Mientras tanto: `af_reportes.foto_url` admite NULL (la app lo recibe como `''` y no dibuja imagen: «📷 sin foto»), el GASTO de un reporte aceptado tiene como soporte el propio reporte (check `af_movimientos_gasto_con_soporte`: `reporte_id` o soporte; los gastos A MANO siguen exigiendo soporte), y los textos del dueño salen de `evidenciaDeLabor()` |
 | **La UBICACIÓN del reporte** | ⛔ apagada (16-oct) | «debo permitir que Julio pueda registrar sus labores así no esté en la finca; de momento no le actives la ubicación» | `PEDIR_UBICACION` en `lib/fincas.ts`. Apagada: «Reportar labor» no pide el permiso del GPS ni muestra «Sin ubicación…», «Por aceptar» no marca en rojo, y el portal, el mensaje del enlace y el resumen de WhatsApp no prometen «ubicación». La base nunca la exigió (`af__reportar` guarda `lat`/`lng` solo si llegan; no hay geocerca). El botón «dónde estoy» del mapa es aparte |
 
 ⚠️ Con el PIN apagado, `af_abrir_sesion_sin_pin(usuario)` da una llave a cualquier usuario del
@@ -202,11 +203,11 @@ banner grande con el título + mapa donde se ve el avance. Ideas del geovisor de
 
 | Regla | Dónde |
 |---|---|
-| Sin foto no hay reporte; la hora es la del servidor | `af_reportar` + check de `foto_url` |
+| Sin foto no hay reporte (⛔ apagado de momento: `af_config.foto_requerida`); la hora es la del servidor | `af__reportar` (el check de la columna `foto_url` se quitó el 17-oct) |
 | Nadie acepta su propio reporte | `af_revisar` (`NO_PROPIO`) + check `revisado_por <> reportado_por` |
 | En ha, lo reportado no pasa del área de la suerte (+2 %) | `af_reportar` (`SUPERA_AREA`) |
 | Fecha no futura ni anterior al corte | `af_reportar` |
-| Aceptar crea el gasto UNA vez, con la foto de soporte | `af_revisar` + `reporte_id unique` |
+| Aceptar crea el gasto UNA vez; su soporte es el reporte (y su foto, si la trae) | `af_revisar` + `reporte_id unique` + check `af_movimientos_gasto_con_soporte` |
 | Labor TERMINADA solo por lo aceptado (≥ 98 % del plan); a mano solo se ANULA con motivo | `af_guardia_labor` |
 | Fincas, suertes, paquete y presupuesto: solo administración | `af_guardia_config`, `af_guardia_labor` |
 | Anticipos y gastos a mano: solo administración; un GASTO sin soporte no entra | `af_guardia_movimiento` + check |

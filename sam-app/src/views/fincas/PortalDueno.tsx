@@ -9,7 +9,7 @@ import { FincaDetalle } from './FincaDetalle'
 import type { CtxFincas } from './FincasView'
 import { InstalarApp } from './InstalarApp'
 import { AvisosFinca } from './AvisosFinca'
-import { hechosDeFinca, fmtCant, nombreLabor, PEDIR_UBICACION } from '../../lib/fincas'
+import { evidenciaDeLabor, hechosDeFinca, fmtCant, nombreLabor } from '../../lib/fincas'
 import { prepararInstalacionDueno } from './llaveDueno'
 
 /**
@@ -159,7 +159,7 @@ export function PortalDueno({ llave, onSalir }: { llave: string; onSalir: () => 
         {datos && (
           <footer className="af-portal__pie">
             <p className="af-nota">
-              Información en vivo: cada labor lleva su foto{PEDIR_UBICACION ? ', su ubicación' : ''} y quién la aceptó; nada se borra.
+              Información en vivo: cada labor lleva {evidenciaDeLabor() ? `${evidenciaDeLabor()} y ` : ''}quién la aceptó; nada se borra.
               {actualizado ? ` Actualizado ${fmtFechaHora(actualizado)}.` : ''}
             </p>
             <div className="af-acciones">

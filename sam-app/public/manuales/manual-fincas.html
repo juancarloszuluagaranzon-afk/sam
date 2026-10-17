@@ -217,7 +217,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <p class="portada__nota">
       ASM administra fincas de caña de otras personas. Esta parte de la app existe para una sola cosa:
       que el dueño de la tierra vea, en todo momento, qué se hizo en su finca, cuánto costó y quién lo
-      aprobó — con la foto de cada labor.
+      aprobó — con la foto de cada labor que la trae.
     </p>
     <p class="portada__nota">Los nombres y las cifras de los recortes son de ejemplo.</p>
   </div>
@@ -250,7 +250,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <span class="cadena__eslabon">Suertes<small>con su área</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Ciclo<small>de corte a corte</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Labores<small>con presupuesto</small></span><span class="cadena__flecha">→</span>
-      <span class="cadena__eslabon">Reporte<small>foto + hora</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Reporte<small>foto (opcional) + hora</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Aceptación<small>otra persona</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Cuenta<small>gasto con soporte</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon cadena__eslabon--dueno">El dueño lo ve<small>en su celular</small></span>
@@ -320,7 +320,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
         <li><span class="marca">1</span><div><strong>Inicio</strong><span>Todas las fincas de un vistazo: lo que espera aceptación, las labores atrasadas y cuánto se ha gastado contra lo presupuestado.</span></div></li>
         <li><span class="marca">2</span><div><strong>Fincas</strong><span>Una tarjeta por finca. Adentro: lo que ve el dueño, las labores por suerte, la cuenta y la bitácora.</span></div></li>
         <li><span class="marca">3</span><div><strong>Por aceptar</strong><span>Los reportes del campo esperando que alguien los revise. El número entre paréntesis es cuántos hay.</span></div></li>
-        <li><span class="marca">4</span><div><strong>Reportar labor</strong><span>Desde el campo: qué se hizo, cuánto y la foto. Se puede reportar también desde la casa, escogiendo la foto de la galería.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Reportar labor</strong><span>Desde el campo: qué se hizo y cuánto; la foto es opcional por ahora. Se puede reportar también desde la casa, y la foto se puede escoger de la galería.</span></div></li>
         <li><span class="marca">5</span><div><strong>Paquete de labores</strong><span>Solo administración. La plantilla de labores, costos y tiempos que se carga en cada ciclo.</span></div></li>
       </ul>
     </div>
@@ -429,7 +429,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <div class="flujo__paso">
         <span class="flujo__rotulo">Paso 2 <em>· La prueba</em></span>
         <div class="recorte">
-          <div class="recorte__barra">Foto de la labor (obligatoria)</div>
+          <div class="recorte__barra">Foto de la labor (opcional por ahora)</div>
           <div class="recorte__cuerpo">
             <div class="r-foto">📷 foto de la suerte arada</div>
             <div class="r-campo"><span>Nota (opcional)</span><div>Quedó pendiente la cabecera norte</div></div>
@@ -461,7 +461,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <div class="resultado">
       <h3>Qué pasa con la información</h3>
       <ul class="explica">
-        <li><span class="marca">1</span><div><strong>Sin foto no hay reporte</strong><span>El botón no se habilita sin foto, y la base tampoco lo recibe. Es la evidencia que va a ver el dueño.</span></div></li>
+        <li><span class="marca">1</span><div><strong>La foto, opcional por ahora</strong><span>De momento se puede reportar sin foto. Cuando se pone, es la evidencia que ve el dueño; se puede volver a exigir.</span></div></li>
         <li><span class="marca">2</span><div><strong>La hora no la pone el celular</strong><span>La hora de llegada la pone el servidor. La ubicación está apagada de momento: se puede reportar aunque no se esté en la finca.</span></div></li>
         <li><span class="marca">3</span><div><strong>Todavía no cuenta</strong><span>Queda <em>por aceptar</em>: no suma avance ni plata hasta que otra persona lo revise (Ejemplo 3).</span></div></li>
       </ul>
@@ -529,12 +529,12 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <h3>Qué pasa con la información</h3>
       <ul class="explica">
         <li><span class="marca">1</span><div><strong>Aceptar suma el avance</strong><span>Las 6 ha cuentan como hechas. Cuando lo aceptado llega al 98 % de lo planeado, la labor queda <em>terminada</em> sola.</span></div></li>
-        <li><span class="marca">2</span><div><strong>Y crea el gasto una sola vez</strong><span>Cantidad × costo de la labor, con la foto del reporte como soporte. Aunque se oprima dos veces, el gasto no se repite.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Y crea el gasto una sola vez</strong><span>Cantidad × costo de la labor; el soporte es el reporte aceptado (y su foto, si la trae). Aunque se oprima dos veces, el gasto no se repite.</span></div></li>
         <li><span class="marca">3</span><div><strong>Rechazar no borra nada</strong><span>El reporte queda rechazado con su motivo y su foto. Se corrige reportando otra vez.</span></div></li>
       </ul>
     </div>
     <div class="tip">
-      <strong>Antes de aceptar, mire dos cosas:</strong> que la foto sea de esa labor y de esa suerte, y que la cantidad sea creíble para ese día.
+      <strong>Antes de aceptar, mire dos cosas:</strong> que la foto, si la trae, sea de esa labor y de esa suerte, y que la cantidad sea creíble para ese día.
     </div>
   </section>
 
@@ -634,7 +634,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
             <div class="r-wa">Hola Jorge Pérez. Este es su acceso directo a la finca LA CEIBA, administrada por AgroServicios Morales:
 <u>agroserviciosmorales.vercel.app/#finca=…</u>
 
-Ahí ve en todo momento las labores con su foto, el presupuesto y su cuenta. Es personal: no lo reenvíe.</div>
+Ahí ve en todo momento las labores, el presupuesto y su cuenta. Es personal: no lo reenvíe.</div>
           </div>
         </div>
       </div>
@@ -718,7 +718,6 @@ Ahí ve en todo momento las labores con su foto, el presupuesto y su cuenta. Es 
       tuviera un error, igual no pasan.</p>
     <table>
       <tr><th>No se puede</th><th>Por qué</th></tr>
-      <tr><td>Reportar sin foto</td><td>La foto es la prueba que ve el dueño.</td></tr>
       <tr><td>Aceptar un reporte propio</td><td>Siempre revisa otra persona: nadie se aprueba a sí mismo.</td></tr>
       <tr><td>Reportar más hectáreas de las que tiene la suerte</td><td>El área es el techo (con 2 % de margen).</td></tr>
       <tr><td>Poner una fecha futura o anterior al corte</td><td>La labor tiene que caber en su ciclo.</td></tr>

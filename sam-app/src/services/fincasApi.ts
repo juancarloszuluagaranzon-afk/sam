@@ -251,7 +251,8 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
     })),
     reportes: arr('reportes').map((x) => ({
       id: String(x.id), laborId: String(x.labor_id), cantidad: num(x.cantidad), fecha: String(x.fecha),
-      fotoUrl: String(x.foto_url), lat: numN(x.lat), lng: numN(x.lng), precisionM: numN(x.precision_m),
+      // Sin foto (opcional de momento, 17-oct-2026) llega null: queda '' y las pantallas no la dibujan.
+      fotoUrl: x.foto_url ? String(x.foto_url) : '', lat: numN(x.lat), lng: numN(x.lng), precisionM: numN(x.precision_m),
       nota: txt(x.nota), reportadoPor: String(x.reportado_por), estado: (x.estado as EstadoReporte) ?? 'PENDIENTE',
       revisadoPor: txt(x.revisado_por), revisadoEn: txt(x.revisado_en), motivoRechazo: txt(x.motivo_rechazo),
       costoUnitario: numN(x.costo_unitario), createdAt: String(x.created_at),

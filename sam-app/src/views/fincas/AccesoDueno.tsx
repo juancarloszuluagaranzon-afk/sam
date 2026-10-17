@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import { crearAccesoDueno, enlaceDueno, mensajeDeError, revocarAccesoDueno, type Finca } from '../../services/fincasApi'
 import { fmtFechaHora } from '../../lib/fechas'
-import { PEDIR_UBICACION, VER_PLATA } from '../../lib/fincas'
+import { evidenciaDeLabor, VER_PLATA } from '../../lib/fincas'
 
 /**
  * El acceso directo del dueño de la tierra (solo administración).
@@ -40,7 +40,7 @@ export function AccesoDueno({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   }
 
   const tel = (finca.duenoTelefono ?? '').replace(/\D/g, '')
-  const mensaje = nuevo ? `Hola ${nombre.trim() || finca.duenoNombre}. Este es su acceso directo a la finca ${finca.nombre}, administrada por AgroServicios Morales:\n${nuevo}\n\nAhí ve en todo momento el mapa de su finca y las labores con su foto${PEDIR_UBICACION ? ' y ubicación' : ''}${VER_PLATA ? ', el presupuesto y su cuenta' : ''}. Es personal: no lo reenvíe.` : ''
+  const mensaje = nuevo ? `Hola ${nombre.trim() || finca.duenoNombre}. Este es su acceso directo a la finca ${finca.nombre}, administrada por AgroServicios Morales:\n${nuevo}\n\nAhí ve en todo momento el mapa de su finca y las labores${evidenciaDeLabor() ? ` con ${evidenciaDeLabor()}` : ''}${VER_PLATA ? ', el presupuesto y su cuenta' : ''}. Es personal: no lo reenvíe.` : ''
   const whatsapp = nuevo ? `https://wa.me/${tel ? (tel.length === 10 ? `57${tel}` : tel) : ''}?text=${encodeURIComponent(mensaje)}` : null
 
   return (

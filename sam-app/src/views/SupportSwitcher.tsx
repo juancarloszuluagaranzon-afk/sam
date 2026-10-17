@@ -41,8 +41,14 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
     () => users.filter((u) => u.role === 'conductor' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  // Dueños de la tierra con usuario (17-oct-2026): soporte ve exactamente su portal.
+  const duenosFinca = useMemo(
+    () => users.filter((u) => u.role === 'dueno_finca' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
 
   const [supId, setSupId] = useState('')
+  const [dueId, setDueId] = useState('')
   const [opId, setOpId] = useState('')
   const [insId, setInsId] = useState('')
   const [conId, setConId] = useState('')
@@ -189,6 +195,31 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
               disabled={!conId}
               onClick={() => {
                 const u = conductores.find((s) => s.id === conId)
+                if (u) onView({ ...u })
+              }}
+            >
+              Ver
+            </button>
+          </div>
+        )}
+
+        {duenosFinca.length > 0 && (
+          <div className="support-pick">
+            <label className="support-pick__field">
+              <span className="support-pick__label">Dueño de finca</span>
+              <SearchableSelect
+                value={dueId}
+                onChange={setDueId}
+                options={duenosFinca.map((d) => ({ value: d.id, label: d.name }))}
+                placeholder="Buscar dueño…"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button support-pick__btn"
+              disabled={!dueId}
+              onClick={() => {
+                const u = duenosFinca.find((d) => d.id === dueId)
                 if (u) onView({ ...u })
               }}
             >

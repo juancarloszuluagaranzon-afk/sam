@@ -162,8 +162,14 @@ export function PortalDueno({ llave, usuario, onSalir }: { llave?: string; usuar
       </header>
 
       <section className="af-cuerpo">
-        {!porUsuario && finca && estado === 'listo' && <InstalarApp nombreFinca={finca.nombre} />}
-        {!porUsuario && llave && finca && estado === 'listo' && <AvisosFinca llave={llave} nombreFinca={finca.nombre} />}
+        {/* Instalar y avisos: con enlace (su finca) y con usuario (todas sus fincas: la base
+            lo suscribe a cada una, migración 20261017200000). */}
+        {estado === 'listo' && (finca || (porUsuario && fincas.length > 0)) && (
+          <InstalarApp nombreFinca={porUsuario && fincas.length > 1 ? 'sus fincas' : (finca?.nombre ?? 'su finca')} />
+        )}
+        {estado === 'listo' && token && (finca || (porUsuario && fincas.length > 0)) && (
+          <AvisosFinca llave={token} nombreFinca={porUsuario && fincas.length > 1 ? 'sus fincas' : (finca?.nombre ?? 'su finca')} />
+        )}
         {!novedadesVistas && novedades.length > 0 && antes && (
           <div className="af-novedades" role="status">
             <div>

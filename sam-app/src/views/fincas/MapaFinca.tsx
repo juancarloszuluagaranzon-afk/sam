@@ -66,8 +66,12 @@ const CAPAS_SAT: CapaSat[] = [
     etiquetas: ['Seco', '', 'Húmedo'],
     explica: 'Radar Sentinel-1: atraviesa las nubes. Marrón = suelo seco; verde azulado = húmedo. Más fresco que la foto.' },
 ]
-const urlSat = (k: string) => `${SAT_BASE}?z={z}&x={x}&y={y}&p=${k}&d=${SAT_DIAS}&v=${SAT_VER}`
+/** Con `fecha` (AAAA-MM-DD) pide la imagen de ESE día en vez del mosaico reciente: el histórico. */
+const urlSat = (k: string, fecha = '') => `${SAT_BASE}?z={z}&x={x}&y={y}&p=${k}&d=${SAT_DIAS}&v=${SAT_VER}${fecha ? `&f=${fecha}` : ''}`
 const fechaCorta = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })
+const fechaLarga = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: '2-digit' })
+/** Lo que el proxy sabe de la finca: la imagen reciente y el CALENDARIO de un año atrás (histórico). */
+type InfoSat = { fecha: string; nubes: number; radar: string | null; todas: { fecha: string; nubes: number }[]; radares: string[] }
 
 type Modo = { tipo: 'ultima' } | { tipo: 'edad' } | { tipo: 'labor'; llave: string }
 
@@ -136,7 +140,11 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   const [plano, setPlano] = useState<MapaConfig | null>(null)
   // 🛰 Capa satelital encima de la foto base ('' = solo la foto ESRI de siempre).
   const [capaSat, setCapaSat] = useState('')
-  const [infoSat, setInfoSat] = useState<{ fecha: string; nubes: number; radar: string | null } | null>(null)
+  // '' = mosaico reciente; 'AAAA-MM-DD' = la imagen de ese día. Es el HISTÓRICO
+  // (17-oct-2026, reunión con Cristian): comparar antes y después de una labor,
+  // o demostrar con la imagen de hace meses que el problema fue el drenaje.
+  const [fechaSat, setFechaSat] = useState('')
+  const [infoSat, setInfoSat] = useState<InfoSat | null>(null)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
   // Pantalla completa (pedido del cliente, 23-sep): el mapa en la página va a la
@@ -208,23 +216,28 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
     satRef.current?.remove(); satRef.current = null
     const capa = CAPAS_SAT.find((c) => c.key === capaSat)
     if (!capa) return
-    satRef.current = L.tileLayer(urlSat(capa.key), {
+    satRef.current = L.tileLayer(urlSat(capa.key, fechaSat), {
       maxZoom: 19, maxNativeZoom: 16, minNativeZoom: 9, opacity: capa.opacity, zIndex: 2,
     }).addTo(map)
-  }, [capaSat])
+  }, [capaSat, fechaSat])
 
-  // La fecha de la imagen que se está viendo: una consulta por finca (el mapa ya
-  // está encuadrado en ella cuando se toca el selector). Sin señal no dice fecha
-  // y la capa igual sale si quedó en la caché del navegador.
+  // La fecha de la imagen que se está viendo y el calendario de un año atrás: una
+  // consulta por finca (el mapa ya está encuadrado en ella cuando se toca el
+  // selector). Sin señal no dice fecha y la capa igual sale si quedó en la caché.
   useEffect(() => {
     const map = mapRef.current
     if (!capaSat || infoSat || !map) return
     const b = map.getBounds()
     const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((n) => n.toFixed(4)).join(',')
     let vivo = true
-    fetch(`${SAT_BASE}?op=info&bbox=${bbox}&d=${SAT_DIAS}`).then((r) => r.json())
-      .then((j: { reciente?: { fecha: string; nubes: number } | null; radar?: { fecha: string } | null }) => {
-        if (vivo && j.reciente) setInfoSat({ fecha: j.reciente.fecha, nubes: j.reciente.nubes, radar: j.radar?.fecha ?? null })
+    fetch(`${SAT_BASE}?op=info&bbox=${bbox}&d=${SAT_DIAS}&cal=365`).then((r) => r.json())
+      .then((j: { reciente?: { fecha: string; nubes: number } | null; radar?: { fecha: string } | null; todas?: { fecha: string; nubes: number }[]; radares?: string[] }) => {
+        if (!vivo) return
+        setInfoSat({
+          fecha: j.reciente?.fecha ?? '', nubes: j.reciente?.nubes ?? 100, radar: j.radar?.fecha ?? null,
+          // Para elegir, solo los días que de verdad se ven (hasta 60 % de nubes).
+          todas: (j.todas ?? []).filter((x) => x.nubes <= 60), radares: j.radares ?? [],
+        })
       })
       .catch(() => { /* sin señal: la leyenda queda sin fecha */ })
     return () => { vivo = false }
@@ -367,10 +380,21 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
       ))}
       {/* 🛰 Satélite: un desplegable, no cinco botones — en celular no caben. */}
       <select className={`af-mapa-sat${capaSat ? ' af-mapa-sat--on' : ''}`} value={capaSat}
-              onChange={(e) => setCapaSat(e.target.value)} aria-label="Imagen satelital" title="Imagen satelital Sentinel (ESA)">
+              onChange={(e) => { setCapaSat(e.target.value); setFechaSat('') }} aria-label="Imagen satelital" title="Imagen satelital Sentinel (ESA)">
         <option value="">🛰 Satélite: foto base</option>
         {CAPAS_SAT.map((c) => <option key={c.key} value={c.key}>🛰 {c.nombre}</option>)}
       </select>
+      {/* 📅 Histórico: la imagen de un día concreto. Óptico: días con ≤ 60 % de
+          nubes del último año; radar: sus pasadas (cada ~12 días). */}
+      {capaSel && infoSat && (
+        <select className={`af-mapa-sat${fechaSat ? ' af-mapa-sat--on' : ''}`} value={fechaSat}
+                onChange={(e) => setFechaSat(e.target.value)} aria-label="Fecha de la imagen" title="Ver la imagen de un día (histórico)">
+          <option value="">📅 Más reciente</option>
+          {(capaSel.radar ? infoSat.radares.map((f) => ({ fecha: f, nubes: -1 })) : infoSat.todas).map((x) => (
+            <option key={x.fecha} value={x.fecha}>📅 {fechaLarga(x.fecha)}{x.nubes >= 0 ? ` · ${x.nubes} % nubes` : ''}</option>
+          ))}
+        </select>
+      )}
     </div>
   )
   const ficha = sel && (
@@ -407,13 +431,13 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
         {grande && !ficha && (
           <div className="af-mapa__leyenda-flot">
             <Leyenda modo={modo} labores={labores} />
-            {capaSel && <LeyendaSat capa={capaSel} info={infoSat} />}
+            {capaSel && <LeyendaSat capa={capaSel} info={infoSat} fecha={fechaSat} />}
           </div>
         )}
       </div>
 
       {!grande && <Leyenda modo={modo} labores={labores} />}
-      {!grande && capaSel && <LeyendaSat capa={capaSel} info={infoSat} />}
+      {!grande && capaSel && <LeyendaSat capa={capaSel} info={infoSat} fecha={fechaSat} />}
       {error && <p className="feedback error">{error}</p>}
 
       {!grande && ficha}
@@ -456,8 +480,10 @@ function Leyenda({ modo, labores }: { modo: Modo; labores: { llave: string; nomb
 }
 
 /** Leyenda de la capa satelital: la escala de colores, la fecha de la imagen y qué significa. */
-function LeyendaSat({ capa, info }: { capa: CapaSat; info: { fecha: string; nubes: number; radar: string | null } | null }) {
-  const fecha = capa.radar ? info?.radar : info?.fecha
+function LeyendaSat({ capa, info, fecha: elegida }: { capa: CapaSat; info: InfoSat | null; fecha: string }) {
+  // Si se eligió un día, se habla de ese día; si no, de la imagen reciente del mosaico.
+  const fecha = elegida || (capa.radar ? info?.radar : info?.fecha) || ''
+  const nubes = elegida ? (info?.todas.find((x) => x.fecha === elegida)?.nubes ?? null) : (info?.nubes ?? null)
   return (
     <div className="af-mapa-satley">
       {capa.ramp && (
@@ -468,8 +494,9 @@ function LeyendaSat({ capa, info }: { capa: CapaSat; info: { fecha: string; nube
       )}
       <span>
         🛰 {capa.nombre} · {capa.radar ? 'Sentinel-1 (radar)' : 'Sentinel-2'}
-        {fecha ? ` · imagen del ${fechaCorta(fecha)}` : ` · últimos ${SAT_DIAS} días`}
-        {!capa.radar && info ? ` · ${info.nubes} % nubes` : ''}. {capa.explica}
+        {fecha ? ` · imagen del ${elegida ? fechaLarga(fecha) : fechaCorta(fecha)}` : ` · últimos ${SAT_DIAS} días`}
+        {!capa.radar && nubes != null ? ` · ${nubes} % nubes` : ''}
+        {elegida ? ' (histórico)' : ''}. {capa.explica}
       </span>
     </div>
   )

@@ -3,7 +3,7 @@ name: managing-fincas
 description: >
   Módulo de ADMINISTRACIÓN DE FINCAS DE CAÑA dentro de la app de ASM (segundo inicio, al lado
   de la maquinaria). Úsala al tocar fincas, suertes administradas, ciclos de corte a corte,
-  paquete de labores, reportes de campo con foto/GPS, «por aceptar», la cuenta del dueño
+  paquete de labores, reportes de campo con foto (GPS apagado de momento), «por aceptar», la cuenta del dueño
   (anticipos, gastos, honorarios, saldo), el resumen por WhatsApp, el ACCESO DIRECTO DEL
   DUEÑO (enlace personal, `PortalDueno`), las llaves del módulo o las tablas `af_*`.
 ---

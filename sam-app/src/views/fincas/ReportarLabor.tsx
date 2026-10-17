@@ -166,8 +166,11 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
           <label>Día en que se hizo
             <input id="af-rep-fecha" type="date" value={fecha} max={hoy} min={ciclo?.fechaCorte} onChange={(e) => setFecha(e.target.value)} />
           </label>
-          <label className="af-form__ancho">Foto de la labor (obligatoria)
-            <input id="af-rep-foto" type="file" accept="image/*" capture="environment" onChange={(e) => {
+          {/* Sin `capture`: el celular ofrece la cámara Y la galería. Con la ubicación
+              apagada (PEDIR_UBICACION) Julio reporta también desde la casa, y ahí la
+              foto es la que tomó en el campo. `key` vacía el campo tras cada envío. */}
+          <label className="af-form__ancho">Foto de la labor (obligatoria) · tómela o escójala de la galería
+            <input key={idReporte} id="af-rep-foto" type="file" accept="image/*" onChange={(e) => {
               const f = e.target.files?.[0] ?? null
               setFoto(f); setVista(f ? URL.createObjectURL(f) : null)
             }} />

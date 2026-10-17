@@ -201,7 +201,8 @@ grant execute on function public.af_asignar_dueno(text, uuid, text), public.af_q
 notify pgrst, 'reload schema';
 
 -- Comprobación: el rol cabe, la tabla existe y está cerrada, y af_datos trae 'duenos'.
-select 'dueno_finca' = any (string_to_array(regexp_replace(pg_get_constraintdef(oid), '[^a-z_,]', '', 'g'), ',')) as rol_en_check
+-- (Aplicada el 17-oct-2026 con 6 pruebas en transacción; la prueba 1 creó un usuario con el rol.)
+select pg_get_constraintdef(oid) like '%dueno_finca%' as rol_en_check
   from pg_constraint where conname = 'app_usuarios_rol_check';
 select count(*) = 0 as tabla_cerrada_a_anon from information_schema.role_table_grants
  where table_name = 'af_finca_duenos' and grantee in ('anon', 'authenticated');

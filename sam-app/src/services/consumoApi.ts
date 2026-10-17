@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase'
 import { unidadDeLabor } from '../lib/texto'
+import type { SesionMaquina } from '../lib/eficiencia'
 
 /**
  * Consumo por máquina, uniendo el papel y la app.
@@ -192,6 +193,41 @@ export async function loadHorasPorRangoMes(desde: string, hasta: string): Promis
   }
 
   return { horas, cayeronASuma, extremos }
+}
+
+/**
+ * Los tramos de `labor_sesiones` de un rango, para el informe de EFICIENCIA
+ * (`lib/eficiencia.ts`, 17-oct-2026): máquina, operario, día y horómetros.
+ * - Paginado de a 1000 (PostgREST trunca a 1000 por defecto: un mes trae ~1.100).
+ * - Sin las labores CANCELADAS: una rechazada no aporta horas (16-oct-2026).
+ */
+export async function loadSesionesRango(desde: string, hasta: string): Promise<SesionMaquina[]> {
+  const canceladas = await idsLaboresCanceladas()
+  const filas: Record<string, unknown>[] = []
+  const PAGINA = 1000
+  for (let desdeFila = 0; desdeFila < 50_000; desdeFila += PAGINA) {
+    const { data, error } = await supabase
+      .from('labor_sesiones')
+      .select('asignacion_id,equipo_codigo,equipo_nombre,operador_id,operador_nombre,fecha,horometro_inicial,horometro_final,horas')
+      .gte('fecha', desde).lte('fecha', hasta)
+      .order('fecha', { ascending: true }).order('id', { ascending: true })
+      .range(desdeFila, desdeFila + PAGINA - 1)
+    if (error) throw new Error(error.message)
+    const lote = (data ?? []) as Record<string, unknown>[]
+    filas.push(...lote)
+    if (lote.length < PAGINA) break
+  }
+  const num = (v: unknown) => (v == null || v === '' ? null : Number(v))
+  return filas
+    .filter((r) => !(r.asignacion_id && canceladas.has(String(r.asignacion_id))))
+    .map((r) => ({
+      asignacionId: r.asignacion_id ? String(r.asignacion_id) : null,
+      equipo: String(r.equipo_codigo ?? ''), equipoNombre: String(r.equipo_nombre ?? r.equipo_codigo ?? ''),
+      operador: String(r.operador_id ?? ''), operadorNombre: String(r.operador_nombre ?? ''),
+      fecha: String(r.fecha ?? ''),
+      horometroInicial: num(r.horometro_inicial), horometroFinal: num(r.horometro_final), horas: num(r.horas),
+    }))
+    .filter((s) => s.equipo && s.fecha)
 }
 
 /**

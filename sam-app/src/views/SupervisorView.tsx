@@ -59,6 +59,7 @@ import { TercerosTab } from './TercerosTab'
 import { ZonasTab } from './ZonasTab'
 import { InsumosModule } from './InsumosModule'
 import { ConsumoDashboardTab } from './ConsumoDashboardTab'
+import { EficienciaTab } from './EficienciaTab'
 import { MaderaTab } from './MaderaTab'
 import { CatalogosInsumosTab } from './CatalogosInsumosTab'
 import { HorometrosTab } from './HorometrosTab'
@@ -72,7 +73,7 @@ import { filaMaestro } from '../lib/areaSuerte'
 import { faltaModalidad, modalidadesDe, modalidadSugerida, useModalidades } from '../lib/modalidad'
 import { laborAprobada, puedeEditarEstaLabor, puedeEditarLabores } from '../lib/editores'
 
-export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'cartera' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos'
+export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'cartera' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos' | 'eficiencia'
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -1268,6 +1269,18 @@ export function SupervisorView({
                 )}
                 {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
+                    className={`more-sheet__item ${supervisorTab === 'eficiencia' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('eficiencia'); setMoreMenuOpen(false) }}
+                  >
+                    <span className="more-sheet__icon">⏱</span>
+                    <div>
+                      <div className="more-sheet__label">Eficiencia</div>
+                      <div className="more-sheet__desc">Días y horas por máquina y por operario, contra el mínimo</div>
+                    </div>
+                  </button>
+                )}
+                {(session.role === 'administracion' || session.role === 'owner') && (
+                  <button
                     className={`more-sheet__item ${supervisorTab === 'taller' ? 'more-sheet__item--active' : ''}`}
                     onClick={() => { setSupervisorTab('taller'); setMoreMenuOpen(false) }}
                   >
@@ -2425,6 +2438,9 @@ export function SupervisorView({
         ) : null}
         {supervisorTab === 'horometros' ? (
           <PantallaSegura nombre="Horómetros"><HorometrosTab /></PantallaSegura>
+        ) : null}
+        {supervisorTab === 'eficiencia' ? (
+          <PantallaSegura nombre="Eficiencia"><EficienciaTab /></PantallaSegura>
         ) : null}
         {supervisorTab === 'movimientos' ? (
           <PantallaSegura nombre="Insumos y materiales"><MovimientosTab /></PantallaSegura>

@@ -32,6 +32,7 @@ export const NAV_OPCIONES: NavOpcion[] = [
   { id: 'tablero', label: 'Tablero', icon: '◫', desc: 'Programación por suerte' },
   { id: 'mapa', label: 'Mapa', icon: '🗺️', desc: 'Plano · sin señal' },
   { id: 'flota', label: 'Flota', icon: '🚙', desc: 'Servicios de escolta' },
+  { id: 'eficiencia', label: 'Eficiencia', icon: '⏱', desc: 'Horas por máquina y operario' },
 ]
 
 /** Cuántos accesos caben cómodamente antes del botón "Más". */

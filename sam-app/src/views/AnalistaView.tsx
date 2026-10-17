@@ -9,6 +9,7 @@ import { InsumosInventarioTab } from './InsumosInventarioTab'
 import { InventarioResumenTab } from './InventarioResumenTab'
 import { BandejaInsumosTab } from './BandejaInsumosTab'
 import { InformeSemanalTab } from './InformeSemanalTab'
+import { EficienciaTab } from './EficienciaTab'
 import { BodegasTab } from './BodegasTab'
 import { ConsumoEquiposTab } from './ConsumoEquiposTab'
 import { MaquinasCrudTab } from './MaquinasCrudTab'
@@ -72,7 +73,7 @@ function AnalistaTablerosView() {
  * administración. La aprobación es el segundo par de ojos; si firma lo suyo, no hay
  * control.
  */
-type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'facturacion' | 'cartera' | 'mapa' | 'tableros'
+type AnalistaTab = 'resumen' | 'bandeja' | 'semanal' | 'eficiencia' | 'avales' | 'inventario' | 'bodegas' | 'catalogos' | 'maquinas' | 'reportes' | 'facturacion' | 'cartera' | 'mapa' | 'tableros'
 
 const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = [
   { key: 'resumen', icon: '📊', label: 'Resumen', desc: 'Qué hay y dónde está' },
@@ -84,6 +85,7 @@ const TABS: { key: AnalistaTab; icon: string; label: string; desc: string }[] = 
   { key: 'catalogos', icon: '📚', label: 'Catálogos', desc: 'Estaciones, placas, motivos' },
   { key: 'maquinas', icon: '🚜', label: 'Máquinas', desc: 'Crear, editar y dar de baja' },
   { key: 'semanal', icon: '📅', label: 'Semanal', desc: 'Horas y gal/hora' },
+  { key: 'eficiencia', icon: '⏱', label: 'Eficiencia', desc: 'Días y h/día por máquina y operario' },
   { key: 'reportes', icon: '📊', label: 'Reportes', desc: 'Consumo + Excel' },
   // Pedido de Iván (2-oct-2026): Diego Urdinola (analista) lleva facturación y cartera.
   { key: 'facturacion', icon: '🧾', label: 'Facturación', desc: 'Soporte, factura y valor' },
@@ -209,6 +211,7 @@ export function AnalistaView({ onLogout }: { onLogout: () => void }) {
           : tab === 'catalogos' ? <CatalogosInsumosTab />
           : tab === 'maquinas' ? <MaquinasCrudTab />
           : tab === 'semanal' ? <InformeSemanalTab />
+          : tab === 'eficiencia' ? <PantallaSegura nombre="Eficiencia"><EficienciaTab /></PantallaSegura>
           : tab === 'reportes' ? <ConsumoEquiposTab />
           : tab === 'facturacion' ? <FacturacionTab />
           : tab === 'cartera' ? <CarteraTab />

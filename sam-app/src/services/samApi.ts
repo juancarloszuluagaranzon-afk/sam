@@ -4278,21 +4278,23 @@ export async function setTarifaManualBulk(
  * Precio manual por unidad (ha u hora) para labores sin tarifa que sirva
  * (18-oct-2026). Se guarda como `[PRECIO_MANUAL:<precio>]` en las observaciones,
  * igual que «Forzar tarifa», y `lib/tarifas.valorarLinea` lo lee antes que
- * cualquier tarifa. Reemplaza una tarifa forzada anterior.
+ * cualquier tarifa. Reemplaza una tarifa forzada anterior. Con `precio = null`
+ * se QUITA el precio manual y la línea vuelve a su tarifa (casilla borrada).
  */
 export async function setPrecioManualBulk(
   ids: string[],
-  precio: number,
+  precio: number | null,
   editadoPor?: string,
 ): Promise<void> {
   if (ids.length === 0) return
-  if (!Number.isFinite(precio) || precio <= 0) throw new Error('El precio debe ser mayor que cero')
+  if (precio != null && (!Number.isFinite(precio) || precio <= 0)) throw new Error('El precio debe ser mayor que cero')
   const { data, error: eLeer } = await supabase.from('asignaciones').select('id, observaciones').in('id', ids)
   if (eLeer || !data) throw new Error('No se pudieron leer las observaciones actuales')
 
   for (const row of data) {
-    const notas = String(row.observaciones || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
-    const nuevas = notas ? `${notas} [PRECIO_MANUAL:${precio}]` : `[PRECIO_MANUAL:${precio}]`
+    const sinPrecio = String(row.observaciones || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
+    const notas = precio == null ? sinPrecio : sinPrecio.replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+    const nuevas = precio == null ? notas : notas ? `${notas} [PRECIO_MANUAL:${precio}]` : `[PRECIO_MANUAL:${precio}]`
     const payload: Record<string, unknown> = { observaciones: nuevas }
     if (editadoPor) payload.editado_por = editadoPor
     const { error } = await supabase.from('asignaciones').update(payload).eq('id', row.id)

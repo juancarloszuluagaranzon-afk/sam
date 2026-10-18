@@ -298,6 +298,19 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     }
   }
 
+  // Precio de UNA línea desde su casilla (18-oct-2026): número = precio manual;
+  // null = quitarlo y volver a la tarifa. Se guarda en la base y luego en pantalla.
+  const guardarPrecioLinea = useCallback(async (a: Assignment, precio: number | null) => {
+    await setPrecioManualBulk([a.id], precio, session?.id)
+    setAssignments((prev) => prev.map((x) => {
+      if (x.id !== a.id) return x
+      const sinPrecio = String(x.notes || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
+      if (precio == null) return { ...x, notes: sinPrecio, manualPrice: null }
+      const notas = sinPrecio.replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+      return { ...x, notes: notas ? `${notas} [PRECIO_MANUAL:${precio}]` : `[PRECIO_MANUAL:${precio}]`, manualPrice: precio }
+    }))
+  }, [session?.id, setAssignments])
+
   async function ponerPrecioManual() {
     const ids = seleccion.map((a) => a.id)
     // Se aceptan puntos de miles («85.000») o el número pelado.
@@ -517,7 +530,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               <th>Máquina</th>
               <th>Operario</th>
               <th className="num">Cant.</th>
-              <th className="num">Valor</th>
+              <th className="num" title="Precio por hectárea (o por hora / hm según la labor). Toca la casilla para cambiarlo.">Valor/ha</th>
+              <th className="num">Subtotal</th>
               <th>Soporte</th>
               <th>Factura</th>
             </tr>
@@ -532,13 +546,15 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 sop={a.soporteId ? docPorId.get(a.soporteId) : undefined}
                 fac={a.facturaId ? docPorId.get(a.facturaId) : undefined}
                 modalidades={modalidades}
+                onPrecio={guardarPrecioLinea}
+                onErrorPrecio={setError}
                 onToggle={toggle}
                 onAbrir={verArchivo}
                 onEdit={onEdit}
               />
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={10} className="validacion-empty">
+              <tr><td colSpan={12} className="validacion-empty">
                 {search.trim() ? 'Sin coincidencias.' : 'No hay labores en esta etapa.'}
               </td></tr>
             )}
@@ -597,13 +613,15 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
  * 400 filas en pantalla, y marcar UNA las redibujaba todas (más de un segundo
  * por clic). Ahora solo se redibuja la que cambió.
  */
-const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onToggle, onAbrir, onEdit }: {
+const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onPrecio, onErrorPrecio, onToggle, onAbrir, onEdit }: {
   a: Assignment
   sel: boolean
   v?: Valoracion
   sop?: DocumentoFact
   fac?: DocumentoFact
   modalidades: MapaModalidades
+  onPrecio: (a: Assignment, precio: number | null) => Promise<void>
+  onErrorPrecio: (m: string) => void
   onToggle: (id: string) => void
   onAbrir: (d: DocumentoFact) => void
   onEdit?: (a: Assignment) => void
@@ -631,6 +649,7 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
       <td>{a.equipmentName || a.equipmentCode || '—'}</td>
       <td>{a.operatorName || '—'}</td>
       <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
+      <td className="num"><CeldaPrecio a={a} v={v} bloqueada={facturada(a)} onPrecio={onPrecio} onError={onErrorPrecio} /></td>
       <td className="num"><CeldaValor v={v} /></td>
       <td>
         {sop ? <ChipDoc doc={sop} onAbrir={onAbrir} />
@@ -645,6 +664,90 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
     </tr>
   )
 })
+
+const conMiles = (n: number) => n.toLocaleString('es-CO', { maximumFractionDigits: 2 })
+/** «85.000» o «85000» → 85000; «1.250,5» → 1250.5 (en Colombia el punto es de miles). */
+const leerPesos = (t: string) => Number(t.replace(/[$\s]/g, '').replace(/\./g, '').replace(',', '.'))
+
+/**
+ * El precio por unidad de UNA línea, editable ahí mismo (18-oct-2026, pedido de
+ * Iván: «que se pueda modificar desde cada casilla»). Al salir de la casilla o con
+ * Enter se guarda como precio manual; borrarla quita el precio manual y la línea
+ * vuelve a su tarifa; Esc deshace. Ya facturada no se cambia: el valor de la
+ * factura ya quedó puesto (primero se quita la factura).
+ */
+function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
+  a: Assignment; v?: Valoracion; bloqueada: boolean
+  onPrecio: (a: Assignment, precio: number | null) => Promise<void>; onError: (m: string) => void
+}) {
+  const actual = v?.precio ?? null
+  const manual = /\[PRECIO_MANUAL:/i.test(a.notes ?? '')
+  const unidad = v?.unidad ?? 'ha'
+  const [texto, setTexto] = useState(actual != null ? conMiles(actual) : '')
+  const [estado, setEstado] = useState<'quieto' | 'guardando' | 'listo'>('quieto')
+  useEffect(() => { setTexto(actual != null ? conMiles(actual) : '') }, [actual])
+  useEffect(() => {
+    if (estado !== 'listo') return
+    const t = window.setTimeout(() => setEstado('quieto'), 1500)
+    return () => window.clearTimeout(t)
+  }, [estado])
+
+  if (bloqueada) {
+    return (
+      <span className="nowrap subtle-copy" title="Ya facturada: para cambiar el precio, primero quita la factura.">
+        {actual != null ? `${pesosCortos(actual)}/${unidad}` : '—'}
+      </span>
+    )
+  }
+
+  const deshacer = () => setTexto(actual != null ? conMiles(actual) : '')
+  async function confirmar() {
+    const limpio = texto.trim()
+    let nuevo: number | null
+    if (!limpio) {
+      if (!manual) { deshacer(); return }   // vacía y sin precio manual: nada que quitar
+      nuevo = null
+    } else {
+      const val = leerPesos(limpio)
+      if (!Number.isFinite(val) || val <= 0) { deshacer(); onError('Escribe un precio mayor que cero (por ejemplo 85.000).'); return }
+      if (actual != null && Math.abs(val - actual) < 0.005) { deshacer(); return }   // no cambió
+      nuevo = val
+    }
+    setEstado('guardando')
+    try {
+      await onPrecio(a, nuevo)
+      setEstado('listo')
+    } catch (e) {
+      setEstado('quieto'); deshacer()
+      onError(`No se pudo guardar el precio de ${a.haciendaName} · ${a.suerte}. (${(e as Error).message})`)
+    }
+  }
+
+  const de = manual ? 'Precio manual' : v?.valor != null ? [v.razonSocial, v.cliente, v.etiqueta].filter(Boolean).join(' · ') : 'Sin tarifa'
+  return (
+    <span className="fact-precio">
+      <input
+        className={`fact-precio__in${manual ? ' is-manual' : ''}${actual == null ? ' is-vacio' : ''}`}
+        inputMode="decimal"
+        value={texto}
+        placeholder={`$/${unidad}`}
+        aria-label={`Valor por ${unidad} de ${a.labor} en ${a.haciendaName} · ${a.suerte}`}
+        title={`${de}. Escribe otro valor y presiona Enter; bórralo para volver a la tarifa.`}
+        disabled={estado === 'guardando'}
+        onChange={(e) => setTexto(e.target.value)}
+        onFocus={(e) => e.currentTarget.select()}
+        onBlur={() => void confirmar()}
+        onKeyDown={(e) => {
+          const el = e.currentTarget
+          if (e.key === 'Enter') el.blur()
+          if (e.key === 'Escape') { deshacer(); setTimeout(() => el.blur(), 0) }
+        }}
+      />
+      {unidad !== 'ha' && <small>/{unidad}</small>}
+      {estado === 'listo' && <span className="fact-precio__ok" aria-label="Guardado">✓</span>}
+    </span>
+  )
+}
 
 /** Valor de la línea; sin tarifa sale marcado (nunca $0 escondido). Al pasar el dedo, de dónde salió. */
 function CeldaValor({ v }: { v?: Valoracion }) {

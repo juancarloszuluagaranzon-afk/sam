@@ -139,7 +139,8 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
       cliente: 'Manual',
       etiqueta: 'Precio manual',
       unidad: base.unidad,
-      nota: 'Precio ingresado manualmente',
+      // Sin nota: la nota pinta el «*» de tarifa supuesta, y este precio lo puso alguien a propósito.
+      nota: null,
     }
   }
 

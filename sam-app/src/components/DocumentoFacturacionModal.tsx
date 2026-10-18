@@ -1,3 +1,4 @@
+import SearchableSelect from './SearchableSelect'
 import { useEffect, useMemo, useState } from 'react'
 import { loadCatalogo } from '../services/samApi'
 import {
@@ -124,14 +125,13 @@ export function DocumentoFacturacionModal({
         {modo === 'existente' ? (
           <label className="assignment-detail-field">
             <span>{tipo === 'SOPORTE' ? 'Soporte' : 'Factura'}</span>
-            <select id="doc-existente" value={elegido} onChange={(e) => setElegido(e.target.value)} disabled={ocupado}>
-              <option value="">Seleccionar…</option>
-              {propios.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {[d.clase ?? d.razonSocial, d.numero, d.cliente, d.fecha].filter(Boolean).join(' · ')}
-                </option>
-              ))}
-            </select>
+            <SearchableSelect
+              value={elegido}
+              onChange={setElegido}
+              disabled={ocupado}
+              placeholder={tipo === 'SOPORTE' ? 'Soporte' : 'Factura'}
+              options={propios.map((d) => ({ value: d.id, label: [d.clase ?? d.razonSocial, d.numero, d.cliente, d.fecha].filter(Boolean).join(' · ') }))}
+            />
           </label>
         ) : (
           <>

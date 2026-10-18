@@ -8,7 +8,8 @@ import {
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
 import { DocumentoFacturacionModal } from '../components/DocumentoFacturacionModal'
-import { pesosCortos, useTarifas, valorarLinea, type Valoracion } from '../lib/tarifas'
+import { EditarLineaFacturacion, type CambioLinea } from '../components/EditarLineaFacturacion'
+import { clienteDeducido, clienteForzado, pesosCortos, useTarifas, valorarLinea, type Valoracion } from '../lib/tarifas'
 import { ingenioNombre } from '../data/ingenios'
 import {
   matchesSummaryFilter,
@@ -311,6 +312,25 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     }))
   }, [session?.id, setAssignments])
 
+  // ── Editar UNA línea: a quién se factura, soporte y factura (18-oct-2026) ──
+  const [editandoId, setEditandoId] = useState<string | null>(null)
+  const editando = editandoId ? assignments.find((a) => a.id === editandoId) ?? null : null
+  const abrirEdicion = useCallback((a: Assignment) => setEditandoId(a.id), [])
+  function lineaGuardada(id: string, c: CambioLinea, msg: string) {
+    setAssignments((prev) => prev.map((a) => {
+      if (a.id !== id) return a
+      let x = a
+      if (c.cliente !== undefined) {
+        const notas = String(x.notes || '').replace(/\[CLIENTE:[A-Z_]+\]/, '').trim()
+        x = { ...x, notes: c.cliente == null ? notas : notas ? `${notas} [CLIENTE:${c.cliente}]` : `[CLIENTE:${c.cliente}]` }
+      }
+      if (c.soporte !== undefined) x = { ...x, soporteId: c.soporte?.id ?? null }
+      if (c.factura !== undefined) x = { ...x, facturaId: c.factura?.id ?? null, facturaNumero: c.factura?.numero ?? null }
+      return x
+    }))
+    setInfo(msg)
+  }
+
   async function ponerPrecioManual() {
     const ids = seleccion.map((a) => a.id)
     // Se aceptan puntos de miles («85.000») o el número pelado.
@@ -532,6 +552,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               <th className="num">Cant.</th>
               <th className="num" title="Precio por hectárea (o por hora / hm según la labor). Toca la casilla para cambiarlo.">Valor/ha</th>
               <th className="num">Subtotal</th>
+              <th title="A quién se le factura. Tócalo para cambiarlo.">Cliente</th>
               <th>Soporte</th>
               <th>Factura</th>
             </tr>
@@ -547,6 +568,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 fac={a.facturaId ? docPorId.get(a.facturaId) : undefined}
                 modalidades={modalidades}
                 onPrecio={guardarPrecioLinea}
+                onEditarFact={abrirEdicion}
                 onErrorPrecio={setError}
                 onToggle={toggle}
                 onAbrir={verArchivo}
@@ -554,7 +576,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               />
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={12} className="validacion-empty">
+              <tr><td colSpan={13} className="validacion-empty">
                 {search.trim() ? 'Sin coincidencias.' : 'No hay labores en esta etapa.'}
               </td></tr>
             )}
@@ -589,6 +611,19 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         </details>
       )}
 
+      {editando && session && (
+        <EditarLineaFacturacion
+          key={editando.id}
+          a={editando}
+          clienteAuto={clienteDeducido(editando, haciendasRA)}
+          documentos={documentos}
+          usuario={session.id}
+          onCerrar={() => setEditandoId(null)}
+          onGuardado={(c, msg) => lineaGuardada(editando.id, c, msg)}
+          onNuevo={(tipo) => { setSelected(new Set([editando.id])); setEditandoId(null); setModal(tipo) }}
+        />
+      )}
+
       {modal && session && (
         <DocumentoFacturacionModal
           tipo={modal}
@@ -613,7 +648,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
  * 400 filas en pantalla, y marcar UNA las redibujaba todas (más de un segundo
  * por clic). Ahora solo se redibuja la que cambió.
  */
-const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onPrecio, onErrorPrecio, onToggle, onAbrir, onEdit }: {
+const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onPrecio, onErrorPrecio, onEditarFact, onToggle, onAbrir, onEdit }: {
   a: Assignment
   sel: boolean
   v?: Valoracion
@@ -622,6 +657,7 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
   modalidades: MapaModalidades
   onPrecio: (a: Assignment, precio: number | null) => Promise<void>
   onErrorPrecio: (m: string) => void
+  onEditarFact: (a: Assignment) => void
   onToggle: (id: string) => void
   onAbrir: (d: DocumentoFact) => void
   onEdit?: (a: Assignment) => void
@@ -652,14 +688,22 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
       <td className="num"><CeldaPrecio a={a} v={v} bloqueada={facturada(a)} onPrecio={onPrecio} onError={onErrorPrecio} /></td>
       <td className="num"><CeldaValor v={v} /></td>
       <td>
+        <button type="button" className={`fact-cliente${clienteForzado(a) ? ' is-manual' : ''}`} onClick={() => onEditarFact(a)}
+                title={clienteForzado(a) ? 'Cliente puesto a mano. Toca para cambiarlo.' : 'Sale del ingenio de la suerte. Toca para cambiarlo.'}>
+          {v?.cliente ?? '—'}
+        </button>
+      </td>
+      <td className="nowrap">
         {sop ? <ChipDoc doc={sop} onAbrir={onAbrir} />
           : a.soporteId ? <span className="factura-chip">…</span>
           : <span className="subtle-copy">—</span>}
+        <button type="button" className="fact-lapiz" onClick={() => onEditarFact(a)} title="Cambiar el soporte de esta línea" aria-label="Cambiar soporte">✏️</button>
       </td>
-      <td>
+      <td className="nowrap">
         {fac ? <ChipDoc doc={fac} onAbrir={onAbrir} />
           : conFactura(a.facturaNumero) ? <span className="factura-chip" title="Número puesto antes de existir los documentos">{a.facturaNumero}</span>
           : <span className="subtle-copy">—</span>}
+        <button type="button" className="fact-lapiz" onClick={() => onEditarFact(a)} title="Cambiar la factura de esta línea" aria-label="Cambiar factura">✏️</button>
       </td>
     </tr>
   )

@@ -111,6 +111,22 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
   revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
+- 🆕 **18-oct-2026 — Editar UNA línea** (pedido de Carlos David): columna **Cliente** (tocarla) y
+  ✏️ junto al soporte y a la factura abren `components/EditarLineaFacturacion`:
+  - **A quién se factura**: `[CLIENTE:<clave de NOMBRE_CLIENTE>]` en observaciones
+    (`setClienteFacturaBulk`; `lib/tarifas.clienteForzado` manda sobre el ingenio de la suerte y
+    con eso cambia la tarifa). «Automático» = quitarlo (`clienteDeducido`). El precio manual
+    conserva el cliente (antes decía «Manual»).
+  - **Soporte / factura**: escoger otro documento existente = `fact_vincular(..., reemplazar=true)`
+    (pide confirmación si sale de una factura); «Sin …» = `fact_desvincular`; «+ Crear … nueva»
+    abre `DocumentoFacturacionModal` con esa sola línea marcada. Aviso (no bloquea) si el cliente
+    de la línea no es el de su factura. Si falla a la mitad, lo guardado se refleja y se avisa.
+  - El selector de documentos existentes del formulario pasó a `SearchableSelect`.
+  - ⚠️ `SearchableSelect` ya trae su primera fila «vacía» con el texto del `placeholder`: no
+    agregar otra opción con `value: ''` (sale repetida). Aquí el placeholder ES la opción vacía.
+  - Probado en pantalla con labores de mentira (uuid inexistentes) y un usuario de mentira: el
+    cliente cambia la tarifa (San Carlos $85.786 → Riopaila $97.364) y vuelve a automático; la base
+    rechazó `fact_vincular` (SIN_PERMISO) y la ventana lo mostró sin tocar la línea.
 - Facturación arranca en TODO el realizado (4.864 labores / 26.961,76 ha al 2-oct) con tarjetas
   por etapa.
 - **Modalidad histórica**: el 2-oct se puso la sugerida a las 4.474 realizadas sin modalidad

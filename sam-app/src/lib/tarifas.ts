@@ -107,8 +107,26 @@ export function useTarifas(): { tarifas: Tarifa[]; haciendasRA: Set<string> } {
 
 const haDe = (a: { executedArea: number; area: number }) => (a.executedArea > 0 ? a.executedArea : a.area)
 
+/**
+ * Cliente puesto A MANO en esta línea (18-oct-2026, pedido de Carlos David):
+ * `[CLIENTE:SAN_CARLOS]` en las observaciones, igual que `[TARIFA:…]`. Manda
+ * sobre el que se deduce del ingenio. null = automático.
+ */
+export function clienteForzado(a: { notes?: string | null }): string | null {
+  const m = a.notes?.match(/\[CLIENTE:([A-Z_]+)\]/)
+  return m && NOMBRE_CLIENTE[m[1]] ? m[1] : null
+}
+
+/** El cliente que sale solo, por el ingenio de la suerte (sin lo puesto a mano). */
+export function clienteDeducido(a: Assignment, haciendasRA: Set<string>): string | null {
+  const c = clientesDe({ ...a, notes: '' }, haciendasRA)[0]
+  return c ? NOMBRE_CLIENTE[c] : null
+}
+
 /** A qué cliente(s) de la tabla se le cobra esta labor, en orden de preferencia. */
 function clientesDe(a: Assignment, haciendasRA: Set<string>): string[] {
+  const forzado = clienteForzado(a)
+  if (forzado) return [forzado]
   if (a.cliente === 'proveedores') return ['PROVEEDOR']
   switch (a.ingenioId) {
     case 'pichichi': return ['PICHICHI']
@@ -136,7 +154,8 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
       precio: manualP,
       valor: base.cantidad * manualP,
       razonSocial: empresa || 'AGROMORALES',
-      cliente: 'Manual',
+      // A quién se le cobra no cambia por poner el precio a mano.
+      cliente: NOMBRE_CLIENTE[clientesDe(a, haciendasRA)[0]] ?? null,
       etiqueta: 'Precio manual',
       unidad: base.unidad,
       // Sin nota: la nota pinta el «*» de tarifa supuesta, y este precio lo puso alguien a propósito.

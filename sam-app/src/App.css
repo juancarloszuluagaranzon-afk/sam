@@ -9822,6 +9822,13 @@ td.planilla-vacio:hover { background: #fde047; }
 .fact-precio__in.is-manual { font-weight: 700; color: var(--color-brand); }
 .fact-precio__in.is-vacio { border-style: dashed; }
 .fact-precio__ok { color: var(--color-brand); font-weight: 700; }
+/* Cliente y lápices de soporte/factura por línea (18-oct-2026). */
+.fact-cliente { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left;
+  text-decoration: underline dotted; text-underline-offset: 3px; }
+.fact-cliente:hover { color: var(--color-brand); }
+.fact-cliente.is-manual { font-weight: 700; color: var(--color-brand); }
+.fact-lapiz { background: none; border: none; cursor: pointer; opacity: .5; padding: 0 2px; margin-left: 4px; font-size: .85rem; }
+.fact-lapiz:hover, .fact-lapiz:focus-visible { opacity: 1; }
 
 /* Facturación: con qué empresa se factura (2-oct-2026) */
 .fact-empresa { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }

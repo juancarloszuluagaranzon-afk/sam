@@ -21,7 +21,26 @@ export const ESTADOS_CARTERA: { id: EstadoCartera; titulo: string; detalle: stri
 ]
 export const infoEstado = (e: EstadoCartera) => ESTADOS_CARTERA.find((x) => x.id === e) ?? ESTADOS_CARTERA[0]
 
+
+export interface AcuerdoPago {
+  fechaAcuerdo: string
+  compromisoFecha: string
+  compromisoMonto: number
+  condiciones: string
+  observaciones?: string
+  creadoPor?: string
+}
+
+export function parseAcuerdoPago(nota?: string | null): AcuerdoPago | null {
+  if (!nota) return null
+  const m = nota.match(/\[ACUERDO:(\{.*\})\]/s)
+  if (!m) return null
+  try { return JSON.parse(m[1]) as AcuerdoPago } catch { return null }
+}
+
 export interface FacturaCartera {
+  nota?: string | null
+  acuerdoPago?: AcuerdoPago | null
   id: string
   numero: string
   fecha: string
@@ -68,6 +87,8 @@ function mapFactura(r: Record<string, unknown>): FacturaCartera {
     ultimoPago: r.ultimo_pago ? String(r.ultimo_pago) : null, nPagos: num(r.n_pagos),
     nLineas: num(r.n_lineas), cantidad: num(r.cantidad), diasCartera: num(r.dias_cartera), diasMora: num(r.dias_mora),
     estado: (r.estado as EstadoCartera) ?? 'AL_DIA', archivoPath: r.archivo_path ? String(r.archivo_path) : null,
+    nota: r.nota ? String(r.nota) : null,
+    acuerdoPago: parseAcuerdoPago(r.nota ? String(r.nota) : null),
   }
 }
 
@@ -136,3 +157,16 @@ export async function actualizarFactura(id: string, cambios: { valor?: number | 
 
 export const pesos = (n: number | null | undefined) =>
   n == null ? '—' : `$${Math.round(n).toLocaleString('es-CO')}`
+
+
+export async function registrarAcuerdoPago(
+  facturaId: string,
+  acuerdo: AcuerdoPago,
+  notaExistente?: string | null
+): Promise<void> {
+  const jsonStr = JSON.stringify(acuerdo)
+  const limpia = (notaExistente || '').replace(/\[ACUERDO:\{.*\}\]/s, '').trim()
+  const nuevaNota = limpia ? `${limpia} [ACUERDO:${jsonStr}]` : `[ACUERDO:${jsonStr}]`
+  const { error } = await supabase.from('fact_documentos').update({ nota: nuevaNota }).eq('id', facturaId)
+  if (error) throw new Error(sinCodigo(error.message) || 'No se pudo registrar el acuerdo de pago')
+}

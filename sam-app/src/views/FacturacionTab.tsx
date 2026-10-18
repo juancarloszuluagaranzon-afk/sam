@@ -1,7 +1,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
-import { executionDateKey, setModalidadBulk, setTarifaManualBulk } from '../services/samApi'
+import { executionDateKey, setModalidadBulk, setPrecioManualBulk, setTarifaManualBulk } from '../services/samApi'
 import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades, type MapaModalidades } from '../lib/modalidad'
 import {
   RAZONES_SOCIALES, abrirArchivo, desvincularDocumento, loadDocumentos,
@@ -58,6 +58,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const [soloSinModalidad, setSoloSinModalidad] = useState(false)
   const [modalidadInput, setModalidadInput] = useState('')
   const [tarifaInput, setTarifaInput] = useState('')
+  const [precioManualInput, setPrecioManualInput] = useState('')
   const [documentos, setDocumentos] = useState<DocumentoFact[]>([])
   const [modal, setModal] = useState<TipoDocumento | null>(null)
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
@@ -282,7 +283,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       const set = new Set(ids)
       setAssignments((prev) => prev.map((a) => {
         if (!set.has(a.id)) return a
-        const notas = String(a.notes || '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+        const notas = String(a.notes || '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
         const nuevas = notas ? `${notas} [TARIFA:${tarifaInput}]` : `[TARIFA:${tarifaInput}]`
         return { ...a, notes: nuevas }
       }))
@@ -292,6 +293,35 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     } catch (err) {
       const e = err as { message?: string }
       setError(`No se pudo asignar la tarifa. (${e?.message ?? 'error'})`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function ponerPrecioManual() {
+    const ids = seleccion.map((a) => a.id)
+    // Se aceptan puntos de miles («85.000») o el número pelado.
+    const val = Number(precioManualInput.replace(/\./g, '').replace(',', '.'))
+    if (ids.length === 0 || !Number.isFinite(val) || val <= 0) return
+    const unidad = laboresSel.length === 1 && esPorHoras(laboresSel[0]) ? 'hora' : 'ha'
+    if (!window.confirm(`¿Poner precio manual de ${pesosCortos(val)} por ${unidad} a ${ids.length} labor(es)? Reemplaza la tarifa que tengan.`)) return
+    setBusy(true)
+    setError('')
+    try {
+      await setPrecioManualBulk(ids, val, session?.id)
+      const set = new Set(ids)
+      setAssignments((prev) => prev.map((a) => {
+        if (!set.has(a.id)) return a
+        const notas = String(a.notes || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+        const nuevas = notas ? `${notas} [PRECIO_MANUAL:${val}]` : `[PRECIO_MANUAL:${val}]`
+        return { ...a, notes: nuevas, manualPrice: val }
+      }))
+      setInfo(`Precio manual ${pesosCortos(val)} por ${unidad} asignado a ${ids.length} labor(es).`)
+      setSelected(new Set())
+      setPrecioManualInput('')
+    } catch (err) {
+      const e = err as { message?: string }
+      setError(`No se pudo guardar el precio manual. (${e?.message ?? 'error'})`)
     } finally {
       setBusy(false)
     }
@@ -453,7 +483,25 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               </button>
             </>
           )}
-          {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad o tarifa, marca una sola labor.</span>}
+          {laboresSel.length === 1 && (
+            <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 8 }}>
+              <input
+                id="fact-precio-manual"
+                className="base-input"
+                inputMode="numeric"
+                style={{ width: 130, padding: '2px 6px', fontSize: '0.85rem' }}
+                placeholder={`$ por ${esPorHoras(laboresSel[0]) ? 'hora' : 'ha'}`}
+                aria-label={`Precio manual por ${esPorHoras(laboresSel[0]) ? 'hora' : 'hectárea'} de ${laboresSel[0]}`}
+                value={precioManualInput}
+                onChange={(e) => setPrecioManualInput(e.target.value)}
+                disabled={busy}
+              />
+              <button type="button" className="inline-button" onClick={() => void ponerPrecioManual()} disabled={busy || !precioManualInput}>
+                Precio manual
+              </button>
+            </span>
+          )}
+          {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad, la tarifa o el precio manual, marca una sola labor.</span>}
         </div>
       )}
 

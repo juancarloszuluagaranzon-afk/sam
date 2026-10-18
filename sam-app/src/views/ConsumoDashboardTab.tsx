@@ -361,7 +361,7 @@ export function ConsumoDashboardTab() {
       {cargando ? <p className="muted-text">Cargando…</p> : (
         <>
           {/* ── La serie: de dónde venimos ─────────────────────────────────── */}
-          <p className="ins-res__lbl" style={{ marginTop: 14 }}>Combustible por mes</p>
+          <p className="ins-res__lbl" style={{ marginTop: 14 }}>Histórico mensual de combustible</p>
           <div className="cons-serie">
             {meses.map((m) => (
               <button key={m.mes} type="button"
@@ -383,7 +383,7 @@ export function ConsumoDashboardTab() {
           <div className="panel-title split" style={{ marginTop: 20 }}>
             <h3 style={{ margin: 0 }}>{etiquetaPeriodo}</h3>
             <button type="button" className="primary-button" onClick={() => void exportar()} disabled={busy}>
-              ⬇ Excel
+              ⬇ Exportar a Excel
             </button>
           </div>
 
@@ -430,6 +430,7 @@ export function ConsumoDashboardTab() {
                 porSuma: !m.porTanque && sinRango.includes(m.codigo),
                 marca: (() => { const n = comentarios.filter((c) => c.maquina === m.codigo).length; return n ? `💬 ${n}` : undefined })(),
                 rango, nivel: m.horasIncompletas ? null : nivelDe(m.galHora, rango),
+                porTanque: m.porTanque,
               }
             })}
             onVer={(codigo) => setVerMaq(codigo)}

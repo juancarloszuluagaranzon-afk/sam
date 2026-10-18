@@ -37,6 +37,8 @@ export interface ColumnaGalHora {
   marca?: string
   /** Columna escogida (resaltada). */
   sel?: boolean
+  /** Si el consumo viene de tanque a tanque. */
+  porTanque?: boolean
 }
 
 const ALTO_BARRAS = 170 // px del área de barras
@@ -103,8 +105,9 @@ export function GraficaGalHora({ columnas, onVer, titulo = 'Galones y galones po
           <div className="ggh__rot">{rotuloColumna}</div>
           {cols.map((c) => (
             <div key={c.codigo} className={`ggh__cel ggh__cel--maq${onVer ? ' ggh__col--ver' : ''}`}
-                 onClick={onVer ? () => onVer(c.codigo) : undefined}>
-              {c.nombre}{c.marca && <span className="ggh__marca">{c.marca}</span>}
+                 onClick={onVer ? () => onVer(c.codigo) : undefined}
+                 title={c.porTanque ? 'Consumo calculado tanque a tanque' : undefined}>
+              {c.nombre}{c.porTanque && <span className="ggh__tag">⛽</span>}{c.marca && <span className="ggh__marca">{c.marca}</span>}
             </div>
           ))}
 

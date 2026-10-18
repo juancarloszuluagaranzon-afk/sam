@@ -29,3 +29,13 @@ Para evitar una migración DDL y permitir que Carlos David (o administración) p
 *   Soporte completo offline-first sin cambios en los tipos de Dexie.
 *   Retrocompatibilidad del 100% con la tabla de `asignaciones` y sin tocar `CLAUDE.md`.
 *   Si una tarifa manual debe quitarse, basta con editar las observaciones en el modal de detalle y borrar la etiqueta `[TARIFA:...]`.
+
+## 🆕 18-oct-2026: PRECIO MANUAL (cuando ninguna tarifa sirve)
+
+Para labores sin tarifa aplicable se escribe el precio a mano (por **ha**, o por **hora** si la labor es por horas, p. ej. OFICIOS VARIOS).
+*   **Etiqueta:** `[PRECIO_MANUAL:<precio>]` en `observaciones` (acepta decimales). `setPrecioManualBulk()` en `samApi.ts`; pide confirmación en pantalla.
+*   **Prioridad:** `valorarLinea()` la mira **antes** que `[TARIFA:...]` y que el motor: valor = cantidad × precio, etiqueta «Precio manual», razón social = la empresa del filtro o AGROMORALES.
+*   **Se excluyen entre sí:** poner precio manual borra `[TARIFA:...]` y forzar tarifa borra `[PRECIO_MANUAL:...]`, en la base y en pantalla.
+*   **UI:** Facturación → marcar labores de UNA sola labor → casilla «$ por ha/hora» + «Precio manual» (aparece haya o no tarifas para esa labor).
+*   ⚠️ Lo trajo OpenClaw el 18-oct con dos fallas que se corrigieron antes de publicar: el precio solo cambiaba la pantalla (no se guardaba) y el botón estaba dentro del bloque que solo aparece cuando SÍ hay tarifas.
+

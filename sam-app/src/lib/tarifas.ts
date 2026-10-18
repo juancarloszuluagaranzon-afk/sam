@@ -128,6 +128,21 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
   const porHoras = esPorHoras(a.labor)
   const base: Valoracion = { valor: null, precio: null, cantidad: haDe(a), unidad: porHoras ? 'h' : 'ha', razonSocial: null, cliente: null, etiqueta: null, nota: null }
 
+  const customPriceMatch = a.notes?.match(/\[PRECIO_MANUAL:(\d+(?:\.\d+)?)\]/i)
+  const manualP = a.manualPrice ?? (customPriceMatch ? Number(customPriceMatch[1]) : null)
+  if (manualP != null && manualP > 0) {
+    return {
+      ...base,
+      precio: manualP,
+      valor: base.cantidad * manualP,
+      razonSocial: empresa || 'AGROMORALES',
+      cliente: 'Manual',
+      etiqueta: 'Precio manual',
+      unidad: base.unidad,
+      nota: 'Precio ingresado manualmente',
+    }
+  }
+
   const manualMatch = a.notes?.match(/\[TARIFA:([a-f0-9\-]{36})\]/i)
   if (manualMatch) {
     const t = tarifas.find((x) => x.id === manualMatch[1])

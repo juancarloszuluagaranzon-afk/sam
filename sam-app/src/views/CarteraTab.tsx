@@ -5,8 +5,8 @@ import { abrirArchivo } from '../services/facturacionApi'
 import { aligerarDocumento } from '../lib/pdfLigero'
 import { datosSiigo, siigoConectado, traerEstadoSiigo, verPdfSiigo, type DatosSiigo } from '../services/siigoApi'
 import {
-  ESTADOS_CARTERA, actualizarFactura, anularPago, infoEstado, loadCartera, loadPagos, pesos, registrarPago,
-  type EstadoCartera, type FacturaCartera, type Pago,
+  ESTADOS_CARTERA, actualizarFactura, anularPago, infoEstado, loadCartera, loadPagos, pesos, registrarPago, registrarAcuerdoPago,
+  type EstadoCartera, type FacturaCartera, type Pago, type AcuerdoPago,
 } from '../services/carteraApi'
 
 /**
@@ -19,7 +19,7 @@ export function CarteraTab() {
   const { session, todayKey, setError, setInfo } = useAppData()
   const [facturas, setFacturas] = useState<FacturaCartera[]>([])
   const [cargando, setCargando] = useState(true)
-  const [filtro, setFiltro] = useState<EstadoCartera | 'PENDIENTES' | 'TODAS'>('PENDIENTES')
+  const [filtro, setFiltro] = useState<EstadoCartera | 'PENDIENTES' | 'TODAS' | 'CON_ACUERDO' | 'ALERTAS_COBRO'>('PENDIENTES')
   const [buscar, setBuscar] = useState('')
   const [abierta, setAbierta] = useState<FacturaCartera | null>(null)
 
@@ -48,12 +48,33 @@ export function CarteraTab() {
   const saldoTotal = pendientes.reduce((s, f) => s + (f.saldo ?? 0), 0)
   const alertas = facturas.filter((f) => f.estado === 'CRITICA' || f.estado === 'OTRAS_MEDIDAS')
 
+  // Alertas automáticas de acuerdos de pago
+  const alertasAcuerdos = useMemo(() => {
+    return facturas.filter((f) => {
+      if (f.estado === 'PAGADA' || !f.acuerdoPago) return false
+      const fe = f.acuerdoPago.compromisoFecha
+      if (!fe) return false
+      return fe <= todayKey || (fe > todayKey && fe <= agregarDias(todayKey, 5))
+    })
+  }, [facturas, todayKey])
+
   const lista = useMemo(() => {
     const q = buscar.trim().toLowerCase()
     return facturas
-      .filter((f) => (filtro === 'TODAS' ? true : filtro === 'PENDIENTES' ? f.estado !== 'PAGADA' : f.estado === filtro))
+      .filter((f) => {
+        if (filtro === 'TODAS') return true
+        if (filtro === 'PENDIENTES') return f.estado !== 'PAGADA'
+        if (filtro === 'CON_ACUERDO') return !!f.acuerdoPago
+        if (filtro === 'ALERTAS_COBRO') {
+          if (f.estado === 'PAGADA') return false
+          if (f.estado === 'CRITICA' || f.estado === 'OTRAS_MEDIDAS' || f.diasMora > 0) return true
+          if (f.acuerdoPago && f.acuerdoPago.compromisoFecha <= agregarDias(todayKey, 5)) return true
+          return false
+        }
+        return f.estado === filtro
+      })
       .filter((f) => !q || `${f.numero} ${f.cliente ?? ''} ${f.razonSocial ?? ''}`.toLowerCase().includes(q))
-  }, [facturas, filtro, buscar])
+  }, [facturas, filtro, buscar, todayKey])
 
   async function ver(path: string | null) {
     if (!path) return
@@ -70,13 +91,20 @@ export function CarteraTab() {
       </div>
       <Ayuda>
         <p>Cada factura vence a los <b>30 días</b> de su fecha; después corren los <b>días de mora</b>. Al día ≤30 · vencida 31–60 · crítica 61–180 · otras medidas &gt;180.</p>
-        <p>Toca una factura para ver sus labores, registrar pagos (también abonos) o poner su valor. Un pago no se borra: se anula diciendo por qué.</p>
+        <p>Toca una factura para ver sus labores, registrar acuerdos de pago, acordar condiciones de cartera o registrar abonos. Un pago no se borra: se anula diciendo por qué.</p>
       </Ayuda>
 
       {alertas.length > 0 && (
         <div className="cart-alerta" role="alert">
           ⚠ <b>{alertas.length} factura(s) en cartera crítica</b> ({pesos(alertas.reduce((s, f) => s + (f.saldo ?? 0), 0))}):{' '}
           {alertas.slice(0, 4).map((f) => `${f.numero} (${f.diasCartera} d)`).join(' · ')}{alertas.length > 4 ? '…' : ''}
+        </div>
+      )}
+
+      {alertasAcuerdos.length > 0 && (
+        <div className="cart-alerta cart-alerta--acuerdo" role="alert">
+          📅 <b>{alertasAcuerdos.length} acuerdo(s) de pago con fecha de cobro hoy o próxima</b>:{' '}
+          {alertasAcuerdos.slice(0, 4).map((f) => `${f.numero} (${f.acuerdoPago?.compromisoFecha})`).join(' · ')}
         </div>
       )}
 
@@ -99,6 +127,8 @@ export function CarteraTab() {
           onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
           <option value="PENDIENTES">Por cobrar</option>
           <option value="TODAS">Todas</option>
+          <option value="ALERTAS_COBRO">🚨 Alertas de cobro</option>
+          <option value="CON_ACUERDO">🤝 Con acuerdo de pago</option>
           {ESTADOS_CARTERA.map((e) => <option key={e.id} value={e.id}>{e.titulo}</option>)}
         </select>
         <input className="user-search-input" type="search" placeholder="Buscar factura o cliente…" value={buscar}
@@ -110,12 +140,17 @@ export function CarteraTab() {
           <thead>
             <tr>
               <th>Factura</th><th>Cliente</th><th>Fecha</th><th>Vence</th><th className="num">Días</th><th className="num">Mora</th>
-              <th>Estado</th><th className="num">Valor</th><th className="num">Saldo</th>
+              <th>Estado / Acuerdo</th><th className="num">Valor</th><th className="num">Saldo</th>
             </tr>
           </thead>
           <tbody>
             {lista.map((f) => {
               const e = infoEstado(f.estado)
+              const ac = f.acuerdoPago
+              const estadoAcuerdo = ac ? (
+                ac.compromisoFecha < todayKey ? 'vencido' : ac.compromisoFecha === todayKey ? 'hoy' : 'proximo'
+              ) : null
+
               return (
                 <tr key={f.id} className={`cart-fila${abierta?.id === f.id ? ' factura-row--sel' : ''}`} onClick={() => setAbierta(f)}>
                   <td><b>{f.numero}</b><small className="subtle-copy"> {f.razonSocial ?? ''}</small></td>
@@ -124,7 +159,16 @@ export function CarteraTab() {
                   <td className="nowrap">{f.vence}</td>
                   <td className="num">{f.diasCartera}</td>
                   <td className="num">{f.diasMora > 0 ? f.diasMora : '—'}</td>
-                  <td><span className={`cart-chip ${e.clase}`}>{e.titulo}</span></td>
+                  <td>
+                    <span className={`cart-chip ${e.clase}`}>{e.titulo}</span>
+                    {ac && (
+                      <div style={{ marginTop: 2 }}>
+                        <small className={`factura-chip ${estadoAcuerdo === 'vencido' ? 'factura-chip--falta' : 'factura-chip--doc'}`} title={`Condiciones: ${ac.condiciones}`}>
+                          🤝 {ac.compromisoFecha} ({pesos(ac.compromisoMonto)})
+                        </small>
+                      </div>
+                    )}
+                  </td>
                   <td className="num">{pesos(f.valor)}</td>
                   <td className="num"><strong>{f.estado === 'PAGADA' ? '—' : pesos(f.saldo)}</strong></td>
                 </tr>
@@ -154,6 +198,12 @@ export function CarteraTab() {
   )
 }
 
+function agregarDias(fechaIso: string, dias: number): string {
+  const d = new Date(fechaIso)
+  d.setDate(d.getDate() + dias)
+  return d.toISOString().slice(0, 10)
+}
+
 function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, onCerrar }: {
   factura: FacturaCartera; usuario: string; hoy: string
   onVer: (path: string | null) => void; onCambio: (msg: string) => Promise<void>; onError: (m: string) => void; onCerrar: () => void
@@ -168,6 +218,13 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
   const [plazo, setPlazo] = useState(String(f.plazoDias))
   const [ocupado, setOcupado] = useState(false)
 
+  // Acuerdo de pago
+  const acActual = f.acuerdoPago
+  const [acCompromisoFecha, setAcCompromisoFecha] = useState(acActual?.compromisoFecha ?? f.vence ?? hoy)
+  const [acCompromisoMonto, setAcCompromisoMonto] = useState(acActual?.compromisoMonto ? String(acActual.compromisoMonto) : (f.saldo != null ? String(Math.round(f.saldo)) : ''))
+  const [acCondiciones, setAcCondiciones] = useState(acActual?.condiciones ?? 'TRANSFERENCIA 30 DÍAS')
+  const [acObs, setAcObs] = useState(acActual?.observaciones ?? '')
+
   useEffect(() => { void loadPagos(f.id).then(setPagos) }, [f.id, f.pagado])
   const n = (s: string) => Number(s.replace(/\./g, '').replace(',', '.'))
   const e = infoEstado(f.estado)
@@ -175,6 +232,21 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
   async function hacer(fn: () => Promise<void>, msg: string) {
     setOcupado(true)
     try { await fn(); await onCambio(msg) } catch (err) { onError((err as Error).message) } finally { setOcupado(false) }
+  }
+
+  async function guardarAcuerdo() {
+    if (!acCompromisoFecha) { onError('Indica la fecha de compromiso de pago'); return }
+    const monto = n(acCompromisoMonto)
+    if (!monto || monto <= 0) { onError('Indica un monto válido para el compromiso'); return }
+    const acuerdo: AcuerdoPago = {
+      fechaAcuerdo: hoy,
+      compromisoFecha: acCompromisoFecha,
+      compromisoMonto: monto,
+      condiciones: acCondiciones.trim(),
+      observaciones: acObs.trim() || undefined,
+      creadoPor: usuario,
+    }
+    await hacer(() => registrarAcuerdoPago(f.id, acuerdo, f.nota), `Acuerdo de pago registrado para la factura ${f.numero}.`)
   }
 
   return (
@@ -212,6 +284,32 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
         <button type="button" className="inline-button" disabled={ocupado}
           onClick={() => void hacer(() => actualizarFactura(f.id, { valor: valorFactura.trim() ? n(valorFactura) : null, plazoDias: Math.max(0, Math.round(n(plazo) || 30)) }), `Factura ${f.numero} actualizada.`)}>
           Guardar valor y plazo
+        </button>
+
+        {/* 🤝 ACUERDOS DE PAGO Y CONDICIONES DE CARTERA */}
+        <p className="eyebrow" style={{ marginTop: 14 }}>🤝 Acuerdo de pago y condiciones de cartera</p>
+        {acActual && (
+          <div className="taller-aviso" style={{ marginBottom: 8, padding: '8px 12px' }}>
+            <p style={{ margin: 0 }}>
+              <b>Acuerdo activo</b>: Compromiso de pago el <b>{acActual.compromisoFecha}</b> por <b>{pesos(acActual.compromisoMonto)}</b>
+            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+              Condiciones: {acActual.condiciones} {acActual.observaciones ? `· ${acActual.observaciones}` : ''}
+            </p>
+          </div>
+        )}
+        <div className="assignment-detail-field-grid">
+          <label className="assignment-detail-field"><span>Fecha de compromiso</span>
+            <input id="acuerdo-fecha" type="date" value={acCompromisoFecha} onChange={(ev) => setAcCompromisoFecha(ev.target.value)} disabled={ocupado} /></label>
+          <label className="assignment-detail-field"><span>Monto acordado</span>
+            <input id="acuerdo-monto" inputMode="numeric" value={acCompromisoMonto} onChange={(ev) => setAcCompromisoMonto(ev.target.value)} disabled={ocupado} placeholder="0" /></label>
+          <label className="assignment-detail-field" style={{ gridColumn: 'span 2' }}><span>Condiciones de cartera</span>
+            <input id="acuerdo-condiciones" value={acCondiciones} onChange={(ev) => setAcCondiciones(ev.target.value)} disabled={ocupado} placeholder="Ej. 50% anticipo, 50% saldo quincenal / Cruce de cuentas" /></label>
+          <label className="assignment-detail-field" style={{ gridColumn: 'span 2' }}><span>Observaciones / Detalles</span>
+            <input id="acuerdo-obs" value={acObs} onChange={(ev) => setAcObs(ev.target.value)} disabled={ocupado} placeholder="Comentarios del acuerdo con el cliente" /></label>
+        </div>
+        <button type="button" className="inline-button" disabled={ocupado} onClick={() => void guardarAcuerdo()}>
+          {acActual ? 'Actualizar acuerdo de pago' : 'Registrar acuerdo de pago'}
         </button>
 
         <p className="eyebrow" style={{ marginTop: 14 }}>Pagos</p>

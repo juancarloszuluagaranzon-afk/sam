@@ -9451,6 +9451,8 @@ td.planilla-vacio:hover { background: #fde047; }
 .ggh__col--ver { cursor: pointer; }
 .ggh__col--sel .ggh__barra { outline: 3px solid var(--color-accent, #c98a0b); outline-offset: 2px; }
 .ggh__marca { display: block; font-size: 0.68rem; font-weight: 700; color: var(--color-accent, #8a5a00); }
+/* ⛽ = consumo medido tanque a tanque (18-oct-2026). */
+.ggh__tag { margin-left: 2px; font-size: 0.75rem; }
 .tq-coment { margin-top: 14px; border-top: 1px solid var(--color-line, #e3e1d9); padding-top: 10px; }
 .tq-coment__item { padding: 8px 10px; border-radius: 8px; background: var(--color-surface-2, #f6f4ee); margin: 6px 0; }
 .tq-coment__item small { display: block; color: var(--color-ink-mid, #5a5f57); margin-top: 2px; }
@@ -9800,6 +9802,9 @@ td.planilla-vacio:hover { background: #fde047; }
 .fact-etapa.cart--ojo b { color: #b37a0a; }
 .fact-etapa.cart--mal b, .fact-etapa.cart--grave b { color: #c0412f; }
 .cart-alerta { margin: 8px 0; padding: 10px 12px; border-radius: 10px; background: #fde3dd; color: #8a2c1f; border: 1px solid #f3b8ab; }
+/* Acuerdos de pago con fecha de cobro hoy o en los próximos 5 días (18-oct-2026). */
+.cart-alerta--acuerdo { background: rgba(217, 119, 6, .10); color: inherit; border-color: rgba(217, 119, 6, .45); margin-top: 6px; }
+:root[data-theme="dark"] .cart-alerta--acuerdo { background: rgba(251, 191, 36, .10); border-color: rgba(251, 191, 36, .35); }
 .cart-fila { cursor: pointer; }
 .cart-pagos { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 6px; }
 .cart-pagos li { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px solid var(--color-border); }

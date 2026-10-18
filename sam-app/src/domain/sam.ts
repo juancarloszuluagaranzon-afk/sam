@@ -133,6 +133,8 @@ export interface Assignment {
   // Con haciendaCode + suerte identifica la suerte sin ambigüedad entre ingenios
   // (ver `lib/areaSuerte`). null/undefined = recién creada o sin suerte en el maestro.
   ingenioId?: string | null
+  // Precio manual para esta labor (si se forzó desde Facturación).
+  manualPrice?: number | null
 }
 
 export interface DashboardMetrics {

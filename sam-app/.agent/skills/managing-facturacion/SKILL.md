@@ -103,6 +103,14 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   OTRAS_MEDIDAS >180 · PAGADA (los días se CONGELAN en el último pago) · SIN_VALOR. Pantalla
   Más → 💰 Cartera (owner y administración; Viviana NO tiene usuario al 2-oct: crearla como
   administración). Trazabilidad en el detalle de la labor (`TrazaFacturacion`, solo owner/admin).
+- 🆕 **18-oct-2026 — Acuerdos de pago** (en el detalle de cada factura de Cartera): fecha de
+  compromiso, monto, condiciones y observaciones. Se guardan como `[ACUERDO:{json}]` en
+  `fact_documentos.nota` (la vista `cartera_facturas_v` ya trae `nota`; se respeta lo que hubiera
+  escrito antes). Un acuerdo por factura: registrar otro lo reemplaza. Aviso amarillo con los
+  compromisos vencidos, de hoy o de los próximos 5 días, y filtros «🚨 Alertas de cobro» (crítica,
+  otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
+  revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
+- 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
 - Facturación arranca en TODO el realizado (4.864 labores / 26.961,76 ha al 2-oct) con tarjetas
   por etapa.
 - **Modalidad histórica**: el 2-oct se puso la sugerida a las 4.474 realizadas sin modalidad

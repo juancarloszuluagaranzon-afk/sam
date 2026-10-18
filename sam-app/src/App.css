@@ -9785,6 +9785,12 @@ td.planilla-vacio:hover { background: #fde047; }
 .fact-etapa span { font-size: 0.8rem; color: var(--color-ink-mid); }
 .fact-etapa b { font-size: 1.3rem; font-variant-numeric: tabular-nums; }
 .fact-etapa small { color: var(--color-ink-mid); font-variant-numeric: tabular-nums; }
+/* Desde el 18-oct-2026 las tarjetas solo resumen (no filtran): sin cursor de botón. */
+.fact-etapa--resumen { cursor: default; }
+.fact-estado--si { background: rgba(22, 163, 74, .12); color: #15803d; border-color: rgba(22, 163, 74, .35); }
+.fact-estado--no { background: rgba(217, 119, 6, .10); color: #9a5b00; border-color: rgba(217, 119, 6, .35); }
+:root[data-theme="dark"] .fact-estado--si { color: #4ade80; }
+:root[data-theme="dark"] .fact-estado--no { color: #fbbf24; }
 .fact-etapa.is-active { border-color: var(--color-brand); box-shadow: inset 0 0 0 1px var(--color-brand); }
 .factura-chip--doc { border: 0; cursor: pointer; font-family: inherit; }
 .factura-chip--doc:hover { text-decoration: underline; }

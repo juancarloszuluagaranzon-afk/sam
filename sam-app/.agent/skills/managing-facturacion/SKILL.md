@@ -111,6 +111,14 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
   revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
+- 🔴 **18-oct-2026 — LA LISTA NO SE MUEVE** (Iván y Carlos: «déjalo ahí mismo, no te lo lleves para
+  ningún lado»). Se quitaron las ETAPAS como filtro (antes la tabla arrancaba en «Sin soporte» y una
+  línea se iba de la vista al ponerle soporte o factura): ahora es UNA lista por fecha con columna
+  **Estado** (Facturado / Sin facturar, también en el Excel) y las tarjetas de arriba solo resumen
+  (Sin facturar / Facturado / Total). Los filtros «Sin tarifa» y «Sin modalidad» **fijan** las líneas
+  al activarse (`fijasSinTarifa` / `fijasSinModalidad`): al ponerles tarifa o modalidad se quedan
+  hasta quitar el filtro; se vuelven a fijar solo si cambia mes, quincena, búsqueda o empresa.
+  Motivo real: Iván puso $100.000 a EL PASO · 020 con «Sin tarifa» activo y la línea «desapareció».
 - 🆕 **18-oct-2026 — Editar UNA línea** (pedido de Carlos David): columna **Cliente** (tocarla) y
   ✏️ junto al soporte y a la factura abren `components/EditarLineaFacturacion`:
   - **A quién se factura**: `[CLIENTE:<clave de NOMBRE_CLIENTE>]` en observaciones

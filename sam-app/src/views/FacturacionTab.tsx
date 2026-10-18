@@ -20,9 +20,12 @@ import { Ayuda } from '../components/Ayuda'
 import type { Assignment } from '../domain/sam'
 
 /**
- * Facturación (administración/owner) — parte del REALIZADO completo (labores
- * COMPLETADA/PARCIAL) y lo lleva por tres etapas (2-oct-2026):
- *   SIN SOPORTE → CON SOPORTE del cliente → FACTURADAS
+ * Facturación (administración/owner) — el REALIZADO completo (labores
+ * COMPLETADA/PARCIAL) en UNA sola lista que NO se mueve (18-oct-2026, Iván y
+ * Carlos: «déjalo ahí mismo, no te lo lleves para ningún lado»). Antes se
+ * repartía en etapas (sin soporte → con soporte → facturadas) y una línea se
+ * iba de la vista al ponerle soporte, factura o tarifa; ahora la columna
+ * «Estado» dice Facturado / Sin facturar y la línea se queda donde estaba.
  * Marcando líneas se les vincula el DOCUMENTO SOPORTE del cliente (orden de
  * servicio, acta, certificación…) y luego la FACTURA emitida, cada uno con su
  * archivo (PDF o foto). Ver `services/facturacionApi` y la migración 20261002150000.
@@ -36,27 +39,28 @@ const conFactura = (n?: string | null) => !!(n && n.trim())
 // Misma fórmula de "ha ejecutada" que Resumen/Reporte/KPIs.
 const haDe = (a: { executedArea: number; area: number }) => (a.executedArea > 0 ? a.executedArea : a.area)
 
-type Etapa = 'SIN_SOPORTE' | 'CON_SOPORTE' | 'FACTURADAS' | 'TODAS'
+// Solo para el RESUMEN de arriba: ya no filtra la tabla (las líneas no se mueven).
+type Grupo = 'SIN_FACTURAR' | 'FACTURADAS' | 'TODAS'
 const facturada = (a: Assignment) => !!a.facturaId || conFactura(a.facturaNumero)
-const etapaDe = (a: Assignment): Exclude<Etapa, 'TODAS'> => (facturada(a) ? 'FACTURADAS' : a.soporteId ? 'CON_SOPORTE' : 'SIN_SOPORTE')
-const ETAPAS: { id: Etapa; titulo: string }[] = [
-  { id: 'SIN_SOPORTE', titulo: 'Sin soporte' },
-  { id: 'CON_SOPORTE', titulo: 'Con soporte' },
-  { id: 'FACTURADAS', titulo: 'Facturadas' },
-  { id: 'TODAS', titulo: 'Todas' },
+const GRUPOS: { id: Grupo; titulo: string }[] = [
+  { id: 'SIN_FACTURAR', titulo: 'Sin facturar' },
+  { id: 'FACTURADAS', titulo: 'Facturado' },
+  { id: 'TODAS', titulo: 'Total' },
 ]
 
 export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void }) {
   const { assignments, setAssignments, session, todayKey, busy, setBusy, setError, setInfo } = useAppData()
 
   const [search, setSearch] = useState('')
-  const [etapa, setEtapa] = useState<Etapa>('SIN_SOPORTE')
   // De entrada TODO el realizado (pedido de Iván); se puede acotar a un mes o quincena.
   const [mes, setMes] = useState('')
   const [quincena, setQuincena] = useState<SummaryQuincena>('TODO')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const modalidades = useModalidades()
-  const [soloSinModalidad, setSoloSinModalidad] = useState(false)
+  // «Sin modalidad» y «Sin tarifa» FIJAN las líneas que cumplían al activarlos:
+  // al ponerles modalidad o tarifa NO se van de la lista (antes desaparecían y no
+  // se veía lo que se acababa de hacer). null = filtro apagado.
+  const [fijasSinModalidad, setFijasSinModalidad] = useState<Set<string> | null>(null)
   const [modalidadInput, setModalidadInput] = useState('')
   const [tarifaInput, setTarifaInput] = useState('')
   const [precioManualInput, setPrecioManualInput] = useState('')
@@ -64,7 +68,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const [modal, setModal] = useState<TipoDocumento | null>(null)
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
   const { tarifas, haciendasRA } = useTarifas()
-  const [soloSinTarifa, setSoloSinTarifa] = useState(false)
+  const [fijasSinTarifa, setFijasSinTarifa] = useState<Set<string> | null>(null)
   // Con qué EMPRESA se factura (la escoge Carlos David): define qué tabla de precios aplica.
   // '' = automático. Se recuerda en este equipo.
   const [empresa, setEmpresa] = useState<string>(() => {
@@ -99,8 +103,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     return m
   }, [realizado, tarifas, haciendasRA, empresa, docPorId])
 
-  // El realizado del período y la búsqueda (sin filtrar todavía por etapa). La
-  // búsqueda va diferida: el texto se escribe sin esperar a la tabla.
+  // El realizado del período y la búsqueda. La búsqueda va diferida: el texto se
+  // escribe sin esperar a la tabla.
   const busqueda = useDeferredValue(search)
   const delPeriodo = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
@@ -112,13 +116,24 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         const s = a.soporteId ? docPorId.get(a.soporteId)?.numero ?? '' : ''
         return `${a.haciendaName} ${a.suerte} ${a.labor} ${a.operatorName} ${a.facturaNumero ?? ''} ${s}`.toLowerCase().includes(q)
       })
-      .filter((a) => !soloSinModalidad || faltaModalidad(modalidades, a))
-  }, [realizado, busqueda, mes, quincena, todayKey, docPorId, soloSinModalidad, modalidades])
+  }, [realizado, busqueda, mes, quincena, todayKey, docPorId])
   const sinTarifa = useMemo(() => delPeriodo.filter((a) => valores.get(a.id)?.valor == null).length, [delPeriodo, valores])
-
   const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)).length, [delPeriodo, modalidades])
-  const realizadas = (etapa === 'TODAS' ? delPeriodo : delPeriodo.filter((a) => etapaDe(a) === etapa))
-    .filter((a) => !soloSinTarifa || valores.get(a.id)?.valor == null)
+  const fijarSinTarifa = () => new Set(delPeriodo.filter((a) => valores.get(a.id)?.valor == null).map((a) => a.id))
+  const fijarSinModalidad = () => new Set(delPeriodo.filter((a) => faltaModalidad(modalidades, a)).map((a) => a.id))
+  // Si cambia lo que se mira (mes, quincena, búsqueda, empresa), los filtros activos
+  // se vuelven a fijar sobre lo nuevo; poner una tarifa o modalidad NO los cambia.
+  const claveVista = `${mes}|${quincena}|${busqueda}|${empresa}`
+  useEffect(() => {
+    setFijasSinTarifa((f) => (f ? fijarSinTarifa() : f))
+    setFijasSinModalidad((f) => (f ? fijarSinModalidad() : f))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveVista])
+
+  // La lista: SIEMPRE en el mismo orden (fecha), sin repartir por etapas.
+  const realizadas = delPeriodo
+    .filter((a) => !fijasSinModalidad || fijasSinModalidad.has(a.id))
+    .filter((a) => !fijasSinTarifa || fijasSinTarifa.has(a.id))
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
 
@@ -127,12 +142,12 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const suma = (lista: Assignment[], horas: boolean) =>
     lista.filter((a) => esPorHoras(a.labor) === horas).reduce((s, a) => s + haDe(a), 0)
   const porEtapa = useMemo(() => {
-    const out: Record<Etapa, { n: number; ha: number; h: number; valor: number }> = {
-      SIN_SOPORTE: { n: 0, ha: 0, h: 0, valor: 0 }, CON_SOPORTE: { n: 0, ha: 0, h: 0, valor: 0 },
-      FACTURADAS: { n: 0, ha: 0, h: 0, valor: 0 }, TODAS: { n: 0, ha: 0, h: 0, valor: 0 },
+    const out: Record<Grupo, { n: number; ha: number; h: number; valor: number }> = {
+      SIN_FACTURAR: { n: 0, ha: 0, h: 0, valor: 0 }, FACTURADAS: { n: 0, ha: 0, h: 0, valor: 0 },
+      TODAS: { n: 0, ha: 0, h: 0, valor: 0 },
     }
     for (const a of delPeriodo) {
-      for (const k of [etapaDe(a), 'TODAS'] as Etapa[]) {
+      for (const k of [facturada(a) ? 'FACTURADAS' : 'SIN_FACTURAR', 'TODAS'] as Grupo[]) {
         out[k].n += 1
         out[k].valor += valores.get(a.id)?.valor ?? 0
         if (esPorHoras(a.labor)) out[k].h += haDe(a)
@@ -205,6 +220,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
           'Valor Total': v?.valor ?? 0,
           'Soporte': sop ? sop.numero : '',
           'Factura': fac ? fac.numero : '',
+          'Estado': facturada(a) ? 'Facturado' : 'Sin facturar',
           'Razón Social': v?.razonSocial ?? '',
           'Cliente': v?.cliente ?? '',
         }
@@ -284,7 +300,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       const set = new Set(ids)
       setAssignments((prev) => prev.map((a) => {
         if (!set.has(a.id)) return a
-        const notas = String(a.notes || '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
+        const notas = String(a.notes || '').replace(/\[TARIFA:[a-f0-9-]{36}\]/i, '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
         const nuevas = notas ? `${notas} [TARIFA:${tarifaInput}]` : `[TARIFA:${tarifaInput}]`
         return { ...a, notes: nuevas }
       }))
@@ -307,7 +323,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       if (x.id !== a.id) return x
       const sinPrecio = String(x.notes || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
       if (precio == null) return { ...x, notes: sinPrecio, manualPrice: null }
-      const notas = sinPrecio.replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+      const notas = sinPrecio.replace(/\[TARIFA:[a-f0-9-]{36}\]/i, '').trim()
       return { ...x, notes: notas ? `${notas} [PRECIO_MANUAL:${precio}]` : `[PRECIO_MANUAL:${precio}]`, manualPrice: precio }
     }))
   }, [session?.id, setAssignments])
@@ -345,7 +361,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       const set = new Set(ids)
       setAssignments((prev) => prev.map((a) => {
         if (!set.has(a.id)) return a
-        const notas = String(a.notes || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').replace(/\[TARIFA:[a-f0-9\-]{36}\]/i, '').trim()
+        const notas = String(a.notes || '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').replace(/\[TARIFA:[a-f0-9-]{36}\]/i, '').trim()
         const nuevas = notas ? `${notas} [PRECIO_MANUAL:${val}]` : `[PRECIO_MANUAL:${val}]`
         return { ...a, notes: nuevas, manualPrice: val }
       }))
@@ -389,21 +405,20 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       </div>
       <Ayuda>
         <p><b>Facturar por</b>: escoge la empresa (AGROMORALES o CEBALLOS Y LOZANO) y cada línea toma el precio de la tabla de esa empresa; si esa empresa no tiene precio para ese cliente, la línea sale «sin tarifa». Las líneas ya facturadas usan la empresa de su factura.</p>
-        <p>Todo lo realizado pasa por tres etapas: <b>sin soporte</b> → <b>con soporte</b> del cliente (orden de servicio, acta, certificación…) → <b>facturadas</b>.</p>
+        <p>Todas las líneas se quedan en su lugar: al ponerles tarifa, soporte o factura <b>no se mueven</b>. La columna <b>Estado</b> dice si ya está <b>facturado</b> o <b>sin facturar</b>.</p>
         <p>Marca las líneas y usa <b>📎 Vincular soporte</b> o <b>🧾 Vincular factura</b>: escoges uno que ya exista o creas uno nuevo con su número, fecha y archivo (PDF o foto). Toca el número de un documento para abrir su archivo.</p>
         <p>La <b>modalidad</b> (2x1, 4x1 quemada, 2 pases…) define la tarifa. Si una labor la necesita y no la tiene, sale «falta»: márcalas (de la misma labor) y ponles la modalidad en lote.</p>
       </Ayuda>
 
-      {/* Etapas: cuánto hay en cada una */}
+      {/* Resumen: cuánto hay facturado y sin facturar (solo informa; no filtra la tabla). */}
       <div className="fact-etapas">
-        {ETAPAS.map((e) => (
-          <button key={e.id} type="button" className={`fact-etapa${etapa === e.id ? ' is-active' : ''}`}
-            onClick={() => { setEtapa(e.id); setSelected(new Set()) }}>
+        {GRUPOS.map((e) => (
+          <div key={e.id} className="fact-etapa fact-etapa--resumen">
             <span>{e.titulo}</span>
             <b>{porEtapa[e.id].n}</b>
             <small>{fmt(porEtapa[e.id].ha)} ha{porEtapa[e.id].h > 0 ? ` + ${fmt(porEtapa[e.id].h)} h` : ''}</small>
             <small><b>{pesosCortos(porEtapa[e.id].valor)}</b></small>
-          </button>
+          </div>
         ))}
       </div>
 
@@ -431,19 +446,19 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         )}
         <button
           type="button"
-          className={`inline-button${soloSinModalidad ? ' is-active' : ''}`}
-          onClick={() => { setSoloSinModalidad((v) => !v); setSelected(new Set()) }}
-          title="Solo las labores que necesitan modalidad y no la tienen"
+          className={`inline-button${fijasSinModalidad ? ' is-active' : ''}`}
+          onClick={() => { setFijasSinModalidad((f) => (f ? null : fijarSinModalidad())); setSelected(new Set()) }}
+          title="Las labores que necesitan modalidad y no la tienen. Al ponérsela se quedan en la lista hasta quitar el filtro."
         >
-          {soloSinModalidad ? '✓ ' : ''}Sin modalidad ({sinModalidad})
+          {fijasSinModalidad ? '✓ ' : ''}Sin modalidad ({sinModalidad})
         </button>
         <button
           type="button"
-          className={`inline-button${soloSinTarifa ? ' is-active' : ''}`}
-          onClick={() => { setSoloSinTarifa((v) => !v); setSelected(new Set()) }}
-          title="Labores a las que no se les encontró precio"
+          className={`inline-button${fijasSinTarifa ? ' is-active' : ''}`}
+          onClick={() => { setFijasSinTarifa((f) => (f ? null : fijarSinTarifa())); setSelected(new Set()) }}
+          title="Labores a las que no se les encontró precio. Al ponerles tarifa se quedan en la lista hasta quitar el filtro."
         >
-          {soloSinTarifa ? '✓ ' : ''}Sin tarifa ({sinTarifa})
+          {fijasSinTarifa ? '✓ ' : ''}Sin tarifa ({sinTarifa})
         </button>
         <button
           type="button"
@@ -555,6 +570,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               <th title="A quién se le factura. Tócalo para cambiarlo.">Cliente</th>
               <th>Soporte</th>
               <th>Factura</th>
+              <th>Estado</th>
             </tr>
           </thead>
           <tbody>
@@ -576,8 +592,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               />
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={13} className="validacion-empty">
-                {search.trim() ? 'Sin coincidencias.' : 'No hay labores en esta etapa.'}
+              <tr><td colSpan={14} className="validacion-empty">
+                {search.trim() ? 'Sin coincidencias.' : 'No hay labores en este período.'}
               </td></tr>
             )}
           </tbody>
@@ -705,6 +721,11 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
           : <span className="subtle-copy">—</span>}
         <button type="button" className="fact-lapiz" onClick={() => onEditarFact(a)} title="Cambiar la factura de esta línea" aria-label="Cambiar factura">✏️</button>
       </td>
+      <td className="nowrap">
+        {facturada(a)
+          ? <span className="factura-chip fact-estado--si">Facturado</span>
+          : <span className="factura-chip fact-estado--no">Sin facturar</span>}
+      </td>
     </tr>
   )
 })
@@ -727,9 +748,10 @@ function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
   const actual = v?.precio ?? null
   const manual = /\[PRECIO_MANUAL:/i.test(a.notes ?? '')
   const unidad = v?.unidad ?? 'ha'
-  const [texto, setTexto] = useState(actual != null ? conMiles(actual) : '')
+  // null = no se está editando: se muestra el precio vigente (así se pone al día solo).
+  const [texto, setTexto] = useState<string | null>(null)
   const [estado, setEstado] = useState<'quieto' | 'guardando' | 'listo'>('quieto')
-  useEffect(() => { setTexto(actual != null ? conMiles(actual) : '') }, [actual])
+  const vigente = actual != null ? conMiles(actual) : ''
   useEffect(() => {
     if (estado !== 'listo') return
     const t = window.setTimeout(() => setEstado('quieto'), 1500)
@@ -744,8 +766,9 @@ function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
     )
   }
 
-  const deshacer = () => setTexto(actual != null ? conMiles(actual) : '')
+  const deshacer = () => setTexto(null)
   async function confirmar() {
+    if (texto == null) return   // no se tocó
     const limpio = texto.trim()
     let nuevo: number | null
     if (!limpio) {
@@ -760,6 +783,7 @@ function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
     setEstado('guardando')
     try {
       await onPrecio(a, nuevo)
+      setTexto(null)
       setEstado('listo')
     } catch (e) {
       setEstado('quieto'); deshacer()
@@ -773,13 +797,13 @@ function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
       <input
         className={`fact-precio__in${manual ? ' is-manual' : ''}${actual == null ? ' is-vacio' : ''}`}
         inputMode="decimal"
-        value={texto}
+        value={texto ?? vigente}
         placeholder={`$/${unidad}`}
         aria-label={`Valor por ${unidad} de ${a.labor} en ${a.haciendaName} · ${a.suerte}`}
         title={`${de}. Escribe otro valor y presiona Enter; bórralo para volver a la tarifa.`}
         disabled={estado === 'guardando'}
         onChange={(e) => setTexto(e.target.value)}
-        onFocus={(e) => e.currentTarget.select()}
+        onFocus={(e) => { setTexto(vigente); e.currentTarget.select() }}
         onBlur={() => void confirmar()}
         onKeyDown={(e) => {
           const el = e.currentTarget

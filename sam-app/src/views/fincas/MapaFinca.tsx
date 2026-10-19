@@ -505,6 +505,7 @@ function LeyendaSat({ capa, info, fecha: elegida }: { capa: CapaSat; info: InfoS
         {fecha ? ` · imagen del ${elegida ? fechaLarga(fecha) : fechaCorta(fecha)}` : ` · últimos ${SAT_DIAS} días`}
         {!capa.radar && nubes != null ? ` · ${nubes} % nubes` : ''}
         {elegida ? ' (histórico)' : ''}. {capa.explica}
+        {' '}<a href="/manuales/satelite-fincas.html" target="_blank" rel="noopener">¿Cómo leerla?</a>
       </span>
     </div>
   )

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Imágenes satelitales de la finca — AgroMorales</title>
+<style>
+/* Mismo estilo de los manuales (ver manual-fincas.html). */
+:root {
+  --verde: #155b30;
+  --verde-claro: #e9f3ed;
+  --tinta: #161a14;
+  --tinta-media: #4a5040;
+  --borde: #e3e2dc;
+  --papel: #ffffff;
+  --suave: #fafaf7;
+  --alerta: #b3261e;
+  --alerta-suave: #fdecea;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--tinta); background: var(--suave); line-height: 1.55; }
+.hoja { max-width: 820px; margin: 0 auto; padding: 24px 16px 60px; }
+
+.portada { background: var(--verde); color: #fff; border-radius: 18px; padding: 26px 22px; margin-bottom: 26px; }
+.portada__marca { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; margin: 0; }
+.portada h1 { margin: 6px 0 4px; font-size: 1.7rem; line-height: 1.2; }
+.portada__para { font-size: 1rem; opacity: 0.92; margin: 0; }
+.portada__nota { margin: 14px 0 0; font-size: 0.85rem; opacity: 0.85; }
+
+.indice { background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; padding: 16px 18px; margin-bottom: 30px; }
+.indice h2 { margin: 0 0 8px; font-size: 1rem; }
+.indice ol { margin: 0; padding-left: 20px; }
+.indice a { color: var(--verde); text-decoration: none; }
+.indice a:hover { text-decoration: underline; }
+
+.paso { margin-bottom: 34px; scroll-margin-top: 12px; }
+.paso__num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--verde); color: #fff; font-weight: 700; font-size: 0.9rem; margin-right: 8px; flex: 0 0 auto; }
+.paso h2 { display: flex; align-items: center; font-size: 1.2rem; margin: 0 0 6px; }
+.paso__intro { margin: 0 0 14px; color: var(--tinta-media); }
+
+.captura { margin: 0; background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; overflow: hidden; }
+.captura img { display: block; width: 100%; height: auto; }
+.captura figcaption { padding: 10px 14px; font-size: 0.85rem; color: var(--tinta-media); border-top: 1px solid var(--borde); }
+
+.leer { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.leer li { display: flex; gap: 10px; align-items: flex-start; background: var(--papel); border: 1px solid var(--borde); border-radius: 11px; padding: 9px 12px; }
+.leer .color { flex: 0 0 auto; width: 18px; height: 18px; border-radius: 5px; margin-top: 3px; border: 1px solid rgba(0,0,0,.12); }
+.rampa { height: 12px; border-radius: 999px; margin: 10px 0 2px; }
+.rampa-txt { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--tinta-media); }
+
+.ojo { border-left: 4px solid var(--alerta); background: var(--alerta-suave); padding: 12px 14px; border-radius: 0 11px 11px 0; margin: 14px 0 0; }
+.ojo strong { color: var(--alerta); }
+.tip { border-left: 4px solid var(--verde); background: var(--verde-claro); padding: 12px 14px; border-radius: 0 11px 11px 0; margin: 14px 0 0; }
+
+.cierre { margin-top: 40px; padding: 18px; border-radius: 14px; background: var(--papel); border: 1px solid var(--borde); }
+.cierre h2 { margin-top: 0; font-size: 1.05rem; }
+table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin-top: 8px; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
+
+@media print {
+  body { background: #fff; }
+  .hoja { max-width: none; padding: 0; }
+  .paso { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<div class="hoja">
+
+  <div class="portada">
+    <p class="portada__marca">AgroMorales · Guía</p>
+    <h1>Imágenes satelitales de su finca</h1>
+    <p class="portada__para">Qué muestra cada capa del mapa y cómo leerla — para el dueño de la tierra y para administración</p>
+    <p class="portada__nota">
+      Las imágenes vienen de los satélites Sentinel de la Agencia Espacial Europea: pasan sobre el Valle cada
+      pocos días y ven la caña con un detalle de 10 metros. La app junta lo mejor de los últimos 30 días, sin nubes.
+    </p>
+    <p class="portada__nota">Las capturas son de RIOGRANDE II (Toro), tal como las ve su dueño, el 18 de octubre de 2026.</p>
+  </div>
+
+  <nav class="indice">
+    <h2>Qué va a encontrar</h2>
+    <ol>
+      <li><a href="#abrir">Cómo se abren</a></li>
+      <li><a href="#base">El mapa de la finca</a></li>
+      <li><a href="#foto">Foto reciente</a></li>
+      <li><a href="#vigor">Vigor de la caña</a></li>
+      <li><a href="#humedad">Humedad de la planta</a></li>
+      <li><a href="#nitrogeno">Nitrógeno</a></li>
+      <li><a href="#radar">Humedad del suelo (radar)</a></li>
+      <li><a href="#historico">El histórico: comparar con otra fecha</a></li>
+      <li><a href="#limites">Lo que el satélite no dice</a></li>
+    </ol>
+  </nav>
+
+  <section class="paso" id="abrir">
+    <h2><span class="paso__num">1</span>Cómo se abren</h2>
+    <p class="paso__intro">
+      El dueño entra con su usuario y su PIN. Arriba ve el resumen de su negocio y, más abajo, el mapa de su finca.
+      Encima del mapa está el selector <b>🛰</b> para escoger la capa y, cuando hay una escogida, el selector <b>📅</b>
+      para ver otra fecha. El botón <b>⛶</b> pone el mapa en pantalla completa.
+    </p>
+    <figure class="captura">
+      <img src="satelite/1-resumen.jpg" alt="Portal del dueño: resumen del negocio y el mapa con los selectores de satélite y fecha" loading="lazy">
+      <figcaption>El portal del dueño: su negocio arriba, el mapa abajo con los selectores 🛰 y 📅.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="base">
+    <h2><span class="paso__num">2</span>El mapa de la finca</h2>
+    <p class="paso__intro">
+      Cada suerte se dibuja con su número. El color dice lo último que se le hizo (verde = fertilización, azul = triple,
+      morado = subsuelo…). Tocando una suerte sale su ficha: edad, labores y fotos.
+    </p>
+    <figure class="captura">
+      <img src="satelite/2-foto-base.jpg" alt="Mapa de RIOGRANDE II con las suertes numeradas sobre la foto base" loading="lazy">
+      <figcaption>La foto base de fondo y cada suerte con el color de su última labor.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="foto">
+    <h2><span class="paso__num">3</span>Foto reciente</h2>
+    <p class="paso__intro">
+      La foto real tomada por el satélite en los últimos 30 días. Sirve para ver lo que cambió hace poco: el avance
+      de la cosecha, una quema, un lote encharcado. Si quedó alguna nube, se ve blanca.
+    </p>
+    <figure class="captura">
+      <img src="satelite/3-foto-reciente.jpg" alt="Foto reciente del satélite sobre RIOGRANDE II" loading="lazy">
+      <figcaption>Foto reciente (10 m de detalle). Las manchas blancas son nubes.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="vigor">
+    <h2><span class="paso__num">4</span>Vigor de la caña</h2>
+    <p class="paso__intro">
+      Qué tan verde y tupida está la caña. Es la capa para comparar suertes entre sí: la que sale más pálida que
+      sus vecinas, del mismo corte, es la que hay que ir a ver.
+    </p>
+    <div class="rampa" style="background:linear-gradient(90deg,#a50026,#f46d43,#fee08b,#addd8e,#41ab5d,#005a32)"></div>
+    <div class="rampa-txt"><span>Suelo o caña con estrés</span><span>Medio</span><span>Caña vigorosa</span></div>
+    <figure class="captura" style="margin-top:12px">
+      <img src="satelite/4-vigor.jpg" alt="Vigor de la caña: las suertes en verde y la suerte 7 en amarillo" loading="lazy">
+      <figcaption>En RIOGRANDE II casi todas las suertes salen verdes; la <b>suerte 7</b> sale amarilla, con menos vigor. Lo rojo alrededor es suelo descubierto de otros lotes.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="humedad">
+    <h2><span class="paso__num">5</span>Humedad de la planta</h2>
+    <p class="paso__intro">
+      Cuánta agua tiene la caña. Baja <b>antes</b> que el vigor: por eso sirve de semáforo de riego. Una suerte roja
+      aquí y amarilla en el vigor está pidiendo agua.
+    </p>
+    <div class="rampa" style="background:linear-gradient(90deg,#d73027,#fdae61,#fee08b,#abdda4,#66c2a5,#3288bd)"></div>
+    <div class="rampa-txt"><span>Seca</span><span></span><span>Bien hidratada</span></div>
+    <figure class="captura" style="margin-top:12px">
+      <img src="satelite/5-humedad-planta.jpg" alt="Humedad de la planta: la suerte 7 en rojo" loading="lazy">
+      <figcaption>La <b>suerte 7 sale roja (seca)</b> mientras las demás están hidratadas: cuadra con su menor vigor. Es la primera que se revisaría por riego.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="nitrogeno">
+    <h2><span class="paso__num">6</span>Nitrógeno (caña adulta)</h2>
+    <p class="paso__intro">
+      En caña grande el vigor ya sale «todo verde» y no distingue. Esta capa mira el nitrógeno de la hoja y orienta
+      la fertilización: lo que sale en rojo o naranja dentro de la finca tiene menos.
+    </p>
+    <div class="rampa" style="background:linear-gradient(90deg,#d73027,#fdae61,#fee08b,#d9ef8b,#66bd63,#1a9850)"></div>
+    <div class="rampa-txt"><span>Nitrógeno bajo</span><span>Medio</span><span>Nitrógeno alto</span></div>
+    <figure class="captura" style="margin-top:12px">
+      <img src="satelite/6-nitrogeno.jpg" alt="Nitrógeno en la caña de RIOGRANDE II" loading="lazy">
+      <figcaption>Nitrógeno: sirve sobre todo en caña de varios meses.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="radar">
+    <h2><span class="paso__num">7</span>Humedad del suelo (radar)</h2>
+    <p class="paso__intro">
+      El radar atraviesa las nubes, así que sirve en temporada de lluvias, cuando la foto sale tapada. Muestra si el
+      suelo está seco o húmedo y suele ser la imagen más fresca.
+    </p>
+    <div class="rampa" style="background:linear-gradient(90deg,#8c510a,#dfc27d,#f6e8c3,#c7eae5,#35978f,#01665e)"></div>
+    <div class="rampa-txt"><span>Suelo seco</span><span></span><span>Suelo húmedo</span></div>
+    <figure class="captura" style="margin-top:12px">
+      <img src="satelite/7-radar.jpg" alt="Humedad del suelo por radar sobre RIOGRANDE II" loading="lazy">
+      <figcaption>Radar: marrón = seco, verde azulado = húmedo. No le afectan las nubes.</figcaption>
+    </figure>
+  </section>
+
+  <section class="paso" id="historico">
+    <h2><span class="paso__num">8</span>El histórico: comparar con otra fecha</h2>
+    <p class="paso__intro">
+      Debajo del mapa la leyenda dice <b>de qué día es la imagen</b> y cuántas nubes tenía. Con el selector <b>📅</b>
+      se escoge cualquier día claro del último año (en RIOGRANDE II hay 28) y se compara: ¿la suerte que hoy sale
+      pálida ya estaba así hace un mes, o es algo nuevo?
+    </p>
+    <figure class="captura">
+      <img src="satelite/8-leyenda.jpg" alt="Leyenda del mapa con la fecha de la imagen y el significado de los colores" loading="lazy">
+      <figcaption>La leyenda: la escala de colores y la fecha de la imagen (14 de octubre, 33 % de nubes).</figcaption>
+    </figure>
+    <figure class="captura" style="margin-top:14px">
+      <img src="satelite/9-historico.jpg" alt="Vigor de la caña del 4 de septiembre, en pantalla completa" loading="lazy">
+      <figcaption>El vigor del <b>4 de septiembre</b>: la suerte 7 ya se veía más pálida que el resto.</figcaption>
+    </figure>
+    <p class="tip"><strong>Para comparar rápido:</strong> deje la misma capa y vaya cambiando solo la fecha. Lo que se mantiene igual es el terreno; lo que cambia es la caña.</p>
+  </section>
+
+  <section class="cierre" id="limites">
+    <h2>Lo que el satélite no dice</h2>
+    <table>
+      <tr><th>Ojo con</th><th>Por qué</th></tr>
+      <tr><td>Nubes</td><td>En la foto y en las capas de la planta, una nube tapa. Si la imagen reciente tiene muchas, use el radar o una fecha anterior más clara.</td></tr>
+      <tr><td>El detalle es de 10 metros</td><td>Ve la suerte y sus manchas, no la mata una por una. Para el detalle, la foto de la labor que trae cada reporte.</td></tr>
+      <tr><td>Comparar suertes de distinta edad</td><td>Una caña recién cortada siempre sale con menos vigor que una de 10 meses. Compare suertes de edad parecida, o la misma suerte en fechas distintas.</td></tr>
+      <tr><td>Decidir solo con la imagen</td><td>La imagen dice <b>dónde mirar</b>. Lo que hay que hacer lo confirma la visita de campo.</td></tr>
+    </table>
+    <p class="ojo"><strong>Sin señal:</strong> el mapa de la finca con su foto base sí se ve (queda guardado en el celular), pero las capas del satélite —vigor, humedad, nitrógeno, radar— y el histórico necesitan internet.</p>
+  </section>
+
+</div>
+</body>
+</html>

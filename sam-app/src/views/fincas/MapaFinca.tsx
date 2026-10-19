@@ -43,6 +43,14 @@ const ESRI_SAT = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Ima
  * se copia ese `api/s2-tile.ts` y se cambia `SAT_BASE` a '/api/s2-tile'.
  */
 const SAT_BASE = 'https://agrocampo-seven.vercel.app/api/s2-tile'
+/**
+ * 🔴 El CALENDARIO (`op=info`, JSON) va por la MISMA app (18-oct-2026): el proxy de
+ * AgroCampo no manda `Access-Control-Allow-Origin`, así que el navegador bloqueaba
+ * la lectura desde ASM y en producción nunca salían ni la fecha de la imagen ni el
+ * histórico. `vercel.json` (y `vite.config` en desarrollo) reenvían `/api/s2-tile`
+ * a AgroCampo. Las baldosas siguen directas: una imagen no necesita CORS.
+ */
+const SAT_INFO = '/api/s2-tile'
 const SAT_DIAS = 30
 const SAT_VER = 5
 type CapaSat = { key: string; nombre: string; opacity: number; ramp: string[] | null; etiquetas: string[]; explica: string; radar?: boolean }
@@ -230,7 +238,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
     const b = map.getBounds()
     const bbox = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].map((n) => n.toFixed(4)).join(',')
     let vivo = true
-    fetch(`${SAT_BASE}?op=info&bbox=${bbox}&d=${SAT_DIAS}&cal=365`).then((r) => r.json())
+    fetch(`${SAT_INFO}?op=info&bbox=${bbox}&d=${SAT_DIAS}&cal=365`).then((r) => r.json())
       .then((j: { reciente?: { fecha: string; nubes: number } | null; radar?: { fecha: string } | null; todas?: { fecha: string; nubes: number }[]; radares?: string[] }) => {
         if (!vivo) return
         setInfoSat({

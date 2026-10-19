@@ -29,6 +29,13 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(APP_VERSION),
     __APP_BUILD_TIME__: JSON.stringify(APP_BUILD_TIME),
   },
+  // En desarrollo, el mismo puente que `vercel.json`: el calendario satelital
+  // (`op=info`) se pide a la propia app porque el proxy de AgroCampo no manda CORS.
+  server: {
+    proxy: {
+      '/api/s2-tile': { target: 'https://agrocampo-seven.vercel.app', changeOrigin: true },
+    },
+  },
   plugins: [
     react(),
     VitePWA({

@@ -328,3 +328,13 @@ geocerca que bloquea, telemetría de máquinas, capturar por WhatsApp desde ya.
 - Fotos en el bucket `avatars` (público), como el resto de SAM.
 - Honorario: se registra a mano (el modo y valor de la finca quedan guardados, aún no se calcula).
 - Sin cosecha ni liquidación del ingenio (etapa 3 de la propuesta).
+
+## 🔴 18-oct-2026: el CALENDARIO satelital necesita el puente `/api/s2-tile`
+
+El proxy de AgroCampo (`agrocampo-seven.vercel.app/api/s2-tile`) **no manda `Access-Control-Allow-Origin`**.
+Las baldosas (`<img>`) cargan igual, pero el JSON de `op=info` (fecha de la imagen + histórico de un año)
+lo bloqueaba el navegador desde ASM: en producción NUNCA salían la fecha ni el selector 📅 (pasó
+desapercibido desde `0561463`). Arreglo: `vercel.json` reescribe `/api/s2-tile` → AgroCampo y
+`vite.config` hace lo mismo en desarrollo; `MapaFinca` pide `op=info` a `SAT_INFO = '/api/s2-tile'`.
+Comprobado con los datos reales de RIOGRANDE II vistos como dueño: 28 fechas claras en el último año
+(más reciente 14-oct, 33 % nubes; radar 13-oct). La suerte 7 sale con menos vigor (NDVI) y seca (NDMI).

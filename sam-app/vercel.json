@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/s2-tile",
+      "destination": "https://agrocampo-seven.vercel.app/api/s2-tile"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

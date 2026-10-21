@@ -338,3 +338,16 @@ desapercibido desde `0561463`). Arreglo: `vercel.json` reescribe `/api/s2-tile` 
 `vite.config` hace lo mismo en desarrollo; `MapaFinca` pide `op=info` a `SAT_INFO = '/api/s2-tile'`.
 Comprobado con los datos reales de RIOGRANDE II vistos como dueño: 28 fechas claras en el último año
 (más reciente 14-oct, 33 % nubes; radar 13-oct). La suerte 7 sale con menos vigor (NDVI) y seca (NDMI).
+
+## 📖 21-oct-2026: manual nuevo para el cliente (`public/manuales/manual-fincas.html`)
+
+Reescrito con capturas REALES de la app (antes eran recortes dibujados y le faltaba octubre): 15
+pasos en 4 partes (Para empezar · Montar la finca · El día a día · El dueño de la tierra) + reglas y
+«Qué hacer si…». Incluye el dueño con usuario, el mapa y el satélite (enlaza `satelite-fincas.html`)
+y las ventanas VIGENTES del paquete (roturación soca 16/30; fertilización soca 30/45, plantilla 30/60,
+CC 01-1940 20/46, CC 05-430 7/26, CC 11-595 11/31). Capturas en `public/manuales/fincas/` con una
+finca de EJEMPLO («FINCA LA ESPERANZA», dueña «María Gómez», operarios inventados, costos de ejemplo):
+la forma real de `af_datos` (sacada en una transacción deshecha) con todo lo identificable cambiado.
+⚠️ Para rehacer capturas: los códigos de usuario del ejemplo NO deben existir en `app_usuarios`
+(`UEJ00`, `UEJ01`…): la app toma el nombre de la lista real de usuarios antes que de `nombres`, y con
+`U033` salió el nombre real del operario. PDF de 18 páginas con Edge (`--print-to-pdf`).

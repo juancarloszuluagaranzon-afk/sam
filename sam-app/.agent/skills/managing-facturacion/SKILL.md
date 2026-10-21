@@ -111,6 +111,12 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
   revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
+- ⏳ **21-oct-2026 — PENDIENTE: acuerdos con proveedores/colonos.** Iván: «Cristian hace acuerdos con
+  los proveedores… plazos de 2-3 meses, que pagan un porcentaje de la labor por anticipo»; Carlos David
+  los registra. Hoy NO caben: los colonos se facturan al genérico «Proveedor» (121 labores, 790 ha), un
+  pago exige factura (`fact_pagos.factura_id` NOT NULL, no hay anticipo previo) y el «acuerdo de pago»
+  de Cartera es una sola fecha y un monto por factura. Propuesta: acuerdo por colono con plan de pagos
+  (anticipo % + cuotas), pagos aplicados a la cuota más vieja y alertas. Ver memoria del proyecto.
 - 📖 **21-oct-2026 — Manual para el cliente:** `public/manuales/manual-facturacion.html` («Guía de
   Facturación y Cartera», 10 pasos + «Qué hacer si…»), capturas en `public/manuales/facturacion/`
   (datos INVENTADOS: el manual es público; tarifas redondas, haciendas y operarios genéricos). Se abre

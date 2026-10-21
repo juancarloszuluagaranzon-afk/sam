@@ -9787,6 +9787,19 @@ td.planilla-vacio:hover { background: #fde047; }
 .fact-etapa small { color: var(--color-ink-mid); font-variant-numeric: tabular-nums; }
 /* Desde el 18-oct-2026 las tarjetas solo resumen (no filtran): sin cursor de botón. */
 .fact-etapa--resumen { cursor: default; }
+@media (max-width: 560px) {
+  /* En el celular las tres tarjetas del resumen van en una fila, más bajitas. */
+  .fact-etapas:has(.fact-etapa--resumen) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .fact-etapa--resumen { padding: 8px; }
+  .fact-etapa--resumen b { font-size: 1.05rem; }
+  .fact-etapa--resumen small { font-size: 0.7rem; }
+}
+/* Tabla de Facturación compacta (20-oct-2026): máximo dos renglones por línea y que
+   quepa en un portátil de 1366 px (antes 4 renglones por el nombre del operario). */
+.fact-tabla th, .fact-tabla td { padding: 6px 8px; }
+.fact-doble b, .fact-doble span { display: block; white-space: nowrap; }
+.fact-doble small { display: block; white-space: nowrap; color: var(--color-ink-mid); font-size: 0.74rem; }
+.fact-doble--corta b, .fact-doble--corta span, .fact-doble--corta small { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
 .fact-estado--si { background: rgba(22, 163, 74, .12); color: #15803d; border-color: rgba(22, 163, 74, .35); }
 .fact-estado--no { background: rgba(217, 119, 6, .10); color: #9a5b00; border-color: rgba(217, 119, 6, .35); }
 :root[data-theme="dark"] .fact-estado--si { color: #4ade80; }

@@ -69,6 +69,10 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
   const { tarifas, haciendasRA } = useTarifas()
   const [fijasSinTarifa, setFijasSinTarifa] = useState<Set<string> | null>(null)
+  // A quién se factura (20-oct-2026): una factura es de UN cliente. También FIJA
+  // las líneas al escogerlo: cambiarle el cliente a una no la saca de la vista.
+  const [cliente, setCliente] = useState('')
+  const [fijasCliente, setFijasCliente] = useState<Set<string> | null>(null)
   // Con qué EMPRESA se factura (la escoge Carlos David): define qué tabla de precios aplica.
   // '' = automático. Se recuerda en este equipo.
   const [empresa, setEmpresa] = useState<string>(() => {
@@ -121,12 +125,21 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)).length, [delPeriodo, modalidades])
   const fijarSinTarifa = () => new Set(delPeriodo.filter((a) => valores.get(a.id)?.valor == null).map((a) => a.id))
   const fijarSinModalidad = () => new Set(delPeriodo.filter((a) => faltaModalidad(modalidades, a)).map((a) => a.id))
+  const clienteDe = (a: Assignment) => valores.get(a.id)?.cliente ?? 'Sin cliente'
+  const fijarCliente = (c: string) => (c ? new Set(delPeriodo.filter((a) => clienteDe(a) === c).map((a) => a.id)) : null)
+  // Los clientes del período, con cuántas líneas tiene cada uno (para el selector).
+  const clientesDelPeriodo = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const a of delPeriodo) { const c = valores.get(a.id)?.cliente ?? 'Sin cliente'; m.set(c, (m.get(c) ?? 0) + 1) }
+    return [...m.entries()].sort((x, y) => y[1] - x[1])
+  }, [delPeriodo, valores])
   // Si cambia lo que se mira (mes, quincena, búsqueda, empresa), los filtros activos
   // se vuelven a fijar sobre lo nuevo; poner una tarifa o modalidad NO los cambia.
   const claveVista = `${mes}|${quincena}|${busqueda}|${empresa}`
   useEffect(() => {
     setFijasSinTarifa((f) => (f ? fijarSinTarifa() : f))
     setFijasSinModalidad((f) => (f ? fijarSinModalidad() : f))
+    setFijasCliente(fijarCliente(cliente))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveVista])
 
@@ -134,6 +147,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const realizadas = delPeriodo
     .filter((a) => !fijasSinModalidad || fijasSinModalidad.has(a.id))
     .filter((a) => !fijasSinTarifa || fijasSinTarifa.has(a.id))
+    .filter((a) => !fijasCliente || fijasCliente.has(a.id))
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
 
@@ -156,6 +170,14 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     }
     return out
   }, [delPeriodo, valores])
+  // Lo que dicen las FACTURAS de esas líneas (puede no cuadrar con la suma de las
+  // líneas si alguna quedó sin tarifa: así se ve la diferencia).
+  const valorFacturas = useMemo(() => {
+    const ids = new Set(delPeriodo.map((a) => a.facturaId).filter(Boolean) as string[])
+    let total = 0
+    for (const id of ids) total += docPorId.get(id)?.valor ?? 0
+    return total
+  }, [delPeriodo, docPorId])
 
   const seleccion = shown.filter((a) => selected.has(a.id))
   const haSel = suma(seleccion, false)
@@ -417,7 +439,12 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             <span>{e.titulo}</span>
             <b>{porEtapa[e.id].n}</b>
             <small>{fmt(porEtapa[e.id].ha)} ha{porEtapa[e.id].h > 0 ? ` + ${fmt(porEtapa[e.id].h)} h` : ''}</small>
-            <small><b>{pesosCortos(porEtapa[e.id].valor)}</b></small>
+            <small><b>{pesosCortos(porEtapa[e.id].valor)}</b>{e.id === 'FACTURADAS' && valorFacturas > 0 ? ' en las líneas' : ''}</small>
+            {e.id === 'FACTURADAS' && valorFacturas > 0 && (
+              <small title="La suma de las facturas de estas líneas. Si no cuadra con el valor de las líneas, hay líneas sin precio.">
+                <b>{pesosCortos(valorFacturas)}</b> según las facturas
+              </small>
+            )}
           </div>
         ))}
       </div>
@@ -444,6 +471,13 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             <option value="SEGUNDA">2da quincena</option>
           </select>
         )}
+        <select id="fact-cliente" value={cliente} className="base-input" style={{ width: 'auto' }}
+          onChange={(e) => { setCliente(e.target.value); setFijasCliente(fijarCliente(e.target.value)); setSelected(new Set()) }}
+          title="Ver solo las líneas de un cliente: así se arma su factura">
+          <option value="">Todos los clientes</option>
+          {clientesDelPeriodo.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
+          {cliente && !clientesDelPeriodo.some(([c]) => c === cliente) && <option value={cliente}>{cliente} (0)</option>}
+        </select>
         <button
           type="button"
           className={`inline-button${fijasSinModalidad ? ' is-active' : ''}`}
@@ -554,16 +588,14 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       )}
 
       <div className="table-wrap validacion-table-wrap">
-        <table className="validacion-table">
+        <table className="validacion-table fact-tabla">
           <thead>
             <tr>
               <th style={{ width: 32 }}><input type="checkbox" checked={allChecked} onChange={toggleAll} aria-label="Marcar todas" /></th>
               <th>Fecha</th>
               <th>Hacienda · Suerte</th>
-              <th>Labor</th>
-              <th>Modalidad</th>
-              <th>Máquina</th>
-              <th>Operario</th>
+              <th>Labor · modalidad</th>
+              <th>Operario · máquina</th>
               <th className="num">Cant.</th>
               <th className="num" title="Precio por hectárea (o por hora / hm según la labor). Toca la casilla para cambiarlo.">Valor/ha</th>
               <th className="num">Subtotal</th>
@@ -592,7 +624,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               />
             ))}
             {shown.length === 0 && (
-              <tr><td colSpan={14} className="validacion-empty">
+              <tr><td colSpan={12} className="validacion-empty">
                 {search.trim() ? 'Sin coincidencias.' : 'No hay labores en este período.'}
               </td></tr>
             )}
@@ -684,29 +716,36 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
     <tr className={sel ? 'factura-row--sel' : ''}>
       <td><input type="checkbox" checked={sel} onChange={() => onToggle(a.id)} aria-label="Marcar" /></td>
       <td className="nowrap">{executionDateKey(a)}</td>
-      <td className="nowrap">
-        {a.haciendaName} · {a.suerte}
-        {onEdit && (
-          <button type="button" onClick={() => onEdit(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, marginLeft: 4 }} title="Editar">✏️</button>
-        )}
+      <td className="fact-doble fact-doble--corta" title={`${a.haciendaName} · suerte ${a.suerte}`}>
+        <b>{a.haciendaName}</b>
+        <small>
+          Suerte {a.suerte}
+          {onEdit && (
+            <button type="button" onClick={() => onEdit(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, marginLeft: 4, padding: 0 }} title="Editar la labor">✏️</button>
+          )}
+        </small>
       </td>
-      <td>{a.labor}</td>
-      <td>
-        {mod
-          ? <span className="nowrap">{mod}{adic > 0 && <span className="factura-chip factura-chip--falta" title="El hectómetro incluye 2 pases: desde el 3.º es adicional"> +{adic} adicional</span>}</span>
-          : faltaModalidad(modalidades, a)
-            ? <span className="factura-chip factura-chip--falta">falta</span>
-            : <span className="subtle-copy">—</span>}
+      <td className="fact-doble fact-doble--corta" title={a.labor}>
+        <b>{a.labor}</b>
+        <small>
+          {mod
+            ? <>{mod}{adic > 0 && <span className="factura-chip factura-chip--falta" title="El hectómetro incluye 2 pases: desde el 3.º es adicional"> +{adic} adicional</span>}</>
+            : faltaModalidad(modalidades, a)
+              ? <span className="factura-chip factura-chip--falta">falta modalidad</span>
+              : '—'}
+        </small>
       </td>
-      <td>{a.equipmentName || a.equipmentCode || '—'}</td>
-      <td>{a.operatorName || '—'}</td>
+      <td className="fact-doble fact-doble--corta" title={`${a.operatorName || '—'} · ${a.equipmentName || a.equipmentCode || '—'}`}>
+        <span>{a.operatorName || '—'}</span>
+        <small>{a.equipmentName || a.equipmentCode || '—'}</small>
+      </td>
       <td className="num"><strong>{haDe(a).toFixed(2)}</strong>{unidadDeLabor(a.labor) !== 'ha' && <small> {unidadDeLabor(a.labor)}</small>}</td>
-      <td className="num"><CeldaPrecio a={a} v={v} bloqueada={facturada(a)} onPrecio={onPrecio} onError={onErrorPrecio} /></td>
+      <td className="num"><CeldaPrecio a={a} v={v} facturada={facturada(a)} onPrecio={onPrecio} onError={onErrorPrecio} /></td>
       <td className="num"><CeldaValor v={v} /></td>
       <td>
         <button type="button" className={`fact-cliente${clienteForzado(a) ? ' is-manual' : ''}`} onClick={() => onEditarFact(a)}
-                title={clienteForzado(a) ? 'Cliente puesto a mano. Toca para cambiarlo.' : 'Sale del ingenio de la suerte. Toca para cambiarlo.'}>
-          {v?.cliente ?? '—'}
+                title={`${v?.cliente ?? 'Sin cliente'}. ${clienteForzado(a) ? 'Puesto a mano.' : 'Sale del ingenio de la suerte.'} Toca para cambiarlo.`}>
+          {v?.cliente ? v.cliente.replace(/^Ingenio /, '') : '—'}
         </button>
       </td>
       <td className="nowrap">
@@ -738,11 +777,12 @@ const leerPesos = (t: string) => Number(t.replace(/[$\s]/g, '').replace(/\./g, '
  * El precio por unidad de UNA línea, editable ahí mismo (18-oct-2026, pedido de
  * Iván: «que se pueda modificar desde cada casilla»). Al salir de la casilla o con
  * Enter se guarda como precio manual; borrarla quita el precio manual y la línea
- * vuelve a su tarifa; Esc deshace. Ya facturada no se cambia: el valor de la
- * factura ya quedó puesto (primero se quita la factura).
+ * vuelve a su tarifa; Esc deshace. Ya facturada SÍ se puede (20-oct-2026: la
+ * FECE 1214 quedó con sus 5 acequias «sin tarifa» y no había cómo ponerles el
+ * precio), pero pide confirmación: cambia el valor de la línea, no el de la factura.
  */
-function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
-  a: Assignment; v?: Valoracion; bloqueada: boolean
+function CeldaPrecio({ a, v, facturada, onPrecio, onError }: {
+  a: Assignment; v?: Valoracion; facturada: boolean
   onPrecio: (a: Assignment, precio: number | null) => Promise<void>; onError: (m: string) => void
 }) {
   const actual = v?.precio ?? null
@@ -758,14 +798,6 @@ function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
     return () => window.clearTimeout(t)
   }, [estado])
 
-  if (bloqueada) {
-    return (
-      <span className="nowrap subtle-copy" title="Ya facturada: para cambiar el precio, primero quita la factura.">
-        {actual != null ? `${pesosCortos(actual)}/${unidad}` : '—'}
-      </span>
-    )
-  }
-
   const deshacer = () => setTexto(null)
   async function confirmar() {
     if (texto == null) return   // no se tocó
@@ -780,6 +812,7 @@ function CeldaPrecio({ a, v, bloqueada, onPrecio, onError }: {
       if (actual != null && Math.abs(val - actual) < 0.005) { deshacer(); return }   // no cambió
       nuevo = val
     }
+    if (facturada && !window.confirm(`Esta línea ya está facturada (${a.facturaNumero ?? 'factura'}). ¿Cambiar su precio? La factura no cambia: solo el valor de la línea.`)) { deshacer(); return }
     setEstado('guardando')
     try {
       await onPrecio(a, nuevo)

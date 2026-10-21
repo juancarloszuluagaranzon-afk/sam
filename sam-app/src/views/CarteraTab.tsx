@@ -272,46 +272,6 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
           <div className="assignment-detail-row"><dt>Saldo</dt><dd><b>{pesos(f.saldo)}</b></dd></div>
         </dl>
         {f.archivoPath && <button type="button" className="af-link" onClick={() => onVer(f.archivoPath)}>📄 Abrir la factura</button>}
-        <SeccionSiigo factura={f} onError={onError} />
-
-        <p className="eyebrow" style={{ marginTop: 14 }}>Valor y plazo</p>
-        <div className="assignment-detail-field-grid">
-          <label className="assignment-detail-field"><span>Valor de la factura</span>
-            <input id="cart-valor-factura" inputMode="numeric" value={valorFactura} onChange={(ev) => setValorFactura(ev.target.value)} disabled={ocupado} /></label>
-          <label className="assignment-detail-field"><span>Plazo (días)</span>
-            <input id="cart-plazo" inputMode="numeric" value={plazo} onChange={(ev) => setPlazo(ev.target.value)} disabled={ocupado} /></label>
-        </div>
-        <button type="button" className="inline-button" disabled={ocupado}
-          onClick={() => void hacer(() => actualizarFactura(f.id, { valor: valorFactura.trim() ? n(valorFactura) : null, plazoDias: Math.max(0, Math.round(n(plazo) || 30)) }), `Factura ${f.numero} actualizada.`)}>
-          Guardar valor y plazo
-        </button>
-
-        {/* 🤝 ACUERDOS DE PAGO Y CONDICIONES DE CARTERA */}
-        <p className="eyebrow" style={{ marginTop: 14 }}>🤝 Acuerdo de pago y condiciones de cartera</p>
-        {acActual && (
-          <div className="taller-aviso" style={{ marginBottom: 8, padding: '8px 12px' }}>
-            <p style={{ margin: 0 }}>
-              <b>Acuerdo activo</b>: Compromiso de pago el <b>{acActual.compromisoFecha}</b> por <b>{pesos(acActual.compromisoMonto)}</b>
-            </p>
-            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>
-              Condiciones: {acActual.condiciones} {acActual.observaciones ? `· ${acActual.observaciones}` : ''}
-            </p>
-          </div>
-        )}
-        <div className="assignment-detail-field-grid">
-          <label className="assignment-detail-field"><span>Fecha de compromiso</span>
-            <input id="acuerdo-fecha" type="date" value={acCompromisoFecha} onChange={(ev) => setAcCompromisoFecha(ev.target.value)} disabled={ocupado} /></label>
-          <label className="assignment-detail-field"><span>Monto acordado</span>
-            <input id="acuerdo-monto" inputMode="numeric" value={acCompromisoMonto} onChange={(ev) => setAcCompromisoMonto(ev.target.value)} disabled={ocupado} placeholder="0" /></label>
-          <label className="assignment-detail-field" style={{ gridColumn: 'span 2' }}><span>Condiciones de cartera</span>
-            <input id="acuerdo-condiciones" value={acCondiciones} onChange={(ev) => setAcCondiciones(ev.target.value)} disabled={ocupado} placeholder="Ej. 50% anticipo, 50% saldo quincenal / Cruce de cuentas" /></label>
-          <label className="assignment-detail-field" style={{ gridColumn: 'span 2' }}><span>Observaciones / Detalles</span>
-            <input id="acuerdo-obs" value={acObs} onChange={(ev) => setAcObs(ev.target.value)} disabled={ocupado} placeholder="Comentarios del acuerdo con el cliente" /></label>
-        </div>
-        <button type="button" className="inline-button" disabled={ocupado} onClick={() => void guardarAcuerdo()}>
-          {acActual ? 'Actualizar acuerdo de pago' : 'Registrar acuerdo de pago'}
-        </button>
-
         <p className="eyebrow" style={{ marginTop: 14 }}>Pagos</p>
         {pagos.length === 0 && <p className="subtle-copy">Sin pagos todavía.</p>}
         <ul className="cart-pagos">
@@ -340,7 +300,13 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
                 <input id="pago-fecha" type="date" value={fecha} max={hoy} onChange={(ev) => setFecha(ev.target.value)} disabled={ocupado} /></label>
               <label className="assignment-detail-field"><span>Valor</span>
                 <input id="pago-valor" inputMode="numeric" value={valor} onChange={(ev) => setValor(ev.target.value)} disabled={ocupado}
-                  placeholder={f.saldo != null ? String(Math.round(f.saldo)) : '0'} /></label>
+                  placeholder={f.saldo != null ? Math.round(f.saldo).toLocaleString('es-CO') : '0'} />
+                {f.saldo != null && f.saldo > 0 && (
+                  <button type="button" className="af-link" style={{ alignSelf: 'flex-start' }} disabled={ocupado}
+                    onClick={() => setValor(Math.round(f.saldo ?? 0).toLocaleString('es-CO'))}>
+                    Todo el saldo ({pesos(f.saldo)})
+                  </button>
+                )}</label>
               <label className="assignment-detail-field"><span>Medio</span>
                 <select id="pago-medio" value={medio} onChange={(ev) => setMedio(ev.target.value)} disabled={ocupado}>
                   <option>TRANSFERENCIA</option><option>CONSIGNACIÓN</option><option>CHEQUE</option><option>EFECTIVO</option><option>CRUCE DE CUENTAS</option>
@@ -362,6 +328,50 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
             </button>
           </>
         )}
+
+        <details className="cart-plegable">
+          <summary>Valor y plazo de la factura</summary>
+        <div className="assignment-detail-field-grid">
+          <label className="assignment-detail-field"><span>Valor de la factura</span>
+            <input id="cart-valor-factura" inputMode="numeric" value={valorFactura} onChange={(ev) => setValorFactura(ev.target.value)} disabled={ocupado} /></label>
+          <label className="assignment-detail-field"><span>Plazo (días)</span>
+            <input id="cart-plazo" inputMode="numeric" value={plazo} onChange={(ev) => setPlazo(ev.target.value)} disabled={ocupado} /></label>
+        </div>
+        <button type="button" className="inline-button" disabled={ocupado}
+          onClick={() => void hacer(() => actualizarFactura(f.id, { valor: valorFactura.trim() ? n(valorFactura) : null, plazoDias: Math.max(0, Math.round(n(plazo) || 30)) }), `Factura ${f.numero} actualizada.`)}>
+          Guardar valor y plazo
+        </button>
+        </details>
+
+        {/* 🤝 ACUERDOS DE PAGO Y CONDICIONES DE CARTERA */}
+        {acActual && (
+          <div className="taller-aviso" style={{ margin: '12px 0 8px', padding: '8px 12px' }}>
+            <p style={{ margin: 0 }}>
+              <b>Acuerdo activo</b>: Compromiso de pago el <b>{acActual.compromisoFecha}</b> por <b>{pesos(acActual.compromisoMonto)}</b>
+            </p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem' }}>
+              Condiciones: {acActual.condiciones} {acActual.observaciones ? `· ${acActual.observaciones}` : ''}
+            </p>
+          </div>
+        )}
+        <details className="cart-plegable">
+          <summary>{acActual ? '🤝 Cambiar el acuerdo de pago' : '🤝 Registrar un acuerdo de pago'}</summary>
+        <div className="assignment-detail-field-grid">
+          <label className="assignment-detail-field"><span>Fecha de compromiso</span>
+            <input id="acuerdo-fecha" type="date" value={acCompromisoFecha} onChange={(ev) => setAcCompromisoFecha(ev.target.value)} disabled={ocupado} /></label>
+          <label className="assignment-detail-field"><span>Monto acordado</span>
+            <input id="acuerdo-monto" inputMode="numeric" value={acCompromisoMonto} onChange={(ev) => setAcCompromisoMonto(ev.target.value)} disabled={ocupado} placeholder="0" /></label>
+          <label className="assignment-detail-field" style={{ gridColumn: 'span 2' }}><span>Condiciones de cartera</span>
+            <input id="acuerdo-condiciones" value={acCondiciones} onChange={(ev) => setAcCondiciones(ev.target.value)} disabled={ocupado} placeholder="Ej. 50% anticipo, 50% saldo quincenal / Cruce de cuentas" /></label>
+          <label className="assignment-detail-field" style={{ gridColumn: 'span 2' }}><span>Observaciones / Detalles</span>
+            <input id="acuerdo-obs" value={acObs} onChange={(ev) => setAcObs(ev.target.value)} disabled={ocupado} placeholder="Comentarios del acuerdo con el cliente" /></label>
+        </div>
+        <button type="button" className="inline-button" disabled={ocupado} onClick={() => void guardarAcuerdo()}>
+          {acActual ? 'Actualizar acuerdo de pago' : 'Registrar acuerdo de pago'}
+        </button>
+        </details>
+
+        <SeccionSiigo factura={f} onError={onError} />
       </div>
     </div>
   )

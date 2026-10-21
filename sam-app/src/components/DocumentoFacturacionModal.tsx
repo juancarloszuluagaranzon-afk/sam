@@ -14,7 +14,7 @@ import { aligerarDocumento } from '../lib/pdfLigero'
  * que se marque «reemplazar» (así una factura no se pisa sin querer).
  */
 export function DocumentoFacturacionModal({
-  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo,
+  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo, modoInicial,
 }: {
   tipo: TipoDocumento
   ids: string[]
@@ -29,9 +29,11 @@ export function DocumentoFacturacionModal({
   hoy: string
   onCerrar: () => void
   onListo: (doc: DocumentoFact, vinculadas: number) => void
+  /** Desde «Facturar estas líneas» arranca en «Nuevo»: casi siempre es una factura nueva. */
+  modoInicial?: 'nuevo' | 'existente'
 }) {
   const propios = useMemo(() => documentos.filter((d) => d.tipo === tipo), [documentos, tipo])
-  const [modo, setModo] = useState<'nuevo' | 'existente'>(propios.length ? 'existente' : 'nuevo')
+  const [modo, setModo] = useState<'nuevo' | 'existente'>(modoInicial ?? (propios.length ? 'existente' : 'nuevo'))
   const [elegido, setElegido] = useState('')
   const [clases, setClases] = useState<string[]>([])
   const [clase, setClase] = useState('')

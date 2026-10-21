@@ -9841,6 +9841,46 @@ td.planilla-vacio:hover { background: #fde047; }
 .fact-precio__in.is-manual { font-weight: 700; color: var(--color-brand); }
 .fact-precio__in.is-vacio { border-style: dashed; }
 .fact-precio__ok { color: var(--color-brand); font-weight: 700; }
+/* «¿Qué vas a facturar?» (20-oct-2026): mes y cliente arriba y el botón directo. */
+.fact-armar { margin: 12px 0 8px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--color-border); background: var(--color-bg-elevated); }
+.fact-armar__titulo { margin: 0 0 8px; font-weight: 700; font-size: 1rem; }
+.fact-armar__campos { display: flex; flex-wrap: wrap; gap: 10px; }
+.fact-campo { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--color-ink-mid); }
+.fact-campo select { min-width: 160px; }
+.fact-campo--ancho select { min-width: 240px; }
+.fact-armar__guia { margin: 10px 0 0; color: var(--color-ink-mid); font-size: 0.9rem; }
+.fact-armar__listo { margin: 10px 0 0; color: var(--color-brand); font-weight: 600; }
+.fact-armar__resultado { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: var(--color-bg-soft);
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.fact-armar__cifras { display: flex; flex-direction: column; gap: 6px; }
+.fact-armar__valor { color: var(--color-brand); font-size: 1.05rem; }
+.fact-armar__avisos { display: flex; flex-wrap: wrap; gap: 6px; }
+.fact-armar__botones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.fact-armar__cta { font-size: 1rem; padding: 10px 16px; }
+.fact-ok { color: var(--color-brand); font-weight: 600; font-size: 0.85rem; }
+.fact-aviso { border: 1px solid rgba(217, 119, 6, .45); background: rgba(217, 119, 6, .10); color: inherit; border-radius: 999px;
+  padding: 3px 10px; font: inherit; font-size: 0.82rem; cursor: pointer; }
+.fact-aviso:hover { background: rgba(217, 119, 6, .18); }
+.fact-herramientas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 10px; }
+.fact-buscar { flex: 1 1 260px; margin: 0; }
+.fact-mas summary { cursor: pointer; font-size: 0.85rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--color-border); list-style: none; }
+.fact-mas summary::-webkit-details-marker { display: none; }
+.fact-mas summary::after { content: ' ▾'; }
+.fact-mas[open] summary::after { content: ' ▴'; }
+.fact-mas__cuerpo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; }
+.fact-mas__grupo { display: inline-flex; gap: 4px; align-items: center; }
+.fact-atajo { cursor: pointer; font: inherit; font-size: 0.75rem; }
+/* Resumen en una línea (antes 3 tarjetas de 163 px que empujaban la tabla hacia abajo). */
+.fact-resumen { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 0; font-size: 0.88rem; color: var(--color-ink-mid); }
+.fact-resumen b { color: var(--color-ink); }
+.fact-punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+.fact-punto--no { background: #d97706; }
+.fact-punto--si { background: #16a34a; }
+/* El botón grande no se estira ni se parte; en pantalla ancha cifras y botones van en una fila. */
+.fact-armar__cta { width: auto; white-space: nowrap; }
+@media (min-width: 900px) {
+  .fact-armar__botones { flex-wrap: nowrap; }
+}
 /* Cliente y lápices de soporte/factura por línea (18-oct-2026). */
 .fact-cliente { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left;
   text-decoration: underline dotted; text-underline-offset: 3px; }

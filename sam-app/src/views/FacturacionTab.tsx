@@ -42,11 +42,6 @@ const haDe = (a: { executedArea: number; area: number }) => (a.executedArea > 0 
 // Solo para el RESUMEN de arriba: ya no filtra la tabla (las líneas no se mueven).
 type Grupo = 'SIN_FACTURAR' | 'FACTURADAS' | 'TODAS'
 const facturada = (a: Assignment) => !!a.facturaId || conFactura(a.facturaNumero)
-const GRUPOS: { id: Grupo; titulo: string }[] = [
-  { id: 'SIN_FACTURAR', titulo: 'Sin facturar' },
-  { id: 'FACTURADAS', titulo: 'Facturado' },
-  { id: 'TODAS', titulo: 'Total' },
-]
 
 export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void }) {
   const { assignments, setAssignments, session, todayKey, busy, setBusy, setError, setInfo } = useAppData()
@@ -64,6 +59,10 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const [modalidadInput, setModalidadInput] = useState('')
   const [tarifaInput, setTarifaInput] = useState('')
   const [precioManualInput, setPrecioManualInput] = useState('')
+  // «Más acciones» de la barra en lote (modalidad, tarifa, precio, quitar) y cómo
+  // arranca el formulario del documento (desde «Facturar estas líneas», en «Nuevo»).
+  const [masAcciones, setMasAcciones] = useState(false)
+  const [modoModal, setModoModal] = useState<'nuevo' | 'existente' | undefined>(undefined)
   const [documentos, setDocumentos] = useState<DocumentoFact[]>([])
   const [modal, setModal] = useState<TipoDocumento | null>(null)
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
@@ -185,6 +184,47 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     for (const [id, ids] of lineasDe) if (ids.every((x) => vista.has(x))) total += docPorId.get(id)?.valor ?? 0
     return total
   }, [realizado, realizadas, docPorId])
+
+  // «¿Qué vas a facturar?» (20-oct-2026, Iván: «algo sencillo e intuitivo»): con el
+  // cliente escogido, lo que le falta por facturar en el período, listo para UN toque.
+  // Sobre el cliente y el período, SIN los filtros de revisar («sin tarifa», «sin
+  // modalidad»): el botón factura todo lo pendiente, no solo lo que se está corrigiendo.
+  const vistaCliente = useMemo(() => delPeriodo.filter((a) => !fijasCliente || fijasCliente.has(a.id)), [delPeriodo, fijasCliente])
+  const porFacturar = useMemo(() => vistaCliente.filter((a) => !facturada(a)), [vistaCliente])
+  const revisando = !!(fijasSinTarifa || fijasSinModalidad)
+  const resumenPF = useMemo(() => {
+    let ha = 0, h = 0, valor = 0, sinPrecio = 0, sinModalidad = 0, sinSoporte = 0
+    for (const a of porFacturar) {
+      if (esPorHoras(a.labor)) h += haDe(a); else ha += haDe(a)
+      const v = valores.get(a.id)?.valor
+      if (v == null) sinPrecio += 1; else valor += v
+      if (faltaModalidad(modalidades, a)) sinModalidad += 1
+      if (!a.soporteId) sinSoporte += 1
+    }
+    return { ha, h, valor, sinPrecio, sinModalidad, sinSoporte }
+  }, [porFacturar, valores, modalidades])
+  // Marcar todas solo alcanza a las que se ven (400): con más, primero se acota.
+  const demasiadas = vistaCliente.length > LIMIT
+  const periodoTexto = mes
+    ? `en ${(monthOptions.find((m) => m.value === mes)?.label ?? mes).toLowerCase()}${quincena === 'PRIMERA' ? ' (1ra quincena)' : quincena === 'SEGUNDA' ? ' (2da quincena)' : ''}`
+    : 'en todo el realizado'
+  function facturarTodas(tipo: TipoDocumento) {
+    // Se quitan los filtros de revisar: así las marcadas son TODAS las pendientes (se ven).
+    setFijasSinTarifa(null); setFijasSinModalidad(null)
+    const lista = tipo === 'FACTURA' ? porFacturar : porFacturar.filter((a) => !a.soporteId)
+    setSelected(new Set(lista.map((a) => a.id)))
+    setModoModal('nuevo')
+    setModal(tipo)
+  }
+  function abrirDocumento(tipo: TipoDocumento) {
+    setModoModal(undefined)
+    setModal(tipo)
+  }
+  // «falta modalidad» en una línea: se marca sola y se abre donde se pone.
+  const corregirModalidad = useCallback((a: Assignment) => {
+    setSelected(new Set([a.id]))
+    setMasAcciones(true)
+  }, [])
 
   const seleccion = shown.filter((a) => selected.has(a.id))
   const haSel = suma(seleccion, false)
@@ -457,7 +497,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         </span>
       </div>
       <Ayuda>
-        <p><b>Para armar una factura, en 4 pasos:</b> 1) escoge el <b>mes</b> (y la quincena si aplica) · 2) escoge el <b>cliente</b> · 3) revisa que ninguna línea diga «sin tarifa» (si alguna, escribe su precio en la casilla <b>Valor/ha</b>) · 4) marca la casilla de arriba para <b>marcarlas todas</b> (se marcan las que se ven, hasta 400) y toca <b>🧾 Vincular factura</b>: el valor ya viene sumado.</p>
+        <p><b>Para facturar:</b> arriba, en <b>¿Qué vas a facturar?</b>, escoge el <b>mes</b> y el <b>cliente</b>. Sale lo que le falta por facturar con su valor. Si dice «sin precio» o «sin modalidad», tócalo para corregir esas líneas. Luego toca <b>🧾 Facturar estas líneas</b>: se abre la factura con el valor ya sumado; escribe el número, la fecha y sube el PDF.</p>
+        <p>En cada línea, «<b>sin tarifa ✎</b>» te lleva a su casilla <b>Valor/ha</b> para escribir el precio, y «<b>falta modalidad ✎</b>» la marca y abre dónde ponerla.</p>
         <p>Para corregir <b>una sola línea</b> (a quién se factura, su soporte o su factura), toca su <b>cliente</b> o el ✏️ junto al soporte o la factura.</p>
         <p><b>Facturar por</b>: escoge la empresa (AGROMORALES o CEBALLOS Y LOZANO) y cada línea toma el precio de la tabla de esa empresa; si esa empresa no tiene precio para ese cliente, la línea sale «sin tarifa». Las líneas ya facturadas usan la empresa de su factura.</p>
         <p>Todas las líneas se quedan en su lugar: al ponerles tarifa, soporte o factura <b>no se mueven</b>. La columna <b>Estado</b> dice si ya está <b>facturado</b> o <b>sin facturar</b>.</p>
@@ -465,25 +506,114 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         <p>La <b>modalidad</b> (2x1, 4x1 quemada, 2 pases…) define la tarifa. Si una labor la necesita y no la tiene, sale «falta»: márcalas (de la misma labor) y ponles la modalidad en lote.</p>
       </Ayuda>
 
-      {/* Resumen: cuánto hay facturado y sin facturar (solo informa; no filtra la tabla). */}
-      <div className="fact-etapas">
-        {GRUPOS.map((e) => (
-          <div key={e.id} className="fact-etapa fact-etapa--resumen">
-            <span>{e.titulo}</span>
-            <b>{porEtapa[e.id].n}</b>
-            <small>{fmt(porEtapa[e.id].ha)} ha{porEtapa[e.id].h > 0 ? ` + ${fmt(porEtapa[e.id].h)} h` : ''}</small>
-            <small><b>{pesosCortos(porEtapa[e.id].valor)}</b>{e.id === 'FACTURADAS' && valorFacturas > 0 ? ' en las líneas' : ''}</small>
-            {e.id === 'FACTURADAS' && valorFacturas > 0 && (
-              <small title="La suma de las facturas que están completas en esta vista. Si no cuadra con el valor de las líneas, alguna quedó sin precio o con otro precio.">
-                <b>{pesosCortos(valorFacturas)}</b> según las facturas
-              </small>
-            )}
-          </div>
-        ))}
+      {/* Resumen en UNA línea (solo informa; no filtra). El total va en el título. */}
+      <div className="fact-resumen">
+        <span><i className="fact-punto fact-punto--no" />Sin facturar <b>{porEtapa.SIN_FACTURAR.n}</b> · {fmt(porEtapa.SIN_FACTURAR.ha)} ha{porEtapa.SIN_FACTURAR.h > 0 ? ` + ${fmt(porEtapa.SIN_FACTURAR.h)} h` : ''} · <b>{pesosCortos(porEtapa.SIN_FACTURAR.valor)}</b></span>
+        <span><i className="fact-punto fact-punto--si" />Facturado <b>{porEtapa.FACTURADAS.n}</b> · {fmt(porEtapa.FACTURADAS.ha)} ha{porEtapa.FACTURADAS.h > 0 ? ` + ${fmt(porEtapa.FACTURADAS.h)} h` : ''} · <b>{pesosCortos(porEtapa.FACTURADAS.valor)}</b>
+          {valorFacturas > 0 && (
+            <span title="La suma de las facturas que están completas en esta vista. Si no cuadra con el valor de las líneas, alguna quedó sin precio o con otro precio.">
+              {' '}(según las facturas <b>{pesosCortos(valorFacturas)}</b>)
+            </span>
+          )}
+        </span>
       </div>
 
-      {/* Filtros */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', margin: '10px 0' }}>
+      {/* ── ¿Qué vas a facturar? Lo principal, arriba y grande ── */}
+      <div className="fact-armar">
+        <p className="fact-armar__titulo">¿Qué vas a facturar?</p>
+        <div className="fact-armar__campos">
+          <label className="fact-campo">
+            <span>Mes</span>
+            <select id="fact-mes" value={mes} onChange={(e) => { setMes(e.target.value); setSelected(new Set()) }} className="base-input">
+              <option value="">Todo el realizado</option>
+              {monthOptions.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </label>
+          {mes && (
+            <label className="fact-campo">
+              <span>Quincena</span>
+              <select id="fact-quincena" value={quincena} onChange={(e) => { setQuincena(e.target.value as SummaryQuincena); setSelected(new Set()) }} className="base-input">
+                <option value="TODO">Todo el mes</option>
+                <option value="PRIMERA">1ra quincena</option>
+                <option value="SEGUNDA">2da quincena</option>
+              </select>
+            </label>
+          )}
+          <label className="fact-campo fact-campo--ancho">
+            <span>Cliente</span>
+            <select id="fact-cliente" value={cliente} className="base-input"
+              onChange={(e) => { setCliente(e.target.value); setFijasCliente(fijarCliente(e.target.value)); setSelected(new Set()) }}
+              title="Una factura es de un cliente: escógelo para ver lo que le falta por facturar">
+              <option value="">Todos los clientes</option>
+              {clientesDelPeriodo.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
+              {cliente && !clientesDelPeriodo.some(([c]) => c === cliente) && <option value={cliente}>{cliente} (0)</option>}
+            </select>
+          </label>
+        </div>
+
+        {!cliente ? (
+          <p className="fact-armar__guia">Escoge el <b>cliente</b> (y el mes) y aquí te sale lo que le falta por facturar, listo para facturar de un solo toque.</p>
+        ) : porFacturar.length === 0 ? (
+          <p className="fact-armar__listo">✓ Todo lo de {cliente} {periodoTexto} ya está facturado.</p>
+        ) : (
+          <div className="fact-armar__resultado">
+            <div className="fact-armar__cifras">
+              <span>
+                <b>{porFacturar.length} {porFacturar.length === 1 ? 'línea' : 'líneas'} sin facturar</b> {periodoTexto}
+                {' '}· {fmt(resumenPF.ha)} ha{resumenPF.h > 0 ? ` + ${fmt(resumenPF.h)} h` : ''}
+                {' '}· <b className="fact-armar__valor">{pesosCortos(resumenPF.valor)}</b>
+              </span>
+              <span className="fact-armar__avisos">
+                {resumenPF.sinPrecio === 0 && resumenPF.sinModalidad === 0 && <span className="fact-ok">✓ Todas tienen precio</span>}
+                {resumenPF.sinPrecio > 0 && (
+                  <button type="button" className="fact-aviso" onClick={() => { setFijasSinTarifa(fijarSinTarifa()); setSelected(new Set()) }}
+                    title="Ver solo esas líneas para escribirles el precio en Valor/ha">
+                    ⚠ {resumenPF.sinPrecio} sin precio · ver y corregir
+                  </button>
+                )}
+                {resumenPF.sinModalidad > 0 && (
+                  <button type="button" className="fact-aviso" onClick={() => { setFijasSinModalidad(fijarSinModalidad()); setSelected(new Set()) }}
+                    title="Ver solo esas líneas para ponerles la modalidad">
+                    ⚠ {resumenPF.sinModalidad} sin modalidad · ver
+                  </button>
+                )}
+                {revisando && (
+                  <button type="button" className="af-link" onClick={() => { setFijasSinTarifa(null); setFijasSinModalidad(null); setSelected(new Set()) }}>
+                    Ver todas otra vez
+                  </button>
+                )}
+              </span>
+            </div>
+            {demasiadas ? (
+              <p className="fact-armar__guia">Son {vistaCliente.length} líneas: escoge el <b>mes</b> (o la quincena) para facturarlas por partes.</p>
+            ) : (
+              <div className="fact-armar__botones">
+                <button type="button" className="primary-button fact-armar__cta" disabled={busy || !session} onClick={() => facturarTodas('FACTURA')}>
+                  🧾 Facturar {porFacturar.length === 1 ? 'esta línea' : `estas ${porFacturar.length} líneas`}
+                </button>
+                {resumenPF.sinSoporte > 0 && (
+                  <button type="button" className="inline-button" disabled={busy || !session} onClick={() => facturarTodas('SOPORTE')}
+                    title="Ponerles el soporte del cliente (orden de servicio, acta…) a las que no lo tienen">
+                    📎 Ponerles soporte
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Herramientas: buscar, empresa, revisar y Excel (más pequeñas) */}
+      <div className="fact-herramientas">
+        <input
+          className="user-search-input fact-buscar"
+          type="search"
+          placeholder="Buscar hacienda, suerte, labor, operario, soporte o factura…"
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setSelected(new Set()) }}
+        />
         <label className="fact-empresa">
           <span>Facturar por</span>
           <select id="fact-empresa" value={empresa} onChange={(e) => cambiarEmpresa(e.target.value)} className="base-input" style={{ width: 'auto' }}>
@@ -491,26 +621,6 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             {RAZONES_SOCIALES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </label>
-        <select id="fact-mes" value={mes} onChange={(e) => { setMes(e.target.value); setSelected(new Set()) }} className="base-input" style={{ width: 'auto' }}>
-          <option value="">Todo el realizado</option>
-          {monthOptions.map((m) => (
-            <option key={m.value} value={m.value}>{m.label}</option>
-          ))}
-        </select>
-        {mes && (
-          <select id="fact-quincena" value={quincena} onChange={(e) => { setQuincena(e.target.value as SummaryQuincena); setSelected(new Set()) }} className="base-input" style={{ width: 'auto' }}>
-            <option value="TODO">Todo el mes</option>
-            <option value="PRIMERA">1ra quincena</option>
-            <option value="SEGUNDA">2da quincena</option>
-          </select>
-        )}
-        <select id="fact-cliente" value={cliente} className="base-input" style={{ width: 'auto' }}
-          onChange={(e) => { setCliente(e.target.value); setFijasCliente(fijarCliente(e.target.value)); setSelected(new Set()) }}
-          title="Ver solo las líneas de un cliente: así se arma su factura">
-          <option value="">Todos los clientes</option>
-          {clientesDelPeriodo.map(([c, n]) => <option key={c} value={c}>{c} ({n})</option>)}
-          {cliente && !clientesDelPeriodo.some(([c]) => c === cliente) && <option value={cliente}>{cliente} (0)</option>}
-        </select>
         <button
           type="button"
           className={`inline-button${fijasSinModalidad ? ' is-active' : ''}`}
@@ -527,27 +637,12 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         >
           {fijasSinTarifa ? '✓ ' : ''}Sin tarifa ({sinTarifa})
         </button>
-        <button
-          type="button"
-          className="inline-button"
-          onClick={() => void exportarAExcel()}
-          title="Exportar a Excel"
-          style={{ marginLeft: 'auto' }}
-        >
-          ⬇️ Exportar Excel
+        <button type="button" className="inline-button" onClick={() => void exportarAExcel()} title="Exportar a Excel lo que se ve">
+          ⬇️ Excel
         </button>
       </div>
 
-      <input
-        className="user-search-input"
-        type="search"
-        placeholder="Buscar hacienda, suerte, labor, operario, soporte o factura…"
-        value={search}
-        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()) }}
-        style={{ marginBottom: 10 }}
-      />
-
-      {/* Barra de acciones en lote */}
+      {/* Barra de acciones en lote: lo principal a la vista; lo demás en «Más acciones» */}
       {seleccion.length > 0 && (
         <div className="factura-bulk-bar">
           {overLimit && seleccion.length >= shown.length && (
@@ -555,74 +650,79 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               Solo se marcaron las {shown.length} que se ven de {realizadas.length}: escoge el mes o el cliente para marcarlas todas.
             </span>
           )}
-          <span><strong>{seleccion.length}</strong> seleccionada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''} · <strong>{pesosCortos(valorSel)}</strong>{sinTarifaSel > 0 ? ` (${sinTarifaSel} sin tarifa)` : ''}</span>
-          <button type="button" className="primary-button" onClick={() => setModal('SOPORTE')} disabled={busy}>📎 Vincular soporte</button>
-          <button type="button" className="primary-button" onClick={() => setModal('FACTURA')} disabled={busy}>🧾 Vincular factura</button>
-          {seleccion.some((a) => a.soporteId) && (
-            <button type="button" className="inline-button" onClick={() => void quitar('SOPORTE')} disabled={busy}>Quitar soporte</button>
-          )}
-          {seleccion.some(facturada) && (
-            <button type="button" className="inline-button" onClick={() => void quitar('FACTURA')} disabled={busy}>Quitar factura</button>
-          )}
-          {opcionesModalidad.length > 0 && (
-            <>
-              <select
-                id="fact-modalidad"
-                value={modalidadLote}
-                onChange={(e) => setModalidadInput(e.target.value)}
-                disabled={busy}
-                aria-label={`Modalidad de ${laboresSel[0]}`}
-              >
-                <option value="">Modalidad de {laboresSel[0].toLowerCase()}…</option>
-                {opcionesModalidad.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <button type="button" className="inline-button" onClick={() => void ponerModalidad()} disabled={busy || !modalidadLote}>
-                Poner modalidad
-              </button>
-            </>
-          )}
-          {opcionesTarifa.length > 0 && (
-            <>
-              <select
-                id="fact-tarifa"
-                value={tarifaValida ? tarifaInput : ''}
-                onChange={(e) => setTarifaInput(e.target.value)}
-                disabled={busy}
-                aria-label={`Asignar tarifa manual a ${laboresSel[0]}`}
-                style={{ marginLeft: 8 }}
-              >
-                <option value="">Tarifa manual ({opcionesTarifa.length})…</option>
-                {opcionesTarifa.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {[t.razonSocial || 'GENERAL', NOMBRE_CLIENTE[t.clienteClave] ?? t.clienteClave ?? 'Todos', t.modalidad ?? 'general',
-                      `${pesosCortos(t.precio)}/${t.unidad}`, t.vigenteHoy ? null : `vencida ${t.hasta ?? ''}`.trim()].filter(Boolean).join(' · ')}
-                  </option>
-                ))}
-              </select>
-              <button type="button" className="inline-button" onClick={() => void ponerTarifa()} disabled={busy || !tarifaValida}>
-                Forzar tarifa
-              </button>
-            </>
-          )}
-          {laboresSel.length === 1 && (
-            <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', marginLeft: 8 }}>
-              <input
-                id="fact-precio-manual"
-                className="base-input"
-                inputMode="numeric"
-                style={{ width: 130, padding: '2px 6px', fontSize: '0.85rem' }}
-                placeholder={`$ por ${unidadLote}`}
-                aria-label={`Precio manual por ${unidadLote} de ${laboresSel[0]}`}
-                value={precioManualInput}
-                onChange={(e) => setPrecioManualInput(e.target.value)}
-                disabled={busy}
-              />
-              <button type="button" className="inline-button" onClick={() => void ponerPrecioManual()} disabled={busy || !precioManualInput}>
-                Precio manual
-              </button>
-            </span>
-          )}
-          {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad, la tarifa o el precio manual, marca una sola labor.</span>}
+          <span><strong>{seleccion.length}</strong> marcada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''} · <strong>{pesosCortos(valorSel)}</strong>{sinTarifaSel > 0 ? ` (${sinTarifaSel} sin tarifa)` : ''}</span>
+          <button type="button" className="primary-button" onClick={() => abrirDocumento('FACTURA')} disabled={busy}>🧾 Vincular factura</button>
+          <button type="button" className="inline-button" onClick={() => abrirDocumento('SOPORTE')} disabled={busy}>📎 Vincular soporte</button>
+          <button type="button" className="af-link" onClick={() => setSelected(new Set())}>Quitar las marcas</button>
+          <details className="fact-mas" open={masAcciones} onToggle={(e) => setMasAcciones(e.currentTarget.open)}>
+            <summary>Más acciones</summary>
+            <div className="fact-mas__cuerpo">
+              {seleccion.some((a) => a.soporteId) && (
+                <button type="button" className="inline-button" onClick={() => void quitar('SOPORTE')} disabled={busy}>Quitar soporte</button>
+              )}
+              {seleccion.some(facturada) && (
+                <button type="button" className="inline-button" onClick={() => void quitar('FACTURA')} disabled={busy}>Quitar factura</button>
+              )}
+              {opcionesModalidad.length > 0 && (
+                <span className="fact-mas__grupo">
+                  <select
+                    id="fact-modalidad"
+                    value={modalidadLote}
+                    onChange={(e) => setModalidadInput(e.target.value)}
+                    disabled={busy}
+                    aria-label={`Modalidad de ${laboresSel[0]}`}
+                  >
+                    <option value="">Modalidad de {laboresSel[0].toLowerCase()}…</option>
+                    {opcionesModalidad.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <button type="button" className="inline-button" onClick={() => void ponerModalidad()} disabled={busy || !modalidadLote}>
+                    Poner modalidad
+                  </button>
+                </span>
+              )}
+              {opcionesTarifa.length > 0 && (
+                <span className="fact-mas__grupo">
+                  <select
+                    id="fact-tarifa"
+                    value={tarifaValida ? tarifaInput : ''}
+                    onChange={(e) => setTarifaInput(e.target.value)}
+                    disabled={busy}
+                    aria-label={`Asignar tarifa manual a ${laboresSel[0]}`}
+                  >
+                    <option value="">Tarifa de la tabla ({opcionesTarifa.length})…</option>
+                    {opcionesTarifa.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {[t.razonSocial || 'GENERAL', NOMBRE_CLIENTE[t.clienteClave] ?? t.clienteClave ?? 'Todos', t.modalidad ?? 'general',
+                          `${pesosCortos(t.precio)}/${t.unidad}`, t.vigenteHoy ? null : `vencida ${t.hasta ?? ''}`.trim()].filter(Boolean).join(' · ')}
+                      </option>
+                    ))}
+                  </select>
+                  <button type="button" className="inline-button" onClick={() => void ponerTarifa()} disabled={busy || !tarifaValida}>
+                    Forzar tarifa
+                  </button>
+                </span>
+              )}
+              {laboresSel.length === 1 && (
+                <span className="fact-mas__grupo">
+                  <input
+                    id="fact-precio-manual"
+                    className="base-input"
+                    inputMode="numeric"
+                    style={{ width: 130, padding: '2px 6px', fontSize: '0.85rem' }}
+                    placeholder={`$ por ${unidadLote}`}
+                    aria-label={`Precio manual por ${unidadLote} de ${laboresSel[0]}`}
+                    value={precioManualInput}
+                    onChange={(e) => setPrecioManualInput(e.target.value)}
+                    disabled={busy}
+                  />
+                  <button type="button" className="inline-button" onClick={() => void ponerPrecioManual()} disabled={busy || !precioManualInput}>
+                    Precio manual
+                  </button>
+                </span>
+              )}
+              {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad, la tarifa o el precio manual, marca líneas de una sola labor.</span>}
+            </div>
+          </details>
           {parcialesSel > 0 && (
             <span className="subtle-copy" style={{ flexBasis: '100%' }}>
               {parcialesSel} {parcialesSel === 1 ? 'es parcial' : 'son parciales'} (la labor sigue abierta): se pueden facturar; si el operario continúa, lo nuevo saldrá en otra línea, sin facturar.
@@ -661,6 +761,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 modalidades={modalidades}
                 onPrecio={guardarPrecioLinea}
                 onEditarFact={abrirEdicion}
+                onFaltaModalidad={corregirModalidad}
                 onErrorPrecio={setError}
                 onToggle={toggle}
                 onAbrir={verArchivo}
@@ -719,6 +820,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       {modal && session && (
         <DocumentoFacturacionModal
           tipo={modal}
+          modoInicial={modoModal}
           ids={seleccion.map((a) => a.id)}
           resumen={`${seleccion.length} línea(s) · ${fmt(haSel)} ha${hSel > 0 ? ` + ${fmt(hSel)} h` : ''}`}
           clienteSugerido={clienteSugerido}
@@ -740,7 +842,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
  * 400 filas en pantalla, y marcar UNA las redibujaba todas (más de un segundo
  * por clic). Ahora solo se redibuja la que cambió.
  */
-const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onPrecio, onErrorPrecio, onEditarFact, onToggle, onAbrir, onEdit }: {
+const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onPrecio, onErrorPrecio, onEditarFact, onFaltaModalidad, onToggle, onAbrir, onEdit }: {
   a: Assignment
   sel: boolean
   v?: Valoracion
@@ -750,6 +852,7 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
   onPrecio: (a: Assignment, precio: number | null) => Promise<void>
   onErrorPrecio: (m: string) => void
   onEditarFact: (a: Assignment) => void
+  onFaltaModalidad: (a: Assignment) => void
   onToggle: (id: string) => void
   onAbrir: (d: DocumentoFact) => void
   onEdit?: (a: Assignment) => void
@@ -775,7 +878,7 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
           {mod
             ? <>{mod}{adic > 0 && <span className="factura-chip factura-chip--falta" title="El hectómetro incluye 2 pases: desde el 3.º es adicional"> +{adic} adicional</span>}</>
             : faltaModalidad(modalidades, a)
-              ? <span className="factura-chip factura-chip--falta">falta modalidad</span>
+              ? <button type="button" className="factura-chip factura-chip--falta fact-atajo" onClick={() => onFaltaModalidad(a)} title="Toca para ponerle la modalidad">falta modalidad ✎</button>
               : '—'}
         </small>
       </td>
@@ -897,7 +1000,14 @@ function CeldaPrecio({ a, v, facturada, onPrecio, onError }: {
 /** Valor de la línea; sin tarifa sale marcado (nunca $0 escondido). Al pasar el dedo, de dónde salió. */
 function CeldaValor({ v }: { v?: Valoracion }) {
   if (!v) return <span className="subtle-copy">—</span>
-  if (v.valor == null) return <span className="factura-chip factura-chip--falta" title={v.nota ?? ''}>sin tarifa</span>
+  if (v.valor == null) {
+    return (
+      <button type="button" className="factura-chip factura-chip--falta fact-atajo" title={`${v.nota ?? 'Sin tarifa'}. Toca para escribirle el precio.`}
+        onClick={(e) => (e.currentTarget.closest('tr')?.querySelector('.fact-precio__in') as HTMLInputElement | null)?.focus()}>
+        sin tarifa ✎
+      </button>
+    )
+  }
   const de = [v.razonSocial, v.cliente, v.etiqueta, `${pesosCortos(v.precio ?? 0)}/${v.unidad}`].filter(Boolean).join(' · ')
   return (
     <span className="nowrap" title={v.nota ? `${de} — ${v.nota}` : de}>

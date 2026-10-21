@@ -43,6 +43,9 @@ export function DocumentoFacturacionModal({
   const [nota, setNota] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
   const [reemplazar, setReemplazar] = useState(false)
+  // El documento que se acaba de crear aquí (todavía no está en `documentos`): si el
+  // vínculo falla, el reintento lo usa a él (antes daba un error técnico).
+  const [creado, setCreado] = useState<DocumentoFact | null>(null)
   const [pideReemplazo, setPideReemplazo] = useState('')
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -63,6 +66,7 @@ export function DocumentoFacturacionModal({
 
   async function guardar() {
     setError('')
+    if (ids.length === 0) return setError('No hay líneas marcadas: márcalas en la tabla y vuelve a intentar.')
     if (modo === 'existente' && !elegido) return setError(`Escoge el ${nombre}.`)
     if (modo === 'nuevo') {
       if (!numero.trim()) return setError('Escribe el número.')
@@ -81,14 +85,15 @@ export function DocumentoFacturacionModal({
         if (liviano.size > 15 * 1024 * 1024) { setError('El archivo sigue pesando más de 15 MB.'); return }
       }
       const doc = modo === 'existente'
-        ? propios.find((d) => d.id === elegido)!
+        ? (propios.find((d) => d.id === elegido) ?? (creado?.id === elegido ? creado : null))
         : await crearDocumento({
           tipo, clase: tipo === 'SOPORTE' ? clase : null, numero, fecha,
           razonSocial: tipo === 'FACTURA' ? razon : null, cliente,
           valor: tipo === 'FACTURA' && valor.trim() ? n : null, nota, creadoPor: usuario,
         }, liviano)
+      if (!doc) { setError(`Escoge el ${nombre} otra vez.`); return }
       // A partir de aquí el documento ya existe: si falla el vínculo, se reintenta como «existente».
-      if (modo === 'nuevo') { setModo('existente'); setElegido(doc.id) }
+      if (modo === 'nuevo') { setCreado(doc); setModo('existente'); setElegido(doc.id) }
       try {
         const vinculadas = await vincularDocumento(doc.id, ids, usuario, reemplazar)
         onListo(doc, vinculadas)
@@ -130,7 +135,7 @@ export function DocumentoFacturacionModal({
               onChange={setElegido}
               disabled={ocupado}
               placeholder={tipo === 'SOPORTE' ? 'Soporte' : 'Factura'}
-              options={propios.map((d) => ({ value: d.id, label: [d.clase ?? d.razonSocial, d.numero, d.cliente, d.fecha].filter(Boolean).join(' · ') }))}
+              options={[...(creado && !propios.some((d) => d.id === creado.id) ? [creado] : []), ...propios].map((d) => ({ value: d.id, label: [d.clase ?? d.razonSocial, d.numero, d.cliente, d.fecha].filter(Boolean).join(' · ') }))}
             />
           </label>
         ) : (

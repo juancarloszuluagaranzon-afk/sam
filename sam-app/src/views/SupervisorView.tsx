@@ -1,3 +1,4 @@
+import { sinEtiquetasFact } from '../lib/etiquetasFact'
 import { unidadDeLabor, formatArea, esPorHoras, nombreUnidad } from '../lib/texto'
 import { CampoLista } from '../components/CampoPlaca'
 import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
@@ -3838,7 +3839,7 @@ export function SupervisorView({
                             executedArea: selectedLabor.executedArea ? String(selectedLabor.executedArea) : '',
                             horometroInicial: selectedLabor.horometroInicial != null ? String(selectedLabor.horometroInicial) : '',
                             horometroFinal: selectedLabor.horometroFinal != null ? String(selectedLabor.horometroFinal) : '',
-                            notes: selectedLabor.notes ?? '',
+                            notes: sinEtiquetasFact(selectedLabor.notes),
                             equipmentCode: selectedLabor.equipmentCode ?? '',
                             operatorId: selectedLabor.operatorId ?? '',
                             fechaEjec: executionDateKey(selectedLabor),
@@ -3953,10 +3954,10 @@ export function SupervisorView({
                       </>
                     )}
 
-                    {selectedLabor.notes && (
+                    {sinEtiquetasFact(selectedLabor.notes) && (
                       <>
                         <span className="labor-label">Notas</span>
-                        <span className="labor-value">{selectedLabor.notes}</span>
+                        <span className="labor-value">{sinEtiquetasFact(selectedLabor.notes)}</span>
                       </>
                     )}
 

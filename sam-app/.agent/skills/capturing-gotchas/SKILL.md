@@ -11,6 +11,13 @@ description: >
 
 Cuando detectes un error nuevo o una corrección relevante, sigue este flujo:
 
+## 🔴 Observaciones con etiquetas de Facturación (20-oct-2026)
+
+`asignaciones.observaciones` guarda `[PRECIO_MANUAL:x]`, `[TARIFA:uuid]` y `[CLIENTE:X]`. Toda
+edición pasa por `updateAssignment`, que relee la base y conserva esas etiquetas
+(`lib/etiquetasFact`). Si se agrega otro camino que escriba `observaciones`, debe hacer lo mismo,
+y en pantalla se muestra `sinEtiquetasFact(notas)`.
+
 ## 1. Identifica el SKILL destino
 
 | Si el error involucra... | → Skill destino |

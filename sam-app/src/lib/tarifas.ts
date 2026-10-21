@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from './supabase'
 import { executionDateKey, loadCatalogo } from '../services/samApi'
 import type { Assignment } from '../domain/sam'
-import { esPorHoras } from './texto'
+import { esPorHoras, unidadDeLabor } from './texto'
 import { laborFacturable, modalidadEfectiva, pasesAdicionales } from './modalidad'
 
 /**
@@ -144,7 +144,13 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
   const modalidad = modalidadEfectiva(a)?.toUpperCase() ?? null
   const fecha = executionDateKey(a)
   const porHoras = esPorHoras(a.labor)
-  const base: Valoracion = { valor: null, precio: null, cantidad: haDe(a), unidad: porHoras ? 'h' : 'ha', razonSocial: null, cliente: null, etiqueta: null, nota: null }
+  // Oficios varios POR JORNAL se cobran 1 jornal por servicio, no por horas (también
+  // con precio manual o tarifa forzada: antes multiplicaban por las horas).
+  const porJornal = porHoras && modalidad === 'POR JORNAL'
+  const base: Valoracion = {
+    valor: null, precio: null, cantidad: porJornal ? 1 : haDe(a), unidad: porJornal ? 'jornal' : unidadDeLabor(a.labor),
+    razonSocial: null, cliente: null, etiqueta: null, nota: null,
+  }
 
   const customPriceMatch = a.notes?.match(/\[PRECIO_MANUAL:(\d+(?:\.\d+)?)\]/i)
   const manualP = a.manualPrice ?? (customPriceMatch ? Number(customPriceMatch[1]) : null)
@@ -153,7 +159,8 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
       ...base,
       precio: manualP,
       valor: base.cantidad * manualP,
-      razonSocial: empresa || 'AGROMORALES',
+      // Pichichí y proveedores los factura Ceballos y Lozano (misma regla que la sugerida).
+      razonSocial: empresa || (['PICHICHI', 'PROVEEDOR'].includes(clientesDe(a, haciendasRA)[0] ?? '') ? 'CEBALLOS Y LOZANO' : 'AGROMORALES'),
       // A quién se le cobra no cambia por poner el precio a mano.
       cliente: NOMBRE_CLIENTE[clientesDe(a, haciendasRA)[0]] ?? null,
       etiqueta: 'Precio manual',
@@ -163,14 +170,16 @@ export function valorarLinea(a: Assignment, tarifas: Tarifa[], haciendasRA: Set<
     }
   }
 
-  const manualMatch = a.notes?.match(/\[TARIFA:([a-f0-9\-]{36})\]/i)
+  const manualMatch = a.notes?.match(/\[TARIFA:([a-f0-9-]{36})\]/i)
   if (manualMatch) {
     const t = tarifas.find((x) => x.id === manualMatch[1])
     if (t) {
+      const cantidad = t.unidad === 'jornal' ? 1 : haDe(a)
       return {
         ...base,
+        cantidad,
         precio: t.precio,
-        valor: base.cantidad * t.precio,
+        valor: cantidad * t.precio,
         razonSocial: t.razonSocial,
         cliente: NOMBRE_CLIENTE[t.clienteClave] || t.clienteClave,
         etiqueta: t.etiqueta,

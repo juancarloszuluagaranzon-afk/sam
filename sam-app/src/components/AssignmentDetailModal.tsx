@@ -1,3 +1,4 @@
+import { sinEtiquetasFact } from '../lib/etiquetasFact'
 import { memo, useEffect, useState } from 'react'
 import type { Assignment, Equipment, MaestroRow } from '../domain/sam'
 import { formatTime, getIngenioName } from '../services/samApi'
@@ -87,7 +88,7 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
     setExecutedArea(assignment.executedArea ? String(assignment.executedArea) : '')
     setHorometroInicial(assignment.horometroInicial != null ? String(assignment.horometroInicial) : '')
     setHorometroFinal(assignment.horometroFinal != null ? String(assignment.horometroFinal) : '')
-    setNotes(assignment.notes ?? '')
+    setNotes(sinEtiquetasFact(assignment.notes))
     setEquipmentCode(assignment.equipmentCode ?? '')
     setEditing(false)
   }, [assignment])
@@ -320,8 +321,8 @@ export const AssignmentDetailModal = memo(function AssignmentDetailModal({
               placeholder="Observaciones"
               className="assignment-detail-notes-input"
             />
-          ) : a.notes && a.notes.trim() ? (
-            <p className="assignment-detail-notes">{a.notes}</p>
+          ) : sinEtiquetasFact(a.notes) ? (
+            <p className="assignment-detail-notes">{sinEtiquetasFact(a.notes)}</p>
           ) : (
             <p className="muted-text">Sin notas.</p>
           )}

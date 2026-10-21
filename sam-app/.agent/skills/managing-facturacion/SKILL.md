@@ -111,6 +111,25 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
   revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
+- 🔴 **20-oct-2026 — revisión para la entrega** (Iván: «que sea práctica y fácil de usar»):
+  - **Tabla compacta** (dos renglones por línea, cabe en 1366 px), **filtro por cliente** (fija las
+    líneas), precio editable también en **facturadas** (con confirmación), resumen sobre lo que se ve
+    y «según las facturas» solo con facturas completas en la vista. Ayuda «Info» con los 4 pasos.
+  - 🔴 **Etiquetas protegidas** (`lib/etiquetasFact`): `[PRECIO_MANUAL]`, `[TARIFA]` y `[CLIENTE]`
+    las pone/quita SOLO Facturación; `updateAssignment` relee la base y las vuelve a pegar cuando otra
+    pantalla guarda observaciones (antes el operario que cerraba su parcial con notas vacías, o un
+    supervisor con copia vieja / cola sin señal, las borraba). En pantalla no se muestran.
+  - **POR JORNAL** con precio manual o tarifa forzada = 1 jornal (antes × horas); unidad de la
+    labor (hm en acequias); precio manual de Pichichí/proveedor → Ceballos y Lozano.
+  - Barra en lote: la tarifa/modalidad escogida solo vale para la labor marcada AHORA; avisa si hay
+    facturadas; «Quitar» confirma; cambiar mes/quincena/búsqueda limpia la selección; cuenta lo que
+    se ve marcado; avisa si «marcar todas» se quedó en 400. Cambiar el cliente quita `[TARIFA]`.
+  - Formulario: si el vínculo falla tras CREAR el documento, el reintento ya no revienta.
+  - Excel: cantidad y unidad con que se cobra (jornal = 1), sin tarifa en blanco (no $0) y columna
+    «Sin tarifa» con el motivo; nombre con quincena y cliente.
+  - ⚠️ Pendiente (no urgente): una PARCIAL facturada sigue sumando si el operario la continúa;
+    `fact_vincular` no cuenta números de factura «antiguos» sin documento (hoy no hay ninguno);
+    `asignaciones` acepta UPDATE directo de anon (RLS abierta).
 - 🔴 **18-oct-2026 — LA LISTA NO SE MUEVE** (Iván y Carlos: «déjalo ahí mismo, no te lo lleves para
   ningún lado»). Se quitaron las ETAPAS como filtro (antes la tabla arrancaba en «Sin soporte» y una
   línea se iba de la vista al ponerle soporte o factura): ahora es UNA lista por fecha con columna

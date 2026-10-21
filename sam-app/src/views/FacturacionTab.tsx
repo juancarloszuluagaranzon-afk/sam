@@ -9,7 +9,7 @@ import {
 } from '../services/facturacionApi'
 import { DocumentoFacturacionModal } from '../components/DocumentoFacturacionModal'
 import { EditarLineaFacturacion, type CambioLinea } from '../components/EditarLineaFacturacion'
-import { clienteDeducido, clienteForzado, pesosCortos, useTarifas, valorarLinea, type Valoracion } from '../lib/tarifas'
+import { NOMBRE_CLIENTE, clienteDeducido, clienteForzado, pesosCortos, useTarifas, valorarLinea, type Tarifa, type Valoracion } from '../lib/tarifas'
 import { ingenioNombre } from '../data/ingenios'
 import {
   matchesSummaryFilter,
@@ -144,10 +144,10 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   }, [claveVista])
 
   // La lista: SIEMPRE en el mismo orden (fecha), sin repartir por etapas.
-  const realizadas = delPeriodo
+  const realizadas = useMemo(() => delPeriodo
     .filter((a) => !fijasSinModalidad || fijasSinModalidad.has(a.id))
     .filter((a) => !fijasSinTarifa || fijasSinTarifa.has(a.id))
-    .filter((a) => !fijasCliente || fijasCliente.has(a.id))
+    .filter((a) => !fijasCliente || fijasCliente.has(a.id)), [delPeriodo, fijasSinModalidad, fijasSinTarifa, fijasCliente])
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
 
@@ -160,7 +160,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       SIN_FACTURAR: { n: 0, ha: 0, h: 0, valor: 0 }, FACTURADAS: { n: 0, ha: 0, h: 0, valor: 0 },
       TODAS: { n: 0, ha: 0, h: 0, valor: 0 },
     }
-    for (const a of delPeriodo) {
+    for (const a of realizadas) {
       for (const k of [facturada(a) ? 'FACTURADAS' : 'SIN_FACTURAR', 'TODAS'] as Grupo[]) {
         out[k].n += 1
         out[k].valor += valores.get(a.id)?.valor ?? 0
@@ -169,21 +169,34 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       }
     }
     return out
-  }, [delPeriodo, valores])
-  // Lo que dicen las FACTURAS de esas líneas (puede no cuadrar con la suma de las
-  // líneas si alguna quedó sin tarifa: así se ve la diferencia).
+  }, [realizadas, valores])
+  // Lo que dicen las FACTURAS que están COMPLETAS en la vista (todas sus líneas a la
+  // vista): así se compara con el valor de esas mismas líneas. Una factura que
+  // cubre dos meses no cuenta cuando se mira uno solo.
   const valorFacturas = useMemo(() => {
-    const ids = new Set(delPeriodo.map((a) => a.facturaId).filter(Boolean) as string[])
+    const vista = new Set(realizadas.map((a) => a.id))
+    const lineasDe = new Map<string, string[]>()
+    for (const { a } of realizado) {
+      if (!a.facturaId) continue
+      const l = lineasDe.get(a.facturaId) ?? []
+      l.push(a.id); lineasDe.set(a.facturaId, l)
+    }
     let total = 0
-    for (const id of ids) total += docPorId.get(id)?.valor ?? 0
+    for (const [id, ids] of lineasDe) if (ids.every((x) => vista.has(x))) total += docPorId.get(id)?.valor ?? 0
     return total
-  }, [delPeriodo, docPorId])
+  }, [realizado, realizadas, docPorId])
 
   const seleccion = shown.filter((a) => selected.has(a.id))
   const haSel = suma(seleccion, false)
   const hSel = suma(seleccion, true)
   const valorSel = seleccion.reduce((s, a) => s + (valores.get(a.id)?.valor ?? 0), 0)
   const sinTarifaSel = seleccion.filter((a) => valores.get(a.id)?.valor == null).length
+  const facturadasSel = seleccion.filter(facturada).length
+  const avisoFacturadas = () => facturadasSel === 0 ||
+    window.confirm(`${facturadasSel} de las ${seleccion.length} líneas marcadas ya están facturadas. ¿Cambiarlas también? La factura no cambia: solo el valor de esas líneas.`)
+  // La unidad del precio del lote (ha, hm, h o jornal), según las líneas marcadas.
+  const unidadesSel = [...new Set(seleccion.map((a) => valores.get(a.id)?.unidad ?? 'ha'))]
+  const unidadLote = unidadesSel.length === 1 ? unidadesSel[0] : 'unidad'
 
   const toggle = useCallback((id: string) => {
     setSelected((prev) => {
@@ -236,10 +249,11 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
           'Modalidad': modalidadEfectiva(a) || '',
           'Máquina': a.equipmentName || a.equipmentCode || '',
           'Operario': a.operatorName || '',
-          'Cant.': haDe(a),
-          'Unidad': unidadDeLabor(a.labor),
-          'Valor Unitario': v?.precio ?? 0,
-          'Valor Total': v?.valor ?? 0,
+          'Cant.': v?.cantidad ?? haDe(a),
+          'Unidad': v?.unidad ?? unidadDeLabor(a.labor),
+          'Valor Unitario': v?.precio ?? '',
+          'Valor Total': v?.valor != null ? Math.round(v.valor) : '',
+          'Sin tarifa': v?.valor == null ? (v?.nota || 'sin tarifa') : '',
           'Soporte': sop ? sop.numero : '',
           'Factura': fac ? fac.numero : '',
           'Estado': facturada(a) ? 'Facturado' : 'Sin facturar',
@@ -248,7 +262,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         }
       })
       utils.book_append_sheet(wb, utils.json_to_sheet(filas), 'Facturación')
-      writeFile(wb, `Facturacion_${mes || 'Todo'}.xlsx`)
+      const sufijo = [mes || 'Todo', mes && quincena !== 'TODO' ? quincena.toLowerCase() : '', cliente.replace(/\s+/g, '-')].filter(Boolean).join('_')
+      writeFile(wb, `Facturacion_${sufijo}.xlsx`)
     } catch (err) {
       console.error(err)
       alert('Error al exportar a Excel.')
@@ -259,6 +274,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     if (!session) return
     const ids = seleccion.filter((a) => (tipo === 'SOPORTE' ? !!a.soporteId : facturada(a))).map((a) => a.id)
     if (ids.length === 0) return
+    if (!window.confirm(`¿Quitar ${tipo === 'SOPORTE' ? 'el soporte' : 'la factura'} de ${ids.length} línea(s)? ${tipo === 'FACTURA' ? 'Vuelven a quedar «Sin facturar».' : ''}`)) return
     setBusy(true)
     setError('')
     try {
@@ -285,11 +301,15 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const laboresSel = [...new Set(seleccion.map((a) => laborFacturable(a.labor)))]
   const opcionesModalidad = laboresSel.length === 1 ? modalidadesDe(modalidades, laboresSel[0]) : []
   // De entrada la sugerida (2X1 / 2 PASES), igual que en campo.
-  const modalidadLote = modalidadInput || (laboresSel.length === 1 ? modalidadSugerida(modalidades, laboresSel[0]) ?? '' : '')
+  // Lo escogido solo vale si es de la labor marcada AHORA (antes una modalidad o una
+  // tarifa escogida para despeje se quedaba y se aplicaba al reencalle marcado después).
+  const modalidadLote = (opcionesModalidad.includes(modalidadInput) ? modalidadInput : '')
+    || (laboresSel.length === 1 ? modalidadSugerida(modalidades, laboresSel[0]) ?? '' : '')
 
   async function ponerModalidad() {
     const ids = seleccion.map((a) => a.id)
     if (ids.length === 0 || !modalidadLote) return
+    if (!avisoFacturadas()) return
     setBusy(true)
     setError('')
     try {
@@ -307,14 +327,21 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     }
   }
 
+  // Las tarifas de la labor marcada: primero las vigentes hoy; se rotula modalidad y vigencia.
+  const laborUnica = laboresSel.length === 1 ? laboresSel[0] : ''
   const opcionesTarifa = useMemo(() => {
-    if (laboresSel.length !== 1) return []
-    return tarifas.filter(t => t.labor === laboresSel[0])
-  }, [laboresSel, tarifas])
+    if (!laborUnica) return []
+    const vigente = (t: Tarifa) => t.desde <= todayKey && (!t.hasta || t.hasta >= todayKey)
+    return tarifas.filter((t) => t.labor === laborUnica)
+      .map((t) => ({ ...t, vigenteHoy: vigente(t) }))
+      .sort((x, y) => Number(y.vigenteHoy) - Number(x.vigenteHoy))
+  }, [laborUnica, tarifas, todayKey])
+  const tarifaValida = opcionesTarifa.some((t) => t.id === tarifaInput)
 
   async function ponerTarifa() {
     const ids = seleccion.map((a) => a.id)
-    if (ids.length === 0 || !tarifaInput) return
+    if (ids.length === 0 || !tarifaValida) return
+    if (!avisoFacturadas()) return
     setBusy(true)
     setError('')
     try {
@@ -324,7 +351,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         if (!set.has(a.id)) return a
         const notas = String(a.notes || '').replace(/\[TARIFA:[a-f0-9-]{36}\]/i, '').replace(/\[PRECIO_MANUAL:\d+(?:\.\d+)?\]/i, '').trim()
         const nuevas = notas ? `${notas} [TARIFA:${tarifaInput}]` : `[TARIFA:${tarifaInput}]`
-        return { ...a, notes: nuevas }
+        return { ...a, notes: nuevas, manualPrice: null }
       }))
       setInfo(`Tarifa manual asignada a ${ids.length} labor(es).`)
       setSelected(new Set())
@@ -359,7 +386,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       if (a.id !== id) return a
       let x = a
       if (c.cliente !== undefined) {
-        const notas = String(x.notes || '').replace(/\[CLIENTE:[A-Z_]+\]/, '').trim()
+        const notas = String(x.notes || '').replace(/\[CLIENTE:[A-Z_]+\]/, '').replace(/\[TARIFA:[a-f0-9-]{36}\]/i, '').trim()
         x = { ...x, notes: c.cliente == null ? notas : notas ? `${notas} [CLIENTE:${c.cliente}]` : `[CLIENTE:${c.cliente}]` }
       }
       if (c.soporte !== undefined) x = { ...x, soporteId: c.soporte?.id ?? null }
@@ -371,11 +398,12 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
 
   async function ponerPrecioManual() {
     const ids = seleccion.map((a) => a.id)
-    // Se aceptan puntos de miles («85.000») o el número pelado.
-    const val = Number(precioManualInput.replace(/\./g, '').replace(',', '.'))
-    if (ids.length === 0 || !Number.isFinite(val) || val <= 0) return
-    const unidad = laboresSel.length === 1 && esPorHoras(laboresSel[0]) ? 'hora' : 'ha'
-    if (!window.confirm(`¿Poner precio manual de ${pesosCortos(val)} por ${unidad} a ${ids.length} labor(es)? Reemplaza la tarifa que tengan.`)) return
+    // Se aceptan «$85.000», «85.000» o «85000» (igual que la casilla de cada línea).
+    const val = leerPesos(precioManualInput)
+    if (ids.length === 0) return
+    if (!Number.isFinite(val) || val <= 0) { setError('Escribe un precio mayor que cero (por ejemplo 85.000).'); return }
+    const unidad = unidadLote
+    if (!window.confirm(`¿Poner precio manual de ${pesosCortos(val)} por ${unidad} a ${ids.length} labor(es)?${facturadasSel ? ` ${facturadasSel} ya están facturadas (la factura no cambia).` : ''} Reemplaza la tarifa que tengan.`)) return
     setBusy(true)
     setError('')
     try {
@@ -426,6 +454,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         </span>
       </div>
       <Ayuda>
+        <p><b>Para armar una factura, en 4 pasos:</b> 1) escoge el <b>mes</b> (y la quincena si aplica) · 2) escoge el <b>cliente</b> · 3) revisa que ninguna línea diga «sin tarifa» (si alguna, escribe su precio en la casilla <b>Valor/ha</b>) · 4) marca la casilla de arriba para <b>marcarlas todas</b> (se marcan las que se ven, hasta 400) y toca <b>🧾 Vincular factura</b>: el valor ya viene sumado.</p>
+        <p>Para corregir <b>una sola línea</b> (a quién se factura, su soporte o su factura), toca su <b>cliente</b> o el ✏️ junto al soporte o la factura.</p>
         <p><b>Facturar por</b>: escoge la empresa (AGROMORALES o CEBALLOS Y LOZANO) y cada línea toma el precio de la tabla de esa empresa; si esa empresa no tiene precio para ese cliente, la línea sale «sin tarifa». Las líneas ya facturadas usan la empresa de su factura.</p>
         <p>Todas las líneas se quedan en su lugar: al ponerles tarifa, soporte o factura <b>no se mueven</b>. La columna <b>Estado</b> dice si ya está <b>facturado</b> o <b>sin facturar</b>.</p>
         <p>Marca las líneas y usa <b>📎 Vincular soporte</b> o <b>🧾 Vincular factura</b>: escoges uno que ya exista o creas uno nuevo con su número, fecha y archivo (PDF o foto). Toca el número de un documento para abrir su archivo.</p>
@@ -441,7 +471,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             <small>{fmt(porEtapa[e.id].ha)} ha{porEtapa[e.id].h > 0 ? ` + ${fmt(porEtapa[e.id].h)} h` : ''}</small>
             <small><b>{pesosCortos(porEtapa[e.id].valor)}</b>{e.id === 'FACTURADAS' && valorFacturas > 0 ? ' en las líneas' : ''}</small>
             {e.id === 'FACTURADAS' && valorFacturas > 0 && (
-              <small title="La suma de las facturas de estas líneas. Si no cuadra con el valor de las líneas, hay líneas sin precio.">
+              <small title="La suma de las facturas que están completas en esta vista. Si no cuadra con el valor de las líneas, alguna quedó sin precio o con otro precio.">
                 <b>{pesosCortos(valorFacturas)}</b> según las facturas
               </small>
             )}
@@ -458,14 +488,14 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             {RAZONES_SOCIALES.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
         </label>
-        <select id="fact-mes" value={mes} onChange={(e) => setMes(e.target.value)} className="base-input" style={{ width: 'auto' }}>
+        <select id="fact-mes" value={mes} onChange={(e) => { setMes(e.target.value); setSelected(new Set()) }} className="base-input" style={{ width: 'auto' }}>
           <option value="">Todo el realizado</option>
           {monthOptions.map((m) => (
             <option key={m.value} value={m.value}>{m.label}</option>
           ))}
         </select>
         {mes && (
-          <select id="fact-quincena" value={quincena} onChange={(e) => setQuincena(e.target.value as SummaryQuincena)} className="base-input" style={{ width: 'auto' }}>
+          <select id="fact-quincena" value={quincena} onChange={(e) => { setQuincena(e.target.value as SummaryQuincena); setSelected(new Set()) }} className="base-input" style={{ width: 'auto' }}>
             <option value="TODO">Todo el mes</option>
             <option value="PRIMERA">1ra quincena</option>
             <option value="SEGUNDA">2da quincena</option>
@@ -510,14 +540,19 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         type="search"
         placeholder="Buscar hacienda, suerte, labor, operario, soporte o factura…"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) => { setSearch(e.target.value); setSelected(new Set()) }}
         style={{ marginBottom: 10 }}
       />
 
       {/* Barra de acciones en lote */}
-      {selected.size > 0 && (
+      {seleccion.length > 0 && (
         <div className="factura-bulk-bar">
-          <span><strong>{selected.size}</strong> seleccionada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''} · <strong>{pesosCortos(valorSel)}</strong>{sinTarifaSel > 0 ? ` (${sinTarifaSel} sin tarifa)` : ''}</span>
+          {overLimit && seleccion.length >= shown.length && (
+            <span className="factura-chip factura-chip--falta" style={{ flexBasis: '100%' }}>
+              Solo se marcaron las {shown.length} que se ven de {realizadas.length}: escoge el mes o el cliente para marcarlas todas.
+            </span>
+          )}
+          <span><strong>{seleccion.length}</strong> seleccionada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''} · <strong>{pesosCortos(valorSel)}</strong>{sinTarifaSel > 0 ? ` (${sinTarifaSel} sin tarifa)` : ''}</span>
           <button type="button" className="primary-button" onClick={() => setModal('SOPORTE')} disabled={busy}>📎 Vincular soporte</button>
           <button type="button" className="primary-button" onClick={() => setModal('FACTURA')} disabled={busy}>🧾 Vincular factura</button>
           {seleccion.some((a) => a.soporteId) && (
@@ -547,7 +582,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             <>
               <select
                 id="fact-tarifa"
-                value={tarifaInput}
+                value={tarifaValida ? tarifaInput : ''}
                 onChange={(e) => setTarifaInput(e.target.value)}
                 disabled={busy}
                 aria-label={`Asignar tarifa manual a ${laboresSel[0]}`}
@@ -556,11 +591,12 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 <option value="">Tarifa manual ({opcionesTarifa.length})…</option>
                 {opcionesTarifa.map((t) => (
                   <option key={t.id} value={t.id}>
-                    {t.razonSocial || 'GENERAL'} - {t.clienteClave || 'Todos'}: {pesosCortos(t.precio)}/{t.unidad}
+                    {[t.razonSocial || 'GENERAL', NOMBRE_CLIENTE[t.clienteClave] ?? t.clienteClave ?? 'Todos', t.modalidad ?? 'general',
+                      `${pesosCortos(t.precio)}/${t.unidad}`, t.vigenteHoy ? null : `vencida ${t.hasta ?? ''}`.trim()].filter(Boolean).join(' · ')}
                   </option>
                 ))}
               </select>
-              <button type="button" className="inline-button" onClick={() => void ponerTarifa()} disabled={busy || !tarifaInput}>
+              <button type="button" className="inline-button" onClick={() => void ponerTarifa()} disabled={busy || !tarifaValida}>
                 Forzar tarifa
               </button>
             </>
@@ -572,8 +608,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 className="base-input"
                 inputMode="numeric"
                 style={{ width: 130, padding: '2px 6px', fontSize: '0.85rem' }}
-                placeholder={`$ por ${esPorHoras(laboresSel[0]) ? 'hora' : 'ha'}`}
-                aria-label={`Precio manual por ${esPorHoras(laboresSel[0]) ? 'hora' : 'hectárea'} de ${laboresSel[0]}`}
+                placeholder={`$ por ${unidadLote}`}
+                aria-label={`Precio manual por ${unidadLote} de ${laboresSel[0]}`}
                 value={precioManualInput}
                 onChange={(e) => setPrecioManualInput(e.target.value)}
                 disabled={busy}

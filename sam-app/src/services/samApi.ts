@@ -1,3 +1,4 @@
+import { etiquetasFact, unirEtiquetasFact } from '../lib/etiquetasFact'
 import { LOCAL_MAESTRO } from '../data/constants'
 import { ingenioNombre, idSuerte, slugIngenio } from '../data/ingenios'
 import { DESTINO_LABEL } from '../domain/sam'
@@ -4319,7 +4320,8 @@ export async function setClienteFacturaBulk(
   if (eLeer || !data) throw new Error('No se pudieron leer las observaciones actuales')
 
   for (const row of data) {
-    const notas = String(row.observaciones || '').replace(/\[CLIENTE:[A-Z_]+\]/, '').trim()
+    // La tarifa forzada era de un cliente: al cambiarlo se quita (si no, mandaría ella).
+    const notas = String(row.observaciones || '').replace(/\[CLIENTE:[A-Z_]+\]/, '').replace(/\[TARIFA:[a-f0-9-]{36}\]/i, '').trim()
     const nuevas = clienteClave == null ? notas : notas ? `${notas} [CLIENTE:${clienteClave}]` : `[CLIENTE:${clienteClave}]`
     const payload: Record<string, unknown> = { observaciones: nuevas }
     if (editadoPor) payload.editado_por = editadoPor
@@ -4353,6 +4355,17 @@ export async function loadAuditoria(assignmentId: string): Promise<AsignacionAud
   }))
 }
 
+/**
+ * Las observaciones nuevas + las etiquetas de Facturación que hay HOY en la base
+ * (ver `lib/etiquetasFact`). Se lee la base y no la copia de la pantalla: así
+ * tampoco se pierden con una copia vieja ni con la cola sin señal.
+ */
+async function conEtiquetasDeLaBase(assignmentId: string, notas: string): Promise<string> {
+  const { data, error } = await supabase.from('asignaciones').select('observaciones').eq('id', assignmentId).maybeSingle()
+  if (error) throw traducirErrorAsignacion(error)
+  return unirEtiquetasFact(notas, etiquetasFact((data as { observaciones?: string | null } | null)?.observaciones))
+}
+
 export async function updateAssignment(
   assignmentId: string,
   input: UpdateAssignmentInput,
@@ -4363,7 +4376,8 @@ export async function updateAssignment(
   if (input.startedAt !== undefined) payload.fecha_inicio = input.startedAt
   if (input.finishedAt !== undefined) payload.fecha_fin = input.finishedAt
   if (input.executedArea !== undefined) payload.area_realizada = input.executedArea
-  if (input.notes !== undefined) payload.observaciones = input.notes
+  // 🔴 Nunca se borran desde aquí el precio manual, la tarifa forzada ni el cliente de Facturación.
+  if (input.notes !== undefined) payload.observaciones = await conEtiquetasDeLaBase(assignmentId, input.notes ?? '')
   if (input.equipmentCode !== undefined) payload.equipo_codigo = input.equipmentCode
   if (input.equipmentName !== undefined) {
     payload.equipo_nombre = input.equipmentName

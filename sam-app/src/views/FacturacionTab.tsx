@@ -192,6 +192,9 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const valorSel = seleccion.reduce((s, a) => s + (valores.get(a.id)?.valor ?? 0), 0)
   const sinTarifaSel = seleccion.filter((a) => valores.get(a.id)?.valor == null).length
   const facturadasSel = seleccion.filter(facturada).length
+  // Parciales (la labor sigue abierta): si se facturan y el operario continúa, la
+  // base pone lo nuevo en OTRA línea sin facturar (migración 20261020120000).
+  const parcialesSel = seleccion.filter((a) => a.status === 'PARCIAL').length
   const avisoFacturadas = () => facturadasSel === 0 ||
     window.confirm(`${facturadasSel} de las ${seleccion.length} líneas marcadas ya están facturadas. ¿Cambiarlas también? La factura no cambia: solo el valor de esas líneas.`)
   // La unidad del precio del lote (ha, hm, h o jornal), según las líneas marcadas.
@@ -620,6 +623,11 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
             </span>
           )}
           {laboresSel.length > 1 && <span className="subtle-copy">Para la modalidad, la tarifa o el precio manual, marca una sola labor.</span>}
+          {parcialesSel > 0 && (
+            <span className="subtle-copy" style={{ flexBasis: '100%' }}>
+              {parcialesSel} {parcialesSel === 1 ? 'es parcial' : 'son parciales'} (la labor sigue abierta): se pueden facturar; si el operario continúa, lo nuevo saldrá en otra línea, sin facturar.
+            </span>
+          )}
         </div>
       )}
 

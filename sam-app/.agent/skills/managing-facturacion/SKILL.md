@@ -127,8 +127,12 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   - Formulario: si el vínculo falla tras CREAR el documento, el reintento ya no revienta.
   - Excel: cantidad y unidad con que se cobra (jornal = 1), sin tarifa en blanco (no $0) y columna
     «Sin tarifa» con el motivo; nombre con quincena y cliente.
-  - ⚠️ Pendiente (no urgente): una PARCIAL facturada sigue sumando si el operario la continúa;
-    `fact_vincular` no cuenta números de factura «antiguos» sin documento (hoy no hay ninguno);
+  - ✅ **PARCIAL facturada que el operario continúa** (migración `20261020120000`, aplicada con 5
+    pruebas): el disparador `trg_asignaciones_partir_facturada` la PARTE — la facturada queda tal como
+    se cobró y pasa a COMPLETADA; lo nuevo va en otra fila sin factura/soporte/precio manual/tarifa
+    (conserva `[CLIENTE]`). Corre después del tope de área. Las sesiones de esa continuación quedan
+    ligadas a la fila vieja. En la barra en lote se avisa cuántas marcadas son parciales.
+  - ⚠️ Pendiente (no urgente): `fact_vincular` no cuenta números de factura «antiguos» sin documento (hoy no hay ninguno);
     `asignaciones` acepta UPDATE directo de anon (RLS abierta).
 - 🔴 **18-oct-2026 — LA LISTA NO SE MUEVE** (Iván y Carlos: «déjalo ahí mismo, no te lo lleves para
   ningún lado»). Se quitaron las ETAPAS como filtro (antes la tabla arrancaba en «Sin soporte» y una

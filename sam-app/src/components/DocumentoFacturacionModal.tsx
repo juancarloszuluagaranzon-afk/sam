@@ -41,7 +41,7 @@ export function DocumentoFacturacionModal({
   const [fecha, setFecha] = useState(hoy)
   const [cliente, setCliente] = useState(clienteSugerido)
   const [razon, setRazon] = useState(razonSugerida)
-  const [valor, setValor] = useState(valorSugerido != null ? String(valorSugerido) : '')
+  const [valor, setValor] = useState(valorSugerido != null ? Math.round(valorSugerido).toLocaleString('es-CO') : '')
   const [nota, setNota] = useState('')
   const [archivo, setArchivo] = useState<File | null>(null)
   const [reemplazar, setReemplazar] = useState(false)
@@ -142,6 +142,22 @@ export function DocumentoFacturacionModal({
           </label>
         ) : (
           <>
+            <label className="assignment-detail-field">
+              <span>Número {tipo === 'SOPORTE' ? 'del soporte' : 'de la factura'}</span>
+              <input id="doc-numero" value={numero} onChange={(e) => setNumero(e.target.value)} disabled={ocupado} autoFocus
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void guardar() } }}
+                placeholder={tipo === 'SOPORTE' ? 'Ej.: OS-2026-0412' : 'Ej.: FE-1234'} />
+            </label>
+            <label className="assignment-detail-field">
+              <span>Fecha</span>
+              <input id="doc-fecha" type="date" value={fecha} max={hoy} onChange={(e) => setFecha(e.target.value)} disabled={ocupado} />
+            </label>
+            {tipo === 'FACTURA' && (
+              <label className="assignment-detail-field">
+                <span>Valor total {valorSugerido != null ? '(ya sumado de las líneas)' : '(escríbelo: hay líneas sin precio)'}</span>
+                <input id="doc-valor" inputMode="numeric" value={valor} onChange={(e) => setValor(e.target.value)} disabled={ocupado} placeholder="0" />
+              </label>
+            )}
             {tipo === 'SOPORTE' ? (
               <label className="assignment-detail-field">
                 <span>Tipo de soporte</span>
@@ -159,24 +175,9 @@ export function DocumentoFacturacionModal({
               </label>
             )}
             <label className="assignment-detail-field">
-              <span>Número</span>
-              <input id="doc-numero" value={numero} onChange={(e) => setNumero(e.target.value)} disabled={ocupado}
-                placeholder={tipo === 'SOPORTE' ? 'Ej.: OS-2026-0412' : 'Ej.: FE-1234'} />
-            </label>
-            <label className="assignment-detail-field">
-              <span>Fecha</span>
-              <input id="doc-fecha" type="date" value={fecha} max={hoy} onChange={(e) => setFecha(e.target.value)} disabled={ocupado} />
-            </label>
-            <label className="assignment-detail-field">
               <span>Cliente</span>
               <input id="doc-cliente" value={cliente} onChange={(e) => setCliente(e.target.value)} disabled={ocupado} placeholder="Ingenio o proveedor" />
             </label>
-            {tipo === 'FACTURA' && (
-              <label className="assignment-detail-field">
-                <span>Valor total {valorSugerido != null ? '(suma de las líneas por tarifa)' : '(opcional)'}</span>
-                <input id="doc-valor" inputMode="numeric" value={valor} onChange={(e) => setValor(e.target.value)} disabled={ocupado} placeholder="0" />
-              </label>
-            )}
             <label className="assignment-detail-field">
               <span>Archivo (PDF o foto)</span>
               <input id="doc-archivo" type="file" accept="application/pdf,image/jpeg,image/png,image/webp"
@@ -201,7 +202,9 @@ export function DocumentoFacturacionModal({
         <div className="modal-footer">
           <button type="button" className="inline-button" onClick={onCerrar} disabled={ocupado}>Cancelar</button>
           <button type="button" className="primary-button" onClick={() => void guardar()} disabled={ocupado || (!!pideReemplazo && !reemplazar)}>
-            {ocupado ? 'Guardando…' : `Vincular ${nombre}`}
+            {ocupado ? 'Guardando…'
+              : modo === 'nuevo' ? `Crear ${nombre === 'factura' ? 'factura' : 'soporte'} y vincular ${ids.length === 1 ? 'la línea' : `${ids.length} líneas`}`
+              : `Vincular ${ids.length === 1 ? 'la línea' : `${ids.length} líneas`} a ${tipo === 'SOPORTE' ? 'ese soporte' : 'esa factura'}`}
           </button>
         </div>
       </div>

@@ -271,7 +271,9 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       return doc.tipo === 'SOPORTE' ? { ...a, soporteId: doc.id } : { ...a, facturaId: doc.id, facturaNumero: doc.numero }
     }))
     setDocumentos((prev) => (prev.some((d) => d.id === doc.id) ? prev : [doc, ...prev]))
-    setInfo(`${doc.tipo === 'SOPORTE' ? 'Soporte' : 'Factura'} ${doc.numero} vinculado a ${vinculadas} labor(es).`)
+    setInfo(doc.tipo === 'SOPORTE'
+      ? `Soporte ${doc.numero} puesto a ${vinculadas} línea(s).`
+      : `✓ Factura ${doc.numero} creada con ${vinculadas} línea(s). Ya está en Cartera (Más → 💰 Cartera) para registrar sus pagos.`)
     setModal(null)
     setSelected(new Set())
   }

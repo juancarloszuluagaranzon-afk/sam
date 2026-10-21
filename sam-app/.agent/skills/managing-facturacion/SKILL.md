@@ -111,6 +111,21 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
   revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
+- 🆕 **20-oct-2026 (noche) — «sencillo e intuitivo»** (Iván: «interactúa más con el módulo y
+  mejóralo»):
+  - Panel **«¿Qué vas a facturar?»** arriba (Mes, Quincena, Cliente). Con cliente: «N líneas sin
+    facturar · ha · $», avisos «⚠ N sin precio · ver y corregir» / «⚠ N sin modalidad · ver» y el
+    botón **«🧾 Facturar estas N líneas»** (`facturarTodas`): quita los filtros de revisar, marca
+    TODAS las pendientes del cliente/período (`vistaCliente`, no lo que se está revisando) y abre el
+    formulario en «Nuevo» (`modoInicial`). >400 líneas → pide el mes. Hecho → «✓ Todo lo de … ya
+    está facturado».
+  - Resumen en una línea (`.fact-resumen`), herramientas secundarias pequeñas (`.fact-herramientas`),
+    barra en lote con «Más acciones» plegable (modalidad, tarifa, precio, quitar), atajos en la
+    fila: «sin tarifa ✎» enfoca su casilla; «falta modalidad ✎» marca y abre «Más acciones».
+  - Formulario: Número primero (foco, Enter guarda), valor con puntos de miles, botón «Crear
+    factura y vincular N líneas»; al terminar avisa que ya está en Cartera.
+  - Cartera: en la factura, Pagos y «Registrar pago» primero (+ «Todo el saldo»); Valor y plazo y
+    Acuerdo de pago plegados; Siigo al final.
 - 🔴 **20-oct-2026 — revisión para la entrega** (Iván: «que sea práctica y fácil de usar»):
   - **Tabla compacta** (dos renglones por línea, cabe en 1366 px), **filtro por cliente** (fija las
     líneas), precio editable también en **facturadas** (con confirmación), resumen sobre lo que se ve

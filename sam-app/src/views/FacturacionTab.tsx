@@ -499,6 +499,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         </span>
       </div>
       <Ayuda>
+        <p><a href="/manuales/manual-facturacion.html" target="_blank" rel="noopener">📖 Ver el manual completo de Facturación y Cartera</a></p>
         <p><b>Para facturar:</b> arriba, en <b>¿Qué vas a facturar?</b>, escoge el <b>mes</b> y el <b>cliente</b>. Sale lo que le falta por facturar con su valor. Si dice «sin precio» o «sin modalidad», tócalo para corregir esas líneas. Luego toca <b>🧾 Facturar estas líneas</b>: se abre la factura con el valor ya sumado; escribe el número, la fecha y sube el PDF.</p>
         <p>En cada línea, «<b>sin tarifa ✎</b>» te lleva a su casilla <b>Valor/ha</b> para escribir el precio, y «<b>falta modalidad ✎</b>» la marca y abre dónde ponerla.</p>
         <p>Para corregir <b>una sola línea</b> (a quién se factura, su soporte o su factura), toca su <b>cliente</b> o el ✏️ junto al soporte o la factura.</p>

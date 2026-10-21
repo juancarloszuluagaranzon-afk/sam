@@ -26,6 +26,7 @@ const MANUALES: Record<string, Manual> = {
   taller: { archivo: 'manual-taller.html', titulo: '🔧 Guía del taller de maquinaria', para: 'Cómo se llena la información' },
   conductor: { archivo: 'manual-conductor.html', titulo: '🚙 Guía del conductor de camioneta', para: 'Cómo se llena la planilla que se entrega' },
   fincas: { archivo: 'manual-fincas.html', titulo: '🌱 Guía de administración de fincas', para: 'De la labor en el campo a lo que ve el dueño' },
+  facturacion: { archivo: 'manual-facturacion.html', titulo: '🧾 Guía de Facturación y Cartera', para: 'De la labor realizada a la factura y su pago' },
 }
 
 /** Qué manual le toca a cada rol. */
@@ -36,7 +37,7 @@ function manualesDe(rol?: Role): Manual[] {
     case 'supervisor_insumos':
       return [MANUALES.supervisor]
     case 'analista_insumos':
-      return [MANUALES.analista, MANUALES.taller]
+      return [MANUALES.analista, MANUALES.facturacion, MANUALES.taller]
     // 🔴 El conductor de escolta caia al `default` y le salia el manual del
     // OPERARIO, que habla de labores agricolas: quien llena la planilla de la
     // camioneta no tenia guia de la planilla de la camioneta.
@@ -54,7 +55,7 @@ function manualesDe(rol?: Role): Manual[] {
     case 'owner':
     case 'administracion':
     case 'soporte':
-      return [MANUALES.fincas, MANUALES.analista, MANUALES.supervisor, MANUALES.operario, MANUALES.taller, MANUALES.conductor]
+      return [MANUALES.facturacion, MANUALES.fincas, MANUALES.analista, MANUALES.supervisor, MANUALES.operario, MANUALES.taller, MANUALES.conductor]
     // El dueño de la tierra que entra con usuario: su guía es la de fincas.
     case 'dueno_finca':
       return [MANUALES.fincas]

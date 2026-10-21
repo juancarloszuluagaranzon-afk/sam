@@ -7360,6 +7360,13 @@ td.planilla-vacio:hover { background: #fde047; }
   border-radius: 10px; padding: 8px 12px; margin-bottom: 10px;
 }
 .factura-bulk-bar input { max-width: 180px; }
+/* 21-oct-2026: el botón principal es de ancho completo en toda la app; en la barra en
+   lote debe ser de su tamaño (si no, «Vincular factura» ocupaba toda la fila). */
+.factura-bulk-bar .primary-button { width: auto; padding: 8px 14px; }
+.factura-bulk-bar button { white-space: nowrap; }
+.fact-mas { flex: 0 0 auto; }
+.fact-mas[open] { flex-basis: 100%; }
+.fact-mas__grupo select { max-width: 260px; }
 .factura-chip {
   font-weight: 700; color: #6d28d9; background: rgba(109,40,217,0.12);
   padding: 2px 8px; border-radius: 999px; font-size: 0.82rem; white-space: nowrap;

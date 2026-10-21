@@ -90,6 +90,7 @@ export function CarteraTab() {
         </span>
       </div>
       <Ayuda>
+        <p><a href="/manuales/manual-facturacion.html#cartera" target="_blank" rel="noopener">📖 Ver el manual completo de Facturación y Cartera</a></p>
         <p>Cada factura vence a los <b>30 días</b> de su fecha; después corren los <b>días de mora</b>. Al día ≤30 · vencida 31–60 · crítica 61–180 · otras medidas &gt;180.</p>
         <p>Toca una factura para ver sus labores, registrar acuerdos de pago, acordar condiciones de cartera o registrar abonos. Un pago no se borra: se anula diciendo por qué.</p>
       </Ayuda>
@@ -221,7 +222,7 @@ function DetalleFactura({ factura: f, usuario, hoy, onVer, onCambio, onError, on
   // Acuerdo de pago
   const acActual = f.acuerdoPago
   const [acCompromisoFecha, setAcCompromisoFecha] = useState(acActual?.compromisoFecha ?? f.vence ?? hoy)
-  const [acCompromisoMonto, setAcCompromisoMonto] = useState(acActual?.compromisoMonto ? String(acActual.compromisoMonto) : (f.saldo != null ? String(Math.round(f.saldo)) : ''))
+  const [acCompromisoMonto, setAcCompromisoMonto] = useState(acActual?.compromisoMonto ? Math.round(acActual.compromisoMonto).toLocaleString('es-CO') : (f.saldo != null ? Math.round(f.saldo).toLocaleString('es-CO') : ''))
   const [acCondiciones, setAcCondiciones] = useState(acActual?.condiciones ?? 'TRANSFERENCIA 30 DÍAS')
   const [acObs, setAcObs] = useState(acActual?.observaciones ?? '')
 

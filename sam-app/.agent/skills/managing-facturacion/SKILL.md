@@ -111,6 +111,17 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
   revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
+- 📖 **21-oct-2026 — Manual para el cliente:** `public/manuales/manual-facturacion.html` («Guía de
+  Facturación y Cartera», 10 pasos + «Qué hacer si…»), capturas en `public/manuales/facturacion/`
+  (datos INVENTADOS: el manual es público; tarifas redondas, haciendas y operarios genéricos). Se abre
+  desde 📖 (owner, administración, soporte, analista) y desde «Info» de Facturación y Cartera. PDF de
+  15 páginas impreso con Edge (`--print-to-pdf`, quitando `loading="lazy"` en una copia temporal).
+  Para rehacer capturas: página temporal con `FacturacionTab`/`CarteraTab`, `fetch` interceptado que
+  responde tarifas/documentos/cartera de ejemplo y pasos por `?paso=`, y Edge sin ventana
+  (`--headless=new --screenshot --force-device-scale-factor=1.5`): el panel del navegador interno
+  pinta los emojis como cuadritos.
+  - De paso: en la barra en lote `.primary-button` era de ancho completo (regla global) → ahora de su
+    tamaño; el monto del acuerdo de pago con puntos de miles.
 - 🆕 **20-oct-2026 (noche) — «sencillo e intuitivo»** (Iván: «interactúa más con el módulo y
   mejóralo»):
   - Panel **«¿Qué vas a facturar?»** arriba (Mes, Quincena, Cliente). Con cliente: «N líneas sin

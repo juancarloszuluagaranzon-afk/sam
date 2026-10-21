@@ -38,6 +38,7 @@ body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, san
 
 .parte { margin: 36px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--verde); color: var(--verde); font-size: 1.3rem; }
 .paso { margin-bottom: 34px; scroll-margin-top: 12px; }
+.paso h3 { margin: 22px 0 8px; font-size: 1.02rem; color: var(--verde); }
 .paso__num { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%;
   background: var(--verde); color: #fff; font-weight: 700; font-size: 0.9rem; margin-right: 8px; flex: 0 0 auto; }
 .paso h2 { display: flex; align-items: center; font-size: 1.2rem; margin: 0 0 6px; }
@@ -115,7 +116,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li><a href="#varias">Varias líneas a la vez</a></li>
       <li><a href="#cartera">Cartera: lo que falta por cobrar</a></li>
       <li><a href="#pago">Registrar un pago</a></li>
-      <li><a href="#acuerdo">Acuerdo de pago</a></li>
+      <li><a href="#acuerdo">Acuerdos de pago con colonos (anticipo y cuotas)</a></li>
       <li><a href="#preguntas">Qué hacer si…</a></li>
     </ol>
   </nav>
@@ -250,16 +251,18 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <tr><td>Sin valor</td><td>La factura no tiene valor escrito: póngaselo en «Valor y plazo».</td></tr>
     </table>
     <ul class="puntos" style="margin-top:12px">
-      <li>Arriba salen <b>avisos</b>: facturas en cartera crítica y acuerdos de pago con fecha de cobro hoy o en los próximos días.</li>
-      <li>El filtro deja ver: <b>Por cobrar</b>, <b>Todas</b>, <b>🚨 Alertas de cobro</b> (críticas, en mora o con compromiso cercano), <b>🤝 Con acuerdo de pago</b> o un estado.</li>
+      <li>Arriba salen <b>avisos</b>: facturas en cartera crítica, <b>cuotas vencidas</b> de los acuerdos de pago y <b>cuotas que vencen esta semana</b>. Tocar un aviso de cuotas lleva a los acuerdos.</li>
+      <li>Dos pestañas: <b>Facturas</b> y <b>🤝 Acuerdos de pago</b> (ver <a href="#acuerdo">punto 10</a>).</li>
+      <li>El filtro deja ver: <b>Por cobrar</b>, <b>Todas</b>, <b>🚨 Alertas de cobro</b> (críticas o en mora), <b>🤝 Con acuerdo de pago</b> o un estado.</li>
+      <li>Una factura con acuerdo muestra el <b>🤝 nombre del colono</b> y vence según su plan: la fecha de <b>la próxima cuota</b> («cuota del acuerdo»). Si el colono va al día con sus cuotas, la factura está <span class="chip chip--verde">Al día</span> aunque tenga más de 30 días.</li>
     </ul>
     <figure class="captura">
-      <img src="facturacion/11-cartera.jpg" alt="Pantalla de Cartera con avisos, estados y la lista de facturas por cobrar" loading="lazy">
-      <figcaption>Cartera: por cobrar $4.820.000 en 3 facturas, con el aviso de la crítica y del acuerdo próximo.</figcaption>
+      <img src="facturacion/11-cartera.jpg" alt="Pantalla de Cartera con avisos de factura crítica y de cuotas, las pestañas Facturas y Acuerdos, y la lista de facturas" loading="lazy">
+      <figcaption>Cartera: $15.550.000 por cobrar. Arriba, la factura crítica, la cuota vencida de Pedro y la de María que vence esta semana.</figcaption>
     </figure>
     <figure class="captura" style="margin-top:14px">
       <img src="facturacion/12-alertas-de-cobro.jpg" alt="Cartera filtrada por Alertas de cobro" loading="lazy">
-      <figcaption>El filtro «🚨 Alertas de cobro»: lo que hay que llamar a cobrar.</figcaption>
+      <figcaption>El filtro «🚨 Alertas de cobro»: lo que hay que llamar a cobrar (la de Pedro va por su acuerdo: su cuota venció hace 10 días).</figcaption>
     </figure>
   </section>
 
@@ -278,23 +281,68 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="acuerdo">
-    <h2><span class="paso__num">10</span>Acuerdo de pago</h2>
-    <p class="paso__intro">Cuando el cliente se compromete a pagar en una fecha, ábralo en <b>🤝 Registrar un acuerdo de pago</b> (está plegado debajo del pago): fecha de compromiso, monto, condiciones y observaciones.</p>
-    <ul class="puntos">
-      <li>El acuerdo vigente se ve en la factura y en la lista (<b>🤝 fecha · monto</b>).</li>
-      <li>Cuando la fecha llega o está a 5 días, sale el aviso en Cartera y la factura aparece en <b>Alertas de cobro</b>.</li>
-      <li>En <b>Valor y plazo de la factura</b> (también plegado) se corrige el valor o los días de plazo.</li>
-    </ul>
+    <h2><span class="paso__num">10</span>Acuerdos de pago con colonos (anticipo y cuotas)</h2>
+    <p class="paso__intro">Cuando un colono (proveedor) negocia con <b>Cristian</b> un plazo o un anticipo —por ejemplo, <b>30 % antes de empezar y el resto en 3 cuotas a 30, 60 y 90 días</b>—, se registra aquí. <b>El anticipo se descuenta de la factura final.</b></p>
+
+    <h3>Registrar el acuerdo</h3>
+    <ol class="pasos">
+      <li>En Cartera, toque la pestaña <span class="boton boton--gris">🤝 Acuerdos de pago</span> y luego <span class="boton">＋ Nuevo acuerdo</span>.</li>
+      <li><b>Con quién:</b> el nombre del colono, su teléfono (opcional) y <b>sus haciendas</b> (escriba o escoja cada una y toque <b>Agregar</b>). Las haciendas sirven para que, al facturar, la app reconozca sus labores. En <b>Negoció</b> ya dice Cristian.</li>
+      <li><b>Cuánto y cómo paga:</b> el valor aproximado de la labor y el anticipo, en <b>%</b> o en <b>pesos</b> (uno llena el otro). Escoja cuántas cuotas, la fecha de la primera y cada cuánto.</li>
+      <li>La app arma sola el <b>plan de pagos</b>. Si se acordó distinto, cambie la fecha o el valor de cualquier cuota en la misma tabla. Toque <span class="boton">Guardar acuerdo</span>.</li>
+    </ol>
     <figure class="captura">
-      <img src="facturacion/15-acuerdo-de-pago.jpg" alt="Factura con su acuerdo de pago activo y el formulario para cambiarlo" loading="lazy">
-      <figcaption>Acuerdo activo: compromiso el 24 de octubre por $1.890.000.</figcaption>
+      <img src="facturacion/16-acuerdo-nuevo.jpg" alt="Formulario de nuevo acuerdo con colono, hacienda, valor, anticipo del 30 por ciento y el plan de pagos de 4 filas" loading="lazy">
+      <figcaption>Juan Pérez: labor de $12.000.000, anticipo del 30 % ($3.600.000) y 3 cuotas de $2.800.000 a 30, 60 y 90 días.</figcaption>
     </figure>
+
+    <h3>La lista de acuerdos</h3>
+    <p>Cada acuerdo muestra su plan, la <b>próxima cuota</b> con su estado, lo pagado, el saldo y su factura. Si el anticipo ya está pagado pero todavía no hay factura, dice <span class="chip chip--ambar">sin factura · anticipo $…</span>: ese dinero espera a la factura final.</p>
+    <figure class="captura">
+      <img src="facturacion/15-acuerdos-lista.jpg" alt="Lista de acuerdos de pago con próxima cuota, pagado, saldo y factura" loading="lazy">
+      <figcaption>Tres acuerdos: Juan con el anticipo pagado y sin factura, Pedro con una cuota vencida y María con una cuota que vence en 3 días.</figcaption>
+    </figure>
+
+    <h3>Registrar los pagos del colono</h3>
+    <ol class="pasos">
+      <li>Toque el acuerdo. Verá el plan con cada cuota: <span class="chip chip--verde">Pagada ✓</span>, <span class="chip chip--ambar">Vence en N días</span> o <span class="chip chip--rojo">Vencida hace N días</span>.</li>
+      <li>En <b>Registrar pago</b> toque el botón de la cuota (pone el valor solo), revise la fecha y el medio, y toque <span class="boton">Registrar pago</span>.</li>
+      <li>Lo pagado cubre las cuotas <b>en orden</b>: primero el anticipo, luego la cuota 1, la 2…</li>
+    </ol>
+    <figure class="captura">
+      <img src="facturacion/17-acuerdo-detalle.jpg" alt="Detalle del acuerdo de Juan Pérez con el anticipo pagado y el plan de pagos" loading="lazy">
+      <figcaption>Anticipo pagado ($3.600.000): como todavía no hay factura, queda guardado y «se descuenta de la factura final».</figcaption>
+    </figure>
+
+    <h3>La factura final: el anticipo se descuenta solo</h3>
+    <ol class="pasos">
+      <li>Cuando facture en <b>Facturación</b> labores de las haciendas del colono, el formulario de la factura avisa: <b>«Estas labores tienen acuerdo de pago con …»</b>, con la casilla marcada.</li>
+      <li>Deje la casilla marcada y cree la factura como siempre. La factura queda ligada al acuerdo y el anticipo ya pagado <b>se le descuenta</b>: su saldo baja de una vez.</li>
+      <li>En Facturación, las líneas de esas haciendas muestran <b>🤝 el nombre del colono</b>, para reconocerlas.</li>
+    </ol>
+    <figure class="captura">
+      <img src="facturacion/18-factura-con-acuerdo.jpg" alt="Formulario de factura nueva con el aviso del acuerdo de pago de Juan Pérez marcado" loading="lazy">
+      <figcaption>La factura FE-2050 de Juan: la casilla del acuerdo descuenta el anticipo de $3.600.000.</figcaption>
+    </figure>
+    <figure class="captura" style="margin-top:14px">
+      <img src="facturacion/19-factura-anticipo-descontado.jpg" alt="Factura FE-2050 en Cartera: valor 12 millones, pagado 3,6 millones por el anticipo y saldo 8,4 millones" loading="lazy">
+      <figcaption>En Cartera: factura de $12.000.000, anticipo descontado $3.600.000, saldo $8.400.000. Vence con la próxima cuota (20 de noviembre).</figcaption>
+    </figure>
+    <ul class="puntos" style="margin-top:12px">
+      <li>Después de la factura, cada pago que registre en el acuerdo <b>baja el saldo de la factura</b> y cubre la cuota que sigue. También puede registrarlo en la factura: cuenta igual para las cuotas.</li>
+      <li>Si la factura ya existía, ábrala en Cartera y en <b>🤝 Acuerdo de pago</b> escoja el acuerdo y toque <b>Ligar</b>. También puede ligarla desde el acuerdo.</li>
+      <li>Si se ligó por error, toque <b>Quitar del acuerdo</b>: el anticipo vuelve al acuerdo, a esperar la factura correcta.</li>
+      <li>Para un cliente que se compromete a pagar una factura en otra fecha, use el mismo camino: en la factura, <b>＋ Hacer un acuerdo de pago nuevo para esta factura</b>, con una sola cuota.</li>
+    </ul>
+    <p class="ojo"><strong>Cambiar o anular:</strong> <b>✎ Cambiar el acuerdo</b> deja corregir el plan en cualquier momento (los pagos hechos se vuelven a repartir en orden). Un acuerdo con pagos no se anula: primero se anulan sus pagos, diciendo por qué.</p>
   </section>
 
   <section class="cierre" id="preguntas">
     <h2>Qué hacer si…</h2>
     <table>
       <tr><th>Si…</th><th>Haga esto</th></tr>
+      <tr><td>El colono pagó el anticipo y aún no hay factura</td><td>Regístrelo en su acuerdo (Cartera → 🤝 Acuerdos de pago). Se descuenta solo cuando la factura final se ligue al acuerdo.</td></tr>
+      <tr><td>Hice la factura y no salió el aviso del acuerdo</td><td>Las haciendas de las líneas no están en el acuerdo. Agréguelas con «✎ Cambiar el acuerdo», o ligue la factura en Cartera → la factura → 🤝 Acuerdo de pago.</td></tr>
       <tr><td>Una línea dice «sin tarifa»</td><td>Toque «sin tarifa ✎» y escriba el precio en su casilla Valor/ha. Si debería tener precio en la tabla, revise <b>Facturar por</b> (la empresa) y la modalidad.</td></tr>
       <tr><td>Me equivoqué de factura en una línea</td><td>Toque el ✏️ junto a la factura y escoja la correcta, o «Sin factura».</td></tr>
       <tr><td>La línea es de otro cliente</td><td>Toque su cliente y escoja el correcto: la tarifa cambia sola.</td></tr>

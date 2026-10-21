@@ -6,15 +6,19 @@ import {
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
 import { aligerarDocumento } from '../lib/pdfLigero'
+import { acuerdosDeHaciendas, ligarFacturaAcuerdo, loadAcuerdos, pesos, type Acuerdo } from '../services/carteraApi'
 
 /**
  * Vincular las líneas marcadas a un SOPORTE del cliente o a una FACTURA:
  * uno que ya existe, o uno nuevo con su número, fecha y archivo (PDF o foto).
  * Si alguna línea ya tenía otro documento de ese tipo, la base no la cambia sin
  * que se marque «reemplazar» (así una factura no se pisa sin querer).
+ *
+ * FACTURA nueva de labores de un colono con ACUERDO DE PAGO (21-oct-2026): ofrece
+ * ligarla al acuerdo; el anticipo que el colono ya pagó se descuenta de ella.
  */
 export function DocumentoFacturacionModal({
-  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo, modoInicial,
+  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo, modoInicial, haciendas,
 }: {
   tipo: TipoDocumento
   ids: string[]
@@ -28,9 +32,12 @@ export function DocumentoFacturacionModal({
   usuario: string
   hoy: string
   onCerrar: () => void
-  onListo: (doc: DocumentoFact, vinculadas: number) => void
+  /** `extra`: lo que pasó con el acuerdo de pago («anticipo de $3.600.000 descontado»). */
+  onListo: (doc: DocumentoFact, vinculadas: number, extra?: string) => void
   /** Desde «Facturar estas líneas» arranca en «Nuevo»: casi siempre es una factura nueva. */
   modoInicial?: 'nuevo' | 'existente'
+  /** Haciendas de las líneas marcadas: para encontrar el acuerdo de pago del colono. */
+  haciendas?: string[]
 }) {
   const propios = useMemo(() => documentos.filter((d) => d.tipo === tipo), [documentos, tipo])
   const [modo, setModo] = useState<'nuevo' | 'existente'>(modoInicial ?? (propios.length ? 'existente' : 'nuevo'))
@@ -53,6 +60,24 @@ export function DocumentoFacturacionModal({
   const [ocupado, setOcupado] = useState(false)
   // «PDF reducido de 4,2 MB a 380 KB»: se reduce en el equipo antes de subir (lib/pdfLigero).
   const [paso, setPaso] = useState('')
+  // Acuerdos de pago de los colonos de estas líneas (solo factura nueva).
+  const [acuerdos, setAcuerdos] = useState<Acuerdo[]>([])
+  const [acuerdoId, setAcuerdoId] = useState('')
+  const [ligarAcuerdo, setLigarAcuerdo] = useState(true)
+  const clavesHaciendas = (haciendas ?? []).join('|')
+  useEffect(() => {
+    if (tipo !== 'FACTURA' || !clavesHaciendas) return
+    let vivo = true
+    void loadAcuerdos().then((todos) => {
+      if (!vivo) return
+      // Primero los que aún no tienen factura (ahí está el anticipo por descontar).
+      const suyos = acuerdosDeHaciendas(todos, clavesHaciendas.split('|')).sort((x, y) => x.nFacturas - y.nFacturas)
+      setAcuerdos(suyos)
+      setAcuerdoId(suyos[0]?.id ?? '')
+    })
+    return () => { vivo = false }
+  }, [tipo, clavesHaciendas])
+  const acuerdo = acuerdos.find((x) => x.id === acuerdoId) ?? null
 
   useEffect(() => {
     if (tipo !== 'SOPORTE') return
@@ -98,7 +123,16 @@ export function DocumentoFacturacionModal({
       if (modo === 'nuevo') { setCreado(doc); setModo('existente'); setElegido(doc.id) }
       try {
         const vinculadas = await vincularDocumento(doc.id, ids, usuario, reemplazar)
-        onListo(doc, vinculadas)
+        let extra: string | undefined
+        if (tipo === 'FACTURA' && modo === 'nuevo' && acuerdo && ligarAcuerdo) {
+          try {
+            const d = await ligarFacturaAcuerdo(doc.id, acuerdo.id, usuario)
+            extra = `🤝 Quedó en el acuerdo con ${acuerdo.colono}${d > 0 ? `: se le descontó el anticipo (${pesos(d)})` : ''}.`
+          } catch (e) {
+            extra = `⚠ No se pudo ligar al acuerdo con ${acuerdo.colono} (${(e as Error).message}): lígala en Cartera.`
+          }
+        }
+        onListo(doc, vinculadas, extra)
       } catch (e) {
         const m = (e as Error).message
         if (/ya tienen/.test(m)) setPideReemplazo(m)
@@ -124,8 +158,26 @@ export function DocumentoFacturacionModal({
 
         {propios.length > 0 && (
           <div className="realizadas-seg" style={{ marginBottom: 10 }}>
-            <button type="button" className={modo === 'existente' ? 'is-active' : ''} onClick={() => setModo('existente')}>Uno que ya existe</button>
-            <button type="button" className={modo === 'nuevo' ? 'is-active' : ''} onClick={() => setModo('nuevo')}>Nuevo</button>
+            <button type="button" className={`realizadas-seg__btn${modo === 'existente' ? ' is-active' : ''}`} onClick={() => setModo('existente')}>Uno que ya existe</button>
+            <button type="button" className={`realizadas-seg__btn${modo === 'nuevo' ? ' is-active' : ''}`} onClick={() => setModo('nuevo')}>Nuevo</button>
+          </div>
+        )}
+
+        {tipo === 'FACTURA' && modo === 'nuevo' && acuerdo && (
+          <div className="taller-aviso acu-en-factura">
+            <label className="acu-check">
+              <input type="checkbox" checked={ligarAcuerdo} onChange={(e) => setLigarAcuerdo(e.target.checked)} disabled={ocupado} />
+              <span>
+                🤝 Estas labores tienen <b>acuerdo de pago con {acuerdo.colono}</b> (negoció {acuerdo.negociadoPor}).
+                {' '}Ligar la factura al acuerdo{acuerdo.porDescontar > 0 ? <>: <b>se le descuenta el anticipo de {pesos(acuerdo.porDescontar)}</b></> : ''}.
+              </span>
+            </label>
+            {acuerdos.length > 1 && (
+              <select value={acuerdoId} onChange={(e) => setAcuerdoId(e.target.value)} disabled={ocupado || !ligarAcuerdo}
+                aria-label="Acuerdo de pago" style={{ marginTop: 6, width: '100%' }}>
+                {acuerdos.map((x) => <option key={x.id} value={x.id}>{x.colono} · {x.fecha}{x.porDescontar > 0 ? ` · anticipo ${pesos(x.porDescontar)}` : ''}</option>)}
+              </select>
+            )}
           </div>
         )}
 

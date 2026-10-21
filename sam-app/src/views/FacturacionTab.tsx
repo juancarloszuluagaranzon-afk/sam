@@ -18,6 +18,7 @@ import {
 } from '../components/EntityHistoryModal'
 import { Ayuda } from '../components/Ayuda'
 import type { Assignment } from '../domain/sam'
+import { claveHacienda, loadAcuerdos } from '../services/carteraApi'
 
 /**
  * Facturación (administración/owner) — el REALIZADO completo (labores
@@ -84,6 +85,15 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   }
 
   useEffect(() => { void loadDocumentos().then(setDocumentos) }, [])
+  // Colonos con acuerdo de pago (Cartera → 🤝 Acuerdos): sus líneas llevan el nombre.
+  const [colonoDe, setColonoDe] = useState<Map<string, string>>(new Map())
+  useEffect(() => {
+    void loadAcuerdos().then((ac) => {
+      const m = new Map<string, string>()
+      for (const a of ac) if (!a.anulado) for (const h of a.haciendas) if (!m.has(claveHacienda(h))) m.set(claveHacienda(h), a.colono)
+      setColonoDe(m)
+    })
+  }, [])
   const docPorId = useMemo(() => new Map(documentos.map((d) => [d.id, d])), [documentos])
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
@@ -264,7 +274,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const razonSugerida = empresa ? empresa : rsSel.length === 1 ? rsSel[0]
     : seleccion.length > 0 && seleccion.every((a) => a.cliente === 'proveedores' || a.ingenioId === 'pichichi') ? 'CEBALLOS Y LOZANO' : 'AGROMORALES'
 
-  function listo(doc: DocumentoFact, vinculadas: number) {
+  function listo(doc: DocumentoFact, vinculadas: number, extra?: string) {
     const ids = new Set(seleccion.map((a) => a.id))
     setAssignments((prev) => prev.map((a) => {
       if (!ids.has(a.id)) return a
@@ -273,7 +283,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     setDocumentos((prev) => (prev.some((d) => d.id === doc.id) ? prev : [doc, ...prev]))
     setInfo(doc.tipo === 'SOPORTE'
       ? `Soporte ${doc.numero} puesto a ${vinculadas} línea(s).`
-      : `✓ Factura ${doc.numero} creada con ${vinculadas} línea(s). Ya está en Cartera (Más → 💰 Cartera) para registrar sus pagos.`)
+      : `✓ Factura ${doc.numero} creada con ${vinculadas} línea(s). Ya está en Cartera (Más → 💰 Cartera) para registrar sus pagos.${extra ? ` ${extra}` : ''}`)
     setModal(null)
     setSelected(new Set())
   }
@@ -762,6 +772,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 sop={a.soporteId ? docPorId.get(a.soporteId) : undefined}
                 fac={a.facturaId ? docPorId.get(a.facturaId) : undefined}
                 modalidades={modalidades}
+                colono={colonoDe.get(claveHacienda(a.haciendaName))}
                 onPrecio={guardarPrecioLinea}
                 onEditarFact={abrirEdicion}
                 onFaltaModalidad={corregirModalidad}
@@ -834,6 +845,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
           hoy={todayKey}
           onCerrar={() => setModal(null)}
           onListo={listo}
+          haciendas={[...new Set(seleccion.map((a) => a.haciendaName))]}
         />
       )}
     </section>
@@ -845,13 +857,15 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
  * 400 filas en pantalla, y marcar UNA las redibujaba todas (más de un segundo
  * por clic). Ahora solo se redibuja la que cambió.
  */
-const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, onPrecio, onErrorPrecio, onEditarFact, onFaltaModalidad, onToggle, onAbrir, onEdit }: {
+const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades, colono, onPrecio, onErrorPrecio, onEditarFact, onFaltaModalidad, onToggle, onAbrir, onEdit }: {
   a: Assignment
   sel: boolean
   v?: Valoracion
   sop?: DocumentoFact
   fac?: DocumentoFact
   modalidades: MapaModalidades
+  /** Colono con acuerdo de pago en esta hacienda (Cartera → 🤝 Acuerdos). */
+  colono?: string
   onPrecio: (a: Assignment, precio: number | null) => Promise<void>
   onErrorPrecio: (m: string) => void
   onEditarFact: (a: Assignment) => void
@@ -866,10 +880,10 @@ const FilaFactura = memo(function FilaFactura({ a, sel, v, sop, fac, modalidades
     <tr className={sel ? 'factura-row--sel' : ''}>
       <td><input type="checkbox" checked={sel} onChange={() => onToggle(a.id)} aria-label="Marcar" /></td>
       <td className="nowrap">{executionDateKey(a)}</td>
-      <td className="fact-doble fact-doble--corta" title={`${a.haciendaName} · suerte ${a.suerte}`}>
+      <td className="fact-doble fact-doble--corta" title={`${a.haciendaName} · suerte ${a.suerte}${colono ? ` · acuerdo de pago con ${colono}` : ''}`}>
         <b>{a.haciendaName}</b>
         <small>
-          Suerte {a.suerte}
+          Suerte {a.suerte}{colono && <span className="fact-colono">🤝 {colono}</span>}
           {onEdit && (
             <button type="button" onClick={() => onEdit(a)} style={{ background: 'none', border: 'none', cursor: 'pointer', opacity: 0.5, marginLeft: 4, padding: 0 }} title="Editar la labor">✏️</button>
           )}

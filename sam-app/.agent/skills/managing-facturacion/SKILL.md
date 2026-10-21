@@ -103,25 +103,58 @@ Flujo: **realizado → soporte del cliente → factura → pagos (cartera)**.
   OTRAS_MEDIDAS >180 · PAGADA (los días se CONGELAN en el último pago) · SIN_VALOR. Pantalla
   Más → 💰 Cartera (owner y administración; Viviana NO tiene usuario al 2-oct: crearla como
   administración). Trazabilidad en el detalle de la labor (`TrazaFacturacion`, solo owner/admin).
-- 🆕 **18-oct-2026 — Acuerdos de pago** (en el detalle de cada factura de Cartera): fecha de
-  compromiso, monto, condiciones y observaciones. Se guardan como `[ACUERDO:{json}]` en
-  `fact_documentos.nota` (la vista `cartera_facturas_v` ya trae `nota`; se respeta lo que hubiera
-  escrito antes). Un acuerdo por factura: registrar otro lo reemplaza. Aviso amarillo con los
-  compromisos vencidos, de hoy o de los próximos 5 días, y filtros «🚨 Alertas de cobro» (crítica,
-  otras medidas, con mora o compromiso cercano) y «🤝 Con acuerdo de pago». Lo trajo OpenClaw;
-  revisado y blindado (un `]` escrito en las condiciones ya no rompe la lectura).
+- ~~18-oct-2026 — «Acuerdo de pago» de una fecha y un monto por factura (`[ACUERDO:{json}]` en
+  `fact_documentos.nota`, de OpenClaw)~~ → **REEMPLAZADO el 21-oct** por los acuerdos de abajo (no
+  había ninguno guardado). No volver a escribir acuerdos en `nota`.
 - 🆕 **18-oct-2026 — Precio manual** por labor en Facturación: ver `managing-tarifas-manuales`.
-- ⏳ **21-oct-2026 — PENDIENTE: acuerdos con proveedores/colonos.** Iván: «Cristian hace acuerdos con
-  los proveedores… plazos de 2-3 meses, que pagan un porcentaje de la labor por anticipo»; Carlos David
-  los registra. Hoy NO caben: los colonos se facturan al genérico «Proveedor» (121 labores, 790 ha), un
-  pago exige factura (`fact_pagos.factura_id` NOT NULL, no hay anticipo previo) y el «acuerdo de pago»
-  de Cartera es una sola fecha y un monto por factura. Propuesta: acuerdo por colono con plan de pagos
-  (anticipo % + cuotas), pagos aplicados a la cuota más vieja y alertas. Ver memoria del proyecto.
+- ✅ **21-oct-2026 — ACUERDOS DE PAGO con proveedores/colonos** (migración `20261021120000`, aplicada).
+  Iván: «Cristian hace acuerdos con los proveedores… plazos de 2-3 meses, que pagan un porcentaje de la
+  labor por anticipo»; Carlos David los registra. Regla de Iván: **«El anticipo se descuenta de la
+  factura final»**.
+  - **Modelo:** `fact_acuerdos` (colono = texto, `haciendas text[]` = nombres EN MAYÚSCULA de
+    `asignaciones.nombre_hacienda`, negociado_por, fecha, condiciones, anulado+motivo) y
+    `fact_acuerdo_cuotas` (orden 0 = ANTICIPO, 1..N cuotas; vence, valor). El valor del acuerdo es la
+    SUMA del plan (no hay columna valor). Vista `fact_acuerdos_v` (pagado, anticipo_pagado,
+    `por_descontar` = anticipo sin factura, facturas ligadas).
+  - **Pagos:** `fact_pagos.factura_id` ya NO es obligatorio; columnas nuevas `acuerdo_id` y
+    `anticipo`. La guardia `fact_pagos_guardia`: pago al acuerdo SIN factura → `anticipo = true`;
+    pago al acuerdo con factura ligada con saldo → va a esa factura (la más vieja); pago a una factura
+    ligada → hereda `acuerdo_id` (cuenta para las cuotas). Nunca se cuenta dos veces: Cartera solo suma
+    pagos con `factura_id`.
+  - **Ligar factura** (`fact_documentos.acuerdo_id`, disparador `trg_fact_documentos_acuerdo`): al
+    ligar, los anticipos sin factura pasan a ella (del más viejo, mientras tenga saldo); al quitarla o
+    anularla, los anticipos vuelven al acuerdo y los demás pagos dejan de contar para él.
+  - **Vencimiento por plan:** en `cartera_facturas_v` una factura con acuerdo vence en la PRÓXIMA
+    cuota sin cubrir (lo pagado cubre las cuotas en orden) y su estado va por mora: vencida 1–30 ·
+    crítica 31–150 · otras medidas >150 (equivale a la regla de 30 días). Plan cubierto pero con saldo
+    → regla normal. Columnas nuevas al FINAL de la vista: `acuerdo_id`, `colono`, `anticipo`.
+  - **Escribir solo por RPC** (revisan rol owner/administracion/analista_insumos con
+    `fact_puede_facturar`): `fact_acuerdo_guardar(p_id, p_datos, p_cuotas, p_usuario)` (crea o cambia y
+    REEMPLAZA el plan; un solo anticipo), `fact_acuerdo_anular` (no si tiene pagos vigentes),
+    `fact_acuerdo_ligar_factura(p_factura, p_acuerdo|null)` (devuelve el anticipo descontado). Las
+    tablas nuevas solo tienen `grant select`.
+  - **Pantallas:** `components/AcuerdosCartera.tsx` (lista, formulario con plan automático editable,
+    detalle con cuotas/pagos/factura/labores de sus haciendas). Cartera: pestañas Facturas / Acuerdos,
+    avisos «cuotas vencidas» y «vencen esta semana» (7 días). Detalle de factura: recuadro del acuerdo o
+    plegable para ligar/crear. Facturación: las líneas de haciendas con acuerdo dicen «🤝 colono» y el
+    formulario de factura NUEVA ofrece ligarla (casilla marcada) si las haciendas coinciden.
+  - **Cálculos en `carteraApi`:** `cuotasConEstado` (FIFO), `estadoAcuerdo`, `armarPlan` (cuotas
+    redondeadas a miles, la última absorbe la diferencia), `acuerdosDeHaciendas`, `claveHacienda`.
+  - Ensayo con pruebas en `begin…rollback` (12 casos: anticipo, ligar/quitar/religar, pago directo,
+    roles, errores, mora por plan, anular factura) y banco de pruebas en memoria con la misma lógica.
+  - El colono NO es un cliente de tarifas: las líneas siguen siendo «Proveedor» (tarifa), el nombre del
+    colono va en el acuerdo. `terceros` son los INGENIOS (los usa `tarifas`), no los colonos.
 - 📖 **21-oct-2026 — Manual para el cliente:** `public/manuales/manual-facturacion.html` («Guía de
   Facturación y Cartera», 10 pasos + «Qué hacer si…»), capturas en `public/manuales/facturacion/`
   (datos INVENTADOS: el manual es público; tarifas redondas, haciendas y operarios genéricos). Se abre
   desde 📖 (owner, administración, soporte, analista) y desde «Info» de Facturación y Cartera. PDF de
-  15 páginas impreso con Edge (`--print-to-pdf`, quitando `loading="lazy"` en una copia temporal).
+  20 páginas (21-oct, con «10 · Acuerdos de pago con colonos») impreso con Edge (`--print-to-pdf`
+  de `file:///` de una copia temporal SIN `loading="lazy"`; si no, faltan imágenes).
+  Capturas de acuerdos (15–19): página temporal `prueba-acuerdos.html` con la base imitada EN MEMORIA
+  (misma lógica que la migración) y `?paso=` + clase `captura-modal` que pinta el modal suelto en
+  fondo blanco; se recortan solas con PIL (bbox contra blanco). Ojo: un `style={{display:'flex'}}`
+  en línea le gana a `display:none` sin `!important`; y la regla global `table { min-width: 820px }`
+  descuadra tablas dentro de un modal (poner `min-width: 0`).
   Para rehacer capturas: página temporal con `FacturacionTab`/`CarteraTab`, `fetch` interceptado que
   responde tarifas/documentos/cartera de ejemplo y pasos por `?paso=`, y Edge sin ventana
   (`--headless=new --screenshot --force-device-scale-factor=1.5`): el panel del navegador interno

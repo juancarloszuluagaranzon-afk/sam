@@ -9923,3 +9923,48 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-mapa-satley { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; color: var(--color-ink-mid); }
 .af-mapa-satley__barra { height: 10px; border-radius: 5px; }
 .af-mapa-satley__rot { display: flex; justify-content: space-between; font-size: 0.72rem; }
+
+/* ── Acuerdos de pago con colonos (Cartera, 21-oct-2026) ─────────────────── */
+.acu-vistas { margin: 10px 0 4px; }
+.acu-alerta { display: block; width: 100%; text-align: left; font: inherit; cursor: pointer; }
+.acu-alerta:hover { filter: brightness(0.98); text-decoration: underline; }
+.acu-herramientas { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 10px 0; }
+.acu-herramientas .primary-button { width: auto; white-space: nowrap; }
+.acu-sub { display: block; margin-top: 2px; font-size: 0.78rem; }
+.acu-modal { max-width: min(620px, calc(100vw - 32px)); }
+.acu-paso { margin: 14px 0 6px; }
+.acu-ancho { grid-column: 1 / -1; }
+.acu-hacienda-add { display: flex; gap: 6px; }
+.acu-hacienda-add input { flex: 1 1 auto; min-width: 0; width: auto; }
+.acu-hacienda-add .inline-button { flex: 0 0 auto; width: auto; }
+.acu-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.acu-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 4px 3px 10px; border-radius: 999px;
+  background: var(--color-bg-muted); font-size: 0.8rem; font-weight: 600; }
+.acu-chip button { border: 0; background: transparent; cursor: pointer; color: var(--color-ink-mid); padding: 0 4px; font: inherit; }
+.acu-plan { width: 100%; min-width: 0; border-collapse: collapse; font-size: 0.9rem; table-layout: fixed; }
+.acu-plan th:first-child { width: 28%; }
+.acu-plan th, .acu-plan td { padding: 5px 6px; border-bottom: 1px solid var(--color-border); text-align: left; }
+.acu-plan th.num, .acu-plan td.num { text-align: right; }
+.acu-plan input { box-sizing: border-box; width: 100%; min-width: 0; font: inherit; padding: 4px 6px; border: 1px solid var(--color-border); border-radius: 6px; background: transparent; color: inherit; }
+.acu-plan td.num input { text-align: right; font-variant-numeric: tabular-nums; }
+.acu-plan tfoot td { border-bottom: 0; font-weight: 600; }
+.acu-plan__anticipo td:first-child { font-weight: 700; }
+.acu-plan__pagada td { color: var(--color-ink-mid); }
+.acu-plan__vencida td:first-child { color: #b3402f; font-weight: 700; }
+.acu-atajos { display: flex; gap: 10px; flex-wrap: wrap; }
+.acu-rojo { color: #b3402f; font-weight: 600; }
+.acu-ligar { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.acu-ligar select { flex: 1; min-width: 0; }
+.acu-en-factura { margin: 12px 0 8px; padding: 8px 12px; }
+:root[data-theme="dark"] .acu-plan__vencida td:first-child, :root[data-theme="dark"] .acu-rojo { color: #ff9b8a; }
+.fact-colono { display: block; color: var(--color-brand); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acu-check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.acu-check input { width: auto; flex: 0 0 auto; margin-top: 3px; }
+.acu-acciones { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border); }
+@media (max-width: 520px) {
+  .acu-plan { font-size: 0.82rem; }
+  .acu-plan th, .acu-plan td { padding: 5px 3px; }
+  .acu-plan--ver th:first-child { width: 22%; }
+  .acu-plan .cart-chip { white-space: normal; }
+}
+.acu-nowrap { white-space: nowrap; }

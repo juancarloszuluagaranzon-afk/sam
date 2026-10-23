@@ -540,6 +540,49 @@ historial, Reporte, Resumen, facturación y `labor_sesiones.fecha` igual), así 
 código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y facturación. Ver
 `managing-assignments` → «Turnos que cruzan la medianoche».
 
+## Cerrado el 23-oct-2026
+
+- 🧾➡️🤝 **Acuerdos de pago con colonos** (ver módulo Facturación): publicado.
+- 🔐 **Seguridad de la base, POR FASES (en curso)** — tras una auditoría (Nemotron + verificación):
+  la raíz es que la base confía en el cliente (llave `anon` pública, identidad por texto
+  `p_usuario`, RLS abierta en ~25 tablas). Hecho y aplicado el 22-oct:
+  - **Fase 1** (`20261022130000_app_sesiones`): llave de SESIÓN para la app. `app_sesiones`
+    (guarda solo el hash del token), `app_login_token` (= `app_login` pero además da token;
+    `app_login` intacto), `app_sesion_usuario`, `app_cerrar_sesion`. El cliente guarda el token
+    en `lib/sesion.ts`.
+  - **Fase 2** (`20261022140000_fact_token`): las funciones financieras (`fact_vincular`,
+    `fact_desvincular`, `fact_acuerdo_guardar`/`_anular`/`_ligar_factura`) derivan la identidad
+    del token con el ayudante `fact_usuario(p_token, p_usuario)` → ya no se puede suplantar un rol
+    pasando otro `p_usuario`. **Compatible**: sin token cae a `p_usuario` (cliente viejo). ⚠️
+    Durante la impersonación de soporte el token se SUSPENDE (`getToken()` mira `sam:support-origin`)
+    para no romper «ver como».
+  - ⏳ **Falta**: Fase 3 (mover a funciones las escrituras financieras DIRECTAS — `fact_pagos`,
+    `fact_documentos` — y recién ahí cerrar grants; luego el resto de tablas) y hacer el token
+    OBLIGATORIO (quitar el respaldo a `p_usuario`). Ver memoria `project_permisos_base`.
+- ⚡ **Índices de sincronización** (`20261023120000`): `idx_asignaciones_updated_at` y
+  `idx_maestro_activo_updated` (parcial). El polling de labores cada 30 s ya no escanea toda la
+  tabla (medido: Seq Scan 536 buffers → Bitmap Index 4). No cambia nada de comportamiento.
+- 🗂 **Menú «Cambiar vista» en categorías contraíbles** (`SupervisorView`, more-sheet del
+  dueño/administración): 8 categorías con flecha ▾/▸, cada una con su `useState` (`catOperacionOpen`
+  …), replicando el patrón de «Catálogos». «Operación diaria» abierta por defecto. NO quita ni
+  renombra nada; conserva las condiciones de rol. El menú del SUPERVISOR y el `caraTablero` del
+  dueño NO se tocaron. **Al agregar una pantalla nueva al menú, métela en su categoría.**
+- 📊 **Uso real de los módulos** (medido en la base, 23-oct): muy usados = Labores, Insumos/
+  combustible, Novedades, Flota. Casi o nunca usados = **Taller completo** (OT/compras = 0 filas),
+  biometría de taller, **Chequeo diario** (apagado por config: 1/28 equipos con lista), **Fincas**
+  (reportes/movimientos = 0), **Viajes de trozas** (frío desde agosto), cierre mensual de
+  horómetros y el «🖍 Resaltar» de la Planilla. Ver memoria `project_uso_modulos`. **Antes de
+  construir sobre un módulo, revisar si de verdad se usa.**
+
+## Flujo multi-modelo (Codex / Antigravity / Claude)
+
+Para cambios grandes de código, el escalamiento cuando algo falla es **Codex (2 intentos) →
+Antigravity/Gemini (2 intentos, con `--mode accept-edits`, edita de verdad y sin costo de API) →
+Claude**. Claude revisa lo que devuelvan antes de publicar. Detalle y comandos en
+`Documentos/Desarrollos/CLAUDE.md` y el skill `gemini-suscripcion`. 🔴 **Antes de construir un
+cambio de interfaz, mostrarle primero a Iván una MAQUETA** (widget de visualización o captura) y
+esperar su visto bueno (regla en el CLAUDE.md global de Iván).
+
 ## Cómo trabaja el usuario
 
 - 🔴 **Responder SIEMPRE en español** — también los resúmenes al terminar una tarea larga y

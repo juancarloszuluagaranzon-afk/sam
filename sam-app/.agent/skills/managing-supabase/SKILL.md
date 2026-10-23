@@ -357,3 +357,16 @@ escritura estampe `editado_por`**; una que no lo haga hereda al último editor. 
 un trigger así: compararlo **solo cuando cambia la columna protegida** (`is not distinct
 from`), para no frenar las ediciones de otras columnas, y probar los cuatro actores
 (supervisor, administración, operario, y la unidad que NO se protege).
+
+## 🔐 Llave de SESIÓN de la app (Fase 1 del endurecimiento, 22-oct-2026)
+
+Hoy la app confía en el `p_usuario` que manda el cliente (la llave `anon` es pública). El cimiento
+para corregirlo: `app_sesiones` (una sesión por token; guarda SOLO el hash sha256 del token; `anon`
+no la lee ni escribe), `app_login_token` (= `app_login` pero además entrega un token; `app_login`
+queda intacto), `app_sesion_usuario(p_token)` y `app_cerrar_sesion(p_token)`. Reutiliza
+`af_hash`/`af_token_nuevo`. Migración `20261022130000`, aplicada. La Fase 2 ya usa ese token en las
+funciones financieras (ver `managing-facturacion`). ⏳ Falta Fase 3 (mover a funciones las
+escrituras DIRECTAS y recién ahí cerrar grants, tabla por tabla) y hacer el token OBLIGATORIO. Plan
+completo en la memoria `project_permisos_base`. 🔴 Regla: no cerrar una tabla sin antes mover TODAS
+sus escrituras (incluida la cola sin señal), cada paso ensayado en `begin…rollback` y con el
+Permitir de Iván.

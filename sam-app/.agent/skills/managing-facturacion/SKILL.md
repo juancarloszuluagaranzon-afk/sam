@@ -473,3 +473,17 @@ detecta y alerta; la nota credito la decide administracion.
 2. **La fecha de corte** desde la que se empieza a facturar (preguntada en la hoja 6).
 3. **Las credenciales de Siigo** y la empresa de pruebas (hoja 6 pregunta en que
    programa facturan).
+
+## 🔐 Identidad por TOKEN en las funciones financieras (Fase 2, 22-oct-2026)
+
+Las 5 funciones financieras (`fact_vincular`, `fact_desvincular`, `fact_acuerdo_guardar`,
+`fact_acuerdo_anular`, `fact_acuerdo_ligar_factura`) ganaron un parámetro `p_token` (al FINAL,
+default null) y derivan el usuario real con el ayudante `fact_usuario(p_token, p_usuario)`:
+token válido → ese usuario (y si el token no vale → `SESION_INVALIDA`); sin token → cae a
+`p_usuario` (respaldo temporal, cliente viejo). Así ya NO se puede suplantar un rol pasando otro
+`p_usuario`. El cliente guarda el token en `lib/sesion.ts` y lo manda en las 5 llamadas; durante
+la impersonación de soporte el token se SUSPENDE (`getToken()` mira `sam:support-origin`) y vuelve
+a `p_usuario`, para no romper «ver como». Migración `20261022140000`; cimiento de sesión en
+`20261022130000` (ver `managing-supabase`). Al reescribir/crear una función financiera que valide
+rol: aceptar `p_token` y derivar con `fact_usuario` ANTES de revisar el rol. Pendiente: quitar el
+respaldo a `p_usuario` (token obligatorio) cuando el cliente nuevo lleve tiempo arriba.

@@ -288,6 +288,26 @@ probar con U058 hay que darle un rol que pueda (p. ej. administración) **y devo
   `DELETE` que genera la propia limpieza y los cambios del paquete): queda a nombre de los
   usuarios reales dueños de las llaves de prueba (U005/U002) y confunde al revisar quién hizo qué.
 
+## 🧪 Finca de EJEMPLO para ver el módulo funcionando (23-oct-2026)
+
+Riogrande II tiene las suertes y ciclos pero **cero reportes y cero movimientos**, así que el
+módulo se veía vacío y no se apreciaba ninguna funcionalidad. Se creó una finca de prueba
+APARTE, **RIOGRANDE PRUEBAS**, con datos completos que encienden cada pantalla. Scripts en
+`sam-app/supabase/` (se corren por SSH como `supabase_admin`, `-v ON_ERROR_STOP=1
+--single-transaction`; se ensayó antes en `begin…rollback`):
+- `seed_riogrande_pruebas.sql` — la crea. Reusa la cartografía de la real (hacienda 627 ·
+  Ingenio Risaralda, por eso salen satélite y plano) copiando `af_poligonos` y `datos_ingenio`
+  por código de suerte. Usa las funciones INTERNAS (`af__abrir_ciclo` / `af__reportar` /
+  `af__revisar`, con U005 = admin que acepta y U033 = Julio que reporta) para que el demo sea
+  idéntico a producción; los movimientos a mano van por INSERT directo con `af.via_funcion`.
+  Estados variados: a tiempo / normal / tardía / por aceptar / rechazada, riego y malezas con
+  pasadas, anticipo + gastos + honorario + un gasto ANULADO, un polígono «por asignar» y un
+  reporte con GPS. 11 suertes · 44 labores · 25 reportes · saldo **+$3.212.750**. Lleva candado
+  anti-duplicado. El enlace del dueño del demo se generó al aplicar (no está en el repo).
+- `borrar_riogrande_pruebas.sql` — la borra sin dejar rastro: guarda los ids ANTES y limpia
+  **también la auditoría que genera el propio borrado** (el gotcha de la sección «Pruebas»).
+🔴 Es DATO de prueba viviendo en producción: para quitarlo, corre el borrador.
+
 ## 🌱 «Sencillo pero funcional» — paquete 1 (16-oct-2026)
 
 Revisión de Iván con tres agentes (herramientas del mercado, agronomía Cenicaña y el código). Lo

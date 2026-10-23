@@ -24,7 +24,8 @@ import { PullToRefresh } from './components/PullToRefresh'
 import { matchesSummaryFilter, currentQuincena, type SummaryQuincena } from './components/EntityHistoryModal'
 import './App.css'
 import type { Assignment, UserProfile } from './domain/sam'
-import { appLogin, appChangePin, loadAssignments, executionDateKey, getIngenioName, getIdSuerte, getAssignmentIngenioId } from './services/samApi'
+import { appLogin, appLogout, appChangePin, loadAssignments, executionDateKey, getIngenioName, getIdSuerte, getAssignmentIngenioId } from './services/samApi'
+import { getTokenReal, setToken } from './lib/sesion'
 import { db } from './lib/db'
 import { filaMaestro } from './lib/areaSuerte'
 
@@ -145,6 +146,11 @@ function AppContent() {
       if (llave) { guardarLlavePersonal(session.id, null); void cerrarSesionFincas(llave).catch(() => {}) }
       // Y la copia de las fincas que se guardó para trabajar sin señal.
       void borrarCargasFincas()
+    }
+    // Al salir: revocar el token de sesión en el servidor y borrarlo del equipo.
+    if (!user) {
+      void appLogout(getTokenReal())
+      setToken(null)
     }
     setSession(user ? { ...user } : null)
     setIsSideMenuOpen(false)

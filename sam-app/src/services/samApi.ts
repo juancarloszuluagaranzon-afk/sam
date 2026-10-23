@@ -1,4 +1,5 @@
 import { etiquetasFact, unirEtiquetasFact } from '../lib/etiquetasFact'
+import { setToken } from '../lib/sesion'
 import { LOCAL_MAESTRO } from '../data/constants'
 import { ingenioNombre, idSuerte, slugIngenio } from '../data/ingenios'
 import { DESTINO_LABEL } from '../domain/sam'
@@ -3636,21 +3637,35 @@ export async function clearAllPlanillaRevisiones(): Promise<void> {
 }
 
 export async function appLogin(userId: string, pin: string) {
-  const { data, error } = await supabase.rpc('app_login', {
-    p_user_id: userId,
-    p_pin: pin,
-  })
-
-  if (error || !data?.length) {
-    throw error ?? new Error('Credenciales invalidas')
+  // Fase 2: el login que ADEMÁS entrega un token de sesión. Si por algo técnico
+  // fallara (función ausente, red), cae al login de siempre para que NADIE se
+  // quede sin entrar. Un PIN incorrecto da «Credenciales invalidas» como antes.
+  let row: Record<string, unknown> | null = null
+  try {
+    const r = await supabase.rpc('app_login_token', { p_user_id: userId, p_pin: pin })
+    if (r.error) throw r.error
+    if (r.data?.length) {
+      row = r.data[0] as Record<string, unknown>
+      setToken(String(row.token))
+    }
+    // Sin filas = PIN incorrecto: no se cae al clásico (daría lo mismo).
+  } catch {
+    const r = await supabase.rpc('app_login', { p_user_id: userId, p_pin: pin })
+    if (!r.error && r.data?.length) {
+      row = r.data[0] as Record<string, unknown>
+      setToken(null)
+    }
   }
 
-  const row = data[0]
+  if (!row) {
+    setToken(null)
+    throw new Error('Credenciales invalidas')
+  }
 
   const { data: fotoRow } = await supabase
     .from('app_usuarios')
     .select('foto_url')
-    .eq('id', row.id)
+    .eq('id', row.id as string)
     .maybeSingle()
 
   return {
@@ -3660,6 +3675,12 @@ export async function appLogin(userId: string, pin: string) {
     equipmentCode: String(row.equipo_codigo ?? ''),
     photoUrl: fotoRow?.foto_url ? String(fotoRow.foto_url) : undefined,
   } as UserProfile
+}
+
+/** Cierra la sesión en el servidor (revoca el token). Mejor esfuerzo. */
+export async function appLogout(token: string | null): Promise<void> {
+  if (!token) return
+  try { await supabase.rpc('app_cerrar_sesion', { p_token: token }) } catch { /* mejor esfuerzo */ }
 }
 
 export async function uploadUserPhoto(userId: string, file: File): Promise<string> {

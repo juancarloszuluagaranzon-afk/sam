@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { getToken } from '../lib/sesion'
 
 /**
  * CARTERA (2-oct-2026, migración 20261002170000). Una fila por factura desde la
@@ -338,20 +339,20 @@ export async function guardarAcuerdo(id: string | null, datos: DatosAcuerdo, cuo
       negociado_por: datos.negociadoPor, condiciones: datos.condiciones ?? '',
     },
     p_cuotas: cuotas.map((c) => ({ vence: c.vence, valor: c.valor, anticipo: c.anticipo })),
-    p_usuario: usuario,
+    p_usuario: usuario, p_token: getToken(),
   })
   if (error || !data) throw new Error(sinCodigo(error?.message) || 'No se pudo guardar el acuerdo')
   return String(data)
 }
 
 export async function anularAcuerdo(id: string, motivo: string, usuario: string): Promise<void> {
-  const { error } = await supabase.rpc('fact_acuerdo_anular', { p_id: id, p_motivo: motivo, p_usuario: usuario })
+  const { error } = await supabase.rpc('fact_acuerdo_anular', { p_id: id, p_motivo: motivo, p_usuario: usuario, p_token: getToken() })
   if (error) throw new Error(sinCodigo(error.message) || 'No se pudo anular el acuerdo')
 }
 
 /** Liga la factura al acuerdo (null = la quita). Devuelve el anticipo que quedó descontado en ella. */
 export async function ligarFacturaAcuerdo(facturaId: string, acuerdoId: string | null, usuario: string): Promise<number> {
-  const { data, error } = await supabase.rpc('fact_acuerdo_ligar_factura', { p_factura: facturaId, p_acuerdo: acuerdoId, p_usuario: usuario })
+  const { data, error } = await supabase.rpc('fact_acuerdo_ligar_factura', { p_factura: facturaId, p_acuerdo: acuerdoId, p_usuario: usuario, p_token: getToken() })
   if (error) throw new Error(sinCodigo(error.message) || 'No se pudo ligar la factura al acuerdo')
   return Number(data ?? 0)
 }

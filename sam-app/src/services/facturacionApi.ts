@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { getToken } from '../lib/sesion'
 
 /**
  * Documentos de facturación (2-oct-2026, migración 20261002150000):
@@ -119,14 +120,14 @@ export async function crearDocumento(input: NuevoDocumento, archivo?: File | nul
 /** Vincula las líneas al documento. `reemplazar` = pasar líneas que ya tenían otro. */
 export async function vincularDocumento(documentoId: string, ids: string[], usuario: string, reemplazar = false): Promise<number> {
   const { data, error } = await supabase.rpc('fact_vincular', {
-    p_documento: documentoId, p_ids: ids, p_usuario: usuario, p_reemplazar: reemplazar,
+    p_documento: documentoId, p_ids: ids, p_usuario: usuario, p_reemplazar: reemplazar, p_token: getToken(),
   })
   if (error) throw mensaje(error, 'No se pudo vincular')
   return Number(data ?? 0)
 }
 
 export async function desvincularDocumento(tipo: TipoDocumento, ids: string[], usuario: string): Promise<number> {
-  const { data, error } = await supabase.rpc('fact_desvincular', { p_tipo: tipo, p_ids: ids, p_usuario: usuario })
+  const { data, error } = await supabase.rpc('fact_desvincular', { p_tipo: tipo, p_ids: ids, p_usuario: usuario, p_token: getToken() })
   if (error) throw mensaje(error, 'No se pudo quitar')
   return Number(data ?? 0)
 }

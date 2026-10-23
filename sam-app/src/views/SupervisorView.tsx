@@ -362,6 +362,15 @@ export function SupervisorView({
   const [isDiagOpen, setIsDiagOpen] = useState(false)
   // Submenú "Catálogos" del more-sheet (Maestros, Labores, Empresas, Terceros).
   const [catalogosOpen, setCatalogosOpen] = useState(false)
+  // Categorías contraíbles del menú "Cambiar vista" (más → opciones). "Operación
+  // diaria" abierta por defecto; las demás cerradas, para que el menú se vea corto.
+  const [catOperacionOpen, setCatOperacionOpen] = useState(true)
+  const [catReportesOpen, setCatReportesOpen] = useState(false)
+  const [catFacturacionOpen, setCatFacturacionOpen] = useState(false)
+  const [catInsumosOpen, setCatInsumosOpen] = useState(false)
+  const [catFlotaOpen, setCatFlotaOpen] = useState(false)
+  const [catEquiposOpen, setCatEquiposOpen] = useState(false)
+  const [catAdminOpen, setCatAdminOpen] = useState(false)
   // Accesos de la barra que el dueño eligió (Más → Personalizar barra).
   const [navBarra, setNavBarra] = useState<string[]>(() => leerNav(session?.id ?? ''))
   const [navConfigOpen, setNavConfigOpen] = useState(false)
@@ -1014,72 +1023,299 @@ export function SupervisorView({
                     </button>
                   </>
                 )}
+                {/* Menú agrupado en categorías contraíbles (23-oct-2026) */}
                 <button
-                  className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">◫</span>
+                  className="more-sheet__item"
+                  onClick={() => setCatOperacionOpen((v) => !v)}
+                  aria-expanded={catOperacionOpen}
+                  >
+                  <span className="more-sheet__icon">🚜</span>
                   <div>
-                    <div className="more-sheet__label">Tablero</div>
-                    <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
+                    <div className="more-sheet__label">Operación diaria {catOperacionOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Tablero, planilla, novedades, mapa</div>
                   </div>
                 </button>
+                {catOperacionOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'tablero' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('tablero'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">◫</span>
+                    <div>
+                      <div className="more-sheet__label">Tablero</div>
+                      <div className="more-sheet__desc">Vista de programación por suerte y labor</div>
+                    </div>
+                  </button>
+                  {session.role === 'administracion' && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'realizadas' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('realizadas'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">☑</span>
+                      <div>
+                        <div className="more-sheet__label">Realizadas</div>
+                        <div className="more-sheet__desc">Labores ejecutadas, filtra por hacienda y labor</div>
+                      </div>
+                    </button>
+                  )}
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'planilla' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('planilla'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">▦</span>
+                    <div>
+                      <div className="more-sheet__label">Planilla</div>
+                      <div className="more-sheet__desc">Ha por operario y día de la quincena</div>
+                    </div>
+                  </button>
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'novedadtipos' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('novedadtipos'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">🏷️</span>
+                    <div>
+                      <div className="more-sheet__label">Novedades de la planilla</div>
+                      <div className="more-sheet__desc">Crear los códigos que se marcan (V, T, NP…)</div>
+                    </div>
+                  </button>
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'mapa' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('mapa'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">🗺️</span>
+                    <div>
+                      <div className="more-sheet__label">Mapa</div>
+                      <div className="more-sheet__desc">Plano de las haciendas · funciona sin señal</div>
+                    </div>
+                  </button>
+                  </div>
+                )}
                 <button
-                  className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">⬦</span>
+                  className="more-sheet__item"
+                  onClick={() => setCatReportesOpen((v) => !v)}
+                  aria-expanded={catReportesOpen}
+                  >
+                  <span className="more-sheet__icon">📊</span>
                   <div>
-                    <div className="more-sheet__label">Reporte</div>
-                    <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
+                    <div className="more-sheet__label">Tableros y reportes {catReportesOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Tableros, reporte, eficiencia</div>
                   </div>
                 </button>
-                {session.role === 'administracion' && (
+                {catReportesOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
                   <button
-                    className={`more-sheet__item ${supervisorTab === 'realizadas' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('realizadas'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">☑</span>
+                    className={`more-sheet__item ${supervisorTab === 'inicio' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('inicio'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">◉</span>
                     <div>
-                      <div className="more-sheet__label">Realizadas</div>
-                      <div className="more-sheet__desc">Labores ejecutadas, filtra por hacienda y labor</div>
+                      <div className="more-sheet__label">Tableros</div>
+                      <div className="more-sheet__desc">Operación general y eficiencia de maquinaria</div>
                     </div>
                   </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
                   <button
-                    className={`more-sheet__item ${supervisorTab === 'cartera' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('cartera'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">💰</span>
+                    className={`more-sheet__item ${supervisorTab === 'reporte' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('reporte'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">⬦</span>
                     <div>
-                      <div className="more-sheet__label">Cartera</div>
-                      <div className="more-sheet__desc">Facturas por cobrar, días de mora y pagos</div>
+                      <div className="more-sheet__label">Reporte</div>
+                      <div className="more-sheet__desc">Historial completo con filtros y descarga Excel</div>
                     </div>
                   </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'facturacion' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('facturacion'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">🧾</span>
-                    <div>
-                      <div className="more-sheet__label">Facturación</div>
-                      <div className="more-sheet__desc">Soporte del cliente y factura de cada labor realizada</div>
-                    </div>
-                  </button>
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'eficiencia' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('eficiencia'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">⏱</span>
+                      <div>
+                        <div className="more-sheet__label">Eficiencia</div>
+                        <div className="more-sheet__desc">Días y horas por máquina y por operario, contra el mínimo</div>
+                      </div>
+                    </button>
+                  )}
+                  </div>
                 )}
                 <button
-                  className={`more-sheet__item ${supervisorTab === 'planilla' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('planilla'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">▦</span>
+                  className="more-sheet__item"
+                  onClick={() => setCatFacturacionOpen((v) => !v)}
+                  aria-expanded={catFacturacionOpen}
+                  >
+                  <span className="more-sheet__icon">🧾</span>
                   <div>
-                    <div className="more-sheet__label">Planilla</div>
-                    <div className="more-sheet__desc">Ha por operario y día de la quincena</div>
+                    <div className="more-sheet__label">Facturación y cartera {catFacturacionOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Facturar, cartera, cobros</div>
                   </div>
                 </button>
+                {catFacturacionOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'cartera' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('cartera'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">💰</span>
+                      <div>
+                        <div className="more-sheet__label">Cartera</div>
+                        <div className="more-sheet__desc">Facturas por cobrar, días de mora y pagos</div>
+                      </div>
+                    </button>
+                  )}
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'facturacion' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('facturacion'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">🧾</span>
+                      <div>
+                        <div className="more-sheet__label">Facturación</div>
+                        <div className="more-sheet__desc">Soporte del cliente y factura de cada labor realizada</div>
+                      </div>
+                    </button>
+                  )}
+                  </div>
+                )}
+                <button
+                  className="more-sheet__item"
+                  onClick={() => setCatInsumosOpen((v) => !v)}
+                  aria-expanded={catInsumosOpen}
+                  >
+                  <span className="more-sheet__icon">📦</span>
+                  <div>
+                    <div className="more-sheet__label">Insumos y combustible {catInsumosOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Insumos, materiales, bodegas, aprobaciones</div>
+                  </div>
+                </button>
+                {catInsumosOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                  <button
+                    className={`more-sheet__item ${supervisorTab === 'insumos' ? 'more-sheet__item--active' : ''}`}
+                    onClick={() => { setSupervisorTab('insumos'); setMoreMenuOpen(false) }}
+                    >
+                    <span className="more-sheet__icon">🛢️</span>
+                    <div>
+                      <div className="more-sheet__label">Insumos</div>
+                      <div className="more-sheet__desc">Inventario de insumos y combustible (kardex)</div>
+                    </div>
+                  </button>
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'movimientos' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('movimientos'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">📦</span>
+                      <div>
+                        <div className="more-sheet__label">Insumos y materiales</div>
+                        <div className="more-sheet__desc">Quién entrega, qué entrega y a quién — con su calidad al lado</div>
+                      </div>
+                    </button>
+                  )}
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'bodegas' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('bodegas'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">🏢</span>
+                      <div>
+                        <div className="more-sheet__label">Bodegas</div>
+                        <div className="more-sheet__desc">Principal y satélites · surtir los carros</div>
+                      </div>
+                    </button>
+                  )}
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'avales' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('avales'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">✅</span>
+                      <div>
+                        <div className="more-sheet__label">Aprobaciones de combustible</div>
+                        <div className="more-sheet__desc">Tanqueos por aprobar · estación y sede</div>
+                      </div>
+                    </button>
+                  )}
+                  </div>
+                )}
+                <button
+                  className="more-sheet__item"
+                  onClick={() => setCatFlotaOpen((v) => !v)}
+                  aria-expanded={catFlotaOpen}
+                  >
+                  <span className="more-sheet__icon">🚙</span>
+                  <div>
+                    <div className="more-sheet__label">Flota y transporte {catFlotaOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Escolta y viajes de trozas</div>
+                  </div>
+                </button>
+                {catFlotaOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'flota' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('flota'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">🚙</span>
+                      <div>
+                        <div className="more-sheet__label">Flota / Escolta</div>
+                        <div className="more-sheet__desc">Servicios de camionetas (CDA-F-68) · firma y evidencia · Excel</div>
+                      </div>
+                    </button>
+                  )}
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'madera' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('madera'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">🪵</span>
+                      <div>
+                        <div className="more-sheet__label">Viajes de trozas</div>
+                        <div className="more-sheet__desc">Transporte de madera · salvoconducto que vence · despachado vs recibido</div>
+                      </div>
+                    </button>
+                  )}
+                  </div>
+                )}
+                <button
+                  className="more-sheet__item"
+                  onClick={() => setCatEquiposOpen((v) => !v)}
+                  aria-expanded={catEquiposOpen}
+                  >
+                  <span className="more-sheet__icon">🔧</span>
+                  <div>
+                    <div className="more-sheet__label">Equipos y taller {catEquiposOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Horómetros y taller</div>
+                  </div>
+                </button>
+                {catEquiposOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'horometros' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('horometros'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">⏱️</span>
+                      <div>
+                        <div className="more-sheet__label">Horómetros</div>
+                        <div className="more-sheet__desc">Última lectura de cada máquina y el tope de las 24 h</div>
+                      </div>
+                    </button>
+                  )}
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'taller' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('taller'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">&#128295;</span>
+                      <div>
+                        <div className="more-sheet__label">Taller</div>
+                        <div className="more-sheet__desc">Hoja de vida, preventivo, repuestos y costo por hora</div>
+                      </div>
+                    </button>
+                  )}
+                  </div>
+                )}
                 {/* Catálogos: submenú que agrupa Maestros, Labores, Empresas y Terceros */}
                 <button
                   className={`more-sheet__item ${['maestros', 'catalogo', 'ingenios', 'empresas', 'terceros', 'zonas', 'motivacion', 'mapascat'].includes(supervisorTab) ? 'more-sheet__item--active' : ''}`}
@@ -1191,177 +1427,31 @@ export function SupervisorView({
                   </div>
                 )}
                 <button
-                  className={`more-sheet__item ${supervisorTab === 'insumos' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('insumos'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">🛢️</span>
+                  className="more-sheet__item"
+                  onClick={() => setCatAdminOpen((v) => !v)}
+                  aria-expanded={catAdminOpen}
+                  >
+                  <span className="more-sheet__icon">⚙</span>
                   <div>
-                    <div className="more-sheet__label">Insumos</div>
-                    <div className="more-sheet__desc">Inventario de insumos y combustible (kardex)</div>
+                    <div className="more-sheet__label">Administración {catAdminOpen ? '▾' : '▸'}</div>
+                    <div className="more-sheet__desc">Usuarios</div>
                   </div>
                 </button>
-                {/* Los dos tableros viven juntos detrás de un selector, y esta
-                    es la única puerta. Administración NO tiene "Inicio" en su
-                    barra —arranca en Labores— así que sin esta entrada nunca
-                    llegaba al tablero del dueño. Y una entrada suelta solo para
-                    Consumo dejaba las dos caras en sitios distintos. */}
-                {/* Las tarifas viven al lado de Facturación porque es lo que
-                    las usa: sin precio no se puede armar ninguna factura. */}
-                {/* Va al lado de la Planilla, que es donde se usan. */}
-                <button
-                  className={`more-sheet__item ${supervisorTab === 'novedadtipos' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('novedadtipos'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">🏷️</span>
-                  <div>
-                    <div className="more-sheet__label">Novedades de la planilla</div>
-                    <div className="more-sheet__desc">Crear los códigos que se marcan (V, T, NP…)</div>
+                {catAdminOpen && (
+                  <div style={{ borderLeft: '2px solid var(--color-border)', marginLeft: 18 }}>
+                  {(session.role === 'administracion' || session.role === 'owner') && (
+                    <button
+                      className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
+                      onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
+                      >
+                      <span className="more-sheet__icon">👤</span>
+                      <div>
+                        <div className="more-sheet__label">Usuarios</div>
+                        <div className="more-sheet__desc">Crear, editar y eliminar usuarios</div>
+                      </div>
+                    </button>
+                  )}
                   </div>
-                </button>
-                {/* ⚠️ TARIFAS NO SE MUESTRA EN PRODUCCION — decision del cliente.
-                    La pantalla y su API viajaron en el merge y funcionan, pero la
-                    entrada al menu queda comentada hasta que el cliente cargue las
-                    tarifas REALES: hoy la tabla solo tiene 27 filas de ejemplo, y
-                    una tarifa de mentira en una pantalla de precios es peor que no
-                    tener la pantalla. Para habilitarla: descomentar este bloque.
-                <button
-                  className={`more-sheet__item ${supervisorTab === 'tarifas' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('tarifas'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">💲</span>
-                  <div>
-                    <div className="more-sheet__label">Tarifas</div>
-                    <div className="more-sheet__desc">Precio por hectárea de cada labor</div>
-                  </div>
-                </button>
-                */}
-                <button
-                  className={`more-sheet__item ${supervisorTab === 'inicio' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('inicio'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">◉</span>
-                  <div>
-                    <div className="more-sheet__label">Tableros</div>
-                    <div className="more-sheet__desc">Operación general y eficiencia de maquinaria</div>
-                  </div>
-                </button>
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'movimientos' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('movimientos'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">📦</span>
-                    <div>
-                      <div className="more-sheet__label">Insumos y materiales</div>
-                      <div className="more-sheet__desc">Quién entrega, qué entrega y a quién — con su calidad al lado</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'horometros' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('horometros'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">⏱️</span>
-                    <div>
-                      <div className="more-sheet__label">Horómetros</div>
-                      <div className="more-sheet__desc">Última lectura de cada máquina y el tope de las 24 h</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'eficiencia' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('eficiencia'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">⏱</span>
-                    <div>
-                      <div className="more-sheet__label">Eficiencia</div>
-                      <div className="more-sheet__desc">Días y horas por máquina y por operario, contra el mínimo</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'taller' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('taller'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">&#128295;</span>
-                    <div>
-                      <div className="more-sheet__label">Taller</div>
-                      <div className="more-sheet__desc">Hoja de vida, preventivo, repuestos y costo por hora</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'avales' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('avales'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">✅</span>
-                    <div>
-                      <div className="more-sheet__label">Aprobaciones de combustible</div>
-                      <div className="more-sheet__desc">Tanqueos por aprobar · estación y sede</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'bodegas' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('bodegas'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">🏢</span>
-                    <div>
-                      <div className="more-sheet__label">Bodegas</div>
-                      <div className="more-sheet__desc">Principal y satélites · surtir los carros</div>
-                    </div>
-                  </button>
-                )}
-                <button
-                  className={`more-sheet__item ${supervisorTab === 'mapa' ? 'more-sheet__item--active' : ''}`}
-                  onClick={() => { setSupervisorTab('mapa'); setMoreMenuOpen(false) }}
-                >
-                  <span className="more-sheet__icon">🗺️</span>
-                  <div>
-                    <div className="more-sheet__label">Mapa</div>
-                    <div className="more-sheet__desc">Plano de las haciendas · funciona sin señal</div>
-                  </div>
-                </button>
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'flota' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('flota'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">🚙</span>
-                    <div>
-                      <div className="more-sheet__label">Flota / Escolta</div>
-                      <div className="more-sheet__desc">Servicios de camionetas (CDA-F-68) · firma y evidencia · Excel</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'madera' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('madera'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">🪵</span>
-                    <div>
-                      <div className="more-sheet__label">Viajes de trozas</div>
-                      <div className="more-sheet__desc">Transporte de madera · salvoconducto que vence · despachado vs recibido</div>
-                    </div>
-                  </button>
-                )}
-                {(session.role === 'administracion' || session.role === 'owner') && (
-                  <button
-                    className={`more-sheet__item ${supervisorTab === 'usuarios' ? 'more-sheet__item--active' : ''}`}
-                    onClick={() => { setSupervisorTab('usuarios'); setMoreMenuOpen(false) }}
-                  >
-                    <span className="more-sheet__icon">👤</span>
-                    <div>
-                      <div className="more-sheet__label">Usuarios</div>
-                      <div className="more-sheet__desc">Crear, editar y eliminar usuarios</div>
-                    </div>
-                  </button>
                 )}
               </>
             )}

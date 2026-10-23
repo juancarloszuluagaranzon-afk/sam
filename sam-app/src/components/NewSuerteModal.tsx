@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import type { MaestroRow } from '../domain/sam'
+import { db } from '../lib/db'
 import { createMaestroRow } from '../services/samApi'
 
 interface Props {
@@ -135,8 +136,13 @@ export function NewSuerteModal({
       onClose()
     } catch (err) {
       if (err instanceof Error && err.message === 'DUPLICATE') {
+        try {
+          await db.meta.delete('maestro_version')
+        } catch {
+          // sin almacenamiento
+        }
         setError(
-          'Otro usuario ya creo esa suerte. Cierra este modal y selecciónala del listado.',
+          'Esa suerte ya existe en el maestro. Cierra la app y vuelve a abrirla para que se actualice el listado, y selecciónala desde ahí.',
         )
       } else {
         // Mostrar la causa tecnica real ademas del consejo generico. Asi el

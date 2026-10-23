@@ -234,13 +234,16 @@ function mapAssignmentPayload(input: CreateAssignmentInput) {
 // version cacheada localmente para evitar la descarga completa de ~15K filas
 // cuando el maestro no cambia (caso comun). Si la BD no tiene updated_at,
 // devuelve null y el caller hace fetch completo como fallback.
-async function getMaestroVersion(): Promise<string | null> {
+async function getMaestroVersion(): Promise<{ version: string; count: number } | null> {
   try {
     const [countRes, latestRes] = await Promise.all([
       supabase
         .from('maestro_risaralda')
         .select('*', { count: 'exact', head: true })
-        .eq('activo', true),
+        .eq('activo', true)
+        .not('hacienda', 'is', null)
+        .not('suerte', 'is', null)
+        .neq('suerte', ''),
       supabase
         .from('maestro_risaralda')
         .select('updated_at')
@@ -252,7 +255,7 @@ async function getMaestroVersion(): Promise<string | null> {
     if (countRes.error || latestRes.error) return null
     const count = countRes.count ?? 0
     const latest = (latestRes.data as { updated_at?: string } | null)?.updated_at ?? ''
-    return `${count}-${latest}`
+    return { version: `${count}-${latest}`, count }
   } catch {
     return null
   }
@@ -269,8 +272,8 @@ export async function loadMaestro(): Promise<{
     // Chequeo de version barato (~2 queries chicas, <100ms). Si la version no
     // cambio respecto a lo cacheado y tenemos cache, NO bajamos el maestro
     // completo. Se devuelve el cache de Dexie tal cual.
-    const serverVersion = await getMaestroVersion()
-    if (serverVersion && serverVersion === localVersion && cached.length > 0) {
+    const server = await getMaestroVersion()
+    if (server && server.version === localVersion && cached.length > 0 && cached.length === server.count) {
       return { data: cached, source: 'cache' }
     }
 
@@ -323,8 +326,8 @@ export async function loadMaestro(): Promise<{
       try {
         await db.maestro.clear()
         await db.maestro.bulkPut(mapped)
-        if (serverVersion) {
-          await db.meta.put({ key: 'maestro_version', value: serverVersion })
+        if (server) {
+          await db.meta.put({ key: 'maestro_version', value: server.version })
         }
       } catch {
         // ignore write errors

@@ -9924,6 +9924,24 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-mapa-satley__barra { height: 10px; border-radius: 5px; }
 .af-mapa-satley__rot { display: flex; justify-content: space-between; font-size: 0.72rem; }
 
+/* ── Tablero de costos e indicadores del gremio (24-oct-2026) ────────────── */
+.af-delta { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 6px; font-size: 0.72rem; font-style: normal; font-weight: 700; white-space: nowrap; }
+.af-delta--arriba { background: #e3f1e7; color: #1b5e2f; }
+.af-delta--abajo { background: #fbefd9; color: #7a4a06; }
+.af-azucar__cifra { margin: 0.25rem 0 0.5rem; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; }
+.af-azucar__cifra b { font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; color: var(--color-brand, #155b30); }
+.af-azucar__cifra span { color: var(--color-ink-mid, #5a5f57); }
+.af-azucar__barra { display: flex; gap: 2px; height: 20px; border-radius: 8px; overflow: hidden; background: var(--color-bg-soft, #eef1ec); }
+.af-azucar__costo { display: block; background: #b7791f; }
+.af-azucar__libre { display: block; background: #1f8a5b; }
+.af-azucar__leyenda { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); margin: 0.35rem 0; }
+.af-azucar--perdida .af-azucar__cifra b { color: var(--color-status-cancel); }
+.af-rubros { display: grid; gap: 6px; }
+.af-rubros__fila { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) minmax(84px, auto) 52px; gap: 8px; align-items: center; font-size: 0.86rem; }
+.af-rubros__fila--cab { font-size: 0.74rem; color: var(--color-ink-mid, #5a5f57); }
+.af-rubros__fila > :nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 420px) { .af-rubros__fila { grid-template-columns: minmax(0, 1fr) 0 auto 44px; } .af-rubros__fila .af-barra { display: none; } }
+
 /* ── Acuerdos de pago con colonos (Cartera, 21-oct-2026) ─────────────────── */
 .acu-vistas { margin: 10px 0 4px; }
 .acu-alerta { display: block; width: 100%; text-align: left; font: inherit; cursor: pointer; }

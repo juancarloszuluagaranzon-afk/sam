@@ -4,7 +4,7 @@
  * Todo lo que el dueño ve sale de aquí, y de UNA foto de los datos: el Inicio, la
  * finca y la cuenta no pueden contradecirse porque usan las mismas funciones.
  */
-import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, ReporteCampo, SuerteFinca } from '../services/fincasApi'
+import type { Ciclo, DatosFincas, Finca, LaborCiclo, LaborMaquina, Movimiento, ReporteCampo, ReferenciasSector, RubroCosto, SuerteFinca } from '../services/fincasApi'
 
 /**
  * 🔴 La plata está APAGADA «de momento» (23-sep-2026). El cliente pidió: «quita lo
@@ -445,5 +445,251 @@ export function macroDueno(d: DatosFincas, hoy: string): { fincas: MacroFinca[];
       porAceptar: fincas.reduce((t, m) => t + m.porAceptar, 0),
       saldo: VER_PLATA ? fincas.reduce((t, m) => t + (m.saldo ?? 0), 0) : null,
     },
+  }
+}
+
+// ── Indicadores de cosecha y costos del gremio (24-oct-2026) ──────────────
+/** Los objetos de costo, en el orden en que se leen (Procaña). */
+export const RUBROS: { id: RubroCosto; nombre: string }[] = [
+  { id: 'insumos', nombre: 'Insumos' }, { id: 'agua', nombre: 'Agua y riego' },
+  { id: 'administracion', nombre: 'Administración' }, { id: 'mano_obra', nombre: 'Mano de obra' },
+  { id: 'predial_fondos', nombre: 'Predial y fondos' }, { id: 'semilla', nombre: 'Semilla y resiembra' },
+  { id: 'maquinaria', nombre: 'Maquinaria' }, { id: 'otros', nombre: 'Otros' },
+]
+
+const redondear = (v: number | null, decimales: number): number | null =>
+  v == null || !Number.isFinite(v) ? null : Math.round(v * 10 ** decimales) / 10 ** decimales
+
+/** División segura: denominador 0, null o NaN da null. */
+const dividir = (a: number | null, b: number | null): number | null =>
+  a == null || b == null || !Number.isFinite(a) || !Number.isFinite(b) || b === 0 ? null : a / b
+
+export interface IndicadoresCosecha {
+  areaHa: number
+  suertes: number
+  toneladas: number
+  tch: number
+  rendimiento: number | null
+  sacarosa: number | null
+  tah: number | null
+  azucar: number | null
+  edadMeses: number | null
+  tchm: number | null
+  tahm: number | null
+  numeroCorte: number | null
+}
+
+/**
+ * Los indicadores de la ÚLTIMA cosecha que reportó el ingenio, con las suertes
+ * activas que traen TCH: TCH, TAH, rendimiento, sacarosa, edad, número de corte.
+ * El rendimiento y la sacarosa se ponderan por toneladas; la edad, por área. Si
+ * ninguna suerte trae TCH, devuelve null (no se inventa la cosecha).
+ */
+export function indicadoresCosecha(fincaId: string, d: DatosFincas): IndicadoresCosecha | null {
+  const suertes = d.suertes.filter((s) => s.fincaId === fincaId && s.activa && s.areaHa > 0 && s.datosIngenio?.tch != null)
+  if (!suertes.length) return null
+  const areaHa = suertes.reduce((t, s) => t + s.areaHa, 0)
+  const toneladasDe = (s: SuerteFinca): number => {
+    const di = s.datosIngenio
+    if (!di || di.tch == null) return 0
+    return di.toneladas != null ? di.toneladas : di.tch * s.areaHa
+  }
+  const toneladas = suertes.reduce((t, s) => t + toneladasDe(s), 0)
+  const ponderado = (
+    valor: (s: SuerteFinca) => number | null,
+    peso: (s: SuerteFinca) => number | null,
+  ): number | null => {
+    let num = 0, den = 0
+    for (const s of suertes) {
+      const v = valor(s), w = peso(s)
+      if (v != null && w != null && w > 0 && Number.isFinite(v) && Number.isFinite(w)) { num += v * w; den += w }
+    }
+    return den > 0 ? num / den : null
+  }
+  const tchRaw = ponderado((s) => s.datosIngenio?.tch ?? null, (s) => s.areaHa) ?? 0
+  const rendimientoRaw = ponderado((s) => s.datosIngenio?.rendimiento ?? null, toneladasDe)
+  const sacarosaRaw = ponderado((s) => s.datosIngenio?.sacarosa ?? null, toneladasDe)
+  const edadRaw = ponderado((s) => s.datosIngenio?.edadMeses ?? null, (s) => s.areaHa)
+  const corteRaw = ponderado((s) => s.datosIngenio?.numeroCorte ?? null, (s) => s.areaHa)
+  const tahRaw = rendimientoRaw != null ? tchRaw * rendimientoRaw / 100 : null
+  return {
+    areaHa: Math.round(areaHa * 100) / 100,
+    suertes: suertes.length,
+    toneladas: Math.round(toneladas),
+    tch: redondear(tchRaw, 1) ?? 0,
+    rendimiento: redondear(rendimientoRaw, 2),
+    sacarosa: redondear(sacarosaRaw, 2),
+    tah: redondear(tahRaw, 1),
+    azucar: rendimientoRaw != null ? Math.round(toneladas * rendimientoRaw / 100) : null,
+    edadMeses: redondear(edadRaw, 1),
+    tchm: edadRaw != null && edadRaw > 0 ? redondear(tchRaw / edadRaw, 1) : null,
+    tahm: tahRaw != null && edadRaw != null && edadRaw > 0 ? redondear(tahRaw / edadRaw, 2) : null,
+    numeroCorte: redondear(corteRaw, 1),
+  }
+}
+
+/**
+ * El objeto de costo de un movimiento: el que trae guardado; si no, el honorario
+ * es administración; si no, el mapa de la labor (por nombre, sin tildes); si no,
+ * «otros». Nunca queda sin rubro.
+ */
+export function rubroDe(m: Movimiento, labores: LaborCiclo[], mapa: Record<string, RubroCosto>): RubroCosto {
+  if (m.rubro) return m.rubro
+  if (m.tipo === 'HONORARIO') return 'administracion'
+  if (m.laborId) {
+    const labor = labores.find((l) => l.id === m.laborId)
+    if (labor) {
+      const buscada = llaveLabor(labor.labor)
+      for (const [k, rubro] of Object.entries(mapa)) if (llaveLabor(k) === buscada) return rubro
+    }
+  }
+  return 'otros'
+}
+
+export interface RubroCostoFila {
+  id: RubroCosto
+  nombre: string
+  valor: number
+  porHa: number
+  /** Kilos de azúcar por tonelada que se van en este rubro (null si falta TCH o precio). */
+  kgTc: number | null
+  pct: number
+}
+
+export interface CostosGremio {
+  areaHa: number
+  desde: string
+  costoTotal: number
+  costoHa: number | null
+  tchEsperado: number | null
+  costoTc: number | null
+  kgAzucarTc: number | null
+  kgEsReferencia: boolean
+  precioKg: number | null
+  costoKgAzucar: number | null
+  kaTc: number | null
+  kgLibres: number | null
+  pctCostos: number | null
+  ingresoTc: number | null
+  puntoEquilibrio: number | null
+  leQuedaHa: number | null
+  rubros: RubroCostoFila[]
+}
+
+/**
+ * El costo del CICLO EN CURSO como lo mide el gremio: $/ha, $/t de caña, $/kg de
+ * azúcar liquidado, kilos de azúcar por tonelada y punto de equilibrio. Suma los
+ * gastos de las labores de los ciclos abiertos, los gastos a mano desde el corte
+ * de cada suerte y los honorarios desde el corte más antiguo. Los anticipos no
+ * son costo. Si no hay ciclos abiertos, devuelve null.
+ */
+export function costosGremio(fincaId: string, d: DatosFincas, refs: ReferenciasSector | null): CostosGremio | null {
+  const abiertas: { suerte: SuerteFinca; ciclo: Ciclo }[] = []
+  for (const s of d.suertes.filter((x) => x.fincaId === fincaId && x.activa)) {
+    const c = cicloAbiertoDe(s.id, d.ciclos)
+    if (c) abiertas.push({ suerte: s, ciclo: c })
+  }
+  if (!abiertas.length) return null
+  const finca = d.fincas.find((f) => f.id === fincaId)
+  const areaHa = abiertas.reduce((t, x) => t + x.suerte.areaHa, 0)
+  const desde = abiertas.map((x) => x.ciclo.fechaCorte).sort()[0] ?? ''
+  const idsCiclo = new Set(abiertas.map((x) => x.ciclo.id))
+  const idsLabor = new Set(d.labores.filter((l) => idsCiclo.has(l.cicloId)).map((l) => l.id))
+  const cortePorSuerte = new Map(abiertas.map((x) => [x.suerte.id, x.ciclo.fechaCorte]))
+
+  const esCosto = (m: Movimiento): boolean => {
+    if (m.anulado || m.fincaId !== fincaId) return false
+    if (m.tipo === 'HONORARIO') return m.fecha >= desde
+    if (m.tipo !== 'GASTO') return false // un anticipo nunca es costo
+    if (m.laborId && idsLabor.has(m.laborId)) return true
+    if (!m.laborId && m.suerteId && cortePorSuerte.has(m.suerteId)) return m.fecha >= (cortePorSuerte.get(m.suerteId) ?? '')
+    if (!m.laborId && !m.suerteId) return m.fecha >= desde
+    return false
+  }
+  const gastos = d.movimientos.filter(esCosto)
+  const costoTotal = gastos.reduce((s, m) => s + m.valor, 0)
+
+  let numTch = 0, denTch = 0
+  for (const x of abiertas) {
+    const tch = x.suerte.datosIngenio?.tch
+    if (tch != null && tch > 0 && x.suerte.areaHa > 0) { numTch += tch * x.suerte.areaHa; denTch += x.suerte.areaHa }
+  }
+  const tchEsperadoRaw = denTch > 0 ? numTch / denTch : null
+
+  const kgFinca = finca?.kgAzucarTc
+  const kgDeFinca = kgFinca != null && kgFinca > 0 ? kgFinca : null
+  const kgRef = refs?.costos?.kgAzucarTc
+  const kgDeRef = kgRef != null && kgRef > 0 ? kgRef : null
+  const kgAzucarTc = kgDeFinca ?? kgDeRef
+  const precioFinca = finca?.precioKgAzucar
+  const precioKg = precioFinca != null && precioFinca > 0 ? precioFinca : null
+
+  const costoHaRaw = dividir(costoTotal, areaHa)
+  const costoTcRaw = dividir(costoHaRaw, tchEsperadoRaw)
+  const kaTcRaw = dividir(costoTcRaw, precioKg)
+  const kgLibresRaw = kgAzucarTc != null && kaTcRaw != null ? kgAzucarTc - kaTcRaw : null
+  const ingresoTcRaw = kgAzucarTc != null && precioKg != null ? kgAzucarTc * precioKg : null
+  const puntoEquilibrioRaw = dividir(costoHaRaw, ingresoTcRaw)
+  const pctCostosRaw = dividir(kaTcRaw, kgAzucarTc)
+
+  const acumulado = new Map<RubroCosto, number>()
+  for (const m of gastos) {
+    const rubro = rubroDe(m, d.labores, refs?.rubroPorLabor ?? {})
+    acumulado.set(rubro, (acumulado.get(rubro) ?? 0) + m.valor)
+  }
+  const rubros: RubroCostoFila[] = [...acumulado.entries()]
+    .filter(([, valor]) => valor > 0)
+    .map(([id, valor]) => {
+      const porHaRaw = dividir(valor, areaHa)
+      const kgTcRaw = dividir(dividir(porHaRaw, tchEsperadoRaw), precioKg)
+      return {
+        id,
+        nombre: RUBROS.find((r) => r.id === id)?.nombre ?? 'Otros',
+        valor: Math.round(valor),
+        porHa: Math.round(porHaRaw ?? 0),
+        kgTc: redondear(kgTcRaw, 1),
+        pct: Math.round((dividir(valor, costoTotal) ?? 0) * 100),
+      }
+    })
+    .sort((a, b) => b.valor - a.valor)
+
+  return {
+    areaHa: Math.round(areaHa * 100) / 100,
+    desde,
+    costoTotal: Math.round(costoTotal),
+    costoHa: redondear(costoHaRaw, 0),
+    tchEsperado: redondear(tchEsperadoRaw, 1),
+    costoTc: redondear(costoTcRaw, 0),
+    kgAzucarTc,
+    kgEsReferencia: kgDeFinca == null,
+    precioKg,
+    costoKgAzucar: redondear(dividir(costoTcRaw, kgAzucarTc), 0),
+    kaTc: redondear(kaTcRaw, 1),
+    kgLibres: redondear(kgLibresRaw, 1),
+    pctCostos: redondear(pctCostosRaw != null ? pctCostosRaw * 100 : null, 0),
+    ingresoTc: redondear(ingresoTcRaw, 0),
+    puntoEquilibrio: redondear(puntoEquilibrioRaw, 1),
+    leQuedaHa: redondear(tchEsperadoRaw != null && ingresoTcRaw != null && costoHaRaw != null ? tchEsperadoRaw * ingresoTcRaw - costoHaRaw : null, 0),
+    rubros,
+  }
+}
+
+/**
+ * Diferencia contra la referencia del sector, en % («+2,9 %»), puntos («−0,3 pts»)
+ * o absolutos («+0,1»). null si falta algún dato o el denominador es 0. Usa coma
+ * decimal y el signo «−» (U+2212) para los negativos.
+ */
+export function comparar(
+  valor: number | null, ref: number | null | undefined, modo: 'pct' | 'pts' | 'abs',
+): { texto: string; arriba: boolean } | null {
+  // Una referencia en 0 es una referencia que no llegó (la conversión pone 0 si falta): sin comparación.
+  if (valor == null || ref == null || !Number.isFinite(valor) || !Number.isFinite(ref) || ref <= 0) return null
+  const dif = modo === 'pct' ? ((valor - ref) / ref) * 100 : valor - ref
+  if (!Number.isFinite(dif)) return null
+  const signo = dif < 0 ? '−' : '+'
+  const cifra = Math.abs(dif).toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  return {
+    texto: modo === 'pct' ? `${signo}${cifra} %` : modo === 'pts' ? `${signo}${cifra} pts` : `${signo}${cifra}`,
+    arriba: dif >= 0,
   }
 }

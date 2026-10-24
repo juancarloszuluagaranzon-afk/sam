@@ -12,6 +12,7 @@ import { ingenioNombre } from '../../data/ingenios'
 import { fmtFechaHora } from '../../lib/fechas'
 import { AccesoDueno } from './AccesoDueno'
 import { MapaFinca } from './MapaFinca'
+import { TableroFinca } from './TableroFinca'
 
 type Sub = 'resumen' | 'labores' | 'cuenta' | 'bitacora'
 
@@ -110,6 +111,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
 
       {sub === 'resumen' && (
         <div className="af-dueno">
+          <TableroFinca d={d} fincaId={fincaId} />
           {esAdmin && !modoDueno && <AccesoDueno ctx={ctx} finca={finca} />}
           <div className="af-card">
             <h3>Hoy en su finca</h3>
@@ -135,11 +137,11 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             ))}
           </div>
           {VER_PLATA && <div className="af-card">
-            <h3>Su cuenta</h3>
+            <h3>Cuenta de anticipos (caja)</h3>
             <div className="af-fila2"><span>Anticipos girados</span><b>{fmtPesos(cuenta.anticipos)}</b></div>
             <div className="af-fila2"><span>Gastado con soporte</span><b>{fmtPesos(cuenta.gastos)}</b></div>
             {cuenta.honorarios > 0 && <div className="af-fila2"><span>Honorarios de administración</span><b>{fmtPesos(cuenta.honorarios)}</b></div>}
-            <div className="af-fila2 af-fila2--total"><span>{cuenta.saldo >= 0 ? 'Saldo a su favor' : 'Saldo por girar'}</span><b className={cuenta.saldo < 0 ? 'af-rojo' : ''}>{fmtPesos(Math.abs(cuenta.saldo))}</b></div>
+            <div className="af-fila2 af-fila2--total"><span>{cuenta.saldo >= 0 ? 'Saldo de caja' : 'Saldo por girar'}</span><b className={cuenta.saldo < 0 ? 'af-rojo' : ''}>{fmtPesos(Math.abs(cuenta.saldo))}</b></div>
           </div>}
           <div className="af-card af-card--ancha">
             <h3>Bitácora</h3>
@@ -232,7 +234,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             <div className="af-kpi"><b>{fmtPesosCorto(cuenta.anticipos)}</b><span>anticipos</span></div>
             <div className="af-kpi"><b>{fmtPesosCorto(cuenta.gastos)}</b><span>gastos con soporte</span></div>
             <div className="af-kpi"><b>{fmtPesosCorto(cuenta.honorarios)}</b><span>honorarios</span></div>
-            <div className={`af-kpi${cuenta.saldo < 0 ? ' af-kpi--mal' : ''}`}><b>{fmtPesosCorto(cuenta.saldo)}</b><span>saldo</span></div>
+            <div className={`af-kpi${cuenta.saldo < 0 ? ' af-kpi--mal' : ''}`}><b>{fmtPesosCorto(cuenta.saldo)}</b><span>saldo de caja</span></div>
           </div>
           {esAdmin && <NuevoMovimiento ocupado={ocupado} suertes={suertes.map((s) => ({ id: s.id, codigo: s.codigo }))} hoy={hoy}
             onGuardar={(m) => hacer(() => registrarMovimiento({ ...m, fincaId }, token))} onError={setError} />}

@@ -36,11 +36,10 @@ join public.af_fincas  rf on rf.id = rs.finca_id and rf.nombre = 'RIOGRANDE II'
 join public.af_fincas  nf on nf.nombre = 'RIOGRANDE PRUEBAS'
 join public.af_suertes ns on ns.finca_id = nf.id and ns.codigo = rs.codigo;
 
-update public.af_suertes ns set datos_ingenio = rs.datos_ingenio
-from public.af_suertes rs
-join public.af_fincas rf on rf.id = rs.finca_id and rf.nombre = 'RIOGRANDE II'
-where ns.finca_id = (select id from public.af_fincas where nombre='RIOGRANDE PRUEBAS')
-  and rs.codigo = ns.codigo;
+-- 24-oct-2026: ya NO se copian los datos del ingenio de la finca real (TCH, rendimiento…):
+-- el enlace de esta finca se le muestra a clientes. Los datos de cosecha, los parámetros
+-- económicos y los costos completos de EJEMPLO los pone `ajuste_riogrande_pruebas_ejemplo.sql`,
+-- que se corre justo después de este archivo.
 
 update public.af_poligonos set suerte_id = null, etiqueta = 'por asignar', editado_por = 'U005'
 where id = (

@@ -15,6 +15,8 @@ export type EstadoLabor = 'PROGRAMADA' | 'EN_CURSO' | 'TERMINADA' | 'ANULADA'
 export type EstadoReporte = 'PENDIENTE' | 'ACEPTADO' | 'RECHAZADO'
 export type TipoMovimiento = 'ANTICIPO' | 'GASTO' | 'HONORARIO'
 export type TipoCiclo = 'SOCA' | 'PLANTILLA'
+/** Objeto de costo, como agrupa Procaña. NULL en un movimiento = se deduce de la labor. */
+export type RubroCosto = 'insumos' | 'agua' | 'mano_obra' | 'maquinaria' | 'administracion' | 'predial_fondos' | 'semilla' | 'otros'
 
 export interface Finca {
   id: string
@@ -31,11 +33,15 @@ export interface Finca {
   createdAt: string
   /** Código de la hacienda en el ingenio (p. ej. «627»): enlaza la maquinaria de ASM. */
   haciendaCodigo: string | null
+  /** Kilos de azúcar que se liquidan por tonelada de caña (58 en la compraventa tradicional). */
+  kgAzucarTc?: number | null
+  /** Precio del kg de azúcar de la liquidación (lo fija administración con el ingenio). */
+  precioKgAzucar?: number | null
 }
 /** Lo que reporta el ingenio de la suerte (último corte, número de corte, TCH…). */
 export interface DatosIngenio {
   fUltCorte?: string; edadMeses?: number; numeroCorte?: number
-  toneladas?: number; tch?: number; rendimiento?: number; fuente?: string
+  toneladas?: number; tch?: number; rendimiento?: number; sacarosa?: number; fuente?: string
 }
 export interface SuerteFinca {
   id: string; fincaId: string; codigo: string; areaHa: number; variedad: string | null; activa: boolean
@@ -88,6 +94,8 @@ export interface Movimiento {
   cantidad: number | null; unidad: string | null; valorUnitario: number | null; valor: number
   soporteUrl: string | null; registradoPor: string
   anulado: boolean; anuladoPor: string | null; anuladoMotivo: string | null; createdAt: string
+  /** Objeto de costo (Procaña). NULL = se deduce de la labor o cae en «otros». */
+  rubro?: RubroCosto | null
 }
 /** Un enlace del dueño de la tierra. La llave NUNCA vuelve de la base: solo su huella. */
 export interface AccesoDueno {
@@ -117,6 +125,19 @@ export interface CargaFincas extends DatosFincas {
 }
 export interface DuenoFinca { fincaId: string; usuarioId: string; nombre: string; activo: boolean; creadoEn: string }
 
+/**
+ * Los parámetros del sector (Cenicaña / Procaña): son un DATO de la base, no una
+ * cifra escrita en la app. La pantalla los usa solo para comparar; ninguna finca
+ * depende de ellos.
+ */
+export interface ReferenciasSector {
+  productividad: { fuente: string; anio: number; tch: number; tah: number; tchm: number; tahm: number
+    rendimiento: number; sacarosa: number; edadMeses: number; numeroCorte: number } | null
+  costos: { fuente: string; anio: number; costoHa: number; costoTc: number; kaTc: number
+    tch: number; kgAzucarTc: number; precioTc: number } | null
+  rubroPorLabor: Record<string, RubroCosto>
+}
+
 const num = (v: unknown): number => Number(v ?? 0)
 const numN = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
 const txt = (v: unknown): string | null => (v === null || v === undefined || v === '' ? null : String(v))
@@ -129,7 +150,7 @@ function datosIngenio(v: unknown): DatosIngenio | null {
   return {
     fUltCorte: o.f_ult_corte ? String(o.f_ult_corte) : undefined, edadMeses: n('edad_meses'),
     numeroCorte: n('numero_corte'), toneladas: n('toneladas'), tch: n('tch'), rendimiento: n('rendimiento'),
-    fuente: o.fuente ? String(o.fuente) : undefined,
+    sacarosa: n('sacarosa'), fuente: o.fuente ? String(o.fuente) : undefined,
   }
 }
 
@@ -154,6 +175,7 @@ export function esSinSesion(e: unknown): boolean {
 // ── Llaves ────────────────────────────────────────────────────────────────
 const LLAVE_PERSONAL = 'sam:af-sesion'
 const LLAVE_DUENO = 'sam:af-dueno'
+const LLAVE_REFERENCIAS = 'sam:af-referencias'
 
 /** La llave del personal, solo si es del MISMO usuario que tiene la sesión abierta. */
 export function leerLlavePersonal(usuario: string): string | null {
@@ -224,6 +246,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       municipio: txt(x.municipio), honorarioModo: (x.honorario_modo as Finca['honorarioModo']) ?? 'POR_DEFINIR',
       honorarioValor: numN(x.honorario_valor), nota: txt(x.nota), activa: x.activa !== false, createdAt: String(x.created_at),
       haciendaCodigo: txt(x.hacienda_codigo),
+      kgAzucarTc: numN(x.kg_azucar_tc), precioKgAzucar: numN(x.precio_kg_azucar),
     })),
     suertes: arr('suertes').map((x) => ({
       id: String(x.id), fincaId: String(x.finca_id), codigo: String(x.codigo), areaHa: num(x.area_ha),
@@ -272,6 +295,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       cantidad: numN(x.cantidad), unidad: txt(x.unidad), valorUnitario: numN(x.valor_unitario), valor: num(x.valor),
       soporteUrl: txt(x.soporte_url), registradoPor: String(x.registrado_por), anulado: x.anulado === true,
       anuladoPor: txt(x.anulado_por), anuladoMotivo: txt(x.anulado_motivo), createdAt: String(x.created_at),
+      rubro: txt(x.rubro) as RubroCosto | null,
     })),
     paquete: arr('paquete').map((x) => ({
       id: String(x.id), labor: String(x.labor), unidad: String(x.unidad ?? 'ha'), cantidadPorHa: num(x.cantidad_por_ha),
@@ -280,6 +304,61 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
       repetible: x.repetible === true, variedad: txt(x.variedad),
     })),
   }
+}
+
+// ── Referencias del sector (24-oct-2026) ──────────────────────────────────
+const RUBROS_VALIDOS: RubroCosto[] = ['insumos', 'agua', 'mano_obra', 'maquinaria', 'administracion', 'predial_fondos', 'semilla', 'otros']
+
+/**
+ * Convierte el jsonb de `af_referencias()` a camelCase. RELLENA lo que falte: un
+ * caché puede ser de una versión vieja (sección ausente → null, mapa → {}).
+ * Nunca lanza: cualquier dato raro cae en 0 o en null.
+ */
+function convertirReferencias(v: unknown): ReferenciasSector {
+  const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>
+  const n = (x: unknown): number => {
+    const num = Number(x)
+    return Number.isFinite(num) ? num : 0
+  }
+  const p = o.productividad && typeof o.productividad === 'object' ? o.productividad as Record<string, unknown> : null
+  const c = o.costos && typeof o.costos === 'object' ? o.costos as Record<string, unknown> : null
+  const mapa: Record<string, RubroCosto> = {}
+  if (o.rubro_por_labor && typeof o.rubro_por_labor === 'object') {
+    for (const [k, val] of Object.entries(o.rubro_por_labor as Record<string, unknown>)) {
+      const id = String(val) as RubroCosto
+      if (RUBROS_VALIDOS.includes(id)) mapa[k] = id
+    }
+  }
+  return {
+    productividad: p ? {
+      fuente: String(p.fuente ?? ''), anio: n(p.anio), tch: n(p.tch), tah: n(p.tah), tchm: n(p.tchm), tahm: n(p.tahm),
+      rendimiento: n(p.rendimiento), sacarosa: n(p.sacarosa), edadMeses: n(p.edad_meses), numeroCorte: n(p.numero_corte),
+    } : null,
+    costos: c ? {
+      fuente: String(c.fuente ?? ''), anio: n(c.anio), costoHa: n(c.costo_ha), costoTc: n(c.costo_tc), kaTc: n(c.ka_tc),
+      tch: n(c.tch), kgAzucarTc: n(c.kg_azucar_tc), precioTc: n(c.precio_tc),
+    } : null,
+    rubroPorLabor: mapa,
+  }
+}
+
+/**
+ * Las referencias del sector para comparar. Si no hay señal (o la función todavía
+ * no existe en la base), usa la última copia guardada en este celular. NUNCA lanza:
+ * sin referencias, la pantalla se dibuja igual, sin comparaciones.
+ */
+export async function cargarReferencias(): Promise<ReferenciasSector | null> {
+  try {
+    const raw = await lanzar<unknown>(supabase.rpc('af_referencias'))
+    if (raw && typeof raw === 'object') {
+      try { window.localStorage.setItem(LLAVE_REFERENCIAS, JSON.stringify(raw)) } catch { /* sin almacenamiento */ }
+      return convertirReferencias(raw)
+    }
+  } catch { /* sin señal o sin la función: se intenta la caché */ }
+  try {
+    const guardado = window.localStorage.getItem(LLAVE_REFERENCIAS)
+    return guardado ? convertirReferencias(JSON.parse(guardado) as unknown) : null
+  } catch { return null }
 }
 
 // ── Escrituras: todas por funciones con llave (la base decide quién puede) ──

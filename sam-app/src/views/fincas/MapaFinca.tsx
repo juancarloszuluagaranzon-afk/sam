@@ -538,6 +538,7 @@ function FichaSuerte({ pieza, suerte, suertes, hechos, edad, corte, puedeAsignar
           {di?.toneladas != null && <div><b>{fmtCant(di.toneladas)} t</b><span>última cosecha</span></div>}
           {di?.edadMeses != null && <div><b>{fmtCant(di.edadMeses)} m</b><span>edad al cosechar</span></div>}
           {di?.rendimiento != null && <div><b>{fmtCant(di.rendimiento)} %</b><span>rendimiento</span></div>}
+          {di?.sacarosa != null && <div><b>{fmtCant(di.sacarosa)} %</b><span>sacarosa</span></div>}
         </div>
       )}
 

@@ -307,6 +307,46 @@ APARTE, **RIOGRANDE PRUEBAS**, con datos completos que encienden cada pantalla. 
 - `borrar_riogrande_pruebas.sql` — la borra sin dejar rastro: guarda los ids ANTES y limpia
   **también la auditoría que genera el propio borrado** (el gotcha de la sección «Pruebas»).
 🔴 Es DATO de prueba viviendo en producción: para quitarlo, corre el borrador.
+- 🔴 24-oct-2026: el seed **ya no copia** los datos del ingenio de la finca real (el enlace se le
+  muestra a clientes). Después del seed se corre `ajuste_riogrande_pruebas_ejemplo.sql`: datos de
+  cosecha de EJEMPLO (incluida la sacarosa), 58 kg/t y $1.983/kg, y costos COMPLETOS por rubro
+  (~$7,8 M/ha) con anticipos que los cubren. Requiere la migración `20261024090000`.
+
+## 📊 Tablero de costos e indicadores del gremio (24-oct-2026)
+
+Pedido de Iván: los costos «parecían los de una tienda». Investigado en Cenicaña (Informe Anual 2025,
+tabla 1) y Procaña (Plantilla de costos 2022). Construido por OpenCode con la especificación de Claude,
+cálculos validados por Codex con prueba automática, revisado por Claude.
+
+- **Dónde**: `views/fincas/TableroFinca.tsx`, primer bloque del Resumen de `FincaDetalle` (lo ven el dueño
+  y administración). Cálculos puros en `lib/fincas.ts`: `indicadoresCosecha`, `costosGremio`, `rubroDe`,
+  `comparar`, `RUBROS`.
+- **Productividad de la última cosecha** (de `datos_ingenio`): TCH y edad ponderados por área; rendimiento
+  y sacarosa por toneladas; TAH = TCH × rendimiento; TCHM y TAHM sobre la edad. Comparados con el sector.
+- **Costos del ciclo en curso**: gastos de las labores de los ciclos abiertos + gastos a mano de cada suerte
+  desde su corte + gastos de la finca y honorarios desde el corte más antiguo. **Los anticipos nunca son
+  costo.** $/ha; $/t sobre el TCH de la última cosecha (solo suertes con TCH > 0); $/kg de azúcar liquidado
+  (÷ kg por tonelada); kilos de azúcar que se van en costos (÷ precio del kg), los que le quedan al dueño de
+  los 58, punto de equilibrio en t/ha y lo que le queda por hectárea. Rubros en $/ha y kg/t.
+- **Datos** (migración `20261024090000`): `af_fincas.kg_azucar_tc` y `precio_kg_azucar` (NULL = sin
+  definir); `af_movimientos.rubro` (NULL = se deduce); `datos_ingenio.sacarosa`; las referencias del sector
+  son la fila `af_config.referencias_sector` (con fuente y año) que lee `af_referencias()` con la llave
+  pública. **Se actualizan con un UPDATE, sin publicar**; la app guarda copia en `localStorage['sam:af-referencias']`.
+- **El precio del kg NUNCA sale de la referencia**: lo fija administración con la liquidación del ingenio. Sin
+  precio no hay kilos ni punto de equilibrio (la pantalla dice qué falta). Los kg por tonelada sí caen a la
+  referencia (58) y se avisa.
+- **Rubro de un gasto**: el guardado manda; honorario → administración; si no, `rubro_por_labor` por nombre
+  de la labor (sin tildes); si no, «otros».
+- 🔴 **Sin costos registrados no se muestra «$0/ha» ni el medidor**: con $0 diría «le quedan los 58 kg».
+  La Riogrande II real tiene ciclos abiertos y ningún gasto: ve la nota.
+- «Su cuenta» pasó a «Cuenta de anticipos (caja)»; conserva «Saldo por girar» cuando es negativo.
+- ⚠️ «El ciclo contra lo presupuestado» solo cuenta las labores del PAQUETE; el tablero cuenta TODO el costo.
+  Son dos cifras distintas a propósito.
+- **Prueba**: `node scripts/prueba-costos-gremio.mts` desde `sam-app/` (Node 24 corre TypeScript directo, sin
+  tsx): 10 casos sobre `scripts/fixtures/fincas-riogrande-pruebas.json`, con las cifras validadas contra
+  SQL ($7.816.183/ha, $60.895/t, 30,7 kg de costo y 27,3 libres, equilibrio 68,0 t/ha).
+- ⏳ **Falta (fase 2, con maqueta antes)**: formularios para el precio y los kg por finca, el rubro en el
+  gasto a mano y la liquidación de la cosecha (TCH, toneladas, rendimiento, sacarosa). Hoy solo por SQL.
 
 ## 🌱 «Sencillo pero funcional» — paquete 1 (16-oct-2026)
 

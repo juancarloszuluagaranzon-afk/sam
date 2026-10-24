@@ -9941,6 +9941,10 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-rubros__fila--cab { font-size: 0.74rem; color: var(--color-ink-mid, #5a5f57); }
 .af-rubros__fila > :nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
 @media (max-width: 420px) { .af-rubros__fila { grid-template-columns: minmax(0, 1fr) 0 auto 44px; } .af-rubros__fila .af-barra { display: none; } }
+/* Los KPI del tablero van de a dos en el celular (con el mínimo de 160 px de .af-kpis salían de a uno). */
+.af-kpis--compacto { grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px; }
+.af-kpis--compacto .af-kpi b { font-size: 1.3rem; }
+.af-kpis--compacto .af-kpi span { font-size: 0.86rem; }
 
 /* ── Acuerdos de pago con colonos (Cartera, 21-oct-2026) ─────────────────── */
 .acu-vistas { margin: 10px 0 4px; }

@@ -93,7 +93,7 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
           <p className="af-nota">Aún no hay datos de cosecha del ingenio para esta finca.</p>
         ) : (
           <>
-            <div className="af-kpis">
+            <div className="af-kpis af-kpis--compacto">
               <div className="af-kpi">
                 <b>{fmt1(ind.tch)}</b>
                 <span>TCH (t de caña/ha)</span>
@@ -153,7 +153,7 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
             <p className="af-nota">Todavía no hay costos registrados en el ciclo en curso (desde el corte del {fechaCorta(costos.desde)}).</p>
           ) : (
             <>
-              <div className="af-kpis">
+              <div className="af-kpis af-kpis--compacto">
                 <div className="af-kpi">
                   <b>{costos.costoHa != null ? fmtPesos(costos.costoHa) : '—'}</b>
                   <span>Costo por hectárea</span>

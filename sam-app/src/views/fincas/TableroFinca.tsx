@@ -306,11 +306,11 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
 
       {VER_PLATA && (
         <div className="af-card af-card--ancha">
-          <h3>Costos del ciclo, como los mide el gremio</h3>
+          <h3>Costos del corte en curso, como los mide el gremio</h3>
           {!costos ? (
-            <p className="af-nota">Sin ciclos abiertos en esta finca.</p>
+            <p className="af-nota">Sin cortes en curso en esta finca.</p>
           ) : !conCostos ? (
-            <p className="af-nota">Todavía no hay costos registrados en el ciclo en curso (desde el corte del {fechaCorta(costos.desde)}).</p>
+            <p className="af-nota">Todavía no hay costos registrados en el corte en curso (desde el {fechaCorta(costos.desde)}).</p>
           ) : (
             <>
               <div className="af-kpis af-kpis--compacto">
@@ -320,7 +320,7 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
                   <small>
                     {costos.costoHa != null && refCostos
                       ? `${fuenteCorta(refCostos.fuente, refCostos.anio)}: ${fmtPesos(refCostos.costoHa)}`
-                      : costos.costoHa != null ? 'Sin referencia del sector cargada' : 'Falta el área de los ciclos abiertos'}
+                      : costos.costoHa != null ? 'Sin referencia del sector cargada' : 'Falta el área de las suertes en corte'}
                   </small>
                 </div>
                 <div className="af-kpi">
@@ -328,7 +328,7 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
                   <span>Costo por tonelada de caña</span>
                   <small>
                     {costos.costoTc == null
-                      ? costos.tchEsperado == null ? 'Falta el TCH de la última cosecha' : 'Falta el área de los ciclos abiertos'
+                      ? costos.tchEsperado == null ? 'Falta el TCH de la última cosecha' : 'Falta el área de las suertes en corte'
                       : refCostos ? `${fuenteCorta(refCostos.fuente, refCostos.anio)}: ${fmtPesos(refCostos.costoTc)}` : 'Sin referencia del sector cargada'}
                   </small>
                 </div>
@@ -363,7 +363,7 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
                 </div>
               </div>
               <p className="af-nota">
-                Ciclo en curso: lo gastado desde el corte ({fechaCorta(costos.desde)}), sobre el TCH de la última cosecha.
+                Corte en curso: lo gastado desde que empezó ({fechaCorta(costos.desde)}), sobre el TCH de la última cosecha.
               </p>
             </>
           )}

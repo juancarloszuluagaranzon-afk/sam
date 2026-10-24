@@ -282,8 +282,8 @@ export function resumenParaDueno(finca: Finca, d: DatosFincas, hoy: string, nomb
     ...(VER_PLATA ? [
       '',
       p.presupuesto > 0
-        ? `Presupuesto del ciclo: ${fmtPesos(p.ejecutado)} ejecutado de ${fmtPesos(p.presupuesto)} (${p.pct}%)`
-        : `Gastado en el ciclo: ${fmtPesos(p.ejecutado)}`,
+        ? `Presupuesto del corte en curso: ${fmtPesos(p.ejecutado)} ejecutado de ${fmtPesos(p.presupuesto)} (${p.pct}%)`
+        : `Gastado en el corte en curso: ${fmtPesos(p.ejecutado)}`,
       `Su cuenta: anticipos ${fmtPesos(c.anticipos)} · gastos ${fmtPesos(c.gastos)}${c.honorarios ? ` · honorarios ${fmtPesos(c.honorarios)}` : ''} · saldo ${fmtPesos(c.saldo)}`,
     ] : []),
   ]

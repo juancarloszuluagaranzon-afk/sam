@@ -163,11 +163,23 @@ async function lanzar<T>(p: PromiseLike<{ data: T; error: { message: string } | 
   return data
 }
 
+/**
+ * Frases de la base que todavía dicen «ciclo» donde es un CORTE (vocabulario del cliente,
+ * 24-oct-2026: el ciclo va de renovación a renovación; lo que se abre por suerte es un corte).
+ * Se traducen aquí para no reescribir las funciones de la base solo por una palabra.
+ */
+const FRASES_DE_CORTE: Record<string, string> = {
+  'el ciclo de esa suerte ya se cerró': 'el corte de esa suerte ya se cerró',
+  'solo administración abre ciclos': 'solo administración inicia cortes',
+  'una labor no se cambia de ciclo': 'una labor no se cambia de corte',
+}
+
 /** Los errores de la base traen un código al frente («SIN_FOTO: …»): se muestra la frase. */
 export function mensajeDeError(e: unknown): string {
   const m = (e as { message?: string })?.message ?? String(e)
   const i = m.indexOf(': ')
-  return i > 0 && /^[A-Z_]+$/.test(m.slice(0, i)) ? m.slice(i + 2) : m
+  const frase = i > 0 && /^[A-Z_]+$/.test(m.slice(0, i)) ? m.slice(i + 2) : m
+  return FRASES_DE_CORTE[frase] ?? frase
 }
 
 /** ¿La llave dejó de servir (vencida, cancelada, inventada)? Hay que pedir otra. */

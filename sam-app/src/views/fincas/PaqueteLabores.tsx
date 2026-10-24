@@ -30,7 +30,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
         <div><p className="eyebrow">Plantilla</p><h2>Paquete de labores</h2></div>
         <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, aplica: 'AMBOS', orden: 100, activa: true, repetible: false })}>+ Labor</button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada ciclo: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Una labor puede tener una ventana distinta por <b>variedad</b> (curvas de Cenicaña): esa fila manda para las suertes de esa variedad. Cambiarlo no toca los ciclos ya abiertos.</p>
+      <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada corte: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Una labor puede tener una ventana distinta por <b>variedad</b> (curvas de Cenicaña): esa fila manda para las suertes de esa variedad. Cambiarlo no toca los cortes en curso.</p>
       {error && <p className="feedback error">{error}</p>}
 
       {editando && (
@@ -62,7 +62,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
             <label>Orden<input id="af-p-orden" inputMode="numeric" value={String(editando.orden ?? 100)} onChange={(e) => setEditando({ ...editando, orden: Number(e.target.value) || 100 })} /></label>
             <label className="af-form__ancho af-check">
               <input id="af-p-repetible" type="checkbox" checked={!!editando.repetible} onChange={(e) => setEditando({ ...editando, repetible: e.target.checked })} />
-              Se hace varias veces en el ciclo (riego, malezas): cada pasada se reporta aparte y la labor no se cierra sola
+              Se hace varias veces en el corte (riego, malezas): cada pasada se reporta aparte y la labor no se cierra sola
             </label>
           </div>
           <div className="af-acciones">

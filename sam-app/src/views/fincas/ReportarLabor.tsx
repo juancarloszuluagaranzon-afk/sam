@@ -219,7 +219,7 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
             <button type="button" className="inline-button" onClick={() => { setCorrigiendo(null); setLaborId(''); setCantidad(''); setNota('') }}>Cancelar corrección</button>
           </p>
         )}
-        {fincas.length === 0 && <p className="af-nota" style={{ marginTop: 0 }}>No hay fincas con un ciclo abierto para reportar. Lo abre administración.</p>}
+        {fincas.length === 0 && <p className="af-nota" style={{ marginTop: 0 }}>No hay fincas con un corte en curso para reportar. Lo inicia administración.</p>}
         <div className="af-form">
           <label>Finca
             <select id="af-rep-finca" value={fincaId} onChange={(e) => { setFincaId(e.target.value); setSuerteId(''); setLaborId('') }}>
@@ -246,10 +246,10 @@ export function ReportarLabor({ ctx }: { ctx: CtxFincas }) {
                 </option>
               ) })}
             </select>
-            {fincaId && suertes.length === 0 && <small className="af-nota">Esta finca no tiene suertes con un ciclo abierto.</small>}
+            {fincaId && suertes.length === 0 && <small className="af-nota">Esta finca no tiene suertes con un corte en curso.</small>}
             {suerteId && labores.length === 0 && (
               <small className="af-nota">
-                Esta suerte no tiene labores pendientes en el plan del ciclo. Si se hizo una labor que no está en el plan,
+                Esta suerte no tiene labores pendientes en el plan del corte. Si se hizo una labor que no está en el plan,
                 pídale a administración que la agregue al paquete.
               </small>
             )}

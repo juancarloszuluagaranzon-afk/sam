@@ -111,7 +111,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li><a href="#nueva">Crear la finca y sus suertes</a></li>
       <li><a href="#paquete">El paquete de labores</a></li>
       <li><a href="#ficha">La ficha de la finca y el mapa</a></li>
-      <li><a href="#ciclo">Abrir el ciclo: labores por suerte</a></li>
+      <li><a href="#ciclo">Iniciar el corte: labores por suerte</a></li>
       <li><a href="#reportar">Reportar una labor</a></li>
       <li><a href="#aceptar">Aceptar o rechazar</a></li>
       <li><a href="#tiempo">¿A tiempo? Las ventanas</a></li>
@@ -133,13 +133,14 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <div class="cadena">
       <span class="cadena__eslabon">Finca<small>y su dueño</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Suertes<small>con su área y variedad</small></span><span class="cadena__flecha">→</span>
-      <span class="cadena__eslabon">Ciclo<small>de corte a corte</small></span><span class="cadena__flecha">→</span>
+      <span class="cadena__eslabon">Corte<small>≈ 1 año</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Labores<small>con presupuesto y ventana</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Reporte<small>del campo</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Aceptación<small>por otra persona</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon">Cuenta<small>gasto con soporte</small></span><span class="cadena__flecha">→</span>
       <span class="cadena__eslabon cadena__eslabon--fin">El dueño lo ve<small>en su celular</small></span>
     </div>
+    <p class="paso__intro">Un <b>ciclo</b> va de renovación a renovación (destrucción de cepas, arado, surcado y siembra) y tiene varios <b>cortes</b> de más o menos un año: plantilla, soca 1, soca 2… La app lleva cada corte de cada suerte: sus labores, su presupuesto y su cosecha.</p>
     <p class="tip"><strong>Lo más importante:</strong> una labor no cuenta hasta que <b>otra persona la acepta</b>. Solo lo aceptado suma al avance y a la plata del dueño.</p>
   </section>
 
@@ -147,7 +148,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <h2><span class="paso__num">2</span>Quién hace qué</h2>
     <table>
       <tr><th>Quién</th><th>Qué hace</th></tr>
-      <tr><td><b>Administración</b> y el propietario</td><td>Todo: crea fincas y suertes, arma el paquete de labores, abre ciclos, acepta o rechaza, lleva la cuenta del dueño y le da acceso.</td></tr>
+      <tr><td><b>Administración</b> y el propietario</td><td>Todo: crea fincas y suertes, arma el paquete de labores, inicia los cortes, acepta o rechaza, lleva la cuenta del dueño y le da acceso.</td></tr>
       <tr><td><b>Supervisor</b></td><td>Reporta las labores desde el campo y acepta o rechaza los reportes de <b>otros</b>. No toca costos ni plata.</td></tr>
       <tr><td><b>Dueño de la tierra</b></td><td>Solo mira su finca (o sus fincas), en vivo: labores, mapa, satélite, presupuesto y cuenta. No puede cambiar nada.</td></tr>
       <tr><td>Operarios</td><td>No ven este módulo.</td></tr>
@@ -162,7 +163,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li><b>Fincas:</b> una tarjeta por finca; adentro está todo lo de esa finca.</li>
       <li><b>Por aceptar:</b> los reportes del campo esperando revisión (el número dice cuántos).</li>
       <li><b>Reportar labor:</b> lo que se hizo en el campo y cuánto.</li>
-      <li><b>Paquete de labores:</b> solo administración. Las labores, costos y tiempos que se cargan en cada ciclo.</li>
+      <li><b>Paquete de labores:</b> solo administración. Las labores, costos y tiempos que se cargan en cada corte.</li>
     </ol>
     <figure class="captura">
       <img src="fincas/01-inicio.jpg" alt="Inicio del módulo de fincas con fincas, por aceptar, atrasadas y ejecutado" loading="lazy">
@@ -193,12 +194,12 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
 
   <section class="paso" id="paquete">
     <h2><span class="paso__num">5</span>El paquete de labores</h2>
-    <p class="paso__intro">Es la plantilla que se copia en cada ciclo: qué labores lleva la caña, para soca, plantilla o ambas; cuánto cuestan por hectárea y en qué <b>ventana de días</b> después del corte deben hacerse. La fertilización tiene ventanas distintas por <b>variedad</b>.</p>
+    <p class="paso__intro">Es la plantilla que se copia en cada corte: qué labores lleva la caña, para soca, plantilla o ambas; cuánto cuestan por hectárea y en qué <b>ventana de días</b> después del corte deben hacerse. La fertilización tiene ventanas distintas por <b>variedad</b>.</p>
     <figure class="captura">
       <img src="fincas/13-paquete-de-labores.jpg" alt="Paquete de labores con costos y ventanas, incluida la fertilización por variedad" loading="lazy">
       <figcaption>Paquete de labores: roturación, fertilización (general y por variedad), control de malezas y riego.</figcaption>
     </figure>
-    <p class="ojo"><strong>Ponga los costos ANTES de abrir el primer ciclo.</strong> Cambiar el paquete después no cambia lo ya planeado en los ciclos abiertos (eso se ajusta en la finca, labor por labor). Una labor sin costo no suma al presupuesto ni carga plata al aceptarse.</p>
+    <p class="ojo"><strong>Ponga los costos ANTES de iniciar el primer corte.</strong> Cambiar el paquete después no cambia lo ya planeado en los cortes en curso (eso se ajusta en la finca, labor por labor). Una labor sin costo no suma al presupuesto ni carga plata al aceptarse.</p>
   </section>
 
   <section class="paso" id="ficha">
@@ -221,13 +222,13 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="ciclo">
-    <h2><span class="paso__num">7</span>Abrir el ciclo: labores por suerte</h2>
-    <p class="paso__intro">En la ficha, pestaña <b>Labores por suerte</b>. Cada suerte tiene su ciclo, de corte a corte.</p>
+    <h2><span class="paso__num">7</span>Iniciar el corte: labores por suerte</h2>
+    <p class="paso__intro">En la ficha, pestaña <b>Labores por suerte</b>. Cada suerte tiene su corte en curso, de cosecha a cosecha.</p>
     <ul class="puntos">
-      <li>Al abrir el ciclo (fecha del corte y si es soca o plantilla) se copian las labores del paquete con su cantidad, su costo y su ventana. Eso es el <b>presupuesto</b> que ve el dueño.</li>
+      <li>Al iniciar el corte (fecha del corte y si es soca o plantilla) se copian las labores del paquete con su cantidad, su costo y su ventana. Eso es el <b>presupuesto</b> que ve el dueño.</li>
       <li>Cada labor muestra su <b>avance</b> (lo aceptado de lo planeado), su presupuesto, si va <b>a tiempo</b> y su estado.</li>
-      <li>Cuando vuelvan a cortar: <span class="boton boton--gris">Registrar nuevo corte</span>. El ciclo actual se cierra y se abre el siguiente con el paquete otra vez.</li>
-      <li>Una labor del ciclo se ajusta con <b>Costo</b> o se <b>Anula</b> (con motivo).</li>
+      <li>Cuando vuelvan a cortar: <span class="boton boton--gris">Registrar nuevo corte</span>. El corte en curso se cierra y se inicia el siguiente con el paquete otra vez.</li>
+      <li>Una labor del corte se ajusta con <b>Costo</b> o se <b>Anula</b> (con motivo).</li>
     </ul>
     <figure class="captura">
       <img src="fincas/05-labores-por-suerte.jpg" alt="Labores por suerte con avance, presupuesto y a tiempo" loading="lazy">
@@ -319,8 +320,8 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <h2><span class="paso__num">13</span>Lo que ve el dueño</h2>
     <p class="paso__intro">La primera pestaña de la ficha, <b>Lo que ve el dueño</b>, es exactamente lo que él ve: no es un informe preparado, son las mismas cifras de ASM, en vivo.</p>
     <figure class="captura">
-      <img src="fincas/08-lo-que-ve-el-dueno.jpg" alt="Tarjetas Hoy en su finca, El ciclo contra lo presupuestado, A tiempo y Su cuenta" loading="lazy">
-      <figcaption>Hoy en su finca, el ciclo contra lo presupuestado, ¿a tiempo? labor por labor y su cuenta.</figcaption>
+      <img src="fincas/08-lo-que-ve-el-dueno.jpg" alt="Tarjetas Hoy en su finca, El corte en curso contra lo presupuestado, A tiempo y Su cuenta" loading="lazy">
+      <figcaption>Hoy en su finca, el corte en curso contra lo presupuestado, ¿a tiempo? labor por labor y su cuenta.</figcaption>
     </figure>
   </section>
 
@@ -359,7 +360,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <tr><th>No se puede</th><th>Por qué</th></tr>
       <tr><td>Aceptar un reporte propio</td><td>Siempre revisa otra persona: nadie se aprueba a sí mismo.</td></tr>
       <tr><td>Reportar más hectáreas de las que tiene la suerte</td><td>El área es el techo (con 2 % de margen).</td></tr>
-      <tr><td>Poner una fecha futura o anterior al corte</td><td>La labor tiene que caber en su ciclo.</td></tr>
+      <tr><td>Poner una fecha futura o anterior al corte</td><td>La labor tiene que caber en su corte.</td></tr>
       <tr><td>Registrar un gasto a mano sin soporte</td><td>El dueño ve la factura de cada peso que sale.</td></tr>
       <tr><td>Borrar o editar un movimiento</td><td>Se anula con motivo y queda a la vista.</td></tr>
       <tr><td>Marcar una labor terminada a mano</td><td>Termina sola cuando lo aceptado llega al 98 %. A mano solo se anula, con motivo.</td></tr>
@@ -376,7 +377,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <tr><td>Me rechazaron un reporte</td><td>En Reportar labor, arriba, toque «Corregir y reenviar».</td></tr>
       <tr><td>Una labor sale «sin ventana»</td><td>Esa labor no tiene ventana en el paquete; administración se la puede poner.</td></tr>
       <tr><td>La fertilización sale tardía muy pronto</td><td>Revise la variedad de la suerte: cada variedad tiene su ventana.</td></tr>
-      <tr><td>El presupuesto sale en cero</td><td>A las labores del paquete les falta el costo. Póngalo antes de abrir el ciclo; en uno abierto, use «Costo» en cada labor.</td></tr>
+      <tr><td>El presupuesto sale en cero</td><td>A las labores del paquete les falta el costo. Póngalo antes de iniciar el corte; en uno en curso, use «Costo» en cada labor.</td></tr>
       <tr><td>Volvieron a cortar una suerte</td><td>Labores por suerte → «Registrar nuevo corte».</td></tr>
       <tr><td>El dueño perdió el celular</td><td>Quite el enlace y cree uno nuevo, o (con usuario) cámbiele el PIN.</td></tr>
       <tr><td>Registré mal un movimiento</td><td>Anúlelo con el motivo y regístrelo bien.</td></tr>

@@ -71,7 +71,7 @@ export function FincasInicio({ ctx, soloLista, onNueva }: { ctx: CtxFincas; solo
         <div className="af-card af-vacio">
           <h3>Todavía no hay fincas</h3>
           <p>{esAdmin
-            ? 'Cree la primera: el dueño, sus suertes con el área, y el corte de cada una. Al abrir el ciclo se cargan las labores del paquete con su presupuesto.'
+            ? 'Cree la primera: el dueño, sus suertes con el área, y el corte de cada una. Al iniciar el corte se cargan las labores del paquete con su presupuesto.'
             : 'Administración todavía no ha creado fincas.'}</p>
           {esAdmin && <button type="button" className="primary-button" onClick={onNueva}>+ Crear la primera finca</button>}
         </div>
@@ -87,7 +87,7 @@ export function FincasInicio({ ctx, soloLista, onNueva }: { ctx: CtxFincas; solo
               <button key={f.id} type="button" className="af-finca" onClick={() => ctx.abrirFinca(f.id)}>
                 <span className="af-finca__nom">{f.nombre}</span>
                 <span className="af-finca__dueno">{f.duenoNombre}{f.ingenioId ? ` · ${ingenioNombre(f.ingenioId)}` : ''}</span>
-                <span className="af-finca__ha">{fmtCant(p.hectareas)} ha · {p.ciclos} ciclo{p.ciclos === 1 ? '' : 's'} abierto{p.ciclos === 1 ? '' : 's'}</span>
+                <span className="af-finca__ha">{fmtCant(p.hectareas)} ha · {p.ciclos} corte{p.ciclos === 1 ? '' : 's'} en curso</span>
                 {VER_PLATA && <span className="af-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, p.pct ?? 0)}%` }} /></span>}
                 {VER_PLATA && <span className="af-finca__plata">
                   {p.presupuesto > 0 ? `${fmtPesosCorto(p.ejecutado)} de ${fmtPesosCorto(p.presupuesto)} (${p.pct} %)` : `${fmtPesosCorto(p.ejecutado)} gastado · sin presupuesto`}

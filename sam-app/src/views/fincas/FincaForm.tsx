@@ -132,7 +132,7 @@ export function FincaForm({ ctx, fincaId, onListo }: { ctx: CtxFincas; fincaId: 
         <button type="button" className="primary-button" disabled={!listo || guardando} onClick={() => void guardar()}>{guardando ? 'Guardando…' : 'Guardar finca'}</button>
         <button type="button" className="inline-button" onClick={() => onListo(null)}>Cancelar</button>
       </div>
-      <p className="af-nota">Después, en «Labores por suerte», se abre el ciclo de cada suerte con su fecha de corte: ahí se cargan las labores del paquete con su presupuesto.</p>
+      <p className="af-nota">Después, en «Labores por suerte», se inicia el corte de cada suerte con su fecha: ahí se cargan las labores del paquete con su presupuesto.</p>
     </div>
   )
 }

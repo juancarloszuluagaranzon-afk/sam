@@ -121,7 +121,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             <div className="af-fila2"><span>Reportes por aceptar</span><b>{porAceptar.length}</b></div>
           </div>
           {VER_PLATA && <div className="af-card">
-            <h3>El ciclo contra lo presupuestado</h3>
+            <h3>El corte en curso contra lo presupuestado</h3>
             <p className="af-grande">{fmtPesosCorto(p.ejecutado)} <span>de {p.presupuesto > 0 ? fmtPesosCorto(p.presupuesto) : 'sin presupuesto'}</span></p>
             <span className="af-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, p.pct ?? 0)}%` }} /></span>
             <div className="af-fila2"><span>Ejecutado del presupuesto</span><b>{p.pct != null ? `${p.pct} %` : '—'}</b></div>
@@ -129,7 +129,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
           </div>}
           <div className="af-card">
             <h3>¿A tiempo?</h3>
-            {conVentana.length === 0 ? <p className="af-nota">Sin labores con ventana en los ciclos abiertos.</p> : conVentana.slice(0, 8).map((x) => (
+            {conVentana.length === 0 ? <p className="af-nota">Sin labores con ventana en los cortes en curso.</p> : conVentana.slice(0, 8).map((x) => (
               <div key={x.labor.id} className="af-fila2">
                 <span>{x.labor.labor.toLowerCase()} · suerte {x.suerte.codigo} <small>{x.oport!.hecha ? `hecha a los ${x.oport!.ddc} días` : `${x.oport!.ddc} días del corte, sin hacer`}</small></span>
                 <span className={`af-chip ${CHIP[x.oport!.nivel].c}`}>{CHIP[x.oport!.nivel].t}</span>
@@ -164,7 +164,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                   <div>
                     <h3>Suerte {s.codigo} <small className="subtle-copy">{fmtCant(s.areaHa)} ha{s.variedad ? ` · ${s.variedad}` : ''}</small></h3>
                     <p className="af-nota" style={{ margin: 0 }}>
-                      {ciclo ? `Ciclo ${ciclo.tipo.toLowerCase()} desde el corte del ${ciclo.fechaCorte} · ${diasEntre(ciclo.fechaCorte, hoy)} días` : 'Sin ciclo abierto'}
+                      {ciclo ? `Corte en curso (${ciclo.tipo.toLowerCase()}) desde el ${ciclo.fechaCorte} · ${diasEntre(ciclo.fechaCorte, hoy)} días` : 'Sin corte en curso'}
                     </p>
                   </div>
                   {esAdmin && <AbrirCiclo hayCiclo={!!ciclo} ocupado={ocupado}
@@ -295,7 +295,7 @@ function AbrirCiclo({ hayCiclo, ocupado, onAbrir }: { hayCiclo: boolean; ocupado
   const [abierto, setAbierto] = useState(false)
   const [fecha, setFecha] = useState('')
   const [tipo, setTipo] = useState<TipoCiclo>('SOCA')
-  if (!abierto) return <button type="button" className="inline-button" onClick={() => setAbierto(true)}>{hayCiclo ? 'Registrar nuevo corte' : 'Abrir ciclo'}</button>
+  if (!abierto) return <button type="button" className="inline-button" onClick={() => setAbierto(true)}>{hayCiclo ? 'Registrar nuevo corte' : 'Iniciar corte'}</button>
   return (
     <div className="af-mini-form">
       <label>Fecha del corte<input id="af-fecha-corte" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
@@ -304,9 +304,9 @@ function AbrirCiclo({ hayCiclo, ocupado, onAbrir }: { hayCiclo: boolean; ocupado
           <option value="SOCA">Soca</option><option value="PLANTILLA">Plantilla</option>
         </select>
       </label>
-      {hayCiclo && <small className="af-nota">El ciclo actual se cierra con esta fecha.</small>}
+      {hayCiclo && <small className="af-nota">El corte en curso se cierra con esta fecha.</small>}
       <div className="af-acciones">
-        <button type="button" className="primary-button" disabled={!fecha || ocupado} onClick={() => { onAbrir(fecha, tipo); setAbierto(false) }}>Abrir ciclo</button>
+        <button type="button" className="primary-button" disabled={!fecha || ocupado} onClick={() => { onAbrir(fecha, tipo); setAbierto(false) }}>Iniciar corte</button>
         <button type="button" className="inline-button" onClick={() => setAbierto(false)}>Cancelar</button>
       </div>
     </div>

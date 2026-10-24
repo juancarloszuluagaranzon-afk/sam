@@ -355,8 +355,11 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
   **Cada fila de `af_ciclos` es un CORTE**, no un ciclo: la tabla y las funciones se quedan con su nombre
   (renombrarlas era romper sin ganar nada, como con aval/aprobación), pero lo que ve la gente dice
   «corte». Y una nueva PLANTILLA (renovación) **reinicia el conteo**: después de «Soca 5» viene
-  «Plantilla», no «Soca 6» (prueba «una renovación reinicia el conteo de cortes»). ⏳ El resto del
-  módulo todavía dice «ciclo» donde es corte («El ciclo actual se cierra…», «Costos del ciclo»).
+  «Plantilla», no «Soca 6» (prueba «una renovación reinicia el conteo de cortes»). ✅ Desde el
+  24-oct-2026 TODO el módulo y el manual dicen «corte» (lista aprobada por Iván, 26 textos): «Iniciar
+  corte», «Corte en curso (soca) desde…», «cortes en curso», «Costos del corte en curso». Tres frases de
+  la base que aún dicen «ciclo» se traducen en `mensajeDeError()` (`FRASES_DE_CORTE`, sin migración).
+  ⚠️ Las capturas del manual (`public/manuales/fincas/*.jpg`) son de ANTES: muestran «Abrir ciclo».
 
 - **La cosecha de CADA ciclo** queda en `af_ciclos.datos_cosecha` (jsonb, mismas llaves que
   `datos_ingenio`; NULL = no se sabe). Antes solo había la ÚLTIMA cosecha de la suerte. Migración

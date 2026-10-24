@@ -348,6 +348,39 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
 - ⏳ **Falta (fase 2, con maqueta antes)**: formularios para el precio y los kg por finca, el rubro en el
   gasto a mano y la liquidación de la cosecha (TCH, toneladas, rendimiento, sacarosa). Hoy solo por SQL.
 
+## 📈 Historia ciclo a ciclo + IYOMA PRUEBAS (24-oct-2026)
+
+- **La cosecha de CADA ciclo** queda en `af_ciclos.datos_cosecha` (jsonb, mismas llaves que
+  `datos_ingenio`; NULL = no se sabe). Antes solo había la ÚLTIMA cosecha de la suerte. Migración
+  `20261024170000_fincas_historia_ciclos.sql`. `af_datos` arma los ciclos con `to_jsonb(c)`: la columna
+  llegó sola, sin tocar esa función.
+- **La inflación es un DATO**: fila `af_config.inflacion` (`ipc_anual` del DANE a diciembre + el salario
+  mínimo de referencia), y `af_referencias()` la devuelve en la llave `inflacion`. Al salir el IPC de un
+  año nuevo: actualizar esa fila; la app compara sola, sin publicar.
+- **`historiaCiclos()`** (`lib/fincas.ts`): una fila por AÑO de cosecha (ciclos CERRADOS por el año del
+  corte) + «en curso». Costo de un ciclo = GASTO por labor o por suerte y fecha; honorarios y gastos sin
+  suerte se reparten por área entre los ciclos vivos en su fecha; anticipos y anulados nunca. **Pesos de
+  hoy** = cada movimiento × IPC acumulado desde su año hasta el último año con IPC (convención: precios de
+  fin de año). 🔴 **Filtra por finca**: la primera versión repartía los honorarios de OTRA finca.
+  $/t solo con los ciclos que tienen toneladas (un ciclo sin cosecha no infla el $/t).
+- **Tarjeta «Historia ciclo a ciclo»** (`TableroFinca`): selector «Pesos de cada año / Pesos de hoy»
+  (arranca en hoy), frase calculada que compara la primera soca con la última cosecha en las dos
+  escalas («la diferencia es inflación, no la finca»), columnas de $/ha y tabla Año · TCH · Rend. % · $/ha ·
+  $/t · $/kg. La fila en curso va en pesos de este año. 🔴 La tabla lleva `min-width: 0` (hija de
+  `.af-card`, que es flex: sin eso medía 820 px en una tarjeta de 347) y anchos medidos a 320 px.
+- **IYOMA PRUEBAS** — finca de prueba sobre el plano de la **Hda. IYOMA 1403 (Riopaila Castilla,
+  Roldanillo)**: 5 suertes (55,25 ha) y 18 pedazos del plano, digitalizados de la imagen con la cuadrícula
+  **MAGNA-SIRGAS Colombia Oeste** (E 1.107.750, N 985.000…) y verificados sobre la foto satelital y el plano
+  georreferenciado del ingenio. 🔴 **USO INTERNO**: es cartografía del ingenio — su enlace NO se muestra a
+  clientes (al revés que RIOGRANDE PRUEBAS). Datos SIMULADOS y reproducibles: `node
+  scripts/generar-iyoma-pruebas.mts` escribe `supabase/seed_iyoma_pruebas.sql`, `borrar_iyoma_pruebas.sql`
+  y `scripts/fixtures/iyoma-datos.json` (idéntico a lo que queda en la base: el saldo cuadra al peso). 5
+  ciclos cerrados por suerte (plantilla 2020 → soca 4 cosechada en 2025) + el abierto con roturación,
+  fertilización en su ventana por variedad, 3 pasadas de malezas, riegos, un rechazo y un pendiente. Costos
+  con inflaciones distintas: IPC para todo y **salario mínimo para la mano de obra**; supuestos marcados en
+  el SQL (IPC 2026 = el de 2025; insumos +20 % en 2022). Prueba: `node scripts/prueba-historia-ciclos.mts`
+  (10 casos, cifras exactas a mano + dos fincas + el fixture).
+
 ## 🌱 «Sencillo pero funcional» — paquete 1 (16-oct-2026)
 
 Revisión de Iván con tres agentes (herramientas del mercado, agronomía Cenicaña y el código). Lo

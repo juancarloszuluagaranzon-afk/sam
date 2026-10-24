@@ -6125,7 +6125,7 @@ td.planilla-revisada {
    Medido el 8-sep-2026: dentro de `.mov` el valor era vacío y las barras se
    pintaban `rgba(0,0,0,0)`. Al montar gráficas en una pantalla nueva, sumar su
    clase aquí. */
-.dash, .mov {
+.dash, .mov, .af-historia {
   --dash-s1: #2a78d6; --dash-s2: #eb6834; --dash-s3: #1baf7a;
   --dash-s4: #eda100; --dash-s5: #e87ba4; --dash-s6: #4a3aa7;
   --dash-otros: #898781;
@@ -6134,12 +6134,12 @@ td.planilla-revisada {
   display: flex; flex-direction: column; gap: 12px;
 }
 @media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) :is(.dash, .mov) {
+  :root:where(:not([data-theme="light"])) :is(.dash, .mov, .af-historia) {
     --dash-s1: #3987e5; --dash-s2: #d95926; --dash-s3: #199e70;
     --dash-s4: #c98500; --dash-s5: #d55181; --dash-s6: #9085e9;
   }
 }
-:root[data-theme="dark"] :is(.dash, .mov) {
+:root[data-theme="dark"] :is(.dash, .mov, .af-historia) {
   --dash-s1: #3987e5; --dash-s2: #d95926; --dash-s3: #199e70;
   --dash-s4: #c98500; --dash-s5: #d55181; --dash-s6: #9085e9;
 }
@@ -9948,6 +9948,65 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-kpis--compacto { grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px; }
 .af-kpis--compacto .af-kpi b { font-size: 1.3rem; }
 .af-kpis--compacto .af-kpi span { font-size: 0.86rem; }
+
+/* ── Historia ciclo a ciclo (24-oct-2026) ────────────────────────────────────
+   La tabla NO lleva min-width a propósito: en el celular tiene que caber sin
+   arrastrar la tarjeta de lado. Con `table-layout: fixed` + anchos del
+   <colgroup> + `overflow-wrap: anywhere` las cifras se parten dentro de su
+   celda en vez de montarse sobre la vecina (lo que pasó con la tabla de rubros).
+   La paleta de la gráfica llega desde `.af-historia` (ver el bloque de SERIES). */
+.af-historia__modo { display: flex; flex-wrap: wrap; gap: 6px; }
+.af-historia__modo button {
+  border: 1px solid var(--color-divider, #e3e6df); border-radius: 999px; padding: 5px 11px;
+  font: inherit; font-size: 0.78rem; font-weight: 700;
+  color: var(--color-ink-mid, #5a5f57); background: var(--color-surface, #fff); cursor: pointer;
+}
+/* El activo se tiñe: con solo el borde, en el celular no se ve cuál está elegido. */
+.af-historia__modo button[aria-pressed="true"] {
+  background: rgba(46, 125, 50, .12); border-color: var(--color-brand, #155b30);
+  color: var(--color-brand, #155b30); box-shadow: inset 0 0 0 1px rgba(46, 125, 50, .18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) .af-historia__modo button[aria-pressed="true"] {
+    background: rgba(110, 200, 130, .16); border-color: #8fd9a4; color: #8fd9a4;
+  }
+}
+:root[data-theme="dark"] .af-historia__modo button[aria-pressed="true"] {
+  background: rgba(110, 200, 130, .16); border-color: #8fd9a4; color: #8fd9a4;
+}
+/* 🔴 `min-width: 0` es OBLIGATORIO: la tabla es hija de `.af-card`, que es flex en columna,
+   y un item flexible arranca con `min-width: auto`. Sin esto la tabla medía 820 px dentro de
+   una tarjeta de 347 y estiraba la página a lo ancho en el celular (medido el 24-oct-2026). */
+.af-historia__tabla {
+  width: 100%; min-width: 0; border-collapse: collapse; table-layout: fixed;
+  font-variant-numeric: tabular-nums; font-size: 12.5px;
+}
+.af-historia__tabla th, .af-historia__tabla td {
+  padding: 6px 3px; overflow-wrap: anywhere; text-align: right;
+  border-bottom: 1px solid var(--color-divider, #e3e6df);
+}
+.af-historia__tabla th:first-child, .af-historia__tabla td:first-child { text-align: left; }
+/* Una cifra partida en dos renglones («$102» arriba, «mil» abajo) se lee como dos datos. */
+.af-historia__tabla td:not(:first-child) { white-space: nowrap; overflow-wrap: normal; }
+/* Los encabezados se parten solo entre palabras («REND.» / «%»), nunca a mitad de una. */
+.af-historia__tabla th { overflow-wrap: normal; }
+.af-historia__tabla thead th {
+  font-size: 0.7rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--color-ink-mid, #5a5f57);
+}
+.af-historia__tabla td small {
+  display: block; font-size: 11.5px; font-weight: 500; color: var(--color-ink-mid, #5a5f57);
+}
+.af-historia__tabla tbody tr:last-child td { border-bottom: 0; }
+.af-historia__fila--curso td { color: var(--color-ink-mid, #5a5f57); }
+.af-historia__fila--curso td small { font-weight: 700; }
+/* En celular cabe: baja la letra y el padding, y NADA se oculta (una celda
+   apagada en una tabla deja a su vecina encima de la anterior). */
+@media (max-width: 420px) {
+  .af-historia__tabla { font-size: 11.5px; }
+  .af-historia__tabla th, .af-historia__tabla td { padding: 5px 2px; }
+  .af-historia__tabla td small { font-size: 10.5px; }
+}
 
 /* ── Acuerdos de pago con colonos (Cartera, 21-oct-2026) ─────────────────── */
 .acu-vistas { margin: 10px 0 4px; }

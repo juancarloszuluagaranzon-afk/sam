@@ -63,6 +63,7 @@ export interface LaborMaquina {
 export interface Ciclo {
   id: string; suerteId: string; fechaCorte: string; tipo: TipoCiclo
   estado: 'ABIERTO' | 'CERRADO'; fechaCierre: string | null
+  datosCosecha: DatosIngenio | null
 }
 export interface LaborPaquete {
   id: string; labor: string; unidad: string; cantidadPorHa: number; costoUnitario: number
@@ -136,7 +137,9 @@ export interface ReferenciasSector {
   costos: { fuente: string; anio: number; costoHa: number; costoTc: number; kaTc: number
     tch: number; kgAzucarTc: number; precioTc: number } | null
   rubroPorLabor: Record<string, RubroCosto>
+  inflacion: Inflacion | null
 }
+export interface Inflacion { fuente: string; ipcAnual: Record<number, number> }
 
 const num = (v: unknown): number => Number(v ?? 0)
 const numN = (v: unknown): number | null => (v === null || v === undefined ? null : Number(v))
@@ -273,6 +276,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
     ciclos: arr('ciclos').map((x) => ({
       id: String(x.id), suerteId: String(x.suerte_id), fechaCorte: String(x.fecha_corte),
       tipo: (x.tipo as TipoCiclo) ?? 'SOCA', estado: (x.estado as Ciclo['estado']) ?? 'ABIERTO', fechaCierre: txt(x.fecha_cierre),
+      datosCosecha: datosIngenio(x.datos_cosecha),
     })),
     labores: arr('labores').map((x) => ({
       id: String(x.id), cicloId: String(x.ciclo_id), labor: String(x.labor), unidad: String(x.unidad ?? 'ha'),
@@ -322,6 +326,13 @@ function convertirReferencias(v: unknown): ReferenciasSector {
   }
   const p = o.productividad && typeof o.productividad === 'object' ? o.productividad as Record<string, unknown> : null
   const c = o.costos && typeof o.costos === 'object' ? o.costos as Record<string, unknown> : null
+  const i = o.inflacion && typeof o.inflacion === 'object' ? o.inflacion as Record<string, unknown> : null
+  const ipcRaw = i?.ipc_anual && typeof i.ipc_anual === 'object' ? i.ipc_anual as Record<string, unknown> : {}
+  const ipcAnual: Record<number, number> = {}
+  for (const [anio, valor] of Object.entries(ipcRaw)) {
+    const k = Number(anio), v = Number(valor)
+    if (Number.isFinite(k) && Number.isFinite(v)) ipcAnual[k] = v
+  }
   const mapa: Record<string, RubroCosto> = {}
   if (o.rubro_por_labor && typeof o.rubro_por_labor === 'object') {
     for (const [k, val] of Object.entries(o.rubro_por_labor as Record<string, unknown>)) {
@@ -339,6 +350,7 @@ function convertirReferencias(v: unknown): ReferenciasSector {
       tch: n(c.tch), kgAzucarTc: n(c.kg_azucar_tc), precioTc: n(c.precio_tc),
     } : null,
     rubroPorLabor: mapa,
+    inflacion: i && typeof i.fuente === 'string' ? { fuente: i.fuente, ipcAnual } : null,
   }
 }
 

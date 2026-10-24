@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cargarReferencias, type DatosFincas, type ReferenciasSector } from '../../services/fincasApi'
 import {
-  comparar, costosGremio, fmtCant, fmtPesos, fmtPesosCorto, indicadoresCosecha, VER_PLATA,
+  comparar, costosGremio, fmtCant, fmtPesos, fmtPesosCorto, historiaCiclos, indicadoresCosecha, VER_PLATA,
+  type HistoriaCiclos,
 } from '../../lib/fincas'
+import { Columnas, type Punto } from '../../components/Charts'
 
 const fmt1 = (n: number): string => n.toLocaleString('es-CO', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 const fmt2 = (n: number): string => n.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -21,6 +23,153 @@ const fechaCorta = (iso: string): string =>
 function Delta({ c }: { c: { texto: string; arriba: boolean } | null }) {
   if (!c) return null
   return <em className={`af-delta ${c.arriba ? 'af-delta--arriba' : 'af-delta--abajo'}`}>{c.texto}</em>
+}
+
+/** Cuánto cambió `a` sobre `b`, en %. Null si falta alguno de los dos (o si `b` es 0). */
+function pctSobre(a: number | null, b: number | null): number | null {
+  if (a == null || b == null || b === 0) return null
+  return ((a - b) / b) * 100
+}
+
+/**
+ * «Historia ciclo a ciclo»: la misma plata de cada cosecha puesta en una sola
+ * escala. La columna vertebral es el IPC: sin él, $/ha de 2019 y de 2025 no se
+ * pueden comparar y el dueño leería como «subió el costo» lo que solo fue
+ * inflación. Por eso el selector arranca en «Pesos de hoy»: la pregunta del
+ * dueño es si la hectárea le cuesta más de verdad, no en billetes de qué año.
+ *
+ * Todo lo de plata va detrás de `VER_PLATA`, como el resto del tablero: sin esa
+ * bandera la tabla queda en Cosecha, TCH y Rendimiento.
+ */
+function HistoriaCiclosCard({ historia, refs }: { historia: HistoriaCiclos; refs: ReferenciasSector | null }) {
+  // Por defecto «Pesos de hoy»: es la lectura honesta cuando hay IPC.
+  const [modo, setModo] = useState<'hoy' | 'anio'>('hoy')
+
+  const cerradas = historia.filas.filter((f) => !f.enCurso)
+  // Sin ninguna cosecha cerrada no hay comparación posible: la tarjeta no se pinta.
+  if (cerradas.length === 0) return null
+
+  const conSelector = historia.anioBase != null
+  const enHoy = conSelector && modo === 'hoy'
+
+  // ── La frase: la primera soca cerrada contra la última cosecha cerrada ──
+  const primeraSoca = cerradas.find((f) => f.etiqueta.startsWith('Soca')) ?? null
+  const ultima = cerradas[cerradas.length - 1]
+  let frase: string | null = null
+  if (primeraSoca && primeraSoca.clave !== ultima.clave) {
+    if (enHoy) {
+      const pctReal = pctSobre(ultima.costoHaHoy, primeraSoca.costoHaHoy)
+      const pctNominal = pctSobre(ultima.costoHa, primeraSoca.costoHa)
+      if (pctReal != null && pctNominal != null) {
+        const signo = (p: number) => `${p >= 0 ? '+' : '−'}${fmt1(Math.abs(p))} %`
+        // Las dos cifras juntas: la diferencia entre ellas ES la inflación.
+        const contraste = ` En pesos de cada año la cuenta da ${signo(pctNominal)}: esa diferencia es inflación, no la finca.`
+        frase = Math.abs(pctReal) < 3
+          ? `En pesos de hoy, la hectárea de soca costó casi lo mismo en ${ultima.anio} que en ${primeraSoca.anio} (${signo(pctReal)}).${contraste}`
+          : `En pesos de hoy, la hectárea de soca costó ${fmt1(Math.abs(pctReal))} % ${pctReal > 0 ? 'más' : 'menos'} en ${ultima.anio} que en ${primeraSoca.anio}.${contraste}`
+      }
+    } else {
+      const desde = primeraSoca.costoHa
+      const hasta = ultima.costoHa
+      const pctNominal = pctSobre(hasta, desde)
+      // Si falta cualquiera de las dos cifras no hay frase: media comparación engaña.
+      if (pctNominal != null && desde != null && hasta != null) {
+        const cierre = conSelector ? ' Toque «Pesos de hoy» para ver cuánto es inflación.' : ''
+        frase = `En pesos de cada año, la hectárea de soca pasó de ${fmtPesosCorto(desde)} a ${fmtPesosCorto(hasta)} (${pctNominal >= 0 ? '+' : '−'}${fmt1(Math.abs(pctNominal))} %).${cierre}`
+      }
+    }
+  }
+
+  // ── La gráfica: solo cosechas cerradas, en millones para que quepan ──
+  const puntos: Punto[] = cerradas.flatMap((f): Punto[] => {
+    const valor = enHoy ? f.costoHaHoy : f.costoHa
+    return valor == null ? [] : [{ id: f.clave, label: String(f.anio), valor: valor / 1_000_000 }]
+  })
+
+  // ── Nota al pie: el IPC que se usó, año por año, leído de las referencias ──
+  const ipcAnual = refs?.inflacion?.ipcAnual ?? null
+  const fuenteIpc = historia.fuenteIpc ?? refs?.inflacion?.fuente ?? null
+  const listaIpc = [
+    ...new Set(historia.filas.map((f) => f.anio)),
+  ]
+    .sort((a, b) => a - b)
+    .flatMap((anio): string[] => {
+      const pct = ipcAnual?.[anio]
+      // Con dos decimales, como lo publica el DANE (13,12 %, no 13,1 %).
+      return pct == null ? [] : [`${anio} → ${pct.toLocaleString('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} %`]
+    })
+  const avisoIpc = 'Falta el IPC de algún año: esas cifras no se pueden llevar a pesos de hoy.'
+  const notaPie = historia.anioBase == null
+    ? (historia.faltaIpc ? avisoIpc : null)
+    : `Pesos de hoy = pesos de diciembre de ${historia.anioBase}${fuenteIpc ? ` con el ${fuenteIpc}` : ''}${listaIpc.length > 0 ? `: ${listaIpc.join(' · ')}` : ''}. La fila en curso va en pesos de este año.${historia.faltaIpc ? ` ${avisoIpc}` : ''}`
+
+  return (
+    <div className="af-card af-card--ancha af-historia">
+      <h3>Historia ciclo a ciclo</h3>
+
+      {VER_PLATA && conSelector && (
+        <div className="af-historia__modo">
+          <button type="button" aria-pressed={!enHoy} onClick={() => setModo('anio')}>Pesos de cada año</button>
+          <button type="button" aria-pressed={enHoy} onClick={() => setModo('hoy')}>Pesos de hoy</button>
+        </div>
+      )}
+
+      {VER_PLATA && frase && <p className="af-nota">{frase}</p>}
+
+      {VER_PLATA && puntos.length > 0 && (
+        <>
+          <p className="af-nota">Costo por hectárea de cada cosecha (millones de pesos)</p>
+          <Columnas datos={puntos} />
+        </>
+      )}
+
+      <table className="af-historia__tabla">
+        <colgroup>
+          {/* Anchos medidos a 320 px: cada cifra cabe en UN renglón («$102 mil», «$14,3 M»). */}
+          <col style={{ width: VER_PLATA ? '20%' : '46%' }} />
+          <col style={{ width: VER_PLATA ? '11%' : '26%' }} />
+          <col style={{ width: VER_PLATA ? '15%' : '28%' }} />
+          {VER_PLATA && <col style={{ width: '19%' }} />}
+          {VER_PLATA && <col style={{ width: '19%' }} />}
+          {VER_PLATA && <col style={{ width: '16%' }} />}
+        </colgroup>
+        <thead>
+          <tr>
+            <th scope="col">Año</th>
+            <th scope="col">TCH</th>
+            <th scope="col">Rend. %</th>
+            {VER_PLATA && <th scope="col">$/ha</th>}
+            {VER_PLATA && <th scope="col">$/t</th>}
+            {VER_PLATA && <th scope="col">$/kg</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {historia.filas.map((f) => {
+            // La fila en curso no tiene TCH ni rendimiento todavía: va solo lo gastado,
+            // en pesos de este año (así lo dice la nota al pie, y no depende del IPC).
+            const costoHa = f.enCurso ? f.costoHa : enHoy ? f.costoHaHoy : f.costoHa
+            const costoT = enHoy ? f.costoTHoy : f.costoT
+            const costoKg = enHoy ? f.costoKgHoy : f.costoKg
+            return (
+              <tr key={f.clave} className={f.enCurso ? 'af-historia__fila--curso' : undefined}>
+                <td>
+                  {f.anio}
+                  <small>{f.enCurso ? `${f.etiqueta} · en curso` : f.etiqueta}</small>
+                </td>
+                <td>{!f.enCurso && f.tch != null ? fmt0(f.tch) : '—'}</td>
+                <td>{!f.enCurso && f.rendimiento != null ? fmt1(f.rendimiento) : '—'}</td>
+                {VER_PLATA && <td>{costoHa != null ? fmtPesosCorto(costoHa) : '—'}</td>}
+                {VER_PLATA && <td>{!f.enCurso && costoT != null ? fmtPesosCorto(costoT) : '—'}</td>}
+                {VER_PLATA && <td>{!f.enCurso && costoKg != null ? fmtPesos(costoKg) : '—'}</td>}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+
+      {VER_PLATA && notaPie && <p className="af-nota">{notaPie}</p>}
+    </div>
+  )
 }
 
 /**
@@ -48,6 +197,15 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
 
   const costos = useMemo(() => {
     try { return costosGremio(fincaId, d, refs) } catch { return null }
+  }, [fincaId, d, refs])
+
+  // Ciclo a ciclo: la fecha va en hora de Colombia, no la del equipo (un celular
+  // con la zona cambiada cerraría el ciclo en curso un día antes).
+  const historia = useMemo(() => {
+    try {
+      const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' })
+      return historiaCiclos(fincaId, d, refs, hoy)
+    } catch { return null }
   }, [fincaId, d, refs])
 
   const finca = d.fincas.find((f) => f.id === fincaId)
@@ -257,6 +415,8 @@ export function TableroFinca({ d, fincaId }: { d: DatosFincas; fincaId: string }
           </div>
         </div>
       )}
+
+      {historia && <HistoriaCiclosCard historia={historia} refs={refs} />}
 
       <p className="af-nota af-card--ancha">
         Referencias: {prod?.fuente ?? 'sin referencia'} · {refCostos?.fuente ?? 'sin referencia'}. Precio de liquidación: {precioTexto} por kg (lo fija administración).

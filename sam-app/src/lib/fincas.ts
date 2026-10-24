@@ -693,3 +693,183 @@ export function comparar(
     arriba: dif >= 0,
   }
 }
+
+// ── Historia ciclo a ciclo (24-oct-2026) ─────────────────────────────────────
+
+/**
+ * Una fila por año de cosecha (los ciclos CERRADOS, por el año en que se cortaron)
+ * más una fila «en curso» con los ABIERTOS. Cada costo se cuenta también en pesos
+ * de hoy con el IPC de `refs.inflacion` (un DATO de la base, no del código): sin
+ * eso, el $/ha de 2021 y el de 2025 no se pueden comparar y lo que fue inflación
+ * se lee como «la finca salió más cara». Si falta el IPC de algún año, esas cifras
+ * van en null y `faltaIpc` lo dice: nunca se completa un año a ojo.
+ */
+export interface FilaHistoria {
+  clave: string; anio: number; etiqueta: string; enCurso: boolean; suertes: number; areaHa: number
+  tch: number | null; rendimiento: number | null; sacarosa: number | null; edadMeses: number | null
+  toneladas: number | null; costo: number; costoHoy: number | null
+  costoHa: number | null; costoHaHoy: number | null; costoT: number | null; costoTHoy: number | null
+  costoKg: number | null; costoKgHoy: number | null
+}
+export interface HistoriaCiclos { filas: FilaHistoria[]; anioBase: number | null; fuenteIpc: string | null; faltaIpc: boolean }
+export function factorAPesosDe(anioGasto: number, anioBase: number, ipcAnual: Record<number, number>): number | null {
+  let factor = 1
+  for (let y = anioGasto + 1; y <= anioBase; y++) {
+    const ipc = ipcAnual[y]
+    if (!Number.isFinite(ipc)) return null
+    factor *= 1 + ipc / 100
+  }
+  return factor
+}
+const seguro = (v: unknown) => Number(v) || 0
+const divide = (a: number, b: number): number | null => b > 0 ? a / b : null
+export function historiaCiclos(fincaId: string, d: DatosFincas, refs: ReferenciasSector | null, hoy: string): HistoriaCiclos | null {
+  const finca = d.fincas.find(f => f.id === fincaId)
+  const suertes = d.suertes.filter(s => s.fincaId === fincaId && s.activa && seguro(s.areaHa) > 0)
+  const areaPorSuerte = new Map(suertes.map(s => [s.id, seguro(s.areaHa)]))
+  const idsSuerte = new Set(areaPorSuerte.keys())
+  const ciclos = d.ciclos.filter(c => idsSuerte.has(c.suerteId) && (c.estado === 'ABIERTO' || (c.estado === 'CERRADO' && c.fechaCierre)))
+  if (!ciclos.length) return null
+
+  // Grupos: cosechas cerradas por año de cierre y una fila final para los ciclos abiertos.
+  const etiquetas = new Map<string, string>()
+  for (const suerte of suertes) {
+    let numSoca = 0
+    const ciclosSuerte = ciclos
+      .filter(ciclo => ciclo.suerteId === suerte.id)
+      .sort((a, b) => a.fechaCorte.localeCompare(b.fechaCorte))
+    for (const ciclo of ciclosSuerte) {
+      if (ciclo.tipo === 'PLANTILLA' && numSoca === 0) etiquetas.set(ciclo.id, 'Plantilla')
+      else etiquetas.set(ciclo.id, `Soca ${++numSoca}`)
+    }
+  }
+
+  type Grupo = { clave: string; anio: number; enCurso: boolean; ciclos: Ciclo[] }
+  const grupos = new Map<string, Grupo>()
+  for (const ciclo of ciclos) {
+    const enCurso = ciclo.estado === 'ABIERTO'
+    const anio = enCurso ? Number(hoy.slice(0, 4)) : Number(ciclo.fechaCierre!.slice(0, 4))
+    const clave = enCurso ? 'en-curso' : String(anio)
+    if (!grupos.has(clave)) grupos.set(clave, { clave, anio, enCurso, ciclos: [] })
+    grupos.get(clave)!.ciclos.push(ciclo)
+  }
+
+  const ciclosVivos = (fecha: string) => ciclos.filter(ciclo =>
+    ciclo.fechaCorte <= fecha && (ciclo.estado === 'ABIERTO' || fecha < (ciclo.fechaCierre ?? '')))
+  const costoPorCiclo = new Map<string, number>()
+  const costoHoyPorCiclo = new Map<string, number>()
+  const ciclosSinIpc = new Set<string>()
+  const inflacion = refs?.inflacion ?? null
+  const aniosIpc = inflacion ? Object.keys(inflacion.ipcAnual).map(Number).filter(Number.isFinite) : []
+  const anioBase = aniosIpc.length ? Math.max(...aniosIpc) : null
+  let faltaIpc = false
+  const cicloPorLabor = new Map(d.labores.map(labor => [labor.id, labor.cicloId]))
+  const movimientos = d.movimientos.filter(movimiento =>
+    movimiento.fincaId === fincaId && !movimiento.anulado &&
+    (movimiento.tipo === 'GASTO' || movimiento.tipo === 'HONORARIO'))
+
+  // Cada GASTO va a su ciclo (por labor, o por suerte y fecha). Honorarios y gastos sin suerte
+  // ni labor se reparten por área entre los ciclos vivos en esa fecha. Pesos de hoy: cada
+  // movimiento se convierte con el IPC acumulado desde su año hasta el año base.
+  for (const movimiento of movimientos) {
+    const vivosEnFecha = ciclosVivos(movimiento.fecha)
+    const idCicloLabor = movimiento.laborId ? cicloPorLabor.get(movimiento.laborId) : undefined
+    let destino = idCicloLabor ? ciclos.filter(ciclo => ciclo.id === idCicloLabor) : []
+    if (!destino.length && movimiento.suerteId) {
+      destino = ciclos.filter(ciclo => ciclo.suerteId === movimiento.suerteId &&
+        ciclo.fechaCorte <= movimiento.fecha &&
+        (ciclo.estado === 'ABIERTO' || movimiento.fecha < (ciclo.fechaCierre ?? '')))
+    }
+    const esCompartido = movimiento.tipo === 'HONORARIO' || (!movimiento.suerteId && !movimiento.laborId)
+    if (esCompartido) destino = vivosEnFecha
+    if (!destino.length) continue
+
+    const monto = seguro(movimiento.valor)
+    const areaTotal = esCompartido
+      ? destino.reduce((total, ciclo) => total + (areaPorSuerte.get(ciclo.suerteId) ?? 0), 0)
+      : 1
+    for (const ciclo of destino) {
+      const area = areaPorSuerte.get(ciclo.suerteId) ?? 0
+      const parte = esCompartido ? monto * area / (areaTotal || 1) : monto
+      costoPorCiclo.set(ciclo.id, (costoPorCiclo.get(ciclo.id) ?? 0) + parte)
+      if (anioBase === null) continue
+      const factor = factorAPesosDe(Number(movimiento.fecha.slice(0, 4)), anioBase, inflacion!.ipcAnual)
+      if (factor === null) {
+        faltaIpc = true
+        ciclosSinIpc.add(ciclo.id)
+      } else {
+        costoHoyPorCiclo.set(ciclo.id, (costoHoyPorCiclo.get(ciclo.id) ?? 0) + parte * factor)
+      }
+    }
+  }
+
+  const filas = [...grupos.values()]
+    .sort((a, b) => a.enCurso ? 1 : b.enCurso ? -1 : a.anio - b.anio)
+    .map(grupo => {
+      const areaDeCiclo = (ciclo: Ciclo) => areaPorSuerte.get(ciclo.suerteId) ?? 0
+      const areaHa = grupo.ciclos.reduce((total, ciclo) => total + areaDeCiclo(ciclo), 0)
+      const etiquetasGrupo = [...new Set(grupo.ciclos.map(ciclo => etiquetas.get(ciclo.id) ?? 'Varios cortes'))]
+      const etiqueta = etiquetasGrupo.length === 1 ? etiquetasGrupo[0] : 'Varios cortes'
+      const promedioPonderado = (campo: 'tch' | 'rendimiento' | 'sacarosa' | 'edadMeses') => {
+        let total = 0
+        let peso = 0
+        for (const ciclo of grupo.ciclos) {
+          const valor = seguro(ciclo.datosCosecha?.[campo])
+          if (valor <= 0) continue
+          total += valor * areaDeCiclo(ciclo)
+          peso += areaDeCiclo(ciclo)
+        }
+        return divide(total, peso)
+      }
+
+      let toneladas = 0
+      let hayToneladas = false
+      let costoConToneladas = 0
+      let costoHoyConToneladas = 0
+      for (const ciclo of grupo.ciclos) {
+        const cosecha = ciclo.datosCosecha
+        const toneladasCiclo = cosecha?.toneladas == null
+          ? (cosecha?.tch == null ? null : seguro(cosecha.tch) * areaDeCiclo(ciclo))
+          : seguro(cosecha.toneladas)
+        if (toneladasCiclo === null || toneladasCiclo <= 0) continue
+        toneladas += toneladasCiclo
+        hayToneladas = true
+        costoConToneladas += costoPorCiclo.get(ciclo.id) ?? 0
+        costoHoyConToneladas += costoHoyPorCiclo.get(ciclo.id) ?? 0
+      }
+
+      const costo = grupo.ciclos.reduce((total, ciclo) => total + (costoPorCiclo.get(ciclo.id) ?? 0), 0)
+      const costoHoy = anioBase === null || grupo.enCurso || grupo.ciclos.some(ciclo => ciclosSinIpc.has(ciclo.id))
+        ? null
+        : grupo.ciclos.reduce((total, ciclo) => total + (costoHoyPorCiclo.get(ciclo.id) ?? 0), 0)
+      const toneladasGrupo = grupo.enCurso || !hayToneladas ? null : toneladas
+      const costoT = grupo.enCurso || !hayToneladas ? null : divide(costoConToneladas, toneladas)
+      const costoTHoy = grupo.enCurso || !hayToneladas || costoHoy === null
+        ? null
+        : divide(costoHoyConToneladas, toneladas)
+      const kgAzucarTc = seguro(finca?.kgAzucarTc) || seguro(refs?.costos?.kgAzucarTc)
+
+      return {
+        clave: grupo.clave,
+        anio: grupo.anio,
+        etiqueta,
+        enCurso: grupo.enCurso,
+        suertes: grupo.ciclos.length,
+        areaHa,
+        tch: grupo.enCurso ? null : promedioPonderado('tch'),
+        rendimiento: grupo.enCurso ? null : promedioPonderado('rendimiento'),
+        sacarosa: grupo.enCurso ? null : promedioPonderado('sacarosa'),
+        edadMeses: grupo.enCurso ? null : promedioPonderado('edadMeses'),
+        toneladas: toneladasGrupo,
+        costo,
+        costoHoy,
+        costoHa: divide(costo, areaHa),
+        costoHaHoy: costoHoy === null || grupo.enCurso ? null : divide(costoHoy, areaHa),
+        costoT,
+        costoTHoy,
+        costoKg: kgAzucarTc > 0 && costoT !== null ? costoT / kgAzucarTc : null,
+        costoKgHoy: kgAzucarTc > 0 && costoTHoy !== null ? costoTHoy / kgAzucarTc : null,
+      }
+    })
+  return { filas, anioBase, fuenteIpc: inflacion?.fuente ?? null, faltaIpc }
+}

@@ -9940,7 +9940,10 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-rubros__fila { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 2fr) minmax(84px, auto) 52px; gap: 8px; align-items: center; font-size: 0.86rem; }
 .af-rubros__fila--cab { font-size: 0.74rem; color: var(--color-ink-mid, #5a5f57); }
 .af-rubros__fila > :nth-child(n+3) { text-align: right; font-variant-numeric: tabular-nums; }
-@media (max-width: 420px) { .af-rubros__fila { grid-template-columns: minmax(0, 1fr) 0 auto 44px; } .af-rubros__fila .af-barra { display: none; } }
+/* En el celular se quita la columna de la barra. Con `display:none` la celda sale del grid y las demás
+   se corrían a una columna de ancho 0: el $/ha quedaba ENCIMA del kg/t (24-oct-2026). Se quita la 2.ª
+   celda de cada fila (barra o su hueco en el encabezado) y el grid queda de 3 columnas. */
+@media (max-width: 420px) { .af-rubros__fila { grid-template-columns: minmax(0, 1fr) auto 44px; } .af-rubros__fila > :nth-child(2) { display: none; } }
 /* Los KPI del tablero van de a dos en el celular (con el mínimo de 160 px de .af-kpis salían de a uno). */
 .af-kpis--compacto { grid-template-columns: repeat(auto-fit, minmax(min(130px, 100%), 1fr)); gap: 8px; }
 .af-kpis--compacto .af-kpi b { font-size: 1.3rem; }

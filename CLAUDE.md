@@ -574,6 +574,23 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   horómetros y el «🖍 Resaltar» de la Planilla. Ver memoria `project_uso_modulos`. **Antes de
   construir sobre un módulo, revisar si de verdad se usa.**
 
+## Cerrado el 24-oct-2026
+
+- 📊 **Tablero de costos e indicadores del gremio en Fincas** (versiones `af3880c` + `b1fd6ac`): productividad
+  de la última cosecha frente a Cenicaña 2025 (TCH, TAH, rendimiento, sacarosa, TCHM, TAHM, edad) y costos
+  del ciclo como los mide Procaña ($/ha, $/t, $/kg de azúcar, punto de equilibrio, «de los 58 kg, cuántos le
+  quedan» y rubros). Migración `20261024090000` aplicada. Las referencias del sector son un DATO
+  (`af_config.referencias_sector`), no van en el código. Detalle en `managing-fincas` → «📊 Tablero».
+  Primera obra con el reparto **OpenCode construye → Claude revisa → Codex valida con prueba → Claude
+  integra** (`node scripts/prueba-costos-gremio.mts`, 10 casos).
+- 🧪 La finca de prueba RIOGRANDE PRUEBAS ya **no tiene datos reales** de la finca de la dueña: datos de
+  cosecha y costos de EJEMPLO (`ajuste_riogrande_pruebas_ejemplo.sql`).
+- 🔴 **Lección (error que llegó a producción y se corrigió en minutos):** en la tabla de rubros, en el celular,
+  ocultar una celda de un grid con `display:none` la saca del grid y las demás se corren de columna: el
+  `$/ha` quedó ENCIMA del `kg/t`. La prueba a 320 px no lo vio porque midió si la fila se salía del borde,
+  no si las celdas se encimaban. **Al probar una tabla o grid en celular, medir que las celdas no se
+  traslapen** (bordes izquierdo/derecho de cada celda contra la anterior), no solo el ancho de la fila.
+
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 
 Para cambios grandes de código, el escalamiento cuando algo falla es **Codex (2 intentos) →

@@ -46,9 +46,14 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
     () => users.filter((u) => u.role === 'dueno_finca' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const propietarios = useMemo(
+    () => users.filter((u) => u.role === 'propietario' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
 
   const [supId, setSupId] = useState('')
   const [dueId, setDueId] = useState('')
+  const [propId, setPropId] = useState('')
   const [opId, setOpId] = useState('')
   const [insId, setInsId] = useState('')
   const [conId, setConId] = useState('')
@@ -220,6 +225,31 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
               disabled={!dueId}
               onClick={() => {
                 const u = duenosFinca.find((d) => d.id === dueId)
+                if (u) onView({ ...u })
+              }}
+            >
+              Ver
+            </button>
+          </div>
+        )}
+
+        {propietarios.length > 0 && (
+          <div className="support-pick">
+            <label className="support-pick__field">
+              <span className="support-pick__label">Propietario 1</span>
+              <SearchableSelect
+                value={propId}
+                onChange={setPropId}
+                options={propietarios.map((p) => ({ value: p.id, label: p.name }))}
+                placeholder="Buscar propietario…"
+              />
+            </label>
+            <button
+              type="button"
+              className="primary-button support-pick__btn"
+              disabled={!propId}
+              onClick={() => {
+                const u = propietarios.find((p) => p.id === propId)
                 if (u) onView({ ...u })
               }}
             >

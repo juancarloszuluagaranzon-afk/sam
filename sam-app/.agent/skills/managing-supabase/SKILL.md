@@ -269,6 +269,14 @@ silencio, así que se revisa de primero.
 **Se prueba insertando un usuario de verdad**, no leyendo el código: `conductor`
 estuvo seis días en el código con la base rechazándolo.
 
+**Un rol de SOLO CONSULTA no lleva vista propia** (`propietario`, «Propietario 1», 24-oct-2026):
+reusa `SupervisorView` con `esSoloConsulta(role)` (`domain/sam.ts`) y tiene su PROPIA rama en
+`App.tsx` — 🔴 no se suma a `isSupervisorOrOwner`, que abre la sesión de Fincas y el selector
+Maquinaria | Fincas. Las reglas de edición por usuario (`lib/editores.ts`) y las listas por rol
+(`PUEDEN_CORREGIR` de `DetalleDespacho`) ya le dicen «no» a un rol nuevo sin tocarlas; lo que hay que
+apagar a mano son las condiciones NEGATIVAS (`role !== 'owner'`) y los botones que se muestran a todos
+(el «Cancelar labor» del detalle de una labor). ⚠️ Es la app la que lo hace cumplir, no la base.
+
 Si escribes `public.usuarios` en una migración, un `exception when undefined_table`
 se lo traga en silencio y la migración "pasa" sin hacer nada.
 

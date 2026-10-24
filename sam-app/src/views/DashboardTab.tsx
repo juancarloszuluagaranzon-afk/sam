@@ -300,7 +300,7 @@ export function DashboardTab({ onIr }: { onIr?: (destino: string) => void }) {
       <div className="dash-card">
         <div className="dash-card__head">
           <h3>Parque de máquinas</h3>
-          <button type="button" className="dash-card__link" onClick={() => onIr?.('equipos')}>Ver todas →</button>
+          {onIr && <button type="button" className="dash-card__link" onClick={() => onIr('equipos')}>Ver todas →</button>}
         </div>
         <div className="dash-maq">
           <div className="dash-maq__box"><strong>{maq.trabajando.size}</strong><span>trabajando</span></div>

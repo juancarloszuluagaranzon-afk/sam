@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
+import { esSoloConsulta } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 import { fmtCantidad } from '../lib/cantidad'
 import {
@@ -570,6 +571,7 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentario
   onClose: () => void
 }) {
   const { session, setError } = useAppData()
+  const soloConsulta = esSoloConsulta(session?.role)
   const [sel, setSel] = useState<number | null>(null)
   const [texto, setTexto] = useState('')
   const [guardando, setGuardando] = useState(false)
@@ -626,14 +628,14 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentario
     } finally { setGuardando(false) }
   }
   async function quitar(c: ComentarioCombustible) {
-    if (!window.confirm('¿Quitar este comentario? Queda anulado en el historial.')) return
+    if (soloConsulta || !window.confirm('¿Quitar este comentario? Queda anulado en el historial.')) return
     try {
       await anularComentarioCombustible(c.id, session?.id)
       onComentarios((prev) => prev.filter((x) => x.id !== c.id))
     } catch (e) { setError((e as Error).message) }
   }
   const puedeQuitar = (c: ComentarioCombustible) =>
-    c.autorId === session?.id || session?.role === 'owner' || session?.role === 'administracion'
+    !soloConsulta && (c.autorId === session?.id || session?.role === 'owner' || session?.role === 'administracion')
 
   return (
     <div className="modal-overlay open" onClick={onClose}>
@@ -661,7 +663,7 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentario
             {tq.problema && <p className="mov-alerta">⚠ {tq.problema}.</p>}
             <GraficaGalHora
               columnas={columnas}
-              titulo="Cada tanqueo y su eficiencia desde el anterior · toca uno para comentarlo"
+              titulo={soloConsulta ? 'Cada tanqueo y su eficiencia desde el anterior' : 'Cada tanqueo y su eficiencia desde el anterior · toca uno para comentarlo'}
               rotuloColumna="Tanqueo"
               onVer={(codigo) => { setSel(Number(codigo)); setTexto('') }}
             />
@@ -691,7 +693,7 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentario
                       </small>
                     </div>
                   ))}
-                  {escogido.id ? (
+                  {!soloConsulta && (escogido.id ? (
                     <>
                       <textarea className="base-input" placeholder="¿Qué se ve desfasado en este tanqueo? Queda guardado con tu nombre."
                         value={texto} onChange={(e) => setTexto(e.target.value)} disabled={guardando} maxLength={1000} />
@@ -702,7 +704,7 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentario
                         </button>
                       </div>
                     </>
-                  ) : <p className="field-hint">Este tanqueo no se puede comentar (sin identificador).</p>}
+                  ) : <p className="field-hint">Este tanqueo no se puede comentar (sin identificador).</p>)}
                 </>
               ) : comentarios.length > 0 ? (
                 comentarios.map((c) => (

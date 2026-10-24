@@ -23,7 +23,7 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
 import { matchesSummaryFilter, currentQuincena, type SummaryQuincena } from './components/EntityHistoryModal'
 import './App.css'
-import type { Assignment, UserProfile } from './domain/sam'
+import { esSoloConsulta, type Assignment, type UserProfile } from './domain/sam'
 import { appLogin, appLogout, appChangePin, loadAssignments, executionDateKey, getIngenioName, getIdSuerte, getAssignmentIngenioId } from './services/samApi'
 import { getTokenReal, setToken } from './lib/sesion'
 import { db } from './lib/db'
@@ -81,7 +81,7 @@ function AppContent() {
     try {
       const raw = window.localStorage.getItem(SESSION_KEY)
       const rol = raw ? (JSON.parse(raw) as UserProfile).role : null
-      if (rol === 'owner' || rol === 'administracion') return 'inicio'
+      if (rol === 'owner' || rol === 'administracion' || esSoloConsulta(rol)) return 'inicio'
     } catch { /* sin sesión guardada */ }
     return 'labores'
   })
@@ -157,7 +157,7 @@ function AppContent() {
     // El dueño SIEMPRE aterriza en su tablero de inicio (no en Labores): es la
     // pantalla desde la que mira la empresa. Al recargar lo resuelve el estado
     // inicial leyendo la sesión guardada; aquí se cubre el login en vivo.
-    if (user) setSupervisorTab(user.role === 'owner' ? 'inicio' : 'labores')
+    if (user) setSupervisorTab(user.role === 'owner' || esSoloConsulta(user.role) ? 'inicio' : 'labores')
     if (user) {
       window.localStorage.setItem(SESSION_KEY, JSON.stringify(user))
     } else {
@@ -422,8 +422,8 @@ function AppContent() {
       // id → nombre para mostrar nombres (no códigos) en el Excel.
       const nombrePorId = new Map(users.map((u) => [u.id, u.name]))
       // La facturación es solo de dueño/administración → la columna Factura
-      // solo va en su Excel, no en el del supervisor.
-      const verFactura = session?.role === 'owner' || session?.role === 'administracion'
+      // solo va en su Excel, no en el del supervisor. Propietario 1 la ve (solo consulta).
+      const verFactura = session?.role === 'owner' || session?.role === 'administracion' || esSoloConsulta(session?.role)
       const rows = filteredReport.map((a) => {
         // 🔴 Cada fila dice en QUÉ se mide. Antes los encabezados decían «(ha)» para
         // todo, y los hectómetros de ACEQUIAS se descargaban como si fueran
@@ -624,6 +624,56 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <FlotaView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  if (esSoloConsulta(session.role)) {
+    return (
+      <>
+        {impersonationBar}
+        {syncErrorBanner}
+        <SupervisorView
+        isSideMenuOpen={isSideMenuOpen}
+        setIsSideMenuOpen={setIsSideMenuOpen}
+        isPinModalOpen={isPinModalOpen}
+        setIsPinModalOpen={setIsPinModalOpen}
+        pinForm={pinForm}
+        setPinForm={setPinForm}
+        recentAssignments={recentAssignments}
+        programmedSuerteRows={programmedSuerteRows}
+        tableroAssignments={tableroAssignments}
+        tableroMonth={tableroMonth}
+        setTableroMonth={setTableroMonth}
+        tableroZone={tableroZone}
+        setTableroZone={setTableroZone}
+        tableroIngenio={tableroIngenio}
+        setTableroIngenio={setTableroIngenio}
+        filteredAssignments={filteredAssignments}
+        filteredReport={filteredReport}
+        haciendaFilterOptions={haciendaFilterOptions}
+        supervisorTab={supervisorTab}
+        setSupervisorTab={setSupervisorTab}
+        moreMenuOpen={moreMenuOpen}
+        setMoreMenuOpen={setMoreMenuOpen}
+        selectedLabor={selectedLabor}
+        setSelectedLabor={setSelectedLabor}
+        statusFilter={statusFilter}
+        setStatusFilter={setStatusFilter}
+        operatorFilter={operatorFilter}
+        setOperatorFilter={setOperatorFilter}
+        ingenioFilter={ingenioFilter}
+        setIngenioFilter={setIngenioFilter}
+        haciendaFilter={haciendaFilter}
+        setHaciendaFilter={setHaciendaFilter}
+        laborSearch={laborSearch}
+        setLaborSearch={setLaborSearch}
+        reportFilters={reportFilters}
+        setReportFilters={setReportFilters}
+        onSaveSession={saveSession}
+        handleChangePin={handleChangePin}
+        handleDownloadReport={handleDownloadReport}
+      />
       </>
     )
   }

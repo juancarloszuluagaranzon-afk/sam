@@ -13,6 +13,7 @@ interface ImpersonationBarProps {
 
 function roleLabel(role: UserProfile['role']): string {
   if (role === 'owner') return 'Propietario'
+  if (role === 'propietario') return 'Propietario 1'
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
   if (role === 'soporte') return 'Soporte'
@@ -61,6 +62,10 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
     () => users.filter((u) => u.role === 'dueno_finca' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const propietarios = useMemo(
+    () => users.filter((u) => u.role === 'propietario' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner' && act(u)), [users])
   const admins = useMemo(() => users.filter((u) => u.role === 'administracion' && act(u)), [users])
   const ownerTarget: UserProfile =
@@ -78,7 +83,7 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
       onSwitch({ ...adminTarget })
       return
     }
-    const u = [...supervisors, ...insumosSups, ...analistas, ...conductores, ...conductoresMadera, ...duenosFinca, ...operators].find((x) => x.id === value)
+    const u = [...supervisors, ...insumosSups, ...analistas, ...conductores, ...conductoresMadera, ...duenosFinca, ...propietarios, ...operators].find((x) => x.id === value)
     if (u) onSwitch({ ...u })
   }
 
@@ -136,6 +141,13 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
             <optgroup label="Dueños de finca">
               {duenosFinca.map((d) => (
                 <option key={d.id} value={d.id}>{d.name}</option>
+              ))}
+            </optgroup>
+          )}
+          {propietarios.length > 0 && (
+            <optgroup label="Propietario 1">
+              {propietarios.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </optgroup>
           )}

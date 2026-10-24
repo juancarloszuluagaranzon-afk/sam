@@ -53,6 +53,7 @@ function manualesDe(rol?: Role): Manual[] {
     case 'supervisor':
       return [MANUALES.operario, MANUALES.fincas]
     case 'owner':
+    case 'propietario':
     case 'administracion':
     case 'soporte':
       return [MANUALES.facturacion, MANUALES.fincas, MANUALES.analista, MANUALES.supervisor, MANUALES.operario, MANUALES.taller, MANUALES.conductor]

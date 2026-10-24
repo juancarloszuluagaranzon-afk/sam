@@ -3,7 +3,7 @@ import { unidadDeLabor, formatArea, esPorHoras, nombreUnidad } from '../lib/text
 import { CampoLista } from '../components/CampoPlaca'
 import { horasDeServicio, fmtHoras } from '../lib/horasServicio'
 import { fmtHora } from '../lib/fechas'
-import { useCallback, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 
 // Visor y gestión de mapas offline. Imports ESTÁTICOS a propósito (NO lazy):
@@ -43,7 +43,7 @@ import {
   type SummaryQuincena,
 } from '../components/EntityHistoryModal'
 import { WORKFLOW } from '../data/constants'
-import type { Assignment, Equipment, InsumoKardex, MaestroRow, UserProfile } from '../domain/sam'
+import { esSoloConsulta, type Assignment, type Equipment, type InsumoKardex, type MaestroRow, type UserProfile } from '../domain/sam'
 import { formatTime } from '../services/samApi'
 import { isSameCycle, areaEjecutadaVisible } from '../utils/suerteCycle'
 import { MaestrosTab } from './MaestrosTab'
@@ -75,6 +75,9 @@ import { faltaModalidad, modalidadesDe, modalidadSugerida, useModalidades } from
 import { laborAprobada, puedeEditarEstaLabor, puedeEditarLabores } from '../lib/editores'
 
 export type SupervisorTab = 'inicio' | 'resumen' | 'asignar' | 'labores' | 'equipos' | 'tablero' | 'reporte' | 'usuarios' | 'maestros' | 'planilla' | 'realizadas' | 'catalogo' | 'aprobaciones' | 'ingenios' | 'empresas' | 'terceros' | 'zonas' | 'insumos' | 'facturacion' | 'cartera' | 'motivacion' | 'mapa' | 'mapascat' | 'flota' | 'bodegas' | 'insumosresumen' | 'avales' | 'taller' | 'tarifas' | 'novedadtipos' | 'madera' | 'listas' | 'horometros' | 'movimientos' | 'eficiencia'
+
+/** Lo único que ve el rol «Propietario 1» (solo consulta). */
+const PESTANAS_SOLO_CONSULTA: readonly SupervisorTab[] = ['inicio', 'planilla', 'resumen', 'reporte']
 
 export interface AssignmentFormState {
   haciendaCode: string
@@ -112,6 +115,7 @@ export interface EquipmentFormState {
 
 function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
+  if (role === 'propietario') return 'Propietario 1'
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
   if (role === 'soporte') return 'Soporte'
@@ -299,6 +303,16 @@ export function SupervisorView({
   // Ingenios activos para los selectores (el catálogo completo se edita en su pestaña).
   const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
 
+  // 🔴 «Propietario 1» (24-oct-2026, don Alcides): SOLO CONSULTA. Ve Tableros,
+  // Planilla, Resumen y Reporte; cualquier otra pestaña (un enlace viejo, un
+  // estado guardado) se devuelve a Tableros. Lo que no se ve no se puede tocar,
+  // pero los botones de editar/borrar se apagan aparte por si una pantalla
+  // permitida los trae.
+  const soloConsulta = esSoloConsulta(session?.role)
+  useEffect(() => {
+    if (soloConsulta && !PESTANAS_SOLO_CONSULTA.includes(supervisorTab)) setSupervisorTab('inicio')
+  }, [soloConsulta, supervisorTab, setSupervisorTab])
+
   // Consumo de insumos cargado a un equipo (modal al tocar una tarjeta de equipo).
   // Las dos caras del tablero del dueño. Un selector y no dos entradas de menú:
   // son la misma pregunta ("¿cómo va la operación?") mirada desde dos ángulos, y
@@ -449,9 +463,13 @@ export function SupervisorView({
   // 🔴 Labores (programadas o tomadas en campo), 16-oct-2026 — ver src/lib/editores.ts:
   // EDITAR: el supervisor mientras la labor no esté aprobada; Carlos David siempre.
   // ELIMINAR: solo Carlos David.
-  const puedeEliminarLabores = puedeEditarLabores(session)
-  const puedeEditarLabor = useCallback((a: Assignment) => puedeEditarEstaLabor(session, a), [session])
-  const veAccionesLabores = puedeEliminarLabores || session?.role === 'supervisor'
+  const puedeEliminarLabores = !soloConsulta && puedeEditarLabores(session)
+  const puedeEditarLabor = useCallback(
+    (a: Assignment) => !soloConsulta && puedeEditarEstaLabor(session, a),
+    [session, soloConsulta],
+  )
+  // Solo consulta también ve la columna, con un único botón «Ver».
+  const veAccionesLabores = puedeEliminarLabores || session?.role === 'supervisor' || soloConsulta
   // Limpiar pendientes viejas es cancelar (reversible), no editar: sigue por rol.
   const canCleanStale =
     session?.role === 'supervisor' || session?.role === 'owner' || session?.role === 'administracion'
@@ -903,7 +921,7 @@ export function SupervisorView({
           </div>
         </div>
         <div className="topbar-actions">
-          <MapButton onClick={() => setSupervisorTab('mapa')} />
+          {!soloConsulta && <MapButton onClick={() => setSupervisorTab('mapa')} />}
           <ThemeToggle />
         </div>
       </header>
@@ -1488,14 +1506,16 @@ export function SupervisorView({
           hidden
           onChange={handlePhotoChange}
         />
-        <button
-          className="primary-button outline"
-          onClick={triggerPhotoUpload}
-          disabled={photoUploading}
-          style={{ marginBottom: '8px' }}
-        >
-          {photoUploading ? 'Subiendo foto...' : 'Cambiar foto'}
-        </button>
+        {!soloConsulta && (
+          <button
+            className="primary-button outline"
+            onClick={triggerPhotoUpload}
+            disabled={photoUploading}
+            style={{ marginBottom: '8px' }}
+          >
+            {photoUploading ? 'Subiendo foto...' : 'Cambiar foto'}
+          </button>
+        )}
         <button
           className="primary-button outline"
           onClick={() => { setIsSideMenuOpen(false); setIsPinModalOpen(true) }}
@@ -1693,7 +1713,7 @@ export function SupervisorView({
             aria-label="Navegacion principal"
           >
             {/* En el dueño, Labores también sale de SU configuración. */}
-            {session.role !== 'owner' && (
+            {session.role !== 'owner' && !soloConsulta && (
               <button
                 className={supervisorTab === 'labores' ? 'active' : ''}
                 onClick={() => setSupervisorTab('labores')}
@@ -1707,7 +1727,7 @@ export function SupervisorView({
 
             {/* El dueño la tiene dentro de "Más" (su barra queda con lo del día
                 a día: Labores, Realizadas, Máquinas e Insumos). */}
-            {session.role !== 'owner' && (
+            {session.role !== 'owner' && !soloConsulta && (
               <button
                 className={`nav-aprobaciones${supervisorTab === 'aprobaciones' ? ' active' : ''}${pendingApprovals.length > 0 ? ' has-pending' : ''}`}
                 onClick={() => setSupervisorTab('aprobaciones')}
@@ -1722,7 +1742,28 @@ export function SupervisorView({
               </button>
             )}
 
-            {session.role === 'owner' ? (
+            {soloConsulta ? (
+              <>
+                {/* Solo consulta: barra FIJA con sus cuatro pantallas, sin «Más». */}
+                {([
+                  ['inicio', '◉', 'Tableros'],
+                  ['planilla', '▦', 'Planilla'],
+                  ['resumen', '⌂', 'Resumen'],
+                  ['reporte', '⬦', 'Reporte'],
+                ] as const).map(([id, icon, label]) => (
+                  <button
+                    key={id}
+                    className={supervisorTab === id ? 'active' : ''}
+                    onClick={() => setSupervisorTab(id)}
+                  >
+                    <span className="nav-item">
+                      <span className="nav-icon">{icon}</span>
+                      <span className="nav-label">{label}</span>
+                    </span>
+                  </button>
+                ))}
+              </>
+            ) : session.role === 'owner' ? (
               <>
                 {/* Accesos que el propio dueño eligió (Más → Personalizar barra). */}
                 {navBarra.map((id) => {
@@ -2440,7 +2481,7 @@ export function SupervisorView({
           <PantallaSegura nombre="Cartera"><CarteraTab /></PantallaSegura>
         ) : null}
 
-        {(session.role === 'owner' || session.role === 'administracion') && supervisorTab === 'planilla' ? (
+        {(session.role === 'owner' || session.role === 'administracion' || soloConsulta) && supervisorTab === 'planilla' ? (
           <PantallaSegura nombre="Planilla">
             <PlanillaTab onEditLabor={setSelectedLabor} />
           </PantallaSegura>
@@ -2502,7 +2543,7 @@ export function SupervisorView({
             {mountedCaras.operacion && (
               <div style={{ display: caraTablero === 'operacion' ? 'block' : 'none' }}>
                 <PantallaSegura nombre="Tablero Operación">
-                  <DashboardTab onIr={(destino) => setSupervisorTab(destino as SupervisorTab)} />
+                  <DashboardTab onIr={soloConsulta ? undefined : (destino) => setSupervisorTab(destino as SupervisorTab)} />
                 </PantallaSegura>
               </div>
             )}
@@ -2570,7 +2611,7 @@ export function SupervisorView({
           <PantallaSegura nombre="Insumos"><InsumosModule /></PantallaSegura>
         ) : null}
 
-        {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor') && supervisorTab === 'reporte' ? (
+        {(session.role === 'administracion' || session.role === 'owner' || session.role === 'supervisor' || soloConsulta) && supervisorTab === 'reporte' ? (
           <section className="panel-card">
             <div className="panel-title">
               <h2>Reporte de Labores</h2>
@@ -2723,7 +2764,7 @@ export function SupervisorView({
                       <strong>{ejec.toFixed(2)}</strong>
                       <span>Ha ejecut.</span>
                     </div>
-                    {(session.role === 'owner' || session.role === 'administracion') && (
+                    {(session.role === 'owner' || session.role === 'administracion' || soloConsulta) && (
                       <div className="day-status-item day-status-item--emph day-status-item--billed">
                         <strong>{facturada.toFixed(2)}</strong>
                         <span>Área facturada</span>
@@ -2794,7 +2835,9 @@ export function SupervisorView({
                                   onClick={() => setSelectedLabor(a)}
                                   title={puedeEditarLabor(a)
                                     ? 'Editar área, operario u otros datos'
-                                    : 'Aprobada: solo Carlos David la corrige'}
+                                    : soloConsulta
+                                      ? 'Ver el detalle de la labor'
+                                      : 'Aprobada: solo Carlos David la corrige'}
                                 >
                                   {puedeEditarLabor(a) ? 'Editar' : 'Ver'}
                                 </button>
@@ -2985,7 +3028,7 @@ export function SupervisorView({
                 .map((u) => {
                   const isActive = u.active !== false
                   const status = operatorStatusMap.get(u.id) ?? 'disponible'
-                  const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', soporte: 'Soporte' }
+                  const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', propietario: 'Propietario 1', soporte: 'Soporte' }
                   const openEdit = () => {
                     setEditingUserId(u.id)
                     setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode, zona: u.zona ?? '', cedula: u.cedula ?? '' })
@@ -3131,6 +3174,7 @@ export function SupervisorView({
                       <option value="dueno_finca">Dueño de finca (solo ve sus fincas)</option>
                       <option value="administracion">Administración</option>
                       <option value="owner">Propietario</option>
+                      <option value="propietario">Propietario 1 (solo consulta)</option>
                       <option value="soporte">Soporte</option>
                     </select>
                   </label>
@@ -4353,7 +4397,7 @@ export function SupervisorView({
                       {busy ? 'Guardando...' : 'Guardar cambios'}
                     </button>
                   </div>
-                ) : selectedLabor.status === 'PENDIENTE' || selectedLabor.status === 'PARCIAL' ? (
+                ) : !soloConsulta && (selectedLabor.status === 'PENDIENTE' || selectedLabor.status === 'PARCIAL') ? (
                   <div className="modal-footer">
                     <button
                       className="cancel-btn"

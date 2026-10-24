@@ -1,4 +1,6 @@
-export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos' | 'taller' | 'conductor_madera' | 'dueno_finca'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos' | 'taller' | 'conductor_madera' | 'dueno_finca' | 'propietario'
+
+export function esSoloConsulta(role: Role | null | undefined): boolean { return role === 'propietario' }
 
 export type UserId = 'U002' | 'U003' | 'U004'
 

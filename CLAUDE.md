@@ -149,7 +149,7 @@ reales en campo. **Producción de verdad: la gente cobra por lo que registra aqu
 
 ```bash
 cd sam-app
-npx tsc --noEmit && npm run build      # siempre antes de commitear
+npx tsc -p tsconfig.app.json --noEmit && npm run build   # siempre antes de commitear (tsc --noEmit pelado NO revisa nada)
 git add -A && git commit -m "..." && git push origin main   # Vercel despliega solo
 ```
 Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam`.
@@ -422,7 +422,8 @@ Rama productiva: **`main`**. Remote: `github.com/juancarloszuluagaranzon-afk/sam
   ASM solo guarda la config en la tabla `mapas`. Ver `.agent/skills/managing-mapas/`.
 - **Roles**: `owner`, `administracion`, `supervisor`, `operador`, `supervisor_insumos`,
   `conductor` (escolta), `conductor_madera` (camión de trozas), `analista_insumos`,
-  `taller`, `soporte`. Agregar uno cuesta **13 ediciones en 9 archivos** (checklist
+  `taller`, `soporte`, `dueno_finca`, **`propietario`** («Propietario 1», SOLO CONSULTA, ver
+  «Cerrado el 24-oct-2026»). Agregar uno cuesta **13 ediciones en 9 archivos** (checklist
   completo en `.agent/skills/managing-supabase/`): dominio, **`mapRole`**, routing en
   `App.tsx`, su vista, labels, **tres** sitios de ImpersonationBar, el selector de
   usuarios, `manualesDe()` y la migración del CHECK. 🔴 **Olvidar `mapRole` no da
@@ -590,6 +591,19 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   `$/ha` quedó ENCIMA del `kg/t`. La prueba a 320 px no lo vio porque midió si la fila se salía del borde,
   no si las celdas se encimaban. **Al probar una tabla o grid en celular, medir que las celdas no se
   traslapen** (bordes izquierdo/derecho de cada celda contra la anterior), no solo el ancho de la fila.
+- 👁 **Rol «Propietario 1» (`propietario`), SOLO CONSULTA** — para don Alcides Morales (papá de Cristian).
+  Ve **Tableros (las 3 caras), Planilla, Resumen y Reporte**, con filtros, detalles y Excel; NO asigna,
+  edita, aprueba, cancela, borra, marca novedades, resalta ni comenta combustible, y no entra a Fincas
+  (no está en `isSupervisorOrOwner`: tiene su propia rama en `App.tsx`, sin `ModoSwitch`). Todo cuelga de
+  **`esSoloConsulta(role)`** (`domain/sam.ts`): barra FIJA de 4 (sin «Más»), cualquier otra pestaña
+  vuelve a Tableros (`PESTANAS_SOLO_CONSULTA` en `SupervisorView`). Migración `20261024150000` (CHECK).
+  ⚠️ El «solo consulta» lo hace cumplir la APP; la base todavía confía en el cliente (Fase 3 de seguridad).
+  El usuario lo crea administración en Más → Usuarios, rol «Propietario 1 (solo consulta)».
+  🔴 **Lección:** `npx tsc --noEmit` en la raíz de `sam-app` **no revisa nada** (el `tsconfig.json` raíz
+  es solo `references`): dio «sin errores» sobre un archivo con 715. El chequeo de verdad es
+  `npx tsc -p tsconfig.app.json --noEmit` o `npm run build` (`tsc -b`). Y **Antigravity, al reescribir un
+  archivo .tsx COMPLETO, se come las líneas que empiezan con `>`** (cierres de etiquetas JSX de varias
+  líneas): pedirle siempre ediciones puntuales y revisar el diff antes de creerle al compilador.
 
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 

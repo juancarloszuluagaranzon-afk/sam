@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { db } from '../lib/db'
 import { puedeEditarEstaLabor, puedeEditarLabores } from '../lib/editores'
-import type { Assignment } from '../domain/sam'
+import { esSoloConsulta, type Assignment } from '../domain/sam'
 import { deleteAssignment, formatTime, getIdSuerte } from '../services/samApi'
 import { avanceCerradoPorSuerte, areaDelDia, cuentaEnPlanilla, horasDeLabor, MOTIVO_HOROMETRO } from '../lib/planilla'
 import {
@@ -76,6 +76,7 @@ function fmt(value: number) {
 
 export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => void } = {}) {
   const { assignments, setAssignments, operators, todayKey, session, setError, setInfo , novedadTipos, maestro } = useAppData()
+  const soloConsulta = esSoloConsulta(session?.role)
 
   /**
    * Los códigos de novedad, del catálogo que maneja administración.
@@ -163,6 +164,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
   const [savingNov, setSavingNov] = useState(false)
 
   function openNovedad(key: string, name: string, day?: string) {
+    if (soloConsulta) return
     setNovTarget({ key, name })
     // Al abrir desde una casilla vacía la intención típica es marcar la falta.
     setNovTipo(day ? 'F' : 'V')
@@ -295,6 +297,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
   }, [revisadas, nameByKey, areaByCell])
 
   async function clearOne(opKey: string, fecha: string) {
+    if (soloConsulta) return
     const cellKey = `${opKey}|${fecha}`
     const prevColor = revisadas.get(cellKey)
     setRevisadas((prev) => {
@@ -315,6 +318,7 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
   }
 
   async function clearAll() {
+    if (soloConsulta) return
     const backup = new Map(revisadas)
     setRevisadas(new Map())
     setConfirmClearAll(false)
@@ -764,14 +768,16 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
       <div className="panel-title" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <h2>Planilla quincenal</h2>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`inline-button planilla-mark-toggle${markMode ? ' is-active' : ''}`}
-            onClick={() => setMarkMode((v) => !v)}
-            title="Activa el clic para resaltar casillas con color"
-          >
-            {markMode ? '✓ Resaltando' : '🖍 Resaltar'}
-          </button>
+          {!soloConsulta && (
+            <button
+              type="button"
+              className={`inline-button planilla-mark-toggle${markMode ? ' is-active' : ''}`}
+              onClick={() => setMarkMode((v) => !v)}
+              title="Activa el clic para resaltar casillas con color"
+            >
+              {markMode ? '✓ Resaltando' : '🖍 Resaltar'}
+            </button>
+          )}
           <button
             type="button"
             className="inline-button"
@@ -905,9 +911,9 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                 return (
                   <tr key={rowKey}>
                     <td
-                      className="planilla-sticky planilla-op planilla-op--clickable"
+                      className={`planilla-sticky planilla-op${soloConsulta ? '' : ' planilla-op--clickable'}`}
                       onClick={() => openNovedad(rowKey, r.name)}
-                      title="Reportar vacaciones / taller"
+                      title={soloConsulta ? undefined : "Reportar vacaciones / taller"}
                     >
                       {r.name}
                     </td>
@@ -931,7 +937,7 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                       return (
                         <td
                           key={d.key}
-                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${canDetail || (vacio && !markMode) ? ' planilla-cell--clickable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}${vacio ? ' planilla-vacio' : ''}`}
+                          className={`planilla-cell${d.isToday ? ' planilla-today' : ''}${numClass}${hl ? ` planilla-hl planilla-hl--${hl}` : ''}${markMode ? ' planilla-markable' : ''}${canDetail || (vacio && !markMode && !soloConsulta) ? ' planilla-cell--clickable' : ''}${nov ? ` planilla-nov planilla-nov--${nov.toLowerCase()}` : ''}${vacio ? ' planilla-vacio' : ''}`}
                           onClick={
                             markMode
                               ? () => void toggleRevision(rowKey, d.key)
@@ -947,7 +953,7 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                               : canDetail
                                 ? `Ver labores (${proceso ? 'en proceso' : 'terminada'})`
                                 : vacio
-                                  ? 'Sin registro — clic para marcar novedad (falta, permiso…)'
+                                  ? (soloConsulta ? 'Sin registro' : 'Sin registro — clic para marcar novedad (falta, permiso…)')
                                   : markMode ? 'Resaltar / quitar' : undefined
                           }
                         >
@@ -1242,14 +1248,16 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                         </strong>
                         <span>{fmtFecha(it.fecha)}{it.area > 0 ? ` · ${it.area.toFixed(2)} ha` : ''}</span>
                       </div>
-                      <button
-                        type="button"
-                        className="inline-button revisadas-clear-one"
-                        onClick={() => void clearOne(it.opKey, it.fecha)}
-                        title="Quitar esta marca"
-                      >
-                        ✕ Limpiar
-                      </button>
+                      {!soloConsulta && (
+                        <button
+                          type="button"
+                          className="inline-button revisadas-clear-one"
+                          onClick={() => void clearOne(it.opKey, it.fecha)}
+                          title="Quitar esta marca"
+                        >
+                          ✕ Limpiar
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -1267,9 +1275,11 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
                 ) : (
                   <div className="modal-footer">
                     <button type="button" className="inline-button" onClick={() => setDetailOpen(false)}>Cerrar</button>
-                    <button type="button" className="release-confirm-btn" onClick={() => setConfirmClearAll(true)}>
-                      Limpiar todas
-                    </button>
+                    {!soloConsulta && (
+                      <button type="button" className="release-confirm-btn" onClick={() => setConfirmClearAll(true)}>
+                        Limpiar todas
+                      </button>
+                    )}
                   </div>
                 )}
               </>

@@ -32,7 +32,9 @@ function pctSobre(a: number | null, b: number | null): number | null {
 }
 
 /**
- * «Historia ciclo a ciclo»: la misma plata de cada cosecha puesta en una sola
+ * «Historia corte a corte» (un CICLO, en el lenguaje del cliente, va de renovación a
+ * renovación y es un conjunto de CORTES de ~1 año: cada fila es un corte, por eso
+ * no se llama «ciclo a ciclo»): la misma plata de cada cosecha puesta en una sola
  * escala. La columna vertebral es el IPC: sin él, $/ha de 2019 y de 2025 no se
  * pueden comparar y el dueño leería como «subió el costo» lo que solo fue
  * inflación. Por eso el selector arranca en «Pesos de hoy»: la pregunta del
@@ -105,7 +107,7 @@ function HistoriaCiclosCard({ historia, refs }: { historia: HistoriaCiclos; refs
 
   return (
     <div className="af-card af-card--ancha af-historia">
-      <h3>Historia ciclo a ciclo</h3>
+      <h3>Historia corte a corte</h3>
 
       {VER_PLATA && conSelector && (
         <div className="af-historia__modo">

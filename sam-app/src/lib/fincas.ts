@@ -694,7 +694,7 @@ export function comparar(
   }
 }
 
-// ── Historia ciclo a ciclo (24-oct-2026) ─────────────────────────────────────
+// ── Historia corte a corte (24-oct-2026) ─────────────────────────────────────
 
 /**
  * Una fila por año de cosecha (los ciclos CERRADOS, por el año en que se cortaron)
@@ -731,7 +731,10 @@ export function historiaCiclos(fincaId: string, d: DatosFincas, refs: Referencia
   const ciclos = d.ciclos.filter(c => idsSuerte.has(c.suerteId) && (c.estado === 'ABIERTO' || (c.estado === 'CERRADO' && c.fechaCierre)))
   if (!ciclos.length) return null
 
-  // Grupos: cosechas cerradas por año de cierre y una fila final para los ciclos abiertos.
+  // 🔴 Vocabulario del cliente (Iván, 24-oct-2026): un CICLO va de renovación a renovación
+  // (destrucción de cepas, arado, surcado, siembra) y es un conjunto de CORTES de ~1 año.
+  // Cada fila de `af_ciclos` es un CORTE. Una renovación (PLANTILLA) reinicia el conteo:
+  // después de «Soca 5» viene «Plantilla», no «Soca 6».
   const etiquetas = new Map<string, string>()
   for (const suerte of suertes) {
     let numSoca = 0
@@ -739,10 +742,16 @@ export function historiaCiclos(fincaId: string, d: DatosFincas, refs: Referencia
       .filter(ciclo => ciclo.suerteId === suerte.id)
       .sort((a, b) => a.fechaCorte.localeCompare(b.fechaCorte))
     for (const ciclo of ciclosSuerte) {
-      if (ciclo.tipo === 'PLANTILLA' && numSoca === 0) etiquetas.set(ciclo.id, 'Plantilla')
-      else etiquetas.set(ciclo.id, `Soca ${++numSoca}`)
+      if (ciclo.tipo === 'PLANTILLA') {
+        numSoca = 0
+        etiquetas.set(ciclo.id, 'Plantilla')
+      } else {
+        etiquetas.set(ciclo.id, `Soca ${++numSoca}`)
+      }
     }
   }
+
+  // Grupos: cosechas cerradas por año de cierre y una fila final para los cortes abiertos.
 
   type Grupo = { clave: string; anio: number; enCurso: boolean; ciclos: Ciclo[] }
   const grupos = new Map<string, Grupo>()

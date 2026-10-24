@@ -54,6 +54,25 @@ caso('caso manual: grupos, etiquetas y costos exactos', () => {
   assert.equal(h.filas[1].costoKg, (6000000 / 2600) / 58)
 })
 
+caso('una renovación (nueva plantilla) reinicia el conteo de cortes', () => {
+  // Concepto del cliente: el ciclo va de renovación a renovación; cada fila es un corte.
+  const d = copiaFixture()
+  d.suertes = [{ ...d.suertes[0], id: 's1', areaHa: 10 }]
+  const corte = (id: string, tipo: 'PLANTILLA' | 'SOCA', desde: string, hasta: string) =>
+    ({ ...d.ciclos[0], id, suerteId: 's1', tipo, fechaCorte: desde, fechaCierre: hasta, estado: 'CERRADO' as const, datosCosecha: { tch: 100, toneladas: 1000 } })
+  d.ciclos = [
+    corte('p1', 'PLANTILLA', '2019-01-01', '2020-02-01'),
+    corte('s1a', 'SOCA', '2020-02-01', '2021-02-01'),
+    corte('s2a', 'SOCA', '2021-02-01', '2022-02-01'),
+    corte('p2', 'PLANTILLA', '2022-03-01', '2023-04-01'),
+    corte('s1b', 'SOCA', '2023-04-01', '2024-04-01'),
+  ]
+  d.labores = []
+  d.movimientos = []
+  const h = historia(d)
+  assert.deepEqual(h.filas.map(f => f.etiqueta), ['Plantilla', 'Soca 1', 'Soca 2', 'Plantilla', 'Soca 1'])
+})
+
 caso('IPC compuesto exacto e incompleto', () => {
   assert.equal(factorAPesosDe(2022, 2025, { 2023: 9.28, 2024: 5.2, 2025: 5.1 }), 1.0928 * 1.052 * 1.051)
   assert.equal(factorAPesosDe(2022, 2025, { 2023: 9.28, 2025: 5.1 }), null)

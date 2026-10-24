@@ -26,15 +26,31 @@ const refIPC={2020:1.61,2021:5.62,2022:13.12,2023:9.28,2024:5.2,2025:5.1}
 const rubros:any={mano_obra:2100000,insumos:2400000,maquinaria:1600000,agua:700000,administracion:400000,predial_fondos:300000,otros:200000,semilla:2800000}
 const nombresRubro:Record<string,string>={mano_obra:'Mano de obra (corte de malezas)',insumos:'Fertilización (urea y KCl)',maquinaria:'Preparación y maquinaria',agua:'Riego por gravedad',administracion:'Administración',predial_fondos:'Predial y fondos',otros:'Otros gastos',semilla:'Semilla'}
 function conceptoRubro(r:string){return `SIMULADO — ${nombresRubro[r]??r}`}
-const real=(r:string,n:number)=>rubros[r]+(n===0&&r==='maquinaria'?2400000:0)+(n===0&&r==='insumos'?600000:0)
+const real=(r:string,n:number)=>rubros[r]+(n===0&&r==='insumos'?600000:0)
+// 🔴 Vocabulario del cliente: el CICLO arranca con la RENOVACIÓN (destrucción de cepas, arado,
+// surcado, siembra) y sigue con cortes de ~1 año (plantilla, soca 1, soca 2…). Esas labores
+// van con su nombre al comienzo del corte de plantilla (costo real por ha, pesos dic-2025).
+const RENOVACION: { dias: number; concepto: string; rubro: string; real: number }[] = [
+  { dias: 0, concepto: 'Renovación: destrucción de cepas', rubro: 'maquinaria', real: 700000 },
+  { dias: 6, concepto: 'Renovación: arado', rubro: 'maquinaria', real: 900000 },
+  { dias: 12, concepto: 'Renovación: surcado', rubro: 'maquinaria', real: 800000 },
+  { dias: 18, concepto: 'Siembra: semilla', rubro: 'semilla', real: 2800000 },
+]
 const ipcPct:Record<number,number>={2020:1.61,2021:5.62,2022:13.12,2023:9.28,2024:5.2,2025:5.1,2026:5.1}
 const salario:Record<number,number>={2020:877803,2021:908526,2022:1000000,2023:1160000,2024:1300000,2025:1423500,2026:1750905}
 function nivel(y:number){if(y===2026)return 1.051;let p=1;for(let k=y+1;k<=2025;k++)p/=1+(ipcPct[k]??5.1)/100;return p}
 let movN=0
 for(const c of ciclos.filter(c=>c.estado==='CERRADO')){
  const s=suertes.find(s=>s.id===c.suerteId)!, corte=c.fechaCorte, cierre=c.fechaCierre, corteN=Number(c.datosCosecha.numeroCorte)-1
+ if (corteN === 0) {
+   for (const l of RENOVACION) {
+     const fecha = new Date(Date.parse(`${corte}T00:00:00Z`) + l.dias * 86400000).toISOString().slice(0, 10)
+     const valor = Math.round(l.real * nivel(Number(fecha.slice(0, 4))) * s.areaHa * (0.93 + azar() * 0.14) / 1000) * 1000
+     movimientos.push({ id: `mov-${++movN}`, fincaId, tipo: 'GASTO', fecha, concepto: `SIMULADO — ${l.concepto}`, suerteId: s.id, laborId: null, reporteId: null, cantidad: s.areaHa, unidad: 'ha', valorUnitario: Math.round(valor / s.areaHa), valor, soporteUrl: '/pwa-192x192.png', registradoPor: 'U005', anulado: false, rubro: l.rubro })
+   }
+ }
  for(const [r,base] of Object.entries(rubros)){
-   if(r==='semilla'&&corteN!==0) continue
+   if(r==='semilla') continue
    const montoReal=real(r,corteN)
    const partes=1+Math.floor(azar()*3)
    for(let i=0;i<partes;i++){const start=Date.parse(`${corte}T00:00:00Z`),end=Date.parse(`${cierre}T00:00:00Z`);const fecha=new Date(start+(end-start)*(i+1)/(partes+1)).toISOString().slice(0,10);const year=Number(fecha.slice(0,4));const choque=r==='insumos'&&year===2022?1.2:1;const nominal=montoReal*choque*(r==='mano_obra'?salario[year]/salario[2025]:nivel(year));const valor=Math.round(nominal*s.areaHa*(0.93+azar()*.14)/1000/partes)*1000; movimientos.push({id:`mov-${++movN}`,fincaId,tipo:'GASTO',fecha,concepto:conceptoRubro(r),suerteId:s.id,laborId:null,reporteId:null,cantidad:s.areaHa,unidad:'ha',valorUnitario:Math.round(valor/s.areaHa),valor,soporteUrl:'/pwa-192x192.png',registradoPor:'U005',anulado:false,rubro:r})}

@@ -348,7 +348,15 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
 - ⏳ **Falta (fase 2, con maqueta antes)**: formularios para el precio y los kg por finca, el rubro en el
   gasto a mano y la liquidación de la cosecha (TCH, toneladas, rendimiento, sacarosa). Hoy solo por SQL.
 
-## 📈 Historia ciclo a ciclo + IYOMA PRUEBAS (24-oct-2026)
+## 📈 Historia corte a corte + IYOMA PRUEBAS (24-oct-2026)
+
+- 🔴 **VOCABULARIO DEL CLIENTE (Iván, 24-oct-2026): un CICLO va de RENOVACIÓN a renovación** —destrucción
+  de cepas, arado, surcado, siembra— y es un **conjunto de CORTES** de ~1 año (plantilla, soca 1, soca 2…).
+  **Cada fila de `af_ciclos` es un CORTE**, no un ciclo: la tabla y las funciones se quedan con su nombre
+  (renombrarlas era romper sin ganar nada, como con aval/aprobación), pero lo que ve la gente dice
+  «corte». Y una nueva PLANTILLA (renovación) **reinicia el conteo**: después de «Soca 5» viene
+  «Plantilla», no «Soca 6» (prueba «una renovación reinicia el conteo de cortes»). ⏳ El resto del
+  módulo todavía dice «ciclo» donde es corte («El ciclo actual se cierra…», «Costos del ciclo»).
 
 - **La cosecha de CADA ciclo** queda en `af_ciclos.datos_cosecha` (jsonb, mismas llaves que
   `datos_ingenio`; NULL = no se sabe). Antes solo había la ÚLTIMA cosecha de la suerte. Migración
@@ -363,7 +371,7 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
   hoy** = cada movimiento × IPC acumulado desde su año hasta el último año con IPC (convención: precios de
   fin de año). 🔴 **Filtra por finca**: la primera versión repartía los honorarios de OTRA finca.
   $/t solo con los ciclos que tienen toneladas (un ciclo sin cosecha no infla el $/t).
-- **Tarjeta «Historia ciclo a ciclo»** (`TableroFinca`): selector «Pesos de cada año / Pesos de hoy»
+- **Tarjeta «Historia corte a corte»** (`TableroFinca`): selector «Pesos de cada año / Pesos de hoy»
   (arranca en hoy), frase calculada que compara la primera soca con la última cosecha en las dos
   escalas («la diferencia es inflación, no la finca»), columnas de $/ha y tabla Año · TCH · Rend. % · $/ha ·
   $/t · $/kg. La fila en curso va en pesos de este año. 🔴 La tabla lleva `min-width: 0` (hija de
@@ -374,8 +382,9 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
   georreferenciado del ingenio. 🔴 **USO INTERNO**: es cartografía del ingenio — su enlace NO se muestra a
   clientes (al revés que RIOGRANDE PRUEBAS). Datos SIMULADOS y reproducibles: `node
   scripts/generar-iyoma-pruebas.mts` escribe `supabase/seed_iyoma_pruebas.sql`, `borrar_iyoma_pruebas.sql`
-  y `scripts/fixtures/iyoma-datos.json` (idéntico a lo que queda en la base: el saldo cuadra al peso). 5
-  ciclos cerrados por suerte (plantilla 2020 → soca 4 cosechada en 2025) + el abierto con roturación,
+  y `scripts/fixtures/iyoma-datos.json` (idéntico a lo que queda en la base: el saldo cuadra al peso). UN
+  ciclo por suerte que arranca en 2020 con la **renovación nombrada** (destrucción de cepas, arado,
+  surcado, siembra) y 5 cortes cerrados (plantilla → soca 4 cosechada en 2025) + el abierto con roturación,
   fertilización en su ventana por variedad, 3 pasadas de malezas, riegos, un rechazo y un pendiente. Costos
   con inflaciones distintas: IPC para todo y **salario mínimo para la mano de obra**; supuestos marcados en
   el SQL (IPC 2026 = el de 2025; insumos +20 % en 2022). Prueba: `node scripts/prueba-historia-ciclos.mts`

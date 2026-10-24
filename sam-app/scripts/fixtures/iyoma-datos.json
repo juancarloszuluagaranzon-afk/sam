@@ -614,42 +614,114 @@
       "id": "mov-1",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-10-17",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "fecha": "2020-07-10",
+      "concepto": "SIMULADO — Renovación: destrucción de cepas",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 423093,
-      "valor": 6211000,
+      "valorUnitario": 503474,
+      "valor": 7391000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "mano_obra"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-2",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-25",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "fecha": "2020-07-16",
+      "concepto": "SIMULADO — Renovación: arado",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 460354,
-      "valor": 6758000,
+      "valorUnitario": 611104,
+      "valor": 8971000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "mano_obra"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-3",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
+      "fecha": "2020-07-22",
+      "concepto": "SIMULADO — Renovación: surcado",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 571049,
+      "valor": 8383000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-4",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-07-28",
+      "concepto": "SIMULADO — Siembra: semilla",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 2069959,
+      "valor": 30387000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "semilla"
+    },
+    {
+      "id": "mov-5",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-17",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 411035,
+      "valor": 6034000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "mano_obra"
+    },
+    {
+      "id": "mov-6",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-25",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 453065,
+      "valor": 6651000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "mano_obra"
+    },
+    {
+      "id": "mov-7",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
       "fecha": "2021-05-05",
       "concepto": "SIMULADO — Mano de obra (corte de malezas)",
       "suerteId": "14030000-0000-4000-8000-000000000002",
@@ -657,33 +729,15 @@
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 476771,
-      "valor": 6999000,
+      "valorUnitario": 459605,
+      "valor": 6747000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-4",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-17",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 659673,
-      "valor": 9684000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "insumos"
-    },
-    {
-      "id": "mov-5",
+      "id": "mov-8",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-01-25",
@@ -693,33 +747,15 @@
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 742030,
-      "valor": 10893000,
+      "valorUnitario": 2341213,
+      "valor": 34369000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "insumos"
     },
     {
-      "id": "mov-6",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-05-05",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 752657,
-      "valor": 11049000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "insumos"
-    },
-    {
-      "id": "mov-7",
+      "id": "mov-9",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-01-25",
@@ -729,15 +765,33 @@
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 3121662,
-      "valor": 45826000,
+      "valorUnitario": 1189510,
+      "valor": 17462000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-8",
+      "id": "mov-10",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-17",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 163828,
+      "valor": 2405000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-11",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-01-25",
@@ -747,213 +801,177 @@
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 520436,
-      "valor": 7640000,
+      "valorUnitario": 181948,
+      "valor": 2671000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "agua"
     },
     {
-      "id": "mov-9",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-17",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 93597,
-      "valor": 1374000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-10",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-25",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 103951,
-      "valor": 1526000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-11",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-05-05",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 97956,
-      "valor": 1438000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
       "id": "mov-12",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-11-20",
-      "concepto": "SIMULADO — Predial y fondos",
+      "fecha": "2021-05-05",
+      "concepto": "SIMULADO — Riego por gravedad",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 101362,
-      "valor": 1488000,
+      "valorUnitario": 171390,
+      "valor": 2516000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "predial_fondos"
+      "rubro": "agua"
     },
     {
       "id": "mov-13",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
+      "fecha": "2020-11-20",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 135150,
+      "valor": 1984000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-14",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
       "fecha": "2021-04-02",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 142916,
+      "valor": 2098000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-15",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-17",
       "concepto": "SIMULADO — Predial y fondos",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 107221,
-      "valor": 1574000,
+      "valorUnitario": 67575,
+      "valor": 992000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-14",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-17",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 45027,
-      "valor": 661000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-15",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-25",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000002",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 14.68,
-      "unidad": "ha",
-      "valorUnitario": 51226,
-      "valor": 752000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
       "id": "mov-16",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-05-05",
-      "concepto": "SIMULADO — Otros gastos",
+      "fecha": "2021-01-25",
+      "concepto": "SIMULADO — Predial y fondos",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 50341,
-      "valor": 739000,
+      "valorUnitario": 76771,
+      "valor": 1127000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "otros"
+      "rubro": "predial_fondos"
     },
     {
       "id": "mov-17",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-10-17",
-      "concepto": "SIMULADO — Semilla",
+      "fecha": "2021-05-05",
+      "concepto": "SIMULADO — Predial y fondos",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 604700,
-      "valor": 8877000,
+      "valorUnitario": 75477,
+      "valor": 1108000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "semilla"
+      "rubro": "predial_fondos"
     },
     {
       "id": "mov-18",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-25",
-      "concepto": "SIMULADO — Semilla",
+      "fecha": "2020-10-17",
+      "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 691076,
-      "valor": 10145000,
+      "valorUnitario": 43188,
+      "valor": 634000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "semilla"
+      "rubro": "otros"
     },
     {
       "id": "mov-19",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-05-05",
-      "concepto": "SIMULADO — Semilla",
+      "fecha": "2021-01-25",
+      "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
       "reporteId": null,
       "cantidad": 14.68,
       "unidad": "ha",
-      "valorUnitario": 716689,
-      "valor": 10521000,
+      "valorUnitario": 49387,
+      "valor": 725000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "semilla"
+      "rubro": "otros"
     },
     {
       "id": "mov-20",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-05-05",
+      "concepto": "SIMULADO — Otros gastos",
+      "suerteId": "14030000-0000-4000-8000-000000000002",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 14.68,
+      "unidad": "ha",
+      "valorUnitario": 51158,
+      "valor": 751000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "otros"
+    },
+    {
+      "id": "mov-21",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-25",
@@ -971,7 +989,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-21",
+      "id": "mov-22",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-09",
@@ -989,7 +1007,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-22",
+      "id": "mov-23",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-22",
@@ -1007,7 +1025,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-23",
+      "id": "mov-24",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-03",
@@ -1025,7 +1043,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-24",
+      "id": "mov-25",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-06-12",
@@ -1043,7 +1061,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-25",
+      "id": "mov-26",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-22",
@@ -1061,7 +1079,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-26",
+      "id": "mov-27",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-03",
@@ -1079,7 +1097,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-27",
+      "id": "mov-28",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-06-12",
@@ -1097,7 +1115,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-28",
+      "id": "mov-29",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-03",
@@ -1115,7 +1133,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-29",
+      "id": "mov-30",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-03",
@@ -1133,7 +1151,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-30",
+      "id": "mov-31",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-22",
@@ -1151,7 +1169,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-31",
+      "id": "mov-32",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-03",
@@ -1169,7 +1187,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-32",
+      "id": "mov-33",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-06-12",
@@ -1187,7 +1205,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-33",
+      "id": "mov-34",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-03",
@@ -1205,7 +1223,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-34",
+      "id": "mov-35",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-27",
@@ -1223,7 +1241,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-35",
+      "id": "mov-36",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-04",
@@ -1241,7 +1259,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-36",
+      "id": "mov-37",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-04-01",
@@ -1259,7 +1277,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-37",
+      "id": "mov-38",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-04-01",
@@ -1277,7 +1295,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-38",
+      "id": "mov-39",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-26",
@@ -1295,7 +1313,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-39",
+      "id": "mov-40",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-04-01",
@@ -1313,7 +1331,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-40",
+      "id": "mov-41",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-07-06",
@@ -1331,7 +1349,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-41",
+      "id": "mov-42",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-27",
@@ -1349,7 +1367,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-42",
+      "id": "mov-43",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-04",
@@ -1367,7 +1385,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-43",
+      "id": "mov-44",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-26",
@@ -1385,7 +1403,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-44",
+      "id": "mov-45",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-04-01",
@@ -1403,7 +1421,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-45",
+      "id": "mov-46",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-07-06",
@@ -1421,7 +1439,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-46",
+      "id": "mov-47",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-04-01",
@@ -1439,7 +1457,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-47",
+      "id": "mov-48",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-18",
@@ -1457,7 +1475,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-48",
+      "id": "mov-49",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1475,7 +1493,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-49",
+      "id": "mov-50",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-05",
@@ -1493,7 +1511,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-50",
+      "id": "mov-51",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-18",
@@ -1511,7 +1529,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-51",
+      "id": "mov-52",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1529,7 +1547,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-52",
+      "id": "mov-53",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-05",
@@ -1547,7 +1565,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-53",
+      "id": "mov-54",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-18",
@@ -1565,7 +1583,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-54",
+      "id": "mov-55",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1583,7 +1601,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-55",
+      "id": "mov-56",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-05",
@@ -1601,7 +1619,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-56",
+      "id": "mov-57",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1619,7 +1637,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-57",
+      "id": "mov-58",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-18",
@@ -1637,7 +1655,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-58",
+      "id": "mov-59",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1655,7 +1673,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-59",
+      "id": "mov-60",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-05",
@@ -1673,7 +1691,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-60",
+      "id": "mov-61",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-18",
@@ -1691,7 +1709,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-61",
+      "id": "mov-62",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1709,7 +1727,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-62",
+      "id": "mov-63",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-05",
@@ -1727,7 +1745,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-63",
+      "id": "mov-64",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-27",
@@ -1745,7 +1763,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-64",
+      "id": "mov-65",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-25",
@@ -1763,7 +1781,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-65",
+      "id": "mov-66",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-05",
@@ -1781,7 +1799,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-66",
+      "id": "mov-67",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-25",
@@ -1799,7 +1817,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-67",
+      "id": "mov-68",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-05",
@@ -1817,7 +1835,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-68",
+      "id": "mov-69",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-25",
@@ -1835,7 +1853,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-69",
+      "id": "mov-70",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-05",
@@ -1853,7 +1871,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-70",
+      "id": "mov-71",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-31",
@@ -1871,7 +1889,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-71",
+      "id": "mov-72",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-20",
@@ -1889,7 +1907,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-72",
+      "id": "mov-73",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-31",
@@ -1907,7 +1925,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-73",
+      "id": "mov-74",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-09-07",
@@ -1925,7 +1943,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-74",
+      "id": "mov-75",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-25",
@@ -1943,7 +1961,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-75",
+      "id": "mov-76",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-05",
@@ -1961,7 +1979,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-76",
+      "id": "mov-77",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-25",
@@ -1979,7 +1997,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-77",
+      "id": "mov-78",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-05",
@@ -1997,72 +2015,54 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-78",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-11-26",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000003",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 11.47,
-      "unidad": "ha",
-      "valorUnitario": 612031,
-      "valor": 7020000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
       "id": "mov-79",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-04-13",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "fecha": "2020-07-11",
+      "concepto": "SIMULADO — Renovación: destrucción de cepas",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 696861,
-      "valor": 7993000,
+      "valorUnitario": 483871,
+      "valor": 5550000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "mano_obra"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-80",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-02-03",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "fecha": "2020-07-17",
+      "concepto": "SIMULADO — Renovación: arado",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 2124412,
-      "valor": 24367000,
+      "valorUnitario": 589364,
+      "valor": 6760000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "insumos"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-81",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-11-26",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-07-23",
+      "concepto": "SIMULADO — Renovación: surcado",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 1413949,
-      "valor": 16218000,
+      "valorUnitario": 576286,
+      "valor": 6610000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
@@ -2072,238 +2072,274 @@
       "id": "mov-82",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-04-13",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-07-29",
+      "concepto": "SIMULADO — Siembra: semilla",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 1369050,
-      "valor": 15703000,
+      "valorUnitario": 1862337,
+      "valor": 21361000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "maquinaria"
+      "rubro": "semilla"
     },
     {
       "id": "mov-83",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-10-22",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2021-02-03",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 153269,
-      "valor": 1758000,
+      "valorUnitario": 1312729,
+      "valor": 15057000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "agua"
+      "rubro": "mano_obra"
     },
     {
       "id": "mov-84",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-02-03",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2020-11-26",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 164603,
-      "valor": 1888000,
+      "valorUnitario": 972188,
+      "valor": 11151000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "agua"
+      "rubro": "insumos"
     },
     {
       "id": "mov-85",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-05-18",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2021-04-13",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 180384,
-      "valor": 2069000,
+      "valorUnitario": 1128422,
+      "valor": 12943000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "agua"
+      "rubro": "insumos"
     },
     {
       "id": "mov-86",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-02-03",
-      "concepto": "SIMULADO — Administración",
+      "concepto": "SIMULADO — Preparación y maquinaria",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 301221,
-      "valor": 3455000,
+      "valorUnitario": 1128684,
+      "valor": 12946000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "administracion"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-87",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2020-10-22",
-      "concepto": "SIMULADO — Predial y fondos",
+      "concepto": "SIMULADO — Riego por gravedad",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 67916,
-      "valor": 779000,
+      "valorUnitario": 157541,
+      "valor": 1807000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "predial_fondos"
+      "rubro": "agua"
     },
     {
       "id": "mov-88",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-02-03",
-      "concepto": "SIMULADO — Predial y fondos",
+      "concepto": "SIMULADO — Riego por gravedad",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 73496,
-      "valor": 843000,
+      "valorUnitario": 175676,
+      "valor": 2015000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "predial_fondos"
+      "rubro": "agua"
     },
     {
       "id": "mov-89",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-05-18",
-      "concepto": "SIMULADO — Predial y fondos",
+      "concepto": "SIMULADO — Riego por gravedad",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 78030,
-      "valor": 895000,
+      "valorUnitario": 181081,
+      "valor": 2077000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "predial_fondos"
+      "rubro": "agua"
     },
     {
       "id": "mov-90",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2020-11-26",
-      "concepto": "SIMULADO — Otros gastos",
+      "concepto": "SIMULADO — Administración",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 70183,
-      "valor": 805000,
+      "valorUnitario": 139233,
+      "valor": 1597000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "otros"
+      "rubro": "administracion"
     },
     {
       "id": "mov-91",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-04-13",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000003",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 11.47,
+      "unidad": "ha",
+      "valorUnitario": 156146,
+      "valor": 1791000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-92",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-11-26",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000003",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 11.47,
+      "unidad": "ha",
+      "valorUnitario": 105318,
+      "valor": 1208000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-93",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-13",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000003",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 11.47,
+      "unidad": "ha",
+      "valorUnitario": 105144,
+      "valor": 1206000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-94",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-22",
       "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 70096,
-      "valor": 804000,
+      "valorUnitario": 43418,
+      "valor": 498000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "otros"
     },
     {
-      "id": "mov-92",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-22",
-      "concepto": "SIMULADO — Semilla",
-      "suerteId": "14030000-0000-4000-8000-000000000003",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 11.47,
-      "unidad": "ha",
-      "valorUnitario": 607759,
-      "valor": 6971000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "semilla"
-    },
-    {
-      "id": "mov-93",
+      "id": "mov-95",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-02-03",
-      "concepto": "SIMULADO — Semilla",
+      "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 729032,
-      "valor": 8362000,
+      "valorUnitario": 52049,
+      "valor": 597000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "semilla"
+      "rubro": "otros"
     },
     {
-      "id": "mov-94",
+      "id": "mov-96",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-05-18",
-      "concepto": "SIMULADO — Semilla",
+      "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
       "reporteId": null,
       "cantidad": 11.47,
       "unidad": "ha",
-      "valorUnitario": 636094,
-      "valor": 7296000,
+      "valorUnitario": 45423,
+      "valor": 521000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "semilla"
+      "rubro": "otros"
     },
     {
-      "id": "mov-95",
+      "id": "mov-97",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-01-02",
@@ -2321,7 +2357,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-96",
+      "id": "mov-98",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-08",
@@ -2339,7 +2375,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-97",
+      "id": "mov-99",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-01-02",
@@ -2357,7 +2393,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-98",
+      "id": "mov-100",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-08",
@@ -2375,7 +2411,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-99",
+      "id": "mov-101",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-06",
@@ -2393,7 +2429,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-100",
+      "id": "mov-102",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-01-02",
@@ -2411,7 +2447,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-101",
+      "id": "mov-103",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-08",
@@ -2429,7 +2465,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-102",
+      "id": "mov-104",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-02",
@@ -2447,7 +2483,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-103",
+      "id": "mov-105",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-03-06",
@@ -2465,7 +2501,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-104",
+      "id": "mov-106",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-06-08",
@@ -2483,7 +2519,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-105",
+      "id": "mov-107",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-01-02",
@@ -2501,7 +2537,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-106",
+      "id": "mov-108",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-08",
@@ -2519,7 +2555,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-107",
+      "id": "mov-109",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-01-02",
@@ -2537,7 +2573,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-108",
+      "id": "mov-110",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-08",
@@ -2555,7 +2591,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-109",
+      "id": "mov-111",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-20",
@@ -2573,7 +2609,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-110",
+      "id": "mov-112",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-01",
@@ -2591,7 +2627,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-111",
+      "id": "mov-113",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-27",
@@ -2609,7 +2645,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-112",
+      "id": "mov-114",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-18",
@@ -2627,7 +2663,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-113",
+      "id": "mov-115",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-27",
@@ -2645,7 +2681,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-114",
+      "id": "mov-116",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-07-04",
@@ -2663,7 +2699,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-115",
+      "id": "mov-117",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-20",
@@ -2681,7 +2717,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-116",
+      "id": "mov-118",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-01",
@@ -2699,7 +2735,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-117",
+      "id": "mov-119",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-18",
@@ -2717,7 +2753,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-118",
+      "id": "mov-120",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-27",
@@ -2735,7 +2771,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-119",
+      "id": "mov-121",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-07-04",
@@ -2753,7 +2789,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-120",
+      "id": "mov-122",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-18",
@@ -2771,7 +2807,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-121",
+      "id": "mov-123",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-27",
@@ -2789,7 +2825,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-122",
+      "id": "mov-124",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-07-04",
@@ -2807,7 +2843,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-123",
+      "id": "mov-125",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-27",
@@ -2825,7 +2861,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-124",
+      "id": "mov-126",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-17",
@@ -2843,7 +2879,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-125",
+      "id": "mov-127",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -2861,7 +2897,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-126",
+      "id": "mov-128",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-01",
@@ -2879,7 +2915,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-127",
+      "id": "mov-129",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-17",
@@ -2897,7 +2933,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-128",
+      "id": "mov-130",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -2915,7 +2951,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-129",
+      "id": "mov-131",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-08-01",
@@ -2933,7 +2969,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-130",
+      "id": "mov-132",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -2951,7 +2987,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-131",
+      "id": "mov-133",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -2969,7 +3005,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-132",
+      "id": "mov-134",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -2987,7 +3023,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-133",
+      "id": "mov-135",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -3005,7 +3041,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-134",
+      "id": "mov-136",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-25",
@@ -3023,7 +3059,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-135",
+      "id": "mov-137",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-09",
@@ -3041,7 +3077,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-136",
+      "id": "mov-138",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-14",
@@ -3059,7 +3095,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-137",
+      "id": "mov-139",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-16",
@@ -3077,7 +3113,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-138",
+      "id": "mov-140",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-09",
@@ -3095,7 +3131,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-139",
+      "id": "mov-141",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-14",
@@ -3113,7 +3149,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-140",
+      "id": "mov-142",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-16",
@@ -3131,7 +3167,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-141",
+      "id": "mov-143",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-09",
@@ -3149,7 +3185,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-142",
+      "id": "mov-144",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-14",
@@ -3167,7 +3203,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-143",
+      "id": "mov-145",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-16",
@@ -3185,7 +3221,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-144",
+      "id": "mov-146",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-14",
@@ -3203,7 +3239,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-145",
+      "id": "mov-147",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-13",
@@ -3221,7 +3257,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-146",
+      "id": "mov-148",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-07-16",
@@ -3239,7 +3275,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-147",
+      "id": "mov-149",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-14",
@@ -3257,7 +3293,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-148",
+      "id": "mov-150",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-13",
@@ -3275,7 +3311,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-149",
+      "id": "mov-151",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-07-16",
@@ -3293,90 +3329,54 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-150",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-03",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 1339956,
-      "valor": 12140000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
-      "id": "mov-151",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-22",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 652428,
-      "valor": 5911000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "insumos"
-    },
-    {
       "id": "mov-152",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-03",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "fecha": "2020-06-12",
+      "concepto": "SIMULADO — Renovación: destrucción de cepas",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
       "reporteId": null,
       "cantidad": 9.06,
       "unidad": "ha",
-      "valorUnitario": 687307,
-      "valor": 6227000,
+      "valorUnitario": 451987,
+      "valor": 4095000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "insumos"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-153",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-04-15",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "fecha": "2020-06-18",
+      "concepto": "SIMULADO — Renovación: arado",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
       "reporteId": null,
       "cantidad": 9.06,
       "unidad": "ha",
-      "valorUnitario": 714238,
-      "valor": 6471000,
+      "valorUnitario": 623289,
+      "valor": 5647000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "insumos"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-154",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-09-22",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-06-24",
+      "concepto": "SIMULADO — Renovación: surcado",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
       "reporteId": null,
       "cantidad": 9.06,
       "unidad": "ha",
-      "valorUnitario": 897903,
-      "valor": 8135000,
+      "valorUnitario": 584216,
+      "valor": 5293000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
@@ -3386,238 +3386,292 @@
       "id": "mov-155",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-03",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-06-30",
+      "concepto": "SIMULADO — Siembra: semilla",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
       "reporteId": null,
       "cantidad": 9.06,
       "unidad": "ha",
-      "valorUnitario": 908499,
-      "valor": 8231000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "maquinaria"
-    },
-    {
-      "id": "mov-156",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-04-15",
-      "concepto": "SIMULADO — Preparación y maquinaria",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 1004305,
-      "valor": 9099000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "maquinaria"
-    },
-    {
-      "id": "mov-157",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Riego por gravedad",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 239625,
-      "valor": 2171000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "agua"
-    },
-    {
-      "id": "mov-158",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-03-12",
-      "concepto": "SIMULADO — Riego por gravedad",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 272075,
-      "valor": 2465000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "agua"
-    },
-    {
-      "id": "mov-159",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 138300,
-      "valor": 1253000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-160",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-03-12",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 156071,
-      "valor": 1414000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-161",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-22",
-      "concepto": "SIMULADO — Predial y fondos",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 67329,
-      "valor": 610000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "predial_fondos"
-    },
-    {
-      "id": "mov-162",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-03",
-      "concepto": "SIMULADO — Predial y fondos",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 77925,
-      "valor": 706000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "predial_fondos"
-    },
-    {
-      "id": "mov-163",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-04-15",
-      "concepto": "SIMULADO — Predial y fondos",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 72185,
-      "valor": 654000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "predial_fondos"
-    },
-    {
-      "id": "mov-164",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-22",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 49227,
-      "valor": 446000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-165",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-03",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 47020,
-      "valor": 426000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-166",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-04-15",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 48786,
-      "valor": 442000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-167",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-03",
-      "concepto": "SIMULADO — Semilla",
-      "suerteId": "14030000-0000-4000-8000-000000000004",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 9.06,
-      "unidad": "ha",
-      "valorUnitario": 2008168,
-      "valor": 18194000,
+      "valorUnitario": 1826821,
+      "valor": 16551000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "semilla"
     },
     {
+      "id": "mov-156",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-03",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 1308389,
+      "valor": 11854000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "mano_obra"
+    },
+    {
+      "id": "mov-157",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-22",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 673400,
+      "valor": 6101000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-158",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-03",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 681347,
+      "valor": 6173000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-159",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-15",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 753201,
+      "valor": 6824000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-160",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-26",
+      "concepto": "SIMULADO — Preparación y maquinaria",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 547682,
+      "valor": 4962000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-161",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-03-12",
+      "concepto": "SIMULADO — Preparación y maquinaria",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 621744,
+      "valor": 5633000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-162",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-26",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 242053,
+      "valor": 2193000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-163",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-03-12",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 273179,
+      "valor": 2475000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-164",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-22",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 89735,
+      "valor": 813000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-165",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-03",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 103863,
+      "valor": 941000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-166",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-15",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 96247,
+      "valor": 872000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-167",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-22",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 73951,
+      "valor": 670000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
       "id": "mov-168",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-03",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 70530,
+      "valor": 639000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-169",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-15",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 73068,
+      "valor": 662000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-170",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-03",
+      "concepto": "SIMULADO — Otros gastos",
+      "suerteId": "14030000-0000-4000-8000-000000000004",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 9.06,
+      "unidad": "ha",
+      "valorUnitario": 143488,
+      "valor": 1300000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "otros"
+    },
+    {
+      "id": "mov-171",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-07",
@@ -3635,7 +3689,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-169",
+      "id": "mov-172",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-04-19",
@@ -3653,7 +3707,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-170",
+      "id": "mov-173",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-03",
@@ -3671,7 +3725,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-171",
+      "id": "mov-174",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-11",
@@ -3689,7 +3743,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-172",
+      "id": "mov-175",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-22",
@@ -3707,7 +3761,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-173",
+      "id": "mov-176",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-07",
@@ -3725,7 +3779,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-174",
+      "id": "mov-177",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-04-19",
@@ -3743,7 +3797,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-175",
+      "id": "mov-178",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-11",
@@ -3761,7 +3815,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-176",
+      "id": "mov-179",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-03",
@@ -3779,7 +3833,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-177",
+      "id": "mov-180",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-11",
@@ -3797,7 +3851,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-178",
+      "id": "mov-181",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-22",
@@ -3815,7 +3869,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-179",
+      "id": "mov-182",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-11",
@@ -3833,7 +3887,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-180",
+      "id": "mov-183",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-03",
@@ -3851,7 +3905,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-181",
+      "id": "mov-184",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-11",
@@ -3869,7 +3923,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-182",
+      "id": "mov-185",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-22",
@@ -3887,7 +3941,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-183",
+      "id": "mov-186",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -3905,7 +3959,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-184",
+      "id": "mov-187",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -3923,7 +3977,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-185",
+      "id": "mov-188",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -3941,7 +3995,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-186",
+      "id": "mov-189",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -3959,7 +4013,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-187",
+      "id": "mov-190",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -3977,7 +4031,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-188",
+      "id": "mov-191",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -3995,7 +4049,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-189",
+      "id": "mov-192",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-05",
@@ -4013,7 +4067,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-190",
+      "id": "mov-193",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-12",
@@ -4031,7 +4085,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-191",
+      "id": "mov-194",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-17",
@@ -4049,7 +4103,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-192",
+      "id": "mov-195",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-08",
@@ -4067,7 +4121,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-193",
+      "id": "mov-196",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-02-01",
@@ -4085,7 +4139,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-194",
+      "id": "mov-197",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-13",
@@ -4103,7 +4157,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-195",
+      "id": "mov-198",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-08",
@@ -4121,7 +4175,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-196",
+      "id": "mov-199",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-08",
@@ -4139,7 +4193,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-197",
+      "id": "mov-200",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-08",
@@ -4157,7 +4211,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-198",
+      "id": "mov-201",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-02-01",
@@ -4175,7 +4229,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-199",
+      "id": "mov-202",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-13",
@@ -4193,7 +4247,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-200",
+      "id": "mov-203",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-02-01",
@@ -4211,7 +4265,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-201",
+      "id": "mov-204",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-13",
@@ -4229,7 +4283,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-202",
+      "id": "mov-205",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-01",
@@ -4247,7 +4301,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-203",
+      "id": "mov-206",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-07-08",
@@ -4265,7 +4319,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-204",
+      "id": "mov-207",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-01-28",
@@ -4283,7 +4337,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-205",
+      "id": "mov-208",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-05",
@@ -4301,7 +4355,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-206",
+      "id": "mov-209",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-09",
@@ -4319,7 +4373,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-207",
+      "id": "mov-210",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-05",
@@ -4337,7 +4391,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-208",
+      "id": "mov-211",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-05",
@@ -4355,7 +4409,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-209",
+      "id": "mov-212",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-01",
@@ -4373,7 +4427,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-210",
+      "id": "mov-213",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-07-08",
@@ -4391,7 +4445,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-211",
+      "id": "mov-214",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-05",
@@ -4409,7 +4463,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-212",
+      "id": "mov-215",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-01-28",
@@ -4427,7 +4481,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-213",
+      "id": "mov-216",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-05",
@@ -4445,7 +4499,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-214",
+      "id": "mov-217",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-09",
@@ -4463,90 +4517,36 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-215",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 685382,
-      "valor": 9143000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
-      "id": "mov-216",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-03-10",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 644003,
-      "valor": 8591000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
-      "id": "mov-217",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 1061544,
-      "valor": 14161000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "insumos"
-    },
-    {
       "id": "mov-218",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-03-10",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "fecha": "2020-06-13",
+      "concepto": "SIMULADO — Renovación: destrucción de cepas",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 1125412,
-      "valor": 15013000,
+      "valorUnitario": 484708,
+      "valor": 6466000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "insumos"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-219",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-06-19",
+      "concepto": "SIMULADO — Renovación: arado",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 1436132,
-      "valor": 19158000,
+      "valorUnitario": 659970,
+      "valor": 8804000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
@@ -4556,15 +4556,15 @@
       "id": "mov-220",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-03-10",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-06-25",
+      "concepto": "SIMULADO — Renovación: surcado",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 1401649,
-      "valor": 18698000,
+      "valorUnitario": 532534,
+      "valor": 7104000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
@@ -4574,184 +4574,256 @@
       "id": "mov-221",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2020-07-01",
+      "concepto": "SIMULADO — Siembra: semilla",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 228636,
-      "valor": 3050000,
+      "valorUnitario": 1907871,
+      "valor": 25451000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "agua"
+      "rubro": "semilla"
     },
     {
       "id": "mov-222",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
+      "fecha": "2020-10-26",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 663943,
+      "valor": 8857000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "mano_obra"
+    },
+    {
+      "id": "mov-223",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
       "fecha": "2021-03-10",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 668666,
+      "valor": 8920000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "mano_obra"
+    },
+    {
+      "id": "mov-224",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-22",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 663568,
+      "valor": 8852000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-225",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-02",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 717691,
+      "valor": 9574000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-226",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-13",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 689880,
+      "valor": 9203000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-227",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-02",
+      "concepto": "SIMULADO — Preparación y maquinaria",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 1165442,
+      "valor": 15547000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-228",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-22",
       "concepto": "SIMULADO — Riego por gravedad",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 239355,
-      "valor": 3193000,
+      "valorUnitario": 150450,
+      "valor": 2007000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "agua"
     },
     {
-      "id": "mov-223",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 144228,
-      "valor": 1924000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-224",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-03-10",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 136207,
-      "valor": 1817000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-225",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-22",
-      "concepto": "SIMULADO — Predial y fondos",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 69415,
-      "valor": 926000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "predial_fondos"
-    },
-    {
-      "id": "mov-226",
+      "id": "mov-229",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-01-02",
-      "concepto": "SIMULADO — Predial y fondos",
+      "concepto": "SIMULADO — Riego por gravedad",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 68741,
-      "valor": 917000,
+      "valorUnitario": 178036,
+      "valor": 2375000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "predial_fondos"
+      "rubro": "agua"
     },
     {
-      "id": "mov-227",
+      "id": "mov-230",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-04-13",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 170990,
+      "valor": 2281000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-231",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-02",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000005",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 13.34,
+      "unidad": "ha",
+      "valorUnitario": 303823,
+      "valor": 4053000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-232",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-02",
       "concepto": "SIMULADO — Predial y fondos",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 75937,
-      "valor": 1013000,
+      "valorUnitario": 228411,
+      "valor": 3047000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-228",
+      "id": "mov-233",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-02",
+      "fecha": "2020-10-26",
       "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 152249,
-      "valor": 2031000,
+      "valorUnitario": 67841,
+      "valor": 905000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "otros"
     },
     {
-      "id": "mov-229",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-26",
-      "concepto": "SIMULADO — Semilla",
-      "suerteId": "14030000-0000-4000-8000-000000000005",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 13.34,
-      "unidad": "ha",
-      "valorUnitario": 950150,
-      "valor": 12675000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "semilla"
-    },
-    {
-      "id": "mov-230",
+      "id": "mov-234",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-03-10",
-      "concepto": "SIMULADO — Semilla",
+      "concepto": "SIMULADO — Otros gastos",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
       "reporteId": null,
       "cantidad": 13.34,
       "unidad": "ha",
-      "valorUnitario": 978336,
-      "valor": 13051000,
+      "valorUnitario": 69865,
+      "valor": 932000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "semilla"
+      "rubro": "otros"
     },
     {
-      "id": "mov-231",
+      "id": "mov-235",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-10-29",
@@ -4769,7 +4841,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-232",
+      "id": "mov-236",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-04",
@@ -4787,7 +4859,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-233",
+      "id": "mov-237",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-13",
@@ -4805,7 +4877,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-234",
+      "id": "mov-238",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-10-29",
@@ -4823,7 +4895,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-235",
+      "id": "mov-239",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-04",
@@ -4841,7 +4913,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-236",
+      "id": "mov-240",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-13",
@@ -4859,7 +4931,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-237",
+      "id": "mov-241",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-01",
@@ -4877,7 +4949,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-238",
+      "id": "mov-242",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-04-10",
@@ -4895,7 +4967,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-239",
+      "id": "mov-243",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-10-29",
@@ -4913,7 +4985,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-240",
+      "id": "mov-244",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-04",
@@ -4931,7 +5003,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-241",
+      "id": "mov-245",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-13",
@@ -4949,7 +5021,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-242",
+      "id": "mov-246",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-10-29",
@@ -4967,7 +5039,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-243",
+      "id": "mov-247",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-04",
@@ -4985,7 +5057,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-244",
+      "id": "mov-248",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-13",
@@ -5003,7 +5075,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-245",
+      "id": "mov-249",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-01",
@@ -5021,7 +5093,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-246",
+      "id": "mov-250",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-04-10",
@@ -5039,7 +5111,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-247",
+      "id": "mov-251",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-04",
@@ -5057,7 +5129,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-248",
+      "id": "mov-252",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-09",
@@ -5075,7 +5147,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-249",
+      "id": "mov-253",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-31",
@@ -5093,7 +5165,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-250",
+      "id": "mov-254",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-05-15",
@@ -5111,7 +5183,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-251",
+      "id": "mov-255",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-11-28",
@@ -5129,7 +5201,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-252",
+      "id": "mov-256",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-09",
@@ -5147,7 +5219,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-253",
+      "id": "mov-257",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-18",
@@ -5165,7 +5237,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-254",
+      "id": "mov-258",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-09",
@@ -5183,7 +5255,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-255",
+      "id": "mov-259",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-11-28",
@@ -5201,7 +5273,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-256",
+      "id": "mov-260",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-09",
@@ -5219,7 +5291,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-257",
+      "id": "mov-261",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-18",
@@ -5237,7 +5309,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-258",
+      "id": "mov-262",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-31",
@@ -5255,7 +5327,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-259",
+      "id": "mov-263",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-05-15",
@@ -5273,7 +5345,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-260",
+      "id": "mov-264",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-11-28",
@@ -5291,7 +5363,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-261",
+      "id": "mov-265",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-09",
@@ -5309,7 +5381,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-262",
+      "id": "mov-266",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-18",
@@ -5327,7 +5399,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-263",
+      "id": "mov-267",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-02",
@@ -5345,7 +5417,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-264",
+      "id": "mov-268",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-30",
@@ -5363,7 +5435,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-265",
+      "id": "mov-269",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-04",
@@ -5381,7 +5453,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-266",
+      "id": "mov-270",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-30",
@@ -5399,7 +5471,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-267",
+      "id": "mov-271",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-04",
@@ -5417,7 +5489,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-268",
+      "id": "mov-272",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-30",
@@ -5435,7 +5507,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-269",
+      "id": "mov-273",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-04",
@@ -5453,7 +5525,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-270",
+      "id": "mov-274",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-30",
@@ -5471,7 +5543,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-271",
+      "id": "mov-275",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-04",
@@ -5489,7 +5561,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-272",
+      "id": "mov-276",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-12-30",
@@ -5507,7 +5579,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-273",
+      "id": "mov-277",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-02",
@@ -5525,7 +5597,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-274",
+      "id": "mov-278",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-07-05",
@@ -5543,7 +5615,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-275",
+      "id": "mov-279",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-12-30",
@@ -5561,7 +5633,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-276",
+      "id": "mov-280",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-02",
@@ -5579,7 +5651,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-277",
+      "id": "mov-281",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-07-05",
@@ -5597,7 +5669,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-278",
+      "id": "mov-282",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-04-24",
@@ -5615,7 +5687,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-279",
+      "id": "mov-283",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-04-24",
@@ -5633,7 +5705,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-280",
+      "id": "mov-284",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-01-15",
@@ -5651,7 +5723,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-281",
+      "id": "mov-285",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-04-24",
@@ -5669,7 +5741,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-282",
+      "id": "mov-286",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-01",
@@ -5687,7 +5759,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-283",
+      "id": "mov-287",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-17",
@@ -5705,7 +5777,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-284",
+      "id": "mov-288",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-06-29",
@@ -5723,7 +5795,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-285",
+      "id": "mov-289",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-17",
@@ -5741,7 +5813,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-286",
+      "id": "mov-290",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-06-29",
@@ -5759,7 +5831,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-287",
+      "id": "mov-291",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-02-17",
@@ -5777,7 +5849,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-288",
+      "id": "mov-292",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-06-29",
@@ -5795,7 +5867,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-289",
+      "id": "mov-293",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-04-24",
@@ -5813,90 +5885,18 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-290",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-24",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 423582,
-      "valor": 2838000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
-      "id": "mov-291",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 452836,
-      "valor": 3034000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
-      "id": "mov-292",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-04-18",
-      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 427463,
-      "valor": 2864000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "mano_obra"
-    },
-    {
-      "id": "mov-293",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Fertilización (urea y KCl)",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 2314328,
-      "valor": 15506000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "insumos"
-    },
-    {
       "id": "mov-294",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Preparación y maquinaria",
+      "fecha": "2020-06-14",
+      "concepto": "SIMULADO — Renovación: destrucción de cepas",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
       "reporteId": null,
       "cantidad": 6.7,
       "unidad": "ha",
-      "valorUnitario": 2927612,
-      "valor": 19615000,
+      "valorUnitario": 511940,
+      "valor": 3430000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
@@ -5906,220 +5906,310 @@
       "id": "mov-295",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2020-09-24",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2020-06-20",
+      "concepto": "SIMULADO — Renovación: arado",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
       "reporteId": null,
       "cantidad": 6.7,
       "unidad": "ha",
-      "valorUnitario": 162090,
-      "valor": 1086000,
+      "valorUnitario": 611642,
+      "valor": 4098000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "agua"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-296",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2020-06-26",
+      "concepto": "SIMULADO — Renovación: surcado",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
       "reporteId": null,
       "cantidad": 6.7,
       "unidad": "ha",
-      "valorUnitario": 171642,
-      "valor": 1150000,
+      "valorUnitario": 561791,
+      "valor": 3764000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
-      "rubro": "agua"
+      "rubro": "maquinaria"
     },
     {
       "id": "mov-297",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
-      "fecha": "2021-04-18",
-      "concepto": "SIMULADO — Riego por gravedad",
+      "fecha": "2020-07-02",
+      "concepto": "SIMULADO — Siembra: semilla",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
       "reporteId": null,
       "cantidad": 6.7,
       "unidad": "ha",
-      "valorUnitario": 173881,
-      "valor": 1165000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "agua"
-    },
-    {
-      "id": "mov-298",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-24",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 90149,
-      "valor": 604000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-299",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 103731,
-      "valor": 695000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-300",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-04-18",
-      "concepto": "SIMULADO — Administración",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 92687,
-      "valor": 621000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "administracion"
-    },
-    {
-      "id": "mov-301",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-10-29",
-      "concepto": "SIMULADO — Predial y fondos",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 96866,
-      "valor": 649000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "predial_fondos"
-    },
-    {
-      "id": "mov-302",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-03-15",
-      "concepto": "SIMULADO — Predial y fondos",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 116119,
-      "valor": 778000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "predial_fondos"
-    },
-    {
-      "id": "mov-303",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2020-09-24",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 45373,
-      "valor": 304000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-304",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 46716,
-      "valor": 313000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-305",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-04-18",
-      "concepto": "SIMULADO — Otros gastos",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 47910,
-      "valor": 321000,
-      "soporteUrl": "/pwa-192x192.png",
-      "registradoPor": "U005",
-      "anulado": false,
-      "rubro": "otros"
-    },
-    {
-      "id": "mov-306",
-      "fincaId": "14030000-0000-4000-8000-000000000001",
-      "tipo": "GASTO",
-      "fecha": "2021-01-05",
-      "concepto": "SIMULADO — Semilla",
-      "suerteId": "14030000-0000-4000-8000-000000000006",
-      "laborId": null,
-      "reporteId": null,
-      "cantidad": 6.7,
-      "unidad": "ha",
-      "valorUnitario": 2032836,
-      "valor": 13620000,
+      "valorUnitario": 1855672,
+      "valor": 12433000,
       "soporteUrl": "/pwa-192x192.png",
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "semilla"
     },
     {
+      "id": "mov-298",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-05",
+      "concepto": "SIMULADO — Mano de obra (corte de malezas)",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 1413134,
+      "valor": 9468000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "mano_obra"
+    },
+    {
+      "id": "mov-299",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-05",
+      "concepto": "SIMULADO — Fertilización (urea y KCl)",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 2195672,
+      "valor": 14711000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "insumos"
+    },
+    {
+      "id": "mov-300",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-24",
+      "concepto": "SIMULADO — Preparación y maquinaria",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 370597,
+      "valor": 2483000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-301",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-05",
+      "concepto": "SIMULADO — Preparación y maquinaria",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 392537,
+      "valor": 2630000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-302",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-18",
+      "concepto": "SIMULADO — Preparación y maquinaria",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 397313,
+      "valor": 2662000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "maquinaria"
+    },
+    {
+      "id": "mov-303",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-24",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 157910,
+      "valor": 1058000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-304",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-05",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 181493,
+      "valor": 1216000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-305",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-18",
+      "concepto": "SIMULADO — Riego por gravedad",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 162239,
+      "valor": 1087000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "agua"
+    },
+    {
+      "id": "mov-306",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-10-29",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 129104,
+      "valor": 865000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
       "id": "mov-307",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-03-15",
+      "concepto": "SIMULADO — Administración",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 154776,
+      "valor": 1037000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-308",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2020-09-24",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 68060,
+      "valor": 456000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-309",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-05",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 70000,
+      "valor": 469000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-310",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-04-18",
+      "concepto": "SIMULADO — Predial y fondos",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 71791,
+      "valor": 481000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "predial_fondos"
+    },
+    {
+      "id": "mov-311",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "GASTO",
+      "fecha": "2021-01-05",
+      "concepto": "SIMULADO — Otros gastos",
+      "suerteId": "14030000-0000-4000-8000-000000000006",
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": 6.7,
+      "unidad": "ha",
+      "valorUnitario": 145224,
+      "valor": 973000,
+      "soporteUrl": "/pwa-192x192.png",
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "otros"
+    },
+    {
+      "id": "mov-312",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-16",
@@ -6137,7 +6227,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-308",
+      "id": "mov-313",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-16",
@@ -6155,7 +6245,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-309",
+      "id": "mov-314",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-07",
@@ -6173,7 +6263,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-310",
+      "id": "mov-315",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-16",
@@ -6191,7 +6281,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-311",
+      "id": "mov-316",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-28",
@@ -6209,7 +6299,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-312",
+      "id": "mov-317",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-11",
@@ -6227,7 +6317,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-313",
+      "id": "mov-318",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-04-24",
@@ -6245,7 +6335,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-314",
+      "id": "mov-319",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-12-11",
@@ -6263,7 +6353,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-315",
+      "id": "mov-320",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-04-24",
@@ -6281,7 +6371,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-316",
+      "id": "mov-321",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2021-11-07",
@@ -6299,7 +6389,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-317",
+      "id": "mov-322",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-16",
@@ -6317,7 +6407,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-318",
+      "id": "mov-323",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-05-28",
@@ -6335,7 +6425,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-319",
+      "id": "mov-324",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-02-16",
@@ -6353,7 +6443,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-320",
+      "id": "mov-325",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-10",
@@ -6371,7 +6461,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-321",
+      "id": "mov-326",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-16",
@@ -6389,7 +6479,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-322",
+      "id": "mov-327",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-19",
@@ -6407,7 +6497,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-323",
+      "id": "mov-328",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-11",
@@ -6425,7 +6515,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-324",
+      "id": "mov-329",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-05-18",
@@ -6443,7 +6533,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-325",
+      "id": "mov-330",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-11",
@@ -6461,7 +6551,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-326",
+      "id": "mov-331",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-05-18",
@@ -6479,7 +6569,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-327",
+      "id": "mov-332",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-01-11",
@@ -6497,7 +6587,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-328",
+      "id": "mov-333",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-05-18",
@@ -6515,7 +6605,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-329",
+      "id": "mov-334",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-10",
@@ -6533,7 +6623,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-330",
+      "id": "mov-335",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-16",
@@ -6551,7 +6641,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-331",
+      "id": "mov-336",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-19",
@@ -6569,7 +6659,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-332",
+      "id": "mov-337",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2022-12-10",
@@ -6587,7 +6677,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-333",
+      "id": "mov-338",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-16",
@@ -6605,7 +6695,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-334",
+      "id": "mov-339",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-06-19",
@@ -6623,7 +6713,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-335",
+      "id": "mov-340",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2023-03-16",
@@ -6641,7 +6731,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-336",
+      "id": "mov-341",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-11",
@@ -6659,7 +6749,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-337",
+      "id": "mov-342",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-02-04",
@@ -6677,7 +6767,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-338",
+      "id": "mov-343",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-17",
@@ -6695,7 +6785,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-339",
+      "id": "mov-344",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-02-04",
@@ -6713,7 +6803,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-340",
+      "id": "mov-345",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-06-17",
@@ -6731,7 +6821,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-341",
+      "id": "mov-346",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-01",
@@ -6749,7 +6839,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-342",
+      "id": "mov-347",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-11",
@@ -6767,7 +6857,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-343",
+      "id": "mov-348",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-07-20",
@@ -6785,7 +6875,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-344",
+      "id": "mov-349",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-01",
@@ -6803,7 +6893,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-345",
+      "id": "mov-350",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-11",
@@ -6821,7 +6911,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-346",
+      "id": "mov-351",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-07-20",
@@ -6839,7 +6929,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-347",
+      "id": "mov-352",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-11",
@@ -6857,7 +6947,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-348",
+      "id": "mov-353",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-01-01",
@@ -6875,7 +6965,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-349",
+      "id": "mov-354",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-04-11",
@@ -6893,7 +6983,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-350",
+      "id": "mov-355",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2024-07-20",
@@ -6911,7 +7001,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-351",
+      "id": "mov-356",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-06",
@@ -6929,7 +7019,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-352",
+      "id": "mov-357",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-01-31",
@@ -6947,7 +7037,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-353",
+      "id": "mov-358",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-06",
@@ -6965,7 +7055,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-354",
+      "id": "mov-359",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-08",
@@ -6983,7 +7073,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-355",
+      "id": "mov-360",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-04",
@@ -7001,7 +7091,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-356",
+      "id": "mov-361",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-07-08",
@@ -7019,7 +7109,7 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-357",
+      "id": "mov-362",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-01-31",
@@ -7037,7 +7127,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-358",
+      "id": "mov-363",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-06",
@@ -7055,7 +7145,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-359",
+      "id": "mov-364",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-08-08",
@@ -7073,7 +7163,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-360",
+      "id": "mov-365",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-03-04",
@@ -7091,7 +7181,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-361",
+      "id": "mov-366",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-07-08",
@@ -7109,7 +7199,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-362",
+      "id": "mov-367",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-06",
@@ -7127,7 +7217,7 @@
       "rubro": "predial_fondos"
     },
     {
-      "id": "mov-363",
+      "id": "mov-368",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-05-06",
@@ -7145,7 +7235,7 @@
       "rubro": "otros"
     },
     {
-      "id": "mov-364",
+      "id": "mov-369",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-07",
@@ -7163,7 +7253,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-365",
+      "id": "mov-370",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-10",
@@ -7181,7 +7271,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-366",
+      "id": "mov-371",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-15",
@@ -7199,7 +7289,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-367",
+      "id": "mov-372",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-09-10",
@@ -7217,7 +7307,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-368",
+      "id": "mov-373",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-04",
@@ -7235,7 +7325,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-369",
+      "id": "mov-374",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-04-05",
@@ -7253,7 +7343,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-370",
+      "id": "mov-375",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-04",
@@ -7271,7 +7361,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-371",
+      "id": "mov-376",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-10",
@@ -7289,7 +7379,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-372",
+      "id": "mov-377",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-10",
@@ -7307,7 +7397,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-373",
+      "id": "mov-378",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-15",
@@ -7325,7 +7415,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-374",
+      "id": "mov-379",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-09-10",
@@ -7343,7 +7433,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-375",
+      "id": "mov-380",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-07",
@@ -7361,7 +7451,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-376",
+      "id": "mov-381",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-03-08",
@@ -7379,7 +7469,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-377",
+      "id": "mov-382",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-06-06",
@@ -7397,7 +7487,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-378",
+      "id": "mov-383",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-06",
@@ -7415,7 +7505,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-379",
+      "id": "mov-384",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-10",
@@ -7433,7 +7523,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-380",
+      "id": "mov-385",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-15",
@@ -7451,7 +7541,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-381",
+      "id": "mov-386",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-09-10",
@@ -7469,7 +7559,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-382",
+      "id": "mov-387",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-03",
@@ -7487,7 +7577,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-383",
+      "id": "mov-388",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-03-04",
@@ -7505,7 +7595,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-384",
+      "id": "mov-389",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-06-02",
@@ -7523,7 +7613,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-385",
+      "id": "mov-390",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-11-30",
@@ -7541,7 +7631,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-386",
+      "id": "mov-391",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-10",
@@ -7559,7 +7649,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-387",
+      "id": "mov-392",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-15",
@@ -7577,7 +7667,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-388",
+      "id": "mov-393",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-09-10",
@@ -7595,7 +7685,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-389",
+      "id": "mov-394",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-28",
@@ -7613,7 +7703,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-390",
+      "id": "mov-395",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-26",
@@ -7631,7 +7721,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-391",
+      "id": "mov-396",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-05-27",
@@ -7649,7 +7739,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-392",
+      "id": "mov-397",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-03",
@@ -7667,7 +7757,7 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-393",
+      "id": "mov-398",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-10",
@@ -7685,7 +7775,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-394",
+      "id": "mov-399",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-15",
@@ -7703,7 +7793,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-395",
+      "id": "mov-400",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-09-10",
@@ -7721,7 +7811,7 @@
       "rubro": "agua"
     },
     {
-      "id": "mov-396",
+      "id": "mov-401",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-31",
@@ -7739,7 +7829,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-397",
+      "id": "mov-402",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-03-01",
@@ -7757,7 +7847,7 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-398",
+      "id": "mov-403",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-05-30",
@@ -7775,14 +7865,14 @@
       "rubro": "mano_obra"
     },
     {
-      "id": "mov-399",
+      "id": "mov-404",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-01",
       "concepto": "ROTURACIÓN · suerte 010",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
-      "reporteId": "rep-399",
+      "reporteId": "rep-404",
       "cantidad": 14.68,
       "unidad": "ha",
       "valorUnitario": 225000,
@@ -7793,14 +7883,14 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-400",
+      "id": "mov-405",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-13",
       "concepto": "FERTILIZACIÓN · suerte 010",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
-      "reporteId": "rep-400",
+      "reporteId": "rep-405",
       "cantidad": 14.68,
       "unidad": "ha",
       "valorUnitario": 160000,
@@ -7811,14 +7901,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-401",
+      "id": "mov-406",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-04",
       "concepto": "CONTROL DE MALEZAS · suerte 010",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
-      "reporteId": "rep-401",
+      "reporteId": "rep-406",
       "cantidad": 14.68,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -7829,14 +7919,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-402",
+      "id": "mov-407",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-04-05",
       "concepto": "CONTROL DE MALEZAS · suerte 010",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
-      "reporteId": "rep-402",
+      "reporteId": "rep-407",
       "cantidad": 14.68,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -7847,14 +7937,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-403",
+      "id": "mov-408",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-07-04",
       "concepto": "CONTROL DE MALEZAS · suerte 010",
       "suerteId": "14030000-0000-4000-8000-000000000002",
       "laborId": null,
-      "reporteId": "rep-403",
+      "reporteId": "rep-408",
       "cantidad": 14.68,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -7865,14 +7955,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-404",
+      "id": "mov-409",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-03",
       "concepto": "ROTURACIÓN · suerte 020",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
-      "reporteId": "rep-404",
+      "reporteId": "rep-409",
       "cantidad": 11.47,
       "unidad": "ha",
       "valorUnitario": 225000,
@@ -7883,14 +7973,14 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-405",
+      "id": "mov-410",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-02",
       "concepto": "FERTILIZACIÓN · suerte 020",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
-      "reporteId": "rep-405",
+      "reporteId": "rep-410",
       "cantidad": 11.47,
       "unidad": "ha",
       "valorUnitario": 160000,
@@ -7901,14 +7991,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-406",
+      "id": "mov-411",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-07",
       "concepto": "CONTROL DE MALEZAS · suerte 020",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
-      "reporteId": "rep-406",
+      "reporteId": "rep-411",
       "cantidad": 11.47,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -7919,14 +8009,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-407",
+      "id": "mov-412",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-03-08",
       "concepto": "CONTROL DE MALEZAS · suerte 020",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
-      "reporteId": "rep-407",
+      "reporteId": "rep-412",
       "cantidad": 11.47,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -7937,14 +8027,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-408",
+      "id": "mov-413",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-06-06",
       "concepto": "CONTROL DE MALEZAS · suerte 020",
       "suerteId": "14030000-0000-4000-8000-000000000003",
       "laborId": null,
-      "reporteId": "rep-408",
+      "reporteId": "rep-413",
       "cantidad": 11.47,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -7955,14 +8045,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-409",
+      "id": "mov-414",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-11-30",
       "concepto": "ROTURACIÓN · suerte 030",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
-      "reporteId": "rep-409",
+      "reporteId": "rep-414",
       "cantidad": 9.06,
       "unidad": "ha",
       "valorUnitario": 225000,
@@ -7973,14 +8063,14 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-410",
+      "id": "mov-415",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-04",
       "concepto": "FERTILIZACIÓN · suerte 030",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
-      "reporteId": "rep-410",
+      "reporteId": "rep-415",
       "cantidad": 9.06,
       "unidad": "ha",
       "valorUnitario": 160000,
@@ -7991,14 +8081,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-411",
+      "id": "mov-416",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-01-03",
       "concepto": "CONTROL DE MALEZAS · suerte 030",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
-      "reporteId": "rep-411",
+      "reporteId": "rep-416",
       "cantidad": 9.06,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8009,14 +8099,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-412",
+      "id": "mov-417",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-03-04",
       "concepto": "CONTROL DE MALEZAS · suerte 030",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
-      "reporteId": "rep-412",
+      "reporteId": "rep-417",
       "cantidad": 9.06,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8027,14 +8117,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-413",
+      "id": "mov-418",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-06-02",
       "concepto": "CONTROL DE MALEZAS · suerte 030",
       "suerteId": "14030000-0000-4000-8000-000000000004",
       "laborId": null,
-      "reporteId": "rep-413",
+      "reporteId": "rep-418",
       "cantidad": 9.06,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8045,14 +8135,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-414",
+      "id": "mov-419",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-11-22",
       "concepto": "ROTURACIÓN · suerte 040",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
-      "reporteId": "rep-414",
+      "reporteId": "rep-419",
       "cantidad": 13.34,
       "unidad": "ha",
       "valorUnitario": 225000,
@@ -8063,14 +8153,14 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-415",
+      "id": "mov-420",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-06",
       "concepto": "FERTILIZACIÓN · suerte 040",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
-      "reporteId": "rep-415",
+      "reporteId": "rep-420",
       "cantidad": 13.34,
       "unidad": "ha",
       "valorUnitario": 160000,
@@ -8081,14 +8171,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-416",
+      "id": "mov-421",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-28",
       "concepto": "CONTROL DE MALEZAS · suerte 040",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
-      "reporteId": "rep-416",
+      "reporteId": "rep-421",
       "cantidad": 13.34,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8099,14 +8189,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-417",
+      "id": "mov-422",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-02-26",
       "concepto": "CONTROL DE MALEZAS · suerte 040",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
-      "reporteId": "rep-417",
+      "reporteId": "rep-422",
       "cantidad": 13.34,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8117,14 +8207,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-418",
+      "id": "mov-423",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-05-27",
       "concepto": "CONTROL DE MALEZAS · suerte 040",
       "suerteId": "14030000-0000-4000-8000-000000000005",
       "laborId": null,
-      "reporteId": "rep-418",
+      "reporteId": "rep-423",
       "cantidad": 13.34,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8135,14 +8225,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-419",
+      "id": "mov-424",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-11-26",
       "concepto": "ROTURACIÓN · suerte 050",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
-      "reporteId": "rep-419",
+      "reporteId": "rep-424",
       "cantidad": 6.7,
       "unidad": "ha",
       "valorUnitario": 225000,
@@ -8153,14 +8243,14 @@
       "rubro": "maquinaria"
     },
     {
-      "id": "mov-420",
+      "id": "mov-425",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-11-25",
       "concepto": "FERTILIZACIÓN · suerte 050",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
-      "reporteId": "rep-420",
+      "reporteId": "rep-425",
       "cantidad": 6.7,
       "unidad": "ha",
       "valorUnitario": 160000,
@@ -8171,14 +8261,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-421",
+      "id": "mov-426",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2025-12-31",
       "concepto": "CONTROL DE MALEZAS · suerte 050",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
-      "reporteId": "rep-421",
+      "reporteId": "rep-426",
       "cantidad": 6.7,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8189,14 +8279,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-422",
+      "id": "mov-427",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-03-01",
       "concepto": "CONTROL DE MALEZAS · suerte 050",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
-      "reporteId": "rep-422",
+      "reporteId": "rep-427",
       "cantidad": 6.7,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8207,14 +8297,14 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-423",
+      "id": "mov-428",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "GASTO",
       "fecha": "2026-05-30",
       "concepto": "CONTROL DE MALEZAS · suerte 050",
       "suerteId": "14030000-0000-4000-8000-000000000006",
       "laborId": null,
-      "reporteId": "rep-423",
+      "reporteId": "rep-428",
       "cantidad": 6.7,
       "unidad": "ha",
       "valorUnitario": 120000,
@@ -8225,7 +8315,25 @@
       "rubro": "insumos"
     },
     {
-      "id": "mov-424",
+      "id": "mov-429",
+      "fincaId": "14030000-0000-4000-8000-000000000001",
+      "tipo": "HONORARIO",
+      "fecha": "2020-09-28",
+      "concepto": "SIMULADO — Honorario trimestral 8 %",
+      "suerteId": null,
+      "laborId": null,
+      "reporteId": null,
+      "cantidad": null,
+      "unidad": null,
+      "valorUnitario": null,
+      "valor": 12458960,
+      "soporteUrl": null,
+      "registradoPor": "U005",
+      "anulado": false,
+      "rubro": "administracion"
+    },
+    {
+      "id": "mov-430",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2020-12-28",
@@ -8236,14 +8344,14 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 10082400,
+      "valor": 3687360,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "administracion"
     },
     {
-      "id": "mov-425",
+      "id": "mov-431",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2021-03-28",
@@ -8254,14 +8362,14 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 23222400,
+      "valor": 15806960,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "administracion"
     },
     {
-      "id": "mov-426",
+      "id": "mov-432",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2021-06-28",
@@ -8272,14 +8380,14 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 7178400,
+      "valor": 4466400,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "administracion"
     },
     {
-      "id": "mov-427",
+      "id": "mov-433",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2021-12-28",
@@ -8297,7 +8405,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-428",
+      "id": "mov-434",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2022-06-28",
@@ -8315,7 +8423,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-429",
+      "id": "mov-435",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2022-03-28",
@@ -8333,7 +8441,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-430",
+      "id": "mov-436",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2023-03-28",
@@ -8351,7 +8459,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-431",
+      "id": "mov-437",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2023-06-28",
@@ -8369,7 +8477,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-432",
+      "id": "mov-438",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2022-12-28",
@@ -8387,7 +8495,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-433",
+      "id": "mov-439",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2023-09-28",
@@ -8405,7 +8513,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-434",
+      "id": "mov-440",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2024-03-28",
@@ -8423,7 +8531,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-435",
+      "id": "mov-441",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2024-06-28",
@@ -8441,7 +8549,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-436",
+      "id": "mov-442",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2024-09-28",
@@ -8459,7 +8567,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-437",
+      "id": "mov-443",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2025-03-28",
@@ -8477,7 +8585,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-438",
+      "id": "mov-444",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2025-09-28",
@@ -8495,7 +8603,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-439",
+      "id": "mov-445",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2025-06-28",
@@ -8513,10 +8621,10 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-440",
+      "id": "mov-446",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
-      "fecha": "2020-09-28",
+      "fecha": "2020-06-28",
       "concepto": "SIMULADO — Honorario trimestral 8 %",
       "suerteId": null,
       "laborId": null,
@@ -8524,14 +8632,14 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 1668800,
+      "valor": 5220160,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false,
       "rubro": "administracion"
     },
     {
-      "id": "mov-441",
+      "id": "mov-447",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2023-12-28",
@@ -8549,7 +8657,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-442",
+      "id": "mov-448",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2026-03-28",
@@ -8567,7 +8675,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-443",
+      "id": "mov-449",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2026-09-28",
@@ -8585,7 +8693,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-444",
+      "id": "mov-450",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2026-06-28",
@@ -8603,7 +8711,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-445",
+      "id": "mov-451",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "HONORARIO",
       "fecha": "2025-12-28",
@@ -8621,7 +8729,7 @@
       "rubro": "administracion"
     },
     {
-      "id": "mov-446",
+      "id": "mov-452",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2020-01-05",
@@ -8632,13 +8740,13 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 1000000,
+      "valor": 72000000,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false
     },
     {
-      "id": "mov-447",
+      "id": "mov-453",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2020-07-05",
@@ -8649,13 +8757,13 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 160000000,
+      "valor": 219000000,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false
     },
     {
-      "id": "mov-448",
+      "id": "mov-454",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2021-01-05",
@@ -8666,13 +8774,13 @@
       "cantidad": null,
       "unidad": null,
       "valorUnitario": null,
-      "valor": 412000000,
+      "valor": 275000000,
       "soporteUrl": null,
       "registradoPor": "U005",
       "anulado": false
     },
     {
-      "id": "mov-449",
+      "id": "mov-455",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2021-07-05",
@@ -8689,7 +8797,7 @@
       "anulado": false
     },
     {
-      "id": "mov-450",
+      "id": "mov-456",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2022-01-05",
@@ -8706,7 +8814,7 @@
       "anulado": false
     },
     {
-      "id": "mov-451",
+      "id": "mov-457",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2022-07-05",
@@ -8723,7 +8831,7 @@
       "anulado": false
     },
     {
-      "id": "mov-452",
+      "id": "mov-458",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2023-01-05",
@@ -8740,7 +8848,7 @@
       "anulado": false
     },
     {
-      "id": "mov-453",
+      "id": "mov-459",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2023-07-05",
@@ -8757,7 +8865,7 @@
       "anulado": false
     },
     {
-      "id": "mov-454",
+      "id": "mov-460",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2024-01-05",
@@ -8774,7 +8882,7 @@
       "anulado": false
     },
     {
-      "id": "mov-455",
+      "id": "mov-461",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2024-07-05",
@@ -8791,7 +8899,7 @@
       "anulado": false
     },
     {
-      "id": "mov-456",
+      "id": "mov-462",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2025-01-05",
@@ -8808,7 +8916,7 @@
       "anulado": false
     },
     {
-      "id": "mov-457",
+      "id": "mov-463",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2025-07-05",
@@ -8825,7 +8933,7 @@
       "anulado": false
     },
     {
-      "id": "mov-458",
+      "id": "mov-464",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2026-01-05",
@@ -8842,7 +8950,7 @@
       "anulado": false
     },
     {
-      "id": "mov-459",
+      "id": "mov-465",
       "fincaId": "14030000-0000-4000-8000-000000000001",
       "tipo": "ANTICIPO",
       "fecha": "2026-07-05",

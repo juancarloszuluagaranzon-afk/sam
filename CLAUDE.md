@@ -604,11 +604,15 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   `npx tsc -p tsconfig.app.json --noEmit` o `npm run build` (`tsc -b`). Y **Antigravity, al reescribir un
   archivo .tsx COMPLETO, se come las líneas que empiezan con `>`** (cierres de etiquetas JSX de varias
   líneas): pedirle siempre ediciones puntuales y revisar el diff antes de creerle al compilador.
-- 📈 **Fincas: historia ciclo a ciclo con inflación + finca IYOMA PRUEBAS** — la cosecha de cada ciclo
+- 🔴 **Vocabulario del cliente en Fincas: CICLO ≠ CORTE.** Un **ciclo** va de **renovación a renovación**
+  (destrucción de cepas, arado, surcado, siembra) y es un conjunto de **cortes** de ~1 año (plantilla,
+  soca 1, soca 2…). **Cada fila de `af_ciclos` es un CORTE** (la tabla conserva su nombre, como pasó con
+  aval/aprobación); en pantalla se dice «corte», y una nueva plantilla reinicia el conteo de socas.
+- 📈 **Fincas: historia corte a corte con inflación + finca IYOMA PRUEBAS** — la cosecha de cada corte
   (`af_ciclos.datos_cosecha`) y el IPC como dato (`af_config.inflacion`), migración `20261024170000`;
   tarjeta en el tablero con «Pesos de cada año / Pesos de hoy». IYOMA PRUEBAS = plano de la Hda. IYOMA
   1403 (Riopaila) con 5 años simulados — 🔴 **uso interno, no mostrar a clientes** (cartografía del
-  ingenio). Detalle en `managing-fincas` → «📈 Historia ciclo a ciclo». Obra con «revisa como me gusta»:
+  ingenio). Detalle en `managing-fincas` → «📈 Historia corte a corte». Obra con «revisa como me gusta»:
   Antigravity investigó, Codex hizo cálculo/datos/pruebas (2 vueltas: la 1.ª sumaba honorarios de OTRA
   finca y ponía 2026 más barato que 2025), OpenCode la tarjeta, Claude revisó, corrigió y ensayó en la base
   con rollback antes de entregar.

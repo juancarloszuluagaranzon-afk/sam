@@ -9949,7 +9949,7 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-kpis--compacto .af-kpi b { font-size: 1.3rem; }
 .af-kpis--compacto .af-kpi span { font-size: 0.86rem; }
 
-/* ── Historia ciclo a ciclo (24-oct-2026) ────────────────────────────────────
+/* ── Historia corte a corte (24-oct-2026) ────────────────────────────────────
    La tabla NO lleva min-width a propósito: en el celular tiene que caber sin
    arrastrar la tarjeta de lado. Con `table-layout: fixed` + anchos del
    <colgroup> + `overflow-wrap: anywhere` las cifras se parten dentro de su

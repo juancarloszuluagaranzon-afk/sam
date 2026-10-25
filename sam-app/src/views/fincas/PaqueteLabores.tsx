@@ -89,7 +89,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
                 <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
                   <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}{p.repetible ? ' · varias pasadas' : ''}</small></td>
                   <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}{p.variedad ? <><br />🌱 {p.variedad}</> : ''}</small></td>
-                  {VER_PLATA && <td>{p.costoUnitario > 0 || (p.costoAparteUnitario || 0) > 0 ? <>{fmtPesos(p.costoUnitario)}{(p.costoAparteUnitario || 0) > 0 ? ` + ${fmtPesos(p.costoAparteUnitario || 0)} aparte` : ''} / {p.unidad}{p.repetible && p.pasadasPlan > 1 && <small>{p.pasadasPlan} pasadas</small>}</> : <span className="af-rojo">sin costo</span>}</td>}
+                  {VER_PLATA && <td>{p.costoUnitario > 0 || (p.costoAparteUnitario || 0) > 0 ? <>{[p.costoUnitario > 0 ? fmtPesos(p.costoUnitario) : '', (p.costoAparteUnitario || 0) > 0 ? `${fmtPesos(p.costoAparteUnitario || 0)} aparte` : ''].filter(Boolean).join(' + ')} / {p.unidad}{p.repetible && p.pasadasPlan > 1 && <small>{p.pasadasPlan} pasadas</small>}</> : <span className="af-rojo">sin costo</span>}</td>}
                   <td><small>{p.ventanaIdeal != null && p.ventanaNormal != null ? `ideal ≤${p.ventanaIdeal} · normal ≤${p.ventanaNormal} días` : 'sin ventana'}</small></td>
                   <td className="af-td-acc">
                     <button type="button" className="af-link" onClick={() => setEditando({ ...p })}>Editar</button>

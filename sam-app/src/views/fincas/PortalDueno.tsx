@@ -156,7 +156,7 @@ export function PortalDueno({ llave, usuario, onSalir }: { llave?: string; usuar
         </div>
         <div className="topbar-actions">
           <ThemeToggle />
-          {porUsuario && <a className="inline-button" href="/manuales/manual-fincas.html" target="_blank" rel="noopener">📖 Manual</a>}
+          {porUsuario && <a className="inline-button" href="/manuales/manual-fincas.html" target="_blank" rel="noopener" aria-label="Manual" title="Manual">📖 <span className="af-texto-manual">Manual</span></a>}
           {porUsuario && <button type="button" className="inline-button" onClick={salir}>Salir</button>}
         </div>
       </header>

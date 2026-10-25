@@ -212,7 +212,7 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
         <div className="topbar-actions">
           <ThemeToggle />
           {/* Pestaña aparte: se puede ir leyendo el manual y mirando la pantalla real. */}
-          <a className="inline-button" href="/manuales/manual-fincas.html" target="_blank" rel="noopener">📖 Manual</a>
+          <a className="inline-button" href="/manuales/manual-fincas.html" target="_blank" rel="noopener" aria-label="Manual" title="Manual">📖 <span className="af-texto-manual">Manual</span></a>
           <button type="button" className="inline-button" onClick={onLogout}>Salir</button>
         </div>
       </header>

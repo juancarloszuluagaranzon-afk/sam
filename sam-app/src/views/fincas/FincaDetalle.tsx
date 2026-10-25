@@ -37,7 +37,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
   const [sub, setSub] = useState<Sub>('resumen')
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
-  const [editandoPlan, setEditandoPlan] = useState<{ id: string; tarifa: string; aparte: string; pasadas: string } | null>(null)
+  const [editandoPlan, setEditandoPlan] = useState<{ id: string; tarifa: string; aparte: string; pasadas: string; error?: string } | null>(null)
 
   const filas = useMemo(() => laboresDeFinca(fincaId, d, hoy), [fincaId, d, hoy])
   const p = presupuestoFinca(fincaId, d)
@@ -207,7 +207,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                               const aparte = x.labor.costoAparteUnitarioPlan || 0
                               const pasadas = x.labor.pasadasPlan || 1
                               return <td>{plan.total > 0 ? fmtPesosCorto(plan.total) : <span className="af-rojo">sin costo</span>}
-                                {plan.total > 0 && <small>{pasadas > 1 ? `${pasadas} pasadas · ` : ''}{fmtPesos(tarifa)}{aparte > 0 ? ` + ${fmtPesos(aparte)} aparte` : ''} / {x.labor.unidad}</small>}</td>
+                                {plan.total > 0 && <small>{pasadas > 1 ? `${pasadas} pasadas · ` : ''}{[tarifa > 0 ? fmtPesos(tarifa) : '', aparte > 0 ? `${fmtPesos(aparte)} aparte` : ''].filter(Boolean).join(' + ')} / {x.labor.unidad}</small>}</td>
                             })()}
                             <td>{x.oport ? <span className={`af-chip ${CHIP[x.oport.nivel].c}`}>{CHIP[x.oport.nivel].t}</span> : <small>sin ventana</small>}</td>
                             <td><small>{x.labor.estado === 'ANULADA' ? `anulada: ${x.labor.anuladaMotivo}` : x.labor.estado.replace('_', ' ').toLowerCase()}</small></td>
@@ -225,33 +225,36 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                               </td>
                             )}
                           </tr>
-                          {editandoPlan?.id === x.labor.id && <tr><td colSpan={4 + (VER_PLATA ? 1 : 0) + (esAdmin ? 1 : 0)}>
-                            <div className="af-form">
-                              <b className="af-form__ancho">Presupuesto de {x.labor.labor.toLowerCase()} · suerte {s.codigo}</b>
-                              <label>Tarifa por {x.labor.unidad}<input inputMode="numeric" value={editandoPlan.tarifa} onChange={(e) => setEditandoPlan({ ...editandoPlan, tarifa: e.target.value })} /></label>
-                              <label>Costo aparte por {x.labor.unidad} y pasada<input inputMode="numeric" value={editandoPlan.aparte} onChange={(e) => setEditandoPlan({ ...editandoPlan, aparte: e.target.value })} /></label>
-                              {x.labor.repetible && <label>Pasadas<input inputMode="numeric" value={editandoPlan.pasadas} onChange={(e) => setEditandoPlan({ ...editandoPlan, pasadas: e.target.value })} /></label>}
-                              <div className="af-form__ancho af-acciones">
-                                <button type="button" className="primary-button" disabled={ocupado} onClick={async () => {
-                                  const tarifa = Number(editandoPlan.tarifa.replace(/\./g, '').replace(',', '.'))
-                                  const aparte = Number(editandoPlan.aparte.replace(/\./g, '').replace(',', '.'))
-                                  const pasadas = Number(editandoPlan.pasadas)
-                                  if (editandoPlan.tarifa.trim() === '' || editandoPlan.aparte.trim() === '' || !Number.isFinite(tarifa) || tarifa < 0 || !Number.isFinite(aparte) || aparte < 0 || (x.labor.repetible && (!Number.isInteger(pasadas) || pasadas < 1))) {
-                                    setError('Ingrese costos mayores o iguales a 0 y pasadas enteras mayores o iguales a 1.')
-                                    return
-                                  }
-                                  if (await hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: tarifa, costoAparteUnitarioPlan: aparte, ...(x.labor.repetible ? { pasadasPlan: pasadas } : {}) }, token))) setEditandoPlan(null)
-                                }}>Guardar</button>
-                                <button type="button" className="inline-button" onClick={() => setEditandoPlan(null)}>Cancelar</button>
-                              </div>
-                            </div>
-                          </td></tr>}
                           </Fragment>
                         ))}
                       </tbody>
                     </table>
                   </div>
                 )}
+                {/* El editor va DEBAJO de la tabla y no dentro: la tabla es más ancha que el celular
+                    (se desliza de lado) y adentro los campos y el botón Guardar quedaban fuera de la pantalla. */}
+                {propias.filter((x) => x.labor.id === editandoPlan?.id).map((x) => editandoPlan && (
+                  <div key={x.labor.id} className="af-form af-editor-plan">
+                    <b className="af-form__ancho">Presupuesto de {x.labor.labor.toLowerCase()} · suerte {s.codigo}</b>
+                    <label>Tarifa por {x.labor.unidad}<input inputMode="numeric" value={editandoPlan.tarifa} onChange={(e) => setEditandoPlan({ ...editandoPlan, tarifa: e.target.value })} /></label>
+                    <label>Costo aparte por {x.labor.unidad} y pasada<input inputMode="numeric" value={editandoPlan.aparte} onChange={(e) => setEditandoPlan({ ...editandoPlan, aparte: e.target.value })} /></label>
+                    {x.labor.repetible && <label>Pasadas<input inputMode="numeric" value={editandoPlan.pasadas} onChange={(e) => setEditandoPlan({ ...editandoPlan, pasadas: e.target.value })} /></label>}
+                    {editandoPlan.error && <p className="feedback error af-form__ancho">{editandoPlan.error}</p>}
+                    <div className="af-form__ancho af-acciones">
+                      <button type="button" className="primary-button" disabled={ocupado} onClick={async () => {
+                        const tarifa = Number(editandoPlan.tarifa.replace(/\./g, '').replace(',', '.'))
+                        const aparte = Number(editandoPlan.aparte.replace(/\./g, '').replace(',', '.'))
+                        const pasadas = Number(editandoPlan.pasadas)
+                        if (editandoPlan.tarifa.trim() === '' || editandoPlan.aparte.trim() === '' || !Number.isFinite(tarifa) || tarifa < 0 || !Number.isFinite(aparte) || aparte < 0 || (x.labor.repetible && (!Number.isInteger(pasadas) || pasadas < 1))) {
+                          setEditandoPlan({ ...editandoPlan, error: 'Ingrese costos mayores o iguales a 0 y pasadas enteras mayores o iguales a 1.' })
+                          return
+                        }
+                        if (await hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: tarifa, costoAparteUnitarioPlan: aparte, ...(x.labor.repetible ? { pasadasPlan: pasadas } : {}) }, token))) setEditandoPlan(null)
+                      }}>Guardar</button>
+                      <button type="button" className="inline-button" onClick={() => setEditandoPlan(null)}>Cancelar</button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )
           })}

@@ -9603,6 +9603,19 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-fila2 b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .af-fila2--total { border-top: 1px solid var(--color-divider, #e3e6df); padding-top: 6px; margin-top: 2px; }
 .af-desglose { border-top: 1px solid var(--color-divider, #e3e6df); padding-top: 8px; margin-top: 2px; display: flex; flex-direction: column; gap: 8px; }
+/* Barra de Fincas a 320 px: marca + tema + Manual + Salir medían 363 px y «Salir» quedaba fuera
+   (medido 24-oct-2026). En pantallas angostas el Manual queda solo con su ícono y el subtítulo se
+   recorta; «AgroMorales» y «Salir» se ven completos. */
+@media (max-width: 360px) {
+  .af .topbar { gap: 8px; }
+  .af .brand-block, .af .brand-info, .af .brand-info > div { min-width: 0; }
+  .af .brand-info strong, .af .brand-info span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .af .topbar-actions { gap: 4px; flex-shrink: 0; }
+  .af .topbar-actions .inline-button { padding: 8px 9px; }
+  .af .af-texto-manual { display: none; }
+}
+/* Editor del presupuesto de una labor: debajo de la tabla, al ancho de la tarjeta (no de la tabla). */
+.af-editor-plan { margin-top: 10px; padding: 12px; border: 1px solid var(--color-divider, #e3e6df); border-radius: 12px; background: var(--color-bg-soft, #eef1ec); }
 .af-dueno { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
 .af-card--ancha { grid-column: 1 / -1; }
 .af-grande { margin: 0; font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }

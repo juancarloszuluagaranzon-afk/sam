@@ -1,4 +1,4 @@
-export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos' | 'taller' | 'conductor_madera' | 'dueno_finca' | 'propietario'
+export type Role = 'supervisor' | 'operador' | 'owner' | 'administracion' | 'soporte' | 'supervisor_insumos' | 'conductor' | 'analista_insumos' | 'taller' | 'conductor_madera' | 'dueno_finca' | 'propietario' | 'quiosco_taller'
 
 export function esSoloConsulta(role: Role | null | undefined): boolean { return role === 'propietario' }
 

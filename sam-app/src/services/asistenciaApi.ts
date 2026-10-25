@@ -41,6 +41,8 @@ export interface MarcacionFila extends Marcacion {
   revisadoEn?: string
   distanciaRostro?: number
   pruebasVida?: string
+  /** La marcó el quiosco del taller (usuario `quiosco_taller`), no el celular de la persona. */
+  quioscoId?: string
 }
 
 function mapFila(r: Record<string, unknown>): MarcacionFila {
@@ -69,6 +71,7 @@ function mapFila(r: Record<string, unknown>): MarcacionFila {
     revisadoEn: r.revisado_en ? String(r.revisado_en) : undefined,
     distanciaRostro: r.distancia_rostro == null ? undefined : Number(r.distancia_rostro),
     pruebasVida: r.pruebas_vida ? String(r.pruebas_vida) : undefined,
+    quioscoId: r.quiosco_id ? String(r.quiosco_id) : undefined,
   }
 }
 
@@ -190,8 +193,11 @@ export interface RespuestaMarcar {
   horaCorregida?: boolean
   dentroDelSitio?: boolean | null
   distanciaM?: number | null
-  /** OK = cuenta · POR_REVISAR = la revisa el jefe · NO_COINCIDE = no se registró. */
-  resultado: 'OK' | 'POR_REVISAR' | 'NO_COINCIDE'
+  /**
+   * OK = cuenta · POR_REVISAR = la revisa el jefe · NO_COINCIDE = la cara no se
+   * parece, no se registró · PIN_INCORRECTO = el PIN no coincide, no se registró.
+   */
+  resultado: 'OK' | 'POR_REVISAR' | 'NO_COINCIDE' | 'PIN_INCORRECTO'
   requiereRevision: boolean
   revisionMotivo?: string
   distanciaRostro?: number | null
@@ -232,6 +238,14 @@ export async function marcar(input: {
   pruebasVida?: string | null
   /** La cara no se parece y la persona pide dejarla para revisión del jefe. */
   forzarRevision?: boolean
+  /** El usuario `quiosco_taller` desde el que se marcó. Sin GPS no queda por revisar. */
+  quioscoId?: string | null
+  /**
+   * El PIN de la persona, con `metodo: 'PIN'`. Lo verifica el SERVIDOR; si no
+   * coincide responde PIN_INCORRECTO y no registra nada. 🔴 NUNCA se guarda en
+   * la cola sin señal (ver `marcarOEncolar`): ahí la marcación va sin verificar.
+   */
+  pin?: string | null
 }): Promise<RespuestaMarcar> {
   const { data, error } = await supabase.rpc('taller_marcar', {
     p_id: input.id,
@@ -249,11 +263,15 @@ export async function marcar(input: {
     p_foto_mini: input.fotoMini ?? null,
     p_pruebas_vida: input.pruebasVida ?? null,
     p_forzar_revision: input.forzarRevision ?? false,
+    p_quiosco: input.quioscoId ?? null,
+    p_pin: input.pin ?? null,
   })
   if (error) throw error
   const r = (data ?? {}) as Record<string, unknown>
   const resultado: RespuestaMarcar['resultado'] =
-    r.resultado === 'NO_COINCIDE' ? 'NO_COINCIDE' : r.requiere_revision ? 'POR_REVISAR' : 'OK'
+    r.resultado === 'NO_COINCIDE' ? 'NO_COINCIDE'
+      : r.resultado === 'PIN_INCORRECTO' ? 'PIN_INCORRECTO'
+      : r.requiere_revision ? 'POR_REVISAR' : 'OK'
   return {
     resultado,
     requiereRevision: Boolean(r.requiere_revision),
@@ -338,11 +356,18 @@ function esFalloDeRed(e: unknown): boolean {
  * «quedó guardada, sube sola cuando haya señal». Decir «listo» en los dos casos
  * es como se pierde la confianza de quien está marcando su jornada.
  */
+/** 🔴 El PIN no se guarda en el aparato: lo que sube de la cola va sin verificar. */
+function sinPin(p: Pendiente): Pendiente {
+  const { pin: _pin, ...resto } = p
+  void _pin
+  return resto
+}
+
 export async function marcarOEncolar(
   input: Pendiente,
 ): Promise<{ enviada: boolean; respuesta?: RespuestaMarcar }> {
   if (!navigator.onLine) {
-    escribirCola([...leerCola(), input])
+    escribirCola([...leerCola(), sinPin(input)])
     return { enviada: false }
   }
   try {
@@ -356,7 +381,7 @@ export async function marcarOEncolar(
     return { enviada: true, respuesta }
   } catch (err) {
     if (esFalloDeRed(err)) {
-      escribirCola([...leerCola(), input])
+      escribirCola([...leerCola(), sinPin(input)])
       return { enviada: false }
     }
     throw err
@@ -399,11 +424,14 @@ export interface RostroRegistrado {
   revisadoPor?: string
   revisadoEn?: string
   motivo?: string
+  /** El jefe que la registró en persona (queda aprobada de una). Vacío = la registró la persona. */
+  enroladoPor?: string
 }
 
 // 🔴 Nunca `select('*')` aquí: la tabla tiene los descriptores y el cliente NO
 // tiene permiso sobre esa columna (grant por columnas). Un `*` respondería error.
-const COLS_ROSTRO = 'id,usuario_id,estado,foto_mini,creado_en,consentimiento_en,revisado_por,revisado_en,motivo'
+// ⚠️ `enrolado_por` necesita la migración 20261025160000 (su propio grant).
+const COLS_ROSTRO = 'id,usuario_id,estado,foto_mini,creado_en,consentimiento_en,revisado_por,revisado_en,motivo,enrolado_por'
 
 function mapRostro(r: Record<string, unknown>): RostroRegistrado {
   const e = String(r.estado)
@@ -417,6 +445,7 @@ function mapRostro(r: Record<string, unknown>): RostroRegistrado {
     revisadoPor: r.revisado_por ? String(r.revisado_por) : undefined,
     revisadoEn: r.revisado_en ? String(r.revisado_en) : undefined,
     motivo: r.motivo ? String(r.motivo) : undefined,
+    enroladoPor: r.enrolado_por ? String(r.enrolado_por) : undefined,
   }
 }
 
@@ -441,7 +470,8 @@ export async function loadRostros(): Promise<RostroRegistrado[]> {
 
 /**
  * Registra la cara. Solo con señal: el servidor revisa que la misma cara no
- * esté ya en otra cuenta. Nace PENDIENTE hasta que el jefe la apruebe.
+ * esté ya en otra cuenta. La que registra la persona sola nace PENDIENTE; la
+ * que registra el jefe EN PERSONA (`enroladoPor`) queda APROBADA de una.
  */
 export async function enrolarRostro(input: {
   usuarioId: string
@@ -449,15 +479,20 @@ export async function enrolarRostro(input: {
   foto: string | null
   consentimiento: boolean
   version: string
-}): Promise<void> {
-  const { error } = await supabase.rpc('taller_enrolar_rostro', {
+  /** El jefe que la registra en persona. El servidor exige que sea jefe y que no sea la misma persona. */
+  enroladoPor?: string | null
+}): Promise<'PENDIENTE' | 'APROBADO'> {
+  const { data, error } = await supabase.rpc('taller_enrolar_rostro', {
     p_usuario_id: input.usuarioId,
     p_descriptores: input.descriptores,
     p_foto_mini: input.foto,
     p_consentimiento: input.consentimiento,
     p_version: input.version,
+    // Solo se manda si viene: una PWA vieja contra una base sin migrar no se rompe.
+    ...(input.enroladoPor ? { p_enrolado_por: input.enroladoPor } : {}),
   })
   if (error) throw error
+  return (data as { estado?: string } | null)?.estado === 'APROBADO' ? 'APROBADO' : 'PENDIENTE'
 }
 
 /** La autorización vigente, tal como la guarda el servidor. */

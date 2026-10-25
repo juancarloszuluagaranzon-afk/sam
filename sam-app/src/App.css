@@ -10066,3 +10066,236 @@ td.planilla-vacio:hover { background: #fde047; }
   .acu-plan .cart-chip { white-space: normal; }
 }
 .acu-nowrap { white-space: nowrap; }
+
+/* ═══ Taller: personal y quiosco (25-oct-2026) ═══ */
+
+/* ── Personal del taller (pantalla del jefe) ─────────────────────────────── */
+.taller-personal__cab { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.taller-personal__chip {
+  display: inline-block; padding: 3px 10px; border-radius: 999px;
+  background: rgba(31, 122, 64, .12); border: 1px solid rgba(31, 122, 64, .3);
+  color: var(--color-ink); font-size: 0.72rem; font-weight: 700; white-space: nowrap;
+}
+.taller-personal__agregar { width: 100%; margin-bottom: 14px; }
+.taller-personal__lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.taller-personal__fila {
+  width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 10px; align-items: center; padding: 10px; cursor: pointer; text-align: left;
+  border: 1px solid var(--color-border); border-radius: 14px;
+  background: var(--color-bg-elevated, #fff); color: inherit; font: inherit;
+  min-height: 64px;
+}
+.taller-personal__fila:hover, .taller-personal__fila:focus-visible { border-color: var(--color-brand); }
+.taller-personal__avatar,
+.taller-personal__foto { border-radius: 10px; flex: none; }
+.taller-personal__foto { width: 46px; height: 56px; object-fit: cover; background: var(--color-bg-soft, #fafaf7); }
+.taller-personal__avatar {
+  width: 46px; height: 46px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--color-bg-muted, #ededeb);
+  color: var(--color-ink); font-weight: 800; font-size: 0.95rem; letter-spacing: .02em;
+}
+.taller-personal__avatar--grande { width: 84px; height: 84px; font-size: 1.5rem; }
+.taller-personal__foto--grande { width: 84px; height: 104px; }
+.taller-personal__txt { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.taller-personal__txt strong { overflow-wrap: anywhere; }
+.taller-personal__txt small { color: var(--color-ink-mid); font-size: 0.78rem; overflow-wrap: anywhere; }
+.taller-personal__cara {
+  padding: 4px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  white-space: nowrap; background: var(--color-bg-muted, #ededeb); color: var(--color-ink);
+}
+.taller-personal__cara--ok {
+  background: rgba(31, 122, 64, .14); border: 1px solid rgba(31, 122, 64, .38);
+}
+.taller-personal__cara--pend {
+  background: rgba(237, 161, 0, .16); border: 1px solid rgba(184, 110, 0, .45);
+}
+.taller-personal__modal {
+  max-width: min(560px, calc(100vw - 28px));
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+.taller-personal__detalle { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 6px; }
+.taller-personal__datos p { margin: 2px 0; font-size: 0.9rem; overflow-wrap: anywhere; }
+.taller-personal__cara-caja {
+  margin-top: 16px; padding: 12px; border: 1px solid var(--color-border);
+  border-radius: 12px; background: var(--color-bg-soft, #fafaf7);
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+}
+.taller-personal__cara-caja .subtle-copy { margin: 0; }
+.taller-personal__acepta {
+  display: flex; gap: 8px; align-items: flex-start; cursor: pointer;
+  margin: 12px 0 4px; font-size: 0.9rem; line-height: 1.4;
+}
+.taller-personal__acepta input { width: auto; flex: 0 0 auto; margin-top: 3px; }
+.taller-personal__retirar {
+  width: 100%; min-height: 48px; margin-top: 18px;
+  background: #f5e6e3; color: #5a1f1f; border: 1px solid rgba(90, 31, 31, .25);
+}
+.taller-personal__quiosco { margin-top: 18px; }
+
+/* ── Asistencia: la franja «Antes de pagar» ──────────────────────────────── */
+.taller-antes-de-pagar { margin: 18px 0; }
+.taller-antes-de-pagar .dash-kpi__lbl { overflow-wrap: anywhere; }
+.taller-antes-de-pagar__alto {
+  border: 1.5px solid #b86e00;
+  background: rgba(237, 161, 0, .09);
+}
+.taller-antes-de-pagar__alto .dash-kpi__val { color: var(--color-ink); }
+.taller-antes-de-pagar__excesos {
+  margin-top: 10px; padding: 10px 12px; border: 1px solid var(--color-border);
+  border-radius: 12px; background: var(--color-bg-soft, #fafaf7);
+}
+.taller-antes-de-pagar__excesos summary {
+  cursor: pointer; font-weight: 700; min-height: 44px;
+  display: flex; align-items: center;
+}
+.taller-antes-de-pagar__excesos p { margin: 6px 0; font-size: 0.88rem; overflow-wrap: anywhere; }
+
+/* ── Quiosco del taller (la tableta de la entrada) ───────────────────────── */
+.quiosco {
+  min-height: 100dvh; max-width: 100%; overflow-x: hidden;
+  padding: 12px clamp(10px, 2vw, 24px) 20px;
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--color-bg-app-1, #fafaf7); color: var(--color-ink);
+}
+.quiosco__cab {
+  display: flex; flex-wrap: wrap; align-items: flex-end;
+  justify-content: space-between; gap: 6px 16px;
+}
+.quiosco__marca { display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; min-width: 0; }
+.quiosco__marca h1 { margin: 0; font-size: clamp(1.15rem, 2.6vw, 1.7rem); overflow-wrap: anywhere; }
+.quiosco__reloj {
+  font-size: clamp(2rem, 6vw, 3.4rem); font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--color-ink);
+}
+.quiosco__estado {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px;
+  font-size: 0.95rem; min-width: 0;
+}
+.quiosco__adentro { font-weight: 700; }
+.quiosco__aviso {
+  padding: 3px 9px; border-radius: 999px; font-size: 0.82rem; font-weight: 700;
+  color: var(--color-ink); background: rgba(237, 161, 0, .16);
+  border: 1px solid rgba(184, 110, 0, .4); overflow-wrap: anywhere;
+}
+.quiosco__ayuda { margin: 0; font-size: 1rem; color: var(--color-ink-mid); }
+.quiosco__buscador {
+  width: 100%; min-width: 0; min-height: 56px; padding: 14px 16px;
+  font: inherit; font-size: 1.1rem; border-radius: 14px;
+  border: 2px solid var(--color-border); background: var(--color-bg-input, #fff); color: inherit;
+}
+.quiosco__buscador:focus-visible { border-color: var(--color-brand); outline: none; }
+.quiosco__grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(130px, 100%), 1fr));
+  gap: 10px; width: 100%;
+}
+.quiosco__persona {
+  min-width: 0; min-height: 160px; padding: 10px 6px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+  border: 2px solid var(--color-border); border-radius: 16px; cursor: pointer;
+  background: var(--color-bg-elevated, #fff); color: inherit; font: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.quiosco__persona:hover, .quiosco__persona:focus-visible { border-color: var(--color-brand); }
+.quiosco__persona:active { transform: scale(.98); }
+.quiosco__foto { width: 72px; height: 88px; object-fit: cover; border-radius: 12px; flex: none; }
+.quiosco__foto--grande { width: 120px; height: 150px; }
+.quiosco__iniciales {
+  width: 72px; height: 88px; flex: none; display: grid; place-items: center;
+  border-radius: 12px; background: var(--color-bg-muted, #ededeb);
+  color: var(--color-ink); font-size: 1.5rem; font-weight: 800;
+}
+.quiosco__iniciales--grande { width: 120px; height: 150px; font-size: 2.2rem; }
+.quiosco__nombre {
+  font-size: 1rem; font-weight: 700; text-align: center;
+  overflow-wrap: anywhere; word-break: break-word; max-width: 100%;
+}
+.quiosco__chip {
+  padding: 2px 9px; border-radius: 999px; font-size: 0.74rem; font-weight: 700;
+  background: var(--color-bg-muted, #ededeb); color: var(--color-ink); white-space: nowrap;
+}
+.quiosco__chip.is-dentro {
+  background: rgba(31, 122, 64, .16); border: 1px solid rgba(31, 122, 64, .42);
+}
+.quiosco__panel {
+  width: 100%; max-width: 640px; min-width: 0; margin: 0 auto; padding: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  border: 1px solid var(--color-border); border-radius: 18px;
+  background: var(--color-bg-elevated, #fff);
+}
+.quiosco__panel h2 { margin: 0; text-align: center; overflow-wrap: anywhere; max-width: 100%; }
+.quiosco__panel--aviso { border-color: #b86e00; border-width: 2px; }
+.quiosco__estado-persona {
+  margin: 0; font-size: 1rem; line-height: 1.45; text-align: center;
+  color: var(--color-ink-mid); overflow-wrap: anywhere;
+}
+.quiosco__sin-cara {
+  margin: 0; text-align: center; font-weight: 700; color: var(--color-ink);
+  background: rgba(237, 161, 0, .16); border: 1px solid rgba(184, 110, 0, .4);
+  border-radius: 12px; padding: 8px 12px; overflow-wrap: anywhere;
+}
+.quiosco__cara {
+  width: 100%; min-height: 80px; padding: 12px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 0; border-radius: 16px; cursor: pointer; color: #fff;
+  font: inherit; font-size: clamp(1.05rem, 2.4vw, 1.35rem); font-weight: 800;
+  -webkit-tap-highlight-color: transparent;
+}
+.quiosco__cara--entrada { background: var(--color-brand); }
+/* Rojo fijo (el mismo de la paleta clara): en tema oscuro `--color-status-cancel`
+   se vuelve rosado y el texto blanco del botón perdería contraste. */
+.quiosco__cara--salida { background: #7d2e2e; }
+.quiosco__cara:active { transform: scale(.99); }
+.quiosco__cara:disabled { opacity: .6; cursor: wait; }
+.quiosco__secundario, .quiosco__volver {
+  width: 100%; min-height: 56px; padding: 10px 12px;
+  border: 1.5px solid var(--color-border); border-radius: 14px; cursor: pointer;
+  background: var(--color-bg-soft, #fafaf7); color: inherit;
+  font: inherit; font-size: 1rem; font-weight: 700;
+}
+.quiosco__secundario:disabled { opacity: .6; cursor: wait; }
+.quiosco__pin-titulo { margin: 0; color: var(--color-ink-mid); text-align: center; }
+.quiosco__puntos { display: flex; gap: 12px; justify-content: center; padding: 4px 0; }
+.quiosco__puntos span {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--color-ink-light); background: transparent;
+}
+.quiosco__puntos span.is-lleno { background: var(--color-brand); border-color: var(--color-brand); }
+.quiosco__pin-error {
+  margin: 0; padding: 6px 12px; border-radius: 10px; font-weight: 700;
+  color: var(--color-ink); background: rgba(179, 38, 30, .12);
+  border: 1px solid rgba(179, 38, 30, .4); text-align: center; overflow-wrap: anywhere;
+}
+.quiosco__teclado {
+  width: 100%; max-width: 420px; display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
+}
+.quiosco__tecla {
+  min-width: 0; min-height: 64px; border-radius: 14px; cursor: pointer;
+  border: 1px solid var(--color-border); background: var(--color-bg-soft, #fafaf7);
+  color: inherit; font: inherit; font-size: 1.5rem; font-weight: 800;
+}
+.quiosco__tecla:disabled { opacity: .6; cursor: wait; }
+.quiosco__tecla--hueco { visibility: hidden; pointer-events: none; }
+.quiosco__tecla--borrar { font-size: 1.3rem; }
+.quiosco__ocupado { margin: 0; font-size: 0.9rem; color: var(--color-ink-mid); }
+.quiosco__resultado {
+  margin: auto; width: 100%; max-width: 640px; padding: 18px;
+  display: flex; align-items: center; justify-content: center; text-align: center;
+  border: 2px solid var(--color-brand); border-radius: 18px;
+  background: rgba(31, 122, 64, .1);
+  font-size: clamp(1.1rem, 2.8vw, 1.6rem); font-weight: 700; line-height: 1.4;
+}
+.quiosco__resultado p { margin: 0; overflow-wrap: anywhere; }
+.quiosco__vacio { color: var(--color-ink-mid); text-align: center; overflow-wrap: anywhere; }
+.quiosco__pie { margin-top: auto; padding-top: 12px; display: flex; justify-content: center; }
+.quiosco__cerrar {
+  min-height: 56px; padding: 6px 10px; border: 0; background: none; cursor: pointer;
+  color: var(--color-ink-light); font: inherit; font-size: 0.8rem; text-decoration: underline;
+}
+@media (max-width: 420px) {
+  .quiosco { padding-left: 8px; padding-right: 8px; }
+  .quiosco__grid { gap: 8px; }
+  .quiosco__persona { min-height: 150px; padding: 8px 4px; }
+  .quiosco__panel { padding: 12px 10px; }
+}

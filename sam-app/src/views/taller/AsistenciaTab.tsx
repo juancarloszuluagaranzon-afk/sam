@@ -12,6 +12,7 @@ import {
   emparejar, clasificar, totalizar, hhmm, FRANJAS, esFestivo, enBogota,
   CONFIG_POR_DEFECTO, type ConfigHoras,
 } from '../../lib/horasExtra'
+import { excesosDeExtras } from '../../lib/topesExtras'
 
 /**
  * Asistencia del taller — lo que se le entrega a nómina.
@@ -87,6 +88,18 @@ export function AsistenciaTab() {
   const { sesiones, sueltas } = useMemo(() => emparejar(cuentan), [cuentan])
   const dias = useMemo(() => clasificar(sesiones, cfg), [sesiones, cfg])
   const totales = useMemo(() => totalizar(dias), [dias])
+
+  // Lo que hay que resolver ANTES de pagar, en una sola franja: parejas que no
+  // cierran, marcaciones dudosas, topes de extras y gente sin cara registrada.
+  const excesos = useMemo(() => excesosDeExtras(dias), [dias])
+  const personasSobreTope = useMemo(() => new Set(excesos.map((e) => e.usuarioId)).size, [excesos])
+  const sinCara = useMemo(
+    () => users.filter((u) =>
+      u.role === 'taller'
+      && u.active !== false
+      && (!caraDe.get(u.id) || caraDe.get(u.id)?.estado === 'RECHAZADO')).length,
+    [users, caraDe],
+  )
 
   /** Quién quedó con la última marcación en ENTRADA: está adentro ahora. */
   const adentro = useMemo(() => {
@@ -258,6 +271,43 @@ export function AsistenciaTab() {
       )}
 
       {cargando && <p className="muted-text">Cargando marcaciones…</p>}
+
+      {/* ── Antes de pagar: las cuatro cosas que se resuelven antes de la quincena. ── */}
+      <div className="taller-antes-de-pagar">
+        <h3 className="dash-titulo">Antes de pagar</h3>
+        <div className="dash-kpis">
+          <div className="dash-kpi">
+            <span className="dash-kpi__val">{sueltas.length}</span>
+            <span className="dash-kpi__lbl">Sin pareja</span>
+            <span className="dash-kpi__pie">entrada o salida sin su par</span>
+          </div>
+          <div className="dash-kpi">
+            <span className="dash-kpi__val">{porRevisar.length}</span>
+            <span className="dash-kpi__lbl">Por revisar</span>
+          </div>
+          <div className={`dash-kpi${personasSobreTope > 0 ? ' taller-antes-de-pagar__alto' : ''}`}>
+            <span className="dash-kpi__val">{personasSobreTope}</span>
+            <span className="dash-kpi__lbl">Pasan el tope de extras</span>
+            <span className="dash-kpi__pie">más de 2 h al día o 12 a la semana</span>
+          </div>
+          <div className="dash-kpi">
+            <span className="dash-kpi__val">{sinCara}</span>
+            <span className="dash-kpi__lbl">Sin cara registrada</span>
+          </div>
+        </div>
+        {excesos.length > 0 && (
+          <details className="taller-antes-de-pagar__excesos">
+            <summary>Ver quién pasa el tope</summary>
+            {excesos.map((e) => (
+              <p key={`${e.usuarioId}|${e.tipo}|${e.periodo}`}>
+                <strong>{nombreDe(e.usuarioId)}</strong> ·{' '}
+                {e.tipo === 'DIA' ? `el ${diaMes(e.periodo)}` : `semana del ${diaMes(e.periodo)}`} ·{' '}
+                {hhmm(e.minutosExtra)} de extra · {e.tipo === 'DIA' ? 'tope 2:00' : 'tope 12:00'}
+              </p>
+            ))}
+          </details>
+        )}
+      </div>
 
       {/* ── Caras por aprobar: sin esto, cualquiera registra su cara en la cuenta de otro. ── */}
       {carasPendientes.length > 0 && (
@@ -451,6 +501,12 @@ function ConfigJornada({ cfg, onGuardar }: { cfg: ConfigHoras; onGuardar: (c: Co
       <button type="button" className="primary-button" onClick={() => void onGuardar(v)}>Guardar jornada</button>
     </div>
   )
+}
+
+/** «2026-10-20» → «20/10». Sin `Date` a propósito: el ISO se correría un día en Bogotá. */
+function diaMes(periodo: string): string {
+  const [, mes, dia] = periodo.split('-')
+  return dia && mes ? `${dia}/${mes}` : periodo
 }
 
 export default AsistenciaTab

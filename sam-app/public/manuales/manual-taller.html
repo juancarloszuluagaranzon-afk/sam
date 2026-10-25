@@ -178,6 +178,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li><a href="#compras">Compras</a></li>
       <li><a href="#ciclo">Ciclo de vida y costo por hora</a></li>
       <li><a href="#errores">Los cinco errores que dañan los números</a></li>
+      <li><a href="#personal">Personal del taller y quiosco</a></li>
     </ol>
   </nav>
 
@@ -515,6 +516,113 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <strong>Si dudas de un dato, no lo inventes.</strong> Un campo vacío se ve y se puede
       completar después. Un número inventado se mezcla con los buenos y ya nadie sabe cuál
       era cuál.
+    </div>
+  </section>
+
+  <!-- 9 ─────────────────────────────────────────────── -->
+  <section class="paso" id="personal">
+    <h2><span class="paso__num">9</span> Personal del taller y quiosco</h2>
+    <p class="paso__intro">
+      El jefe da de alta a cada persona y le registra la cara en persona. Después, cada uno
+      marca su entrada y su salida en la tableta de la entrada.
+    </p>
+
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">👷 Personal del taller</div>
+        <div class="recorte__cuerpo">
+          <div class="r-fila"><span class="r-titulo">Personal del taller</span><span class="r-pill">3 activos</span></div>
+          <div class="r-card r-card--verde">
+            <div class="r-fila"><span class="r-titulo">ANDRÉS RUIZ</span><span class="r-pill">Cara ✓</span></div>
+            <div class="r-sub">MECÁNICO · adentro desde 25 oct 06:58</div>
+          </div>
+          <div class="r-card">
+            <div class="r-fila"><span class="r-titulo">LUIS GÓMEZ</span><span class="r-pill">Sin cara</span></div>
+            <div class="r-sub">SOLDADOR · afuera</div>
+          </div>
+          <div class="r-btn r-btn--ancho">+ Agregar mecánico</div>
+          <div class="r-card">
+            <div class="r-titulo">🖥️ Quiosco del taller</div>
+            <div class="r-sub">La tableta de la entrada entra con el usuario del quiosco.</div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Agregar a una persona</strong><span>Nombre completo y cédula. La app le crea su usuario y un PIN de cuatro dígitos. <em>El PIN se muestra una sola vez:</em> anótelo y entrégueselo.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Registrarle la cara</strong><span>Se hace en persona, con el jefe presente. Primero se le lee o se le da a leer la autorización de datos biométricos; solo si la acepta se abre la cámara. Queda aprobada de una porque el jefe la vio.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Si no acepta</strong><span>Marca con su PIN en el quiosco. Esas marcaciones quedan <strong>por revisar</strong> y el jefe las acepta o las anula en Asistencia.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Retirar a una persona</strong><span>Se borra su cara (Ley 1581) y ya no puede marcar. Sus horas y marcaciones pasadas se conservan.</span></div></li>
+      </ul>
+    </div>
+
+    <h3 style="margin-top:22px">Preparar la tableta del quiosco</h3>
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">🖥️ Quiosco del taller</div>
+        <div class="recorte__cuerpo">
+          <div class="r-fila"><span class="r-titulo">Quiosco del taller</span><span class="r-titulo">06:58</span></div>
+          <div class="r-sub">Adentro ahora: 3</div>
+          <div class="r-sub">Toca tu nombre, mira a la cámara y parpadea.</div>
+          <div class="r-fila">
+            <div class="r-card r-card--verde" style="flex:1"><strong>ANDRÉS</strong><div class="r-sub">Adentro</div></div>
+            <div class="r-card" style="flex:1"><strong>LUIS</strong><div class="r-sub">Afuera</div></div>
+          </div>
+          <div class="r-btn r-btn--ancho">Marcar ENTRADA con la cara</div>
+          <div class="r-btn r-btn--gris r-btn--ancho">Marcar con mi PIN</div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Crear el usuario del quiosco</strong><span>Al final de «Personal del taller», con el botón <strong>Crear el usuario del quiosco</strong>. También le da un PIN, que se muestra una sola vez.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Entrar en la tableta</strong><span>Abra <code>agroserviciosmorales.vercel.app</code> y entre con ese usuario y ese PIN. La tableta se queda con la sesión abierta.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Dejarla en la entrada</strong><span>Conectada a la corriente, fija y a la vista. Es la que usan todos para marcar.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="tip">
+      <strong>Cómo marca el mecánico.</strong> Toca su nombre en la tableta, mira a la cámara,
+      parpadea y gira un poco la cabeza. La cámara toma la foto sola y guarda la hora.
+    </div>
+
+    <div class="ojo">
+      <strong>Sin señal no se pierde nada.</strong> La marcación se guarda en la tableta y sube
+      sola cuando vuelve la conexión. La hora que cuenta es la de la marcación, no la del envío.
+    </div>
+
+    <h3 style="margin-top:22px">Si olvidó marcar la salida</h3>
+    <p class="paso__intro">
+      Al día siguiente la tableta lo avisa: <em>«No marcaste la salida del …: se marcará una
+      ENTRADA nueva»</em>. La entrada vieja queda sin pareja. <strong>No se cierra sola:</strong>
+      el jefe la revisa en Asistencia y decide si esas horas cuentan.
+    </p>
+
+    <h3 style="margin-top:22px">Antes de pagar</h3>
+    <div class="pantalla">
+      <div class="recorte">
+        <div class="recorte__barra">📋 Asistencia y horas extras</div>
+        <div class="recorte__cuerpo">
+          <div class="r-sub">ANTES DE PAGAR</div>
+          <div class="r-fila">
+            <div class="r-card" style="flex:1"><strong>2</strong><div class="r-sub">Sin pareja · entrada o salida sin su par</div></div>
+            <div class="r-card" style="flex:1"><strong>1</strong><div class="r-sub">Por revisar</div></div>
+          </div>
+          <div class="r-fila">
+            <div class="r-card r-card--rojo" style="flex:1"><strong>1</strong><div class="r-sub">Pasan el tope de extras · más de 2 h al día o 12 a la semana</div></div>
+            <div class="r-card" style="flex:1"><strong>0</strong><div class="r-sub">Sin cara registrada</div></div>
+          </div>
+        </div>
+      </div>
+      <ul class="explica">
+        <li><span class="marca">1</span><div><strong>Sin pareja</strong><span>Una entrada sin salida o una salida sin entrada. Esas horas no se cuentan: no se inventa la hora que falta.</span></div></li>
+        <li><span class="marca">2</span><div><strong>Por revisar</strong><span>Lo que el celular o la tableta no pudo probar. No cuenta hasta que el jefe lo acepte.</span></div></li>
+        <li><span class="marca">3</span><div><strong>Pasan el tope de extras</strong><span>Más de <strong>2 horas extra al día</strong> o <strong>12 a la semana</strong>. Se avisa, no se recorta: las horas se trabajaron y se pagan; pasarse del tope es un riesgo para la empresa.</span></div></li>
+        <li><span class="marca">4</span><div><strong>Sin cara registrada</strong><span>Personas activas del taller a las que les falta la cara. Mientras tanto marcan con su PIN y el jefe revisa esas marcaciones.</span></div></li>
+      </ul>
+    </div>
+
+    <div class="ojo">
+      <strong>La franja «Antes de pagar» se revisa antes de cada quincena.</strong> Si una de las
+      cuatro cifras no está en cero, hay algo que resolver: hablarlo con la persona y aceptar o
+      anular la marcación deja el reporte cuadrado y verdadero.
     </div>
   </section>
 

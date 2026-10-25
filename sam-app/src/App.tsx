@@ -18,6 +18,7 @@ import { AnalistaView } from './views/AnalistaView'
 import { FlotaView } from './views/FlotaView'
 import { MaderaView } from './views/MaderaView'
 import { TallerView } from './views/TallerView'
+import { QuioscoTallerView } from './views/QuioscoTallerView'
 import { ImpersonationBar } from './components/ImpersonationBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { PullToRefresh } from './components/PullToRefresh'
@@ -597,6 +598,18 @@ function AppContent() {
         {impersonationBar}
         {syncErrorBanner}
         <MaderaView onLogout={() => saveSession(null)} />
+      </>
+    )
+  }
+
+  // Rol Quiosco del taller (25-oct-2026) → SOLO el quiosco: la tableta fija de
+  // la entrada, donde todos marcan con la cara. Sin menús: la usa cualquiera
+  // que pase por la puerta, así que no puede abrir nada más.
+  if (session.role === 'quiosco_taller') {
+    return (
+      <>
+        {impersonationBar}
+        <QuioscoTallerView onLogout={() => saveSession(null)} />
       </>
     )
   }

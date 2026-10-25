@@ -8,6 +8,7 @@ import { ComprasTab } from './taller/ComprasTab'
 import { CicloVidaTab } from './taller/CicloVidaTab'
 import { MiJornadaTab } from './taller/MiJornadaTab'
 import { AsistenciaTab } from './taller/AsistenciaTab'
+import { PersonalTallerTab } from './taller/PersonalTallerTab'
 import { useAppData } from '../context/AppDataContext'
 import { vencimientosDe } from '../lib/indicadores'
 
@@ -19,7 +20,7 @@ import { vencimientosDe } from '../lib/indicadores'
  * le está haciendo (órdenes) → con qué (repuestos) → de dónde salió (compras) →
  * cuánto costó (ciclo de vida).
  */
-export type TallerTab = 'jornada' | 'maquinas' | 'preventivo' | 'ordenes' | 'repuestos' | 'compras' | 'ciclo' | 'asistencia'
+export type TallerTab = 'jornada' | 'maquinas' | 'preventivo' | 'ordenes' | 'repuestos' | 'compras' | 'ciclo' | 'asistencia' | 'personal'
 
 const TABS: { key: TallerTab; icon: string; label: string; desc: string; soloJefe?: boolean }[] = [
   // «Mi jornada» va de PRIMERA porque es lo que se abre dos veces al día;
@@ -32,6 +33,9 @@ const TABS: { key: TallerTab; icon: string; label: string; desc: string; soloJef
   { key: 'compras', icon: '🧾', label: 'Compras', desc: 'Proveedores' },
   { key: 'ciclo', icon: '📈', label: 'Ciclo de vida', desc: '$/hora e indicadores' },
   { key: 'asistencia', icon: '📋', label: 'Asistencia', desc: 'Horas extras del taller', soloJefe: true },
+  // El jefe da de alta al personal y le registra la cara EN PERSONA (25-oct-2026):
+  // esperar a que cada mecánico se registrara solo dejó el módulo sin una sola cara.
+  { key: 'personal', icon: '👷', label: 'Personal', desc: 'Alta, cara y quiosco', soloJefe: true },
 ]
 
 function TallerInterno() {
@@ -90,6 +94,7 @@ function TallerInterno() {
         <section className="panel-card"><p className="muted-text">Cargando el taller…</p></section>
       ) : tab === 'jornada' ? <MiJornadaTab />
         : tab === 'asistencia' ? (esJefe ? <AsistenciaTab /> : <MiJornadaTab />)
+        : tab === 'personal' ? (esJefe ? <PersonalTallerTab /> : <MiJornadaTab />)
         : tab === 'maquinas' ? <MaquinasTab />
         : tab === 'preventivo' ? <PreventivoTab />
         : tab === 'ordenes' ? <OrdenesTab />

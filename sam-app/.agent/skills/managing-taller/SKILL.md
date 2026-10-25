@@ -620,3 +620,52 @@ abre la cámara, no los 50 usuarios. Medido: cargar el motor 225 ms; primera det
 ⚠️ **Sin probar con una cara real**: el navegador del agente no tiene cámara. Lo probado es
 la base (24 casos), el motor en el navegador y una marcación real por PostgREST con `U058`
 (quedó «por revisar» y se anuló). La primera prueba con cara la hace el cliente.
+
+## El jefe enrola al personal y el QUIOSCO de la entrada (25-oct-2026)
+
+Pedido de Carlos David («control de horas y enrolamiento de personal del taller»). 🔴 **Medido ese día:
+el módulo de asistencia tenía CERO adopción** (un solo usuario `taller`, el de pruebas; 0 caras, 0 huellas):
+dependía de que cada mecánico se registrara solo en su celular y nadie lo hizo. Cambio de enfoque: el
+**jefe** da de alta y registra la cara **en persona**, y una **tableta fija** en la entrada marca por todos.
+Migración `20261025160000_taller_personal_quiosco.sql` (aplicada; pruebas en
+`supabase/pruebas_taller_personal_quiosco.sql`, 19 casos, y `scripts/prueba-taller-quiosco.mts`, 23 casos).
+
+| Pieza | Dónde |
+|---|---|
+| Pestaña **Personal** (solo jefe): alta (usuario + PIN de 4 dígitos que se ve UNA vez), ficha, registrar cara, retirar, crear el usuario del quiosco | `views/taller/PersonalTallerTab.tsx`, `services/tallerPersonalApi.ts` |
+| **Quiosco** (rol `quiosco_taller`, entra directo y solo ve esto) | `views/QuioscoTallerView.tsx`, `lib/quiosco.ts` |
+| «**Antes de pagar**» arriba de Asistencia: sin pareja, por revisar, topes de extras, sin cara | `AsistenciaTab.tsx`, `lib/topesExtras.ts` |
+| Ficha (cargo, teléfono) | tabla `taller_personal`, función `taller_guardar_personal` |
+
+**Reglas que quedaron escritas en la base (no en la pantalla):**
+- `taller_enrolar_rostro(…, p_enrolado_por)`: si lo registra un **jefe** (owner/administración) EN PERSONA queda
+  **APROBADA de una**; nadie se aprueba a sí mismo; sin `p_enrolado_por` sigue naciendo PENDIENTE (la PWA vieja no se rompe).
+- `taller_marcar(…, p_quiosco, p_pin)`: **desde el quiosco no se exige GPS** (una tableta Wi-Fi puede no tener
+  y cada marcación saldría «por revisar»), pero si manda ubicación y está lejos sigue saliendo «fuera del taller».
+  El **PIN lo verifica el servidor**: equivocado → `PIN_INCORRECTO` y NO se registra. Un PIN correcto igual queda
+  **por revisar** («marcada con PIN, sin la cara»): un PIN se presta, una cara no. Un `p_quiosco` que no es un
+  usuario `quiosco_taller` activo se marca «quiosco no reconocido».
+- Retirar a alguien: **primero se suprime su cara** (`taller_revocar_rostro`, Ley 1581) y después se desactiva el
+  usuario; sus marcaciones y horas se conservan. Verificado: la plantilla queda en 0 números.
+- Topes legales de extras (2 h al día, 12 a la semana) **avisan, no recortan**. ⚠️ La Ley 2466 de 2025 quitó el
+  **permiso previo** del Ministerio del Trabajo (Circular 0102 del 22-sep-2025); los topes siguen y se sancionan después.
+
+**Detalles que muerden (todos medidos en la prueba):**
+- 🔴 **El PIN nunca se guarda en el aparato**: `marcarOEncolar` lo quita antes de encolar, y el quiosco lo borra de
+  la memoria ANTES de enviar (si el envío fallaba, el PIN quedaba y aparecía en el teclado de la persona siguiente).
+  Lo que sube de la cola sin señal va «sin verificar», por revisar.
+- 🔴 **El aviso de error no puede empujar el teclado**: al aparecer «PIN incorrecto» las teclas se corrían 48 px y el
+  siguiente toque caía en otra tecla. Ahora el aviso ocupa siempre su lugar (`visibility`).
+- 🔴 **Una tableta fija no puede obligar a desplazar la pantalla**: a 1280×800 el teclado medía 1037 px de alto.
+  Acostada (`min-width: 900px` y `landscape`) el panel va en **dos columnas** y las teclas escalan con la altura.
+- 🔴 Los toques casi juntos leían el mismo PIN viejo del estado de React: el PIN va también en una `ref`.
+- Dos «Luis» en el mismo taller se habrían confundido: la tarjeta muestra el primer nombre, y si se repite los dos
+  primeros, y si aún se repite el completo (`etiquetasCortas`, calculada contra TODO el personal, no lo filtrado).
+- Aparato compartido: si alguien abre su panel y se va, **a los 60 s vuelve solo a la lista**.
+- Asistencia abría SIEMPRE en la 1.ª quincena: del 16 en adelante el jefe veía «Nadie ha marcado». Ahora abre en la en curso.
+- Sin señal: el quiosco guarda la lista (`sam:taller:quiosco-roster`, rellena contra el vacío, regla 2b) y las marcaciones
+  quedan en cola con su hora; verificado con una marcación real sin señal que subió sola al volver.
+- ⚠️ **NO probado con una cara real** (el navegador del agente no tiene cámara): la selfie del quiosco y el registro
+  por el jefe los prueba una persona con cámara. Se probó el servidor con una cara sintética (aprobada de una).
+- 🔴 `app_usuarios` no tiene `es_prueba` por defecto: al crear usuarios de prueba por la pantalla, **borrarlos al terminar**
+  (se hizo, con `delete` acotado por id y nombre). La pantalla NO deja borrar: «Retirar» desactiva.

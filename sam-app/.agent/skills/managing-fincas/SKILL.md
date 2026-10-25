@@ -380,9 +380,20 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
   $/t · $/kg. La fila en curso va en pesos de este año. 🔴 La tabla lleva `min-width: 0` (hija de
   `.af-card`, que es flex: sin eso medía 820 px en una tarjeta de 347) y anchos medidos a 320 px.
 - **IYOMA PRUEBAS** — finca de prueba sobre el plano de la **Hda. IYOMA 1403 (Riopaila Castilla,
-  Roldanillo)**: 5 suertes (55,25 ha) y 18 pedazos del plano, digitalizados de la imagen con la cuadrícula
+  Roldanillo)**: 5 suertes (55,25 ha), al principio 18 pedazos del plano digitalizados de la imagen con la cuadrícula
   **MAGNA-SIRGAS Colombia Oeste** (E 1.107.750, N 985.000…) y verificados sobre la foto satelital y el plano
-  georreferenciado del ingenio. ⚠️ Iván aclaró (24-oct) que ese plano lo **dio ASM y es público**: se usa
+  georreferenciado del ingenio. 🔴 **25-oct-2026: los linderos se ajustaron a los SURCOS de la foto**
+  (Iván: «los surcos no deben quedar por fuera del polígono»). El plano tal cual dejaba surcos por fuera
+  (la punta de la 10, 10–25 m del occidente de la 30) y franjas de 3–9 m sin dueño entre suertes vecinas
+  (la 10 se metía en surcos de la 20 cruzando la zanja). Ahora son **5 polígonos, uno por suerte**: cada
+  uno llega a donde terminan sus surcos (medido sobre la foto Esri z18 con contraste e índice verde−rojo),
+  la 10 y la 20 se parten por la **zanja**, y las demás vecinas por la mitad del camino. Lo dibujado da
+  **60,16 ha contra 55,25 oficiales**: el área oficial descuenta caminos, zanjas y rondas, y la app sigue
+  usando la oficial para todo (el mapa muestra las dos). Parche sobre una base cargada:
+  `supabase/ajuste_iyoma_pruebas_poligonos.sql` (lo escribe el generador desde
+  `scripts/fixtures/iyoma-poligonos.json`; lo borrado queda en la auditoría). ⚠️ La franja norte de la 20
+  (15–55 m entre el plano 2020 y el camino) tiene surcos seguidos en la foto pero el plano no la traía: con
+  un cliente real, confirmarla con el dueño. ⚠️ Iván aclaró (24-oct) que ese plano lo **dio ASM y es público**: se usa
   con el **dueño de Iyoma** (volante y folleto en `caso-exito/fincas/*-iyoma.*`, sin marca del ingenio y con
   las cifras marcadas como simulación); para otros clientes sigue siendo mejor RIOGRANDE PRUEBAS. Datos SIMULADOS y reproducibles: `node
   scripts/generar-iyoma-pruebas.mts` escribe `supabase/seed_iyoma_pruebas.sql`, `borrar_iyoma_pruebas.sql`

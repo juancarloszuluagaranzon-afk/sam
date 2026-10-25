@@ -9602,6 +9602,7 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-fila2 small { display: block; color: var(--color-ink-mid, #5a5f57); font-size: 0.78rem; }
 .af-fila2 b { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .af-fila2--total { border-top: 1px solid var(--color-divider, #e3e6df); padding-top: 6px; margin-top: 2px; }
+.af-desglose { border-top: 1px solid var(--color-divider, #e3e6df); padding-top: 8px; margin-top: 2px; display: flex; flex-direction: column; gap: 8px; }
 .af-dueno { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
 .af-card--ancha { grid-column: 1 / -1; }
 .af-grande { margin: 0; font-size: 1.5rem; font-weight: 800; font-variant-numeric: tabular-nums; }

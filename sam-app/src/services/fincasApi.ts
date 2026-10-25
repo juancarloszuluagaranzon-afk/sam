@@ -67,6 +67,7 @@ export interface Ciclo {
 }
 export interface LaborPaquete {
   id: string; labor: string; unidad: string; cantidadPorHa: number; costoUnitario: number
+  pasadasPlan: number; costoAparteUnitario: number
   ventanaIdeal: number | null; ventanaNormal: number | null
   aplica: 'SOCA' | 'PLANTILLA' | 'AMBOS'; orden: number; activa: boolean
   /** Varias pasadas por ciclo (riego, malezas): el total no se topa al área y no se cierra sola. */
@@ -76,7 +77,7 @@ export interface LaborPaquete {
 }
 export interface LaborCiclo {
   id: string; cicloId: string; labor: string; unidad: string
-  cantidadPlan: number; costoUnitarioPlan: number
+  cantidadPlan: number; costoUnitarioPlan: number; pasadasPlan: number; costoAparteUnitarioPlan: number
   ventanaIdeal: number | null; ventanaNormal: number | null
   estado: EstadoLabor; anuladaMotivo: string | null; orden: number
   /** Heredado del paquete: `cantidadPlan` es UNA pasada (el área de la suerte). */
@@ -293,6 +294,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
     labores: arr('labores').map((x) => ({
       id: String(x.id), cicloId: String(x.ciclo_id), labor: String(x.labor), unidad: String(x.unidad ?? 'ha'),
       cantidadPlan: num(x.cantidad_plan), costoUnitarioPlan: num(x.costo_unitario_plan),
+      pasadasPlan: Math.max(1, num(x.pasadas_plan) || 1), costoAparteUnitarioPlan: num(x.costo_aparte_unitario_plan) || 0,
       ventanaIdeal: numN(x.ventana_ideal), ventanaNormal: numN(x.ventana_normal),
       estado: (x.estado as EstadoLabor) ?? 'PROGRAMADA', anuladaMotivo: txt(x.anulada_motivo), orden: num(x.orden),
       repetible: x.repetible === true,
@@ -316,6 +318,7 @@ export async function cargarFincas(token: string): Promise<CargaFincas> {
     paquete: arr('paquete').map((x) => ({
       id: String(x.id), labor: String(x.labor), unidad: String(x.unidad ?? 'ha'), cantidadPorHa: num(x.cantidad_por_ha),
       costoUnitario: num(x.costo_unitario), ventanaIdeal: numN(x.ventana_ideal), ventanaNormal: numN(x.ventana_normal),
+      pasadasPlan: Math.max(1, num(x.pasadas_plan) || 1), costoAparteUnitario: num(x.costo_aparte_unitario) || 0,
       aplica: (x.aplica as LaborPaquete['aplica']) ?? 'AMBOS', orden: num(x.orden), activa: x.activa !== false,
       repetible: x.repetible === true, variedad: txt(x.variedad),
     })),
@@ -418,6 +421,8 @@ export async function guardarPaquete(p: Partial<LaborPaquete> & { labor: string 
     p_datos: {
       labor: p.labor.trim().toUpperCase(), unidad: p.unidad ?? 'ha', cantidad_por_ha: p.cantidadPorHa ?? 1,
       costo_unitario: p.costoUnitario ?? 0, ventana_ideal: p.ventanaIdeal ?? null, ventana_normal: p.ventanaNormal ?? null,
+      ...(p.pasadasPlan !== undefined ? { pasadas_plan: p.pasadasPlan } : {}),
+      ...(p.costoAparteUnitario !== undefined ? { costo_aparte_unitario: p.costoAparteUnitario } : {}),
       aplica: p.aplica ?? 'AMBOS', orden: p.orden ?? 100, activa: p.activa ?? true, repetible: p.repetible ?? false,
       // Se manda siempre (vacío = todas): así la base sabe que se quiso borrar.
       variedad: p.variedad?.trim().toUpperCase() ?? '',
@@ -425,10 +430,11 @@ export async function guardarPaquete(p: Partial<LaborPaquete> & { labor: string 
   }))
 }
 
-export async function actualizarLaborPlan(id: string, cambios: { cantidadPlan?: number; costoUnitarioPlan?: number }, token: string) {
+export async function actualizarLaborPlan(id: string, cambios: { cantidadPlan?: number; costoUnitarioPlan?: number; pasadasPlan?: number; costoAparteUnitarioPlan?: number }, token: string) {
   // null = no se toca ese campo.
   await lanzar(supabase.rpc('af_actualizar_labor', {
     p_token: token, p_id: id, p_cantidad: cambios.cantidadPlan ?? null, p_costo: cambios.costoUnitarioPlan ?? null,
+    p_pasadas: cambios.pasadasPlan ?? null, p_costo_aparte: cambios.costoAparteUnitarioPlan ?? null,
   }))
 }
 

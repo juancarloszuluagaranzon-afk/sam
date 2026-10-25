@@ -150,9 +150,30 @@ export function cuentaFinca(fincaId: string, movimientos: Movimiento[]) {
 }
 
 /**
+ * Presupuesto de UNA labor del corte: cantidad × pasadas × (tarifa + costo aparte).
+ * La tarifa es lo que se cobra al aceptar cada reporte; el costo aparte (insumos, agua,
+ * mano de obra) entra al presupuesto pero se paga como gasto a mano. Esta es la ÚNICA
+ * fórmula: la tarjeta, la tabla por suerte y el resumen salen de aquí.
+ * `||` protege las cargas antiguas en caché, que no traen pasadas ni costo aparte (regla 2b).
+ */
+export function presupuestoLabor(l: LaborCiclo) {
+  const cantidad = l.cantidadPlan || 0
+  const pasadas = l.pasadasPlan || 1
+  const tarifa = l.costoUnitarioPlan || 0
+  const aparteUnitario = l.costoAparteUnitarioPlan || 0
+  return {
+    servicio: cantidad * pasadas * tarifa,
+    aparte: cantidad * pasadas * aparteUnitario,
+    total: cantidad * pasadas * (tarifa + aparteUnitario),
+  }
+}
+
+/**
  * Presupuesto contra ejecutado de los ciclos ABIERTOS de una finca.
  * Ejecutado = gastos (no anulados) de sus labores, más los gastos a mano de esas
  * suertes desde su corte. Nunca se mezcla con anticipos ni honorarios.
+ * Desglose: «servicio» = los gastos que creó la aceptación de un reporte (llevan
+ * `reporteId`); «aparte» = el resto (lo comprado y pagado a mano).
  */
 export function presupuestoFinca(fincaId: string, d: DatosFincas) {
   const suertes = d.suertes.filter((s) => s.fincaId === fincaId && s.activa)
@@ -161,14 +182,24 @@ export function presupuestoFinca(fincaId: string, d: DatosFincas) {
   const labores = d.labores.filter((l) => idsCiclo.has(l.cicloId) && l.estado !== 'ANULADA')
   const idsLabor = new Set(labores.map((l) => l.id))
   const cortePorSuerte = new Map(ciclos.map((c) => [c.suerteId, c.fechaCorte]))
-  const presupuesto = labores.reduce((s, l) => s + l.cantidadPlan * l.costoUnitarioPlan, 0)
-  const ejecutado = vivos(d.movimientos).filter((m) => m.fincaId === fincaId && m.tipo === 'GASTO' && (
+  const presupuestoPartes = labores.reduce((s, l) => {
+    const p = presupuestoLabor(l)
+    return { servicio: s.servicio + p.servicio, aparte: s.aparte + p.aparte, total: s.total + p.total }
+  }, { servicio: 0, aparte: 0, total: 0 })
+  const movimientos = vivos(d.movimientos).filter((m) => m.fincaId === fincaId && m.tipo === 'GASTO' && (
     (m.laborId && idsLabor.has(m.laborId)) ||
     (!m.laborId && m.suerteId && cortePorSuerte.has(m.suerteId) && m.fecha >= (cortePorSuerte.get(m.suerteId) ?? '9999'))
-  )).reduce((s, m) => s + m.valor, 0)
-  const sinCosto = labores.filter((l) => l.costoUnitarioPlan <= 0).length
+  ))
+  const ejecutado = movimientos.reduce((s, m) => s + m.valor, 0)
+  const ejecutadoServicio = movimientos.filter((m) => !!m.reporteId).reduce((s, m) => s + m.valor, 0)
+  const presupuesto = presupuestoPartes.total
+  const sinCosto = labores.filter((l) => (l.costoUnitarioPlan || 0) + (l.costoAparteUnitarioPlan || 0) <= 0).length
   return {
-    presupuesto, ejecutado, sinCosto, ciclos: ciclos.length, labores: labores.length,
+    presupuesto, presupuestoServicio: presupuestoPartes.servicio, presupuestoAparte: presupuestoPartes.aparte,
+    ejecutado, ejecutadoServicio, ejecutadoAparte: ejecutado - ejecutadoServicio,
+    pctServicio: presupuestoPartes.servicio > 0 ? Math.round((ejecutadoServicio / presupuestoPartes.servicio) * 100) : null,
+    pctAparte: presupuestoPartes.aparte > 0 ? Math.round(((ejecutado - ejecutadoServicio) / presupuestoPartes.aparte) * 100) : null,
+    sinCosto, ciclos: ciclos.length, labores: labores.length,
     pct: presupuesto > 0 ? Math.round((ejecutado / presupuesto) * 100) : null,
     hectareas: suertes.reduce((s, x) => s + x.areaHa, 0),
   }

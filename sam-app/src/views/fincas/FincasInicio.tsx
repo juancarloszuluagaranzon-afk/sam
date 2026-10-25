@@ -14,7 +14,7 @@ export function FincasInicio({ ctx, soloLista, onNueva }: { ctx: CtxFincas; solo
   const filasTodas = fincas.flatMap((f) => laboresDeFinca(f.id, d, hoy).map((x) => ({ ...x, finca: f })))
   const atrasadas = filasTodas.filter((x) => x.oport?.nivel === 'tardia' && !x.oport.hecha && x.labor.estado !== 'TERMINADA')
   const ha = d.suertes.filter((s) => s.activa && fincas.some((f) => f.id === s.fincaId)).reduce((s, x) => s + x.areaHa, 0)
-  const paqueteSinCosto = d.paquete.filter((p) => p.activa && p.costoUnitario <= 0).length
+  const paqueteSinCosto = d.paquete.filter((p) => p.activa && p.costoUnitario <= 0 && (p.costoAparteUnitario || 0) <= 0).length
 
   return (
     <div className="af-stack">

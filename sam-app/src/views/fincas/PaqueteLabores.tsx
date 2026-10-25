@@ -18,6 +18,10 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
 
   async function guardar() {
     if (!editando) return
+    if (editando.repetible && (!Number.isInteger(editando.pasadasPlan) || (editando.pasadasPlan ?? 0) < 1)) {
+      setError('Las pasadas presupuestadas deben ser un entero mayor o igual a 1.')
+      return
+    }
     setGuardando(true); setError('')
     try { await guardarPaquete(editando, token); setEditando(null); await recargar() }
     catch (e) { setError(mensajeDeError(e)) } finally { setGuardando(false) }
@@ -28,7 +32,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
     <div className="af-stack">
       <div className="af-cab">
         <div><p className="eyebrow">Plantilla</p><h2>Paquete de labores</h2></div>
-        <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, aplica: 'AMBOS', orden: 100, activa: true, repetible: false })}>+ Labor</button>
+        <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, costoAparteUnitario: 0, pasadasPlan: 1, aplica: 'AMBOS', orden: 100, activa: true, repetible: false })}>+ Labor</button>
       </div>
       <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada corte: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Una labor puede tener una ventana distinta por <b>variedad</b> (curvas de Cenicaña): esa fila manda para las suertes de esa variedad. Cambiarlo no toca los cortes en curso.</p>
       {error && <p className="feedback error">{error}</p>}
@@ -44,7 +48,10 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
               </select>
             </label>
             <label>Cantidad por hectárea<input id="af-p-cxha" inputMode="decimal" value={String(editando.cantidadPorHa ?? 1)} onChange={(e) => setEditando({ ...editando, cantidadPorHa: Number(e.target.value.replace(',', '.')) || 1 })} /></label>
-            {VER_PLATA && <label>Costo por unidad (pesos)<input id="af-p-costo" inputMode="numeric" value={String(editando.costoUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /></label>}
+            {VER_PLATA && <>
+              <label>Tarifa del servicio por unidad (pesos)<input id="af-p-costo" inputMode="numeric" value={String(editando.costoUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /></label>
+              <label>Costo aparte por unidad y pasada (pesos)<input id="af-p-aparte" inputMode="numeric" value={String(editando.costoAparteUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoAparteUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /><small className="af-nota">Insumos, agua o mano de obra. Entra al presupuesto; no se cobra al aceptar el reporte.</small></label>
+            </>}
             <label>A tiempo hasta (días del corte)<input id="af-p-vi" inputMode="numeric" value={editando.ventanaIdeal ?? ''} onChange={(e) => setEditando({ ...editando, ventanaIdeal: nulo(e.target.value) })} placeholder="sin ventana" /></label>
             <label>Tardía después de (días)<input id="af-p-vn" inputMode="numeric" value={editando.ventanaNormal ?? ''} onChange={(e) => setEditando({ ...editando, ventanaNormal: nulo(e.target.value) })} placeholder="sin ventana" /></label>
             <label>Aplica a
@@ -61,9 +68,10 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
             </label>
             <label>Orden<input id="af-p-orden" inputMode="numeric" value={String(editando.orden ?? 100)} onChange={(e) => setEditando({ ...editando, orden: Number(e.target.value) || 100 })} /></label>
             <label className="af-form__ancho af-check">
-              <input id="af-p-repetible" type="checkbox" checked={!!editando.repetible} onChange={(e) => setEditando({ ...editando, repetible: e.target.checked })} />
+              <input id="af-p-repetible" type="checkbox" checked={!!editando.repetible} onChange={(e) => setEditando({ ...editando, repetible: e.target.checked, ...(!e.target.checked ? { pasadasPlan: 1 } : {}) })} />
               Se hace varias veces en el corte (riego, malezas): cada pasada se reporta aparte y la labor no se cierra sola
             </label>
+            {editando.repetible && <label>Pasadas presupuestadas<input id="af-p-pasadas" inputMode="numeric" value={String(editando.pasadasPlan ?? 1)} onChange={(e) => setEditando({ ...editando, pasadasPlan: Number(e.target.value) })} /></label>}
           </div>
           <div className="af-acciones">
             <button type="button" className="primary-button" disabled={guardando || !editando.labor.trim()} onClick={() => void guardar()}>{guardando ? 'Guardando…' : 'Guardar'}</button>
@@ -81,7 +89,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
                 <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
                   <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}{p.repetible ? ' · varias pasadas' : ''}</small></td>
                   <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}{p.variedad ? <><br />🌱 {p.variedad}</> : ''}</small></td>
-                  {VER_PLATA && <td>{p.costoUnitario > 0 ? `${fmtPesos(p.costoUnitario)} / ${p.unidad}` : <span className="af-rojo">sin costo</span>}</td>}
+                  {VER_PLATA && <td>{p.costoUnitario > 0 || (p.costoAparteUnitario || 0) > 0 ? <>{fmtPesos(p.costoUnitario)}{(p.costoAparteUnitario || 0) > 0 ? ` + ${fmtPesos(p.costoAparteUnitario || 0)} aparte` : ''} / {p.unidad}{p.repetible && p.pasadasPlan > 1 && <small>{p.pasadasPlan} pasadas</small>}</> : <span className="af-rojo">sin costo</span>}</td>}
                   <td><small>{p.ventanaIdeal != null && p.ventanaNormal != null ? `ideal ≤${p.ventanaIdeal} · normal ≤${p.ventanaNormal} días` : 'sin ventana'}</small></td>
                   <td className="af-td-acc">
                     <button type="button" className="af-link" onClick={() => setEditando({ ...p })}>Editar</button>

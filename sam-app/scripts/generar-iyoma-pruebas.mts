@@ -186,14 +186,15 @@ ajustes.push(`set local session_replication_role = replica;`)
 ajustes.push(`update public.af_movimientos m set created_at = r.revisado_en from public.af_reportes r, public.af_fincas f where m.reporte_id = r.id and r.revisado_en is not null and f.id = m.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
 ajustes.push(`update public.af_movimientos m set created_at = (m.fecha + time '09:00' + (abs(hashtext(m.id::text)) % 480) * interval '1 minute') at time zone 'America/Bogota' from public.af_fincas f where m.reporte_id is null and f.id = m.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
 ajustes.push(`set local session_replication_role = origin;`)
-// Presupuesto del corte en curso: la app presupuesta UNA línea por labor (cantidad × costo), y las
-// que se repiten (riego, malezas) cuentan una sola vez. Con el costo del paquete (solo la
-// maquinaria) el presupuesto era $27,9 M contra $355,7 M ejecutados (1275 %), porque el
-// fertilizante, la mano de obra y el agua entran como gastos a mano. Aquí cada labor lleva su
-// presupuesto COMPLETO del corte por hectárea (insumos, mano de obra, agua y todas sus pasadas).
-// Va después de aceptar los reportes: sus gastos quedan al costo del paquete, como se cobraron.
-const PRESUPUESTO_CORTE: Record<string, number> = { 'ROTURACIÓN': 225000, 'FERTILIZACIÓN': 2650000, 'CONTROL DE MALEZAS': 3300000, 'RIEGO': 1000000 }
-ajustes.push(`update public.af_labores l set costo_unitario_plan = v.costo, editado_por = 'U005' from (values ${Object.entries(PRESUPUESTO_CORTE).map(([l, v]) => `(${q(l)}, ${v})`).join(', ')}) as v(labor, costo), public.af_ciclos c, public.af_suertes s, public.af_fincas f where l.labor = v.labor and c.id = l.ciclo_id and c.estado = 'ABIERTO' and s.id = c.suerte_id and f.id = s.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
+// Presupuesto del corte en curso por tarifa, costo pagado aparte y pasadas. El ajuste va
+// después de aceptar los reportes: la aceptación cobra solo la tarifa, como siempre.
+const PRESUPUESTO_CORTE: Record<string, { tarifa: number; aparte: number; pasadas: number }> = {
+  'ROTURACIÓN': { tarifa: 225000, aparte: 0, pasadas: 1 },
+  'FERTILIZACIÓN': { tarifa: 160000, aparte: 2490000, pasadas: 1 },
+  'CONTROL DE MALEZAS': { tarifa: 120000, aparte: 980000, pasadas: 3 },
+  'RIEGO': { tarifa: 0, aparte: 125000, pasadas: 8 },
+}
+ajustes.push(`update public.af_labores l set costo_unitario_plan = v.tarifa, costo_aparte_unitario_plan = v.aparte, pasadas_plan = v.pasadas, editado_por = 'U005' from (values ${Object.entries(PRESUPUESTO_CORTE).map(([l, v]) => `(${q(l)}, ${v.tarifa}, ${v.aparte}, ${v.pasadas})`).join(', ')}) as v(labor, tarifa, aparte, pasadas), public.af_ciclos c, public.af_suertes s, public.af_fincas f where l.labor = v.labor and c.id = l.ciclo_id and c.estado = 'ABIERTO' and s.id = c.suerte_id and f.id = s.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
 lines.push(...ajustes)
 write('supabase/ajuste_iyoma_pruebas_fechas_presupuesto.sql', [`-- IYOMA PRUEBAS: fechas de los reportes y presupuesto del corte en curso sobre una base YA cargada`, `-- (lo mismo que hace el final de seed_iyoma_pruebas.sql). Lo genera scripts/generar-iyoma-pruebas.mts.`, ...ajustes].join('\n') + '\n')
 lines.push(`select set_config('af.via_funcion','1',true);`)

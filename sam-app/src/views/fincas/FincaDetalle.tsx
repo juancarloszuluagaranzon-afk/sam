@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import {
   abrirCiclo, anularLabor, anularMovimiento, actualizarLaborPlan, mensajeDeError, registrarMovimiento, subirFotoFinca,
@@ -6,7 +6,7 @@ import {
 } from '../../services/fincasApi'
 import {
   bitacoraFinca, cicloAbiertoDe, cuentaFinca, diasEntre, edadMeses, fmtCant, fmtPesos, fmtPesosCorto,
-  hechosDeFinca, laboresDeFinca, nombreLabor, presupuestoFinca, resumenParaDueno, VER_PLATA, type NivelOportunidad,
+  hechosDeFinca, laboresDeFinca, nombreLabor, presupuestoFinca, presupuestoLabor, resumenParaDueno, VER_PLATA, type NivelOportunidad,
 } from '../../lib/fincas'
 import { ingenioNombre } from '../../data/ingenios'
 import { fmtFechaHora } from '../../lib/fechas'
@@ -37,6 +37,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
   const [sub, setSub] = useState<Sub>('resumen')
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  const [editandoPlan, setEditandoPlan] = useState<{ id: string; tarifa: string; aparte: string; pasadas: string } | null>(null)
 
   const filas = useMemo(() => laboresDeFinca(fincaId, d, hoy), [fincaId, d, hoy])
   const p = presupuestoFinca(fincaId, d)
@@ -125,6 +126,10 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             <p className="af-grande">{fmtPesosCorto(p.ejecutado)} <span>de {p.presupuesto > 0 ? fmtPesosCorto(p.presupuesto) : 'sin presupuesto'}</span></p>
             <span className="af-barra" aria-hidden="true"><i style={{ width: `${Math.min(100, p.pct ?? 0)}%` }} /></span>
             <div className="af-fila2"><span>Ejecutado del presupuesto</span><b>{p.pct != null ? `${p.pct} %` : '—'}</b></div>
+            {(p.presupuestoAparte > 0 || p.ejecutadoAparte > 0) && <div className="af-desglose">
+              <div className="af-fila2"><span>Servicios de AgroMorales<small>{fmtPesosCorto(p.ejecutadoServicio)} de {fmtPesosCorto(p.presupuestoServicio)}</small></span><b>{p.pctServicio != null ? `${p.pctServicio} %` : '—'}</b></div>
+              <div className="af-fila2"><span>Pagado aparte<small>Insumos, agua y mano de obra · {fmtPesosCorto(p.ejecutadoAparte)} de {fmtPesosCorto(p.presupuestoAparte)}</small></span><b>{p.pctAparte != null ? `${p.pctAparte} %` : '—'}</b></div>
+            </div>}
             {p.sinCosto > 0 && <p className="af-nota">▲ {p.sinCosto} labor{p.sinCosto === 1 ? '' : 'es'} sin costo: no suman al presupuesto.</p>}
           </div>}
           <div className="af-card">
@@ -186,7 +191,8 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                       <thead><tr><th>Labor</th><th>Avance</th>{VER_PLATA && <th>Presupuesto</th>}<th>¿A tiempo?</th><th>Estado</th>{esAdmin && <th />}</tr></thead>
                       <tbody>
                         {propias.map((x) => (
-                          <tr key={x.labor.id} className={x.labor.estado === 'ANULADA' ? 'af-anulada' : ''}>
+                          <Fragment key={x.labor.id}>
+                          <tr className={x.labor.estado === 'ANULADA' ? 'af-anulada' : ''}>
                             <td><b>{x.labor.labor.toLowerCase()}</b><small>{fmtCant(x.labor.cantidadPlan)} {x.labor.unidad}{x.labor.repetible ? ' por pasada' : ''}</small></td>
                             <td>
                               <span className="af-barra af-barra--chica" aria-hidden="true"><i style={{ width: `${x.avance.pct}%` }} /></span>
@@ -195,19 +201,21 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                                 {fmtCant(x.avance.aceptado)} aceptado{x.avance.porAceptar ? ` · ${fmtCant(x.avance.porAceptar)} por aceptar` : ''}
                               </small>
                             </td>
-                            {VER_PLATA && <td>{x.labor.costoUnitarioPlan > 0 ? fmtPesosCorto(x.labor.cantidadPlan * x.labor.costoUnitarioPlan) : <span className="af-rojo">sin costo</span>}
-                              <small>{x.labor.costoUnitarioPlan > 0 ? `${fmtPesos(x.labor.costoUnitarioPlan)} / ${x.labor.unidad}` : ''}</small></td>}
+                            {VER_PLATA && (() => {
+                              const plan = presupuestoLabor(x.labor)
+                              const tarifa = x.labor.costoUnitarioPlan || 0
+                              const aparte = x.labor.costoAparteUnitarioPlan || 0
+                              const pasadas = x.labor.pasadasPlan || 1
+                              return <td>{plan.total > 0 ? fmtPesosCorto(plan.total) : <span className="af-rojo">sin costo</span>}
+                                {plan.total > 0 && <small>{pasadas > 1 ? `${pasadas} pasadas · ` : ''}{fmtPesos(tarifa)}{aparte > 0 ? ` + ${fmtPesos(aparte)} aparte` : ''} / {x.labor.unidad}</small>}</td>
+                            })()}
                             <td>{x.oport ? <span className={`af-chip ${CHIP[x.oport.nivel].c}`}>{CHIP[x.oport.nivel].t}</span> : <small>sin ventana</small>}</td>
                             <td><small>{x.labor.estado === 'ANULADA' ? `anulada: ${x.labor.anuladaMotivo}` : x.labor.estado.replace('_', ' ').toLowerCase()}</small></td>
                             {esAdmin && (
                               <td className="af-td-acc">
                                 {x.labor.estado !== 'ANULADA' && x.labor.estado !== 'TERMINADA' && (
                                   <>
-                                    {VER_PLATA && <button type="button" className="af-link" disabled={ocupado} onClick={() => {
-                                      const v = window.prompt(`Costo por ${x.labor.unidad} de ${x.labor.labor.toLowerCase()} (suerte ${s.codigo}):`, String(x.labor.costoUnitarioPlan || ''))
-                                      const n = Number(String(v ?? '').replace(/\./g, '').replace(',', '.'))
-                                      if (v != null && Number.isFinite(n) && n >= 0) void hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: n }, token))
-                                    }}>Costo</button>}
+                                    {VER_PLATA && <button type="button" className="af-link" disabled={ocupado} onClick={() => setEditandoPlan({ id: x.labor.id, tarifa: String(x.labor.costoUnitarioPlan || 0), aparte: String(x.labor.costoAparteUnitarioPlan || 0), pasadas: String(x.labor.pasadasPlan || 1) })}>Presupuesto</button>}
                                     <button type="button" className="af-link" disabled={ocupado} onClick={() => {
                                       const m = window.prompt('¿Por qué se anula esta labor? (queda registrado)')
                                       if (m && m.trim()) void hacer(() => anularLabor(x.labor.id, m, token))
@@ -217,6 +225,28 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                               </td>
                             )}
                           </tr>
+                          {editandoPlan?.id === x.labor.id && <tr><td colSpan={4 + (VER_PLATA ? 1 : 0) + (esAdmin ? 1 : 0)}>
+                            <div className="af-form">
+                              <b className="af-form__ancho">Presupuesto de {x.labor.labor.toLowerCase()} · suerte {s.codigo}</b>
+                              <label>Tarifa por {x.labor.unidad}<input inputMode="numeric" value={editandoPlan.tarifa} onChange={(e) => setEditandoPlan({ ...editandoPlan, tarifa: e.target.value })} /></label>
+                              <label>Costo aparte por {x.labor.unidad} y pasada<input inputMode="numeric" value={editandoPlan.aparte} onChange={(e) => setEditandoPlan({ ...editandoPlan, aparte: e.target.value })} /></label>
+                              {x.labor.repetible && <label>Pasadas<input inputMode="numeric" value={editandoPlan.pasadas} onChange={(e) => setEditandoPlan({ ...editandoPlan, pasadas: e.target.value })} /></label>}
+                              <div className="af-form__ancho af-acciones">
+                                <button type="button" className="primary-button" disabled={ocupado} onClick={async () => {
+                                  const tarifa = Number(editandoPlan.tarifa.replace(/\./g, '').replace(',', '.'))
+                                  const aparte = Number(editandoPlan.aparte.replace(/\./g, '').replace(',', '.'))
+                                  const pasadas = Number(editandoPlan.pasadas)
+                                  if (editandoPlan.tarifa.trim() === '' || editandoPlan.aparte.trim() === '' || !Number.isFinite(tarifa) || tarifa < 0 || !Number.isFinite(aparte) || aparte < 0 || (x.labor.repetible && (!Number.isInteger(pasadas) || pasadas < 1))) {
+                                    setError('Ingrese costos mayores o iguales a 0 y pasadas enteras mayores o iguales a 1.')
+                                    return
+                                  }
+                                  if (await hacer(() => actualizarLaborPlan(x.labor.id, { costoUnitarioPlan: tarifa, costoAparteUnitarioPlan: aparte, ...(x.labor.repetible ? { pasadasPlan: pasadas } : {}) }, token))) setEditandoPlan(null)
+                                }}>Guardar</button>
+                                <button type="button" className="inline-button" onClick={() => setEditandoPlan(null)}>Cancelar</button>
+                              </div>
+                            </div>
+                          </td></tr>}
+                          </Fragment>
                         ))}
                       </tbody>
                     </table>

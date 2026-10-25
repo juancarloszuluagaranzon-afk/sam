@@ -393,18 +393,27 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
   con inflaciones distintas: IPC para todo y **salario mínimo para la mano de obra**; supuestos marcados en
   el SQL (IPC 2026 = el de 2025; insumos +20 % en 2022). Prueba: `node scripts/prueba-historia-ciclos.mts`
   (10 casos, cifras exactas a mano + dos fincas + el fixture).
-- 🔴 **Presupuesto del corte en curso (`presupuestoFinca`) — límite de la app, medido con IYOMA (24-oct):**
-  presupuesto = Σ cantidad × costo de cada labor, y una labor que se repite (riego, malezas) cuenta UNA
-  pasada; el ejecutado suma además los gastos a mano de la suerte (fertilizante, mano de obra, agua). Con el
-  costo del paquete (solo maquinaria) IYOMA marcaba **$355,7 M de $27,9 M = 1275 %**. Arreglo en los datos
-  simulados: cada labor del corte abierto lleva su presupuesto COMPLETO por ha (roturación 225.000,
-  fertilización 2.650.000, malezas 3.300.000, riego 1.000.000 → **90 %**), puesto DESPUÉS de aceptar los
-  reportes (sus gastos quedan al costo del paquete). ⚠️ Efecto: como la app cobra cada pasada al mismo
-  valor con que la presupuesta, aceptar el riego pendiente de la 050 cargaría 6,7 ha × $1.000.000. Con una
-  finca real puede volver a pasar de 100 %: falta en la app un número de pasadas presupuestadas y una
-  línea para insumos comprados aparte. Las fechas de reportes y movimientos (que `af__reportar`/`af__revisar`
-  y los `insert` ponen con la hora de la carga) también se corrigen al final de la semilla; el parche para
-  una base ya cargada es `supabase/ajuste_iyoma_pruebas_fechas_presupuesto.sql` (lo genera el mismo script).
+- 🔴 **Presupuesto del corte en curso: PASADAS y COSTO APARTE (25-oct-2026, migración `20261024200000`).**
+  Antes presupuesto = Σ cantidad × costo: una labor que se repite (riego, malezas) contaba UNA pasada y el
+  fertilizante, la mano de obra y el agua (gastos a mano) no tenían línea; IYOMA marcaba **$355,7 M de $27,9 M =
+  1275 %**. Ahora cada labor (paquete `pasadas_plan`/`costo_aparte_unitario`; corte `pasadas_plan`/
+  `costo_aparte_unitario_plan`) lleva: **tarifa** (lo que se COBRA al aceptar cada reporte, igual que siempre),
+  **costo aparte** por unidad y pasada (entra al presupuesto, se paga como gasto a mano) y **pasadas**
+  (solo una labor repetible puede tener más de 1: lo exige un CHECK). Fórmula ÚNICA en `presupuestoLabor()`:
+  cantidad × pasadas × (tarifa + aparte). `presupuestoFinca()` desglosa «Servicios de AgroMorales» (gastos con
+  `reporteId`) y «Pagado aparte» (el resto). Por defecto 1 y 0: lo existente quedó igual al peso (RIOGRANDE II
+  $4.034.400 antes y después). En la pantalla: tarjeta del corte con el desglose, «Presupuesto» por labor (editor
+  DEBAJO de la tabla: dentro de ella no cabía en el celular) y el paquete con tarifa, costo aparte y pasadas.
+  IYOMA: roturación 225.000 · fertilización 160.000 + 2.490.000 aparte · malezas 120.000 + 980.000 × 3 · riego
+  0 + 125.000 × 8 → **90 %** ($41,2 M de servicios al 100 %, $314,5 M aparte al 89 %). Prueba:
+  `node scripts/prueba-presupuesto-fincas.mts` (6 casos). ⏳ Falta que administración ponga en el PAQUETE GLOBAL
+  el costo aparte y las pasadas de riego y malezas: hoy siguen en 0 y 1 (por eso los cortes nuevos nacen igual
+  que antes). Las fechas de reportes y movimientos (que `af__reportar`/`af__revisar` y los `insert` ponen con la
+  hora de la carga) se corrigen al final de la semilla; el parche para una base ya cargada es
+  `supabase/ajuste_iyoma_pruebas_fechas_presupuesto.sql` (lo genera el mismo script).
+- 🗺 **Capa «Solo bordes» del mapa (25-oct-2026):** sin relleno, lindero con borde doble (halo `#0f172a` + blanco)
+  para que se vea el índice satelital; se activa sola al escoger vigor/humedad/nitrógeno/radar y vuelve al modo
+  anterior con la foto base (`modoAntesRef`); si se escoge a mano, se respeta. Sin leyenda de labores en ese modo.
 
 ## 🌱 «Sencillo pero funcional» — paquete 1 (16-oct-2026)
 

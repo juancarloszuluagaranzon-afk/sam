@@ -382,8 +382,9 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
 - **IYOMA PRUEBAS** — finca de prueba sobre el plano de la **Hda. IYOMA 1403 (Riopaila Castilla,
   Roldanillo)**: 5 suertes (55,25 ha) y 18 pedazos del plano, digitalizados de la imagen con la cuadrícula
   **MAGNA-SIRGAS Colombia Oeste** (E 1.107.750, N 985.000…) y verificados sobre la foto satelital y el plano
-  georreferenciado del ingenio. 🔴 **USO INTERNO**: es cartografía del ingenio — su enlace NO se muestra a
-  clientes (al revés que RIOGRANDE PRUEBAS). Datos SIMULADOS y reproducibles: `node
+  georreferenciado del ingenio. ⚠️ Iván aclaró (24-oct) que ese plano lo **dio ASM y es público**: se usa
+  con el **dueño de Iyoma** (volante y folleto en `caso-exito/fincas/*-iyoma.*`, sin marca del ingenio y con
+  las cifras marcadas como simulación); para otros clientes sigue siendo mejor RIOGRANDE PRUEBAS. Datos SIMULADOS y reproducibles: `node
   scripts/generar-iyoma-pruebas.mts` escribe `supabase/seed_iyoma_pruebas.sql`, `borrar_iyoma_pruebas.sql`
   y `scripts/fixtures/iyoma-datos.json` (idéntico a lo que queda en la base: el saldo cuadra al peso). UN
   ciclo por suerte que arranca en 2020 con la **renovación nombrada** (destrucción de cepas, arado,
@@ -392,6 +393,18 @@ cálculos validados por Codex con prueba automática, revisado por Claude.
   con inflaciones distintas: IPC para todo y **salario mínimo para la mano de obra**; supuestos marcados en
   el SQL (IPC 2026 = el de 2025; insumos +20 % en 2022). Prueba: `node scripts/prueba-historia-ciclos.mts`
   (10 casos, cifras exactas a mano + dos fincas + el fixture).
+- 🔴 **Presupuesto del corte en curso (`presupuestoFinca`) — límite de la app, medido con IYOMA (24-oct):**
+  presupuesto = Σ cantidad × costo de cada labor, y una labor que se repite (riego, malezas) cuenta UNA
+  pasada; el ejecutado suma además los gastos a mano de la suerte (fertilizante, mano de obra, agua). Con el
+  costo del paquete (solo maquinaria) IYOMA marcaba **$355,7 M de $27,9 M = 1275 %**. Arreglo en los datos
+  simulados: cada labor del corte abierto lleva su presupuesto COMPLETO por ha (roturación 225.000,
+  fertilización 2.650.000, malezas 3.300.000, riego 1.000.000 → **90 %**), puesto DESPUÉS de aceptar los
+  reportes (sus gastos quedan al costo del paquete). ⚠️ Efecto: como la app cobra cada pasada al mismo
+  valor con que la presupuesta, aceptar el riego pendiente de la 050 cargaría 6,7 ha × $1.000.000. Con una
+  finca real puede volver a pasar de 100 %: falta en la app un número de pasadas presupuestadas y una
+  línea para insumos comprados aparte. Las fechas de reportes y movimientos (que `af__reportar`/`af__revisar`
+  y los `insert` ponen con la hora de la carga) también se corrigen al final de la semilla; el parche para
+  una base ya cargada es `supabase/ajuste_iyoma_pruebas_fechas_presupuesto.sql` (lo genera el mismo script).
 
 ## 🌱 «Sencillo pero funcional» — paquete 1 (16-oct-2026)
 

@@ -165,6 +165,37 @@ for (const [i, r] of reportesFinal.sort((a, b) => a.fecha.localeCompare(b.fecha)
   else lines.push(`select ${reportar};`)
 }
 const reportesSeed2 = reportesFinal
+// Ajustes que van DESPUÉS de reportar y aceptar (también sirven de parche sobre una base ya
+// cargada: se ubican por la nota «Reporte simulado N» y por el nombre de la labor).
+const ajustes: string[] = [`select set_config('af.via_funcion','1',true);`]
+// Fechas: af__reportar y af__revisar ponen la hora del servidor, así que todos los reportes
+// quedaban con la hora de la carga («Aceptadas hoy 55»). Cada reporte llega el día del trabajo
+// y se acepta (o rechaza) uno o dos días después, en horario de oficina (hora de Bogotá).
+const hora = (h: number, min: number) => `${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00-05`
+for (const [i, r] of reportesFinal.entries()) {
+  const creado = `${r.fecha} ${hora(7 + (i * 5) % 10, (i * 17) % 60)}`
+  const revisado = r.estado === 'PENDIENTE' ? null : `${masDias(r.fecha, 1 + (i % 2))} ${hora(8 + (i * 3) % 9, (i * 29) % 60)}`
+  ajustes.push(`update public.af_reportes r set created_at = '${creado}'::timestamptz, revisado_en = ${revisado ? `'${revisado}'::timestamptz` : 'null'} from public.af_labores l, public.af_ciclos c, public.af_suertes s, public.af_fincas f where r.nota = ${q(`Reporte simulado ${i + 1}`)} and l.id = r.labor_id and c.id = l.ciclo_id and s.id = c.suerte_id and f.id = s.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
+}
+// Los movimientos también quedaban con la hora de la carga y, con los reportes ya en su fecha,
+// encabezaban la bitácora del dueño. El gasto de un reporte se registra cuando se acepta; el
+// resto, el día de su fecha en horario de oficina. 🔴 Un movimiento no se edita (trigger
+// trg_af_movimientos_inmutable): SOLO para esta finca SIMULADA se apaga en esta sesión
+// (session_replication_role) y se vuelve a prender. Nunca hacer esto con datos reales.
+ajustes.push(`set local session_replication_role = replica;`)
+ajustes.push(`update public.af_movimientos m set created_at = r.revisado_en from public.af_reportes r, public.af_fincas f where m.reporte_id = r.id and r.revisado_en is not null and f.id = m.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
+ajustes.push(`update public.af_movimientos m set created_at = (m.fecha + time '09:00' + (abs(hashtext(m.id::text)) % 480) * interval '1 minute') at time zone 'America/Bogota' from public.af_fincas f where m.reporte_id is null and f.id = m.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
+ajustes.push(`set local session_replication_role = origin;`)
+// Presupuesto del corte en curso: la app presupuesta UNA línea por labor (cantidad × costo), y las
+// que se repiten (riego, malezas) cuentan una sola vez. Con el costo del paquete (solo la
+// maquinaria) el presupuesto era $27,9 M contra $355,7 M ejecutados (1275 %), porque el
+// fertilizante, la mano de obra y el agua entran como gastos a mano. Aquí cada labor lleva su
+// presupuesto COMPLETO del corte por hectárea (insumos, mano de obra, agua y todas sus pasadas).
+// Va después de aceptar los reportes: sus gastos quedan al costo del paquete, como se cobraron.
+const PRESUPUESTO_CORTE: Record<string, number> = { 'ROTURACIÓN': 225000, 'FERTILIZACIÓN': 2650000, 'CONTROL DE MALEZAS': 3300000, 'RIEGO': 1000000 }
+ajustes.push(`update public.af_labores l set costo_unitario_plan = v.costo, editado_por = 'U005' from (values ${Object.entries(PRESUPUESTO_CORTE).map(([l, v]) => `(${q(l)}, ${v})`).join(', ')}) as v(labor, costo), public.af_ciclos c, public.af_suertes s, public.af_fincas f where l.labor = v.labor and c.id = l.ciclo_id and c.estado = 'ABIERTO' and s.id = c.suerte_id and f.id = s.finca_id and f.nombre = 'IYOMA PRUEBAS';`)
+lines.push(...ajustes)
+write('supabase/ajuste_iyoma_pruebas_fechas_presupuesto.sql', [`-- IYOMA PRUEBAS: fechas de los reportes y presupuesto del corte en curso sobre una base YA cargada`, `-- (lo mismo que hace el final de seed_iyoma_pruebas.sql). Lo genera scripts/generar-iyoma-pruebas.mts.`, ...ajustes].join('\n') + '\n')
 lines.push(`select set_config('af.via_funcion','1',true);`)
 write('supabase/seed_iyoma_pruebas.sql',lines.join('\n')+'\n')
 write('supabase/borrar_iyoma_pruebas.sql',readFileSync(new URL('supabase/borrar_riogrande_pruebas.sql',root),'utf8').replaceAll('RIOGRANDE PRUEBAS','IYOMA PRUEBAS').replaceAll('borrar_riogrande_pruebas.sql','borrar_iyoma_pruebas.sql'))

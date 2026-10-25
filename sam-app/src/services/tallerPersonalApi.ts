@@ -122,6 +122,9 @@ export async function guardarFicha(usuarioId: string, ficha: { cargo?: string; t
  * Sus marcaciones y horas pasadas se conservan.
  */
 export async function retirarMecanico(usuarioId: string, quien: string): Promise<void> {
+  // `quien` se recibe para cuando la base exija la llave de sesión (Fase 3); hoy
+  // `taller_revocar_rostro` y `app_delete_user` no la piden.
+  void quien
   await revocarRostro(usuarioId)
   await deleteAppUser(usuarioId)
 }

@@ -25,8 +25,8 @@ export interface ExcesoExtras {
 
 /** Minutos extra de un día: las cuatro franjas EXTRA (ordinarias y festivas, diurnas y nocturnas). */
 export function minutosExtra(d: ResumenDia): number {
-  void d
-  throw new Error('PENDIENTE: lo implementa Codex')
+  return d.minutos.EXTRA_DIURNA + d.minutos.EXTRA_NOCTURNA
+    + d.minutos.FEST_EXTRA_DIURNA + d.minutos.FEST_EXTRA_NOCTURNA
 }
 
 /**
@@ -38,6 +38,24 @@ export function excesosDeExtras(
   dias: ResumenDia[],
   topes: { dia: number; semana: number } = { dia: TOPE_EXTRA_DIA_MIN, semana: TOPE_EXTRA_SEMANA_MIN },
 ): ExcesoExtras[] {
-  void dias; void topes
-  throw new Error('PENDIENTE: lo implementa Codex')
+  const excesos: ExcesoExtras[] = []
+  const semanas = new Map<string, { usuarioId: string; periodo: string; minutosExtra: number }>()
+  for (const d of dias) {
+    const extra = minutosExtra(d)
+    if (extra > topes.dia) excesos.push({ usuarioId: d.usuarioId, tipo: 'DIA', periodo: d.dia, minutosExtra: extra, tope: topes.dia })
+    const fecha = new Date(d.dia + 'T12:00:00Z')
+    const desdeLunes = (fecha.getUTCDay() + 6) % 7
+    fecha.setUTCDate(fecha.getUTCDate() - desdeLunes)
+    const periodo = fecha.toISOString().slice(0, 10)
+    const clave = `${d.usuarioId}|${periodo}`
+    const semana = semanas.get(clave) ?? { usuarioId: d.usuarioId, periodo, minutosExtra: 0 }
+    semana.minutosExtra += extra
+    semanas.set(clave, semana)
+  }
+  for (const semana of semanas.values()) {
+    if (semana.minutosExtra > topes.semana) excesos.push({ ...semana, tipo: 'SEMANA', tope: topes.semana })
+  }
+  const prioridad = { DIA: 0, SEMANA: 1 }
+  return excesos.sort((a, b) => a.usuarioId.localeCompare(b.usuarioId)
+    || a.periodo.localeCompare(b.periodo) || prioridad[a.tipo] - prioridad[b.tipo])
 }

@@ -50,10 +50,15 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
     () => users.filter((u) => u.role === 'propietario' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const quioscos = useMemo(
+    () => users.filter((u) => u.role === 'quiosco_taller' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
 
   const [supId, setSupId] = useState('')
   const [dueId, setDueId] = useState('')
   const [propId, setPropId] = useState('')
+  const [quioscoId, setQuioscoId] = useState('')
   const [opId, setOpId] = useState('')
   const [insId, setInsId] = useState('')
   const [conId, setConId] = useState('')
@@ -253,6 +258,20 @@ export function SupportSwitcher({ me, users, onView, onLogout }: SupportSwitcher
                 if (u) onView({ ...u })
               }}
             >
+              Ver
+            </button>
+          </div>
+        )}
+
+        {quioscos.length > 0 && (
+          <div className="support-pick">
+            <label className="support-pick__field">
+              <span className="support-pick__label">Quiosco del taller</span>
+              <SearchableSelect value={quioscoId} onChange={setQuioscoId}
+                options={quioscos.map((q) => ({ value: q.id, label: q.name }))} placeholder="Buscar quiosco…" />
+            </label>
+            <button type="button" className="primary-button support-pick__btn" disabled={!quioscoId}
+              onClick={() => { const u = quioscos.find((q) => q.id === quioscoId); if (u) onView({ ...u }) }}>
               Ver
             </button>
           </div>

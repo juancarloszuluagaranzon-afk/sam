@@ -106,6 +106,7 @@ function initials(name: string) {
 
 function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
+  if (role === 'quiosco_taller') return 'Quiosco del taller'
   if (role === 'propietario') return 'Propietario 1'
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'

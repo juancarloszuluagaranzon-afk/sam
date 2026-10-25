@@ -43,6 +43,9 @@ function manualesDe(rol?: Role): Manual[] {
     // camioneta no tenia guia de la planilla de la camioneta.
     case 'conductor':
       return [MANUALES.conductor]
+    case 'taller':
+    case 'quiosco_taller':
+      return [MANUALES.taller]
     // El de madera comparte la mitad: registra viajes y firma, pero su formato
     // es otro. Se le dan los dos hasta que tenga el suyo.
     case 'conductor_madera':

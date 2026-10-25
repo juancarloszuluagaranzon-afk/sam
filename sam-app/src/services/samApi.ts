@@ -862,7 +862,7 @@ export async function loadAssignments(): Promise<{
 // a operador. Fuente única para evitar que vuelva a divergir.
 export function mapRole(rol: unknown): UserProfile['role'] {
   const r = String(rol ?? '')
-  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor' || r === 'analista_insumos' || r === 'taller' || r === 'conductor_madera' || r === 'dueno_finca' || r === 'propietario') {
+  if (r === 'supervisor' || r === 'owner' || r === 'administracion' || r === 'soporte' || r === 'supervisor_insumos' || r === 'conductor' || r === 'analista_insumos' || r === 'taller' || r === 'conductor_madera' || r === 'dueno_finca' || r === 'propietario' || r === 'quiosco_taller') {
     return r
   }
   return 'operador'

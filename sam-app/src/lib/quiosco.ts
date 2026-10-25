@@ -20,20 +20,27 @@ export interface ProximaMarcacion {
 
 /** Qué le toca marcar a la persona, según su última marcación NO anulada. */
 export function proximoTipo(ultima: Pick<MarcacionFila, 'tipo' | 'marcadoEn'> | null, ahora: Date = new Date()): ProximaMarcacion {
-  void ultima; void ahora
-  throw new Error('PENDIENTE: lo implementa Codex')
+  if (!ultima || ultima.tipo === 'SALIDA') return { tipo: 'ENTRADA', olvidoSalida: false }
+  const horas = (ahora.getTime() - new Date(ultima.marcadoEn).getTime()) / 3_600_000
+  if (horas > LIMITE_TURNO_HORAS) return { tipo: 'ENTRADA', olvidoSalida: true }
+  return { tipo: 'SALIDA', olvidoSalida: false }
 }
 
 /** «ANDRÉS RUIZ» → «AR»; un solo nombre → sus dos primeras letras; vacío → «?». */
 export function iniciales(nombre: string): string {
-  void nombre
-  throw new Error('PENDIENTE: lo implementa Codex')
+  const palabras = nombre.trim().split(/\s+/).filter(Boolean)
+  if (!palabras.length) return '?'
+  return (palabras.length > 1
+    ? palabras.slice(0, 2).map((p) => p[0]).join('')
+    : palabras[0].slice(0, 2)).toLocaleUpperCase('es-CO')
 }
 
 /** El primer nombre para la cuadrícula: «ANDRÉS FELIPE RUIZ» → «Andrés». */
 export function primerNombre(nombre: string): string {
-  void nombre
-  throw new Error('PENDIENTE: lo implementa Codex')
+  const primero = nombre.trim().split(/\s+/).filter(Boolean)[0]
+  if (!primero) return ''
+  const minuscula = primero.toLocaleLowerCase('es-CO')
+  return minuscula.charAt(0).toLocaleUpperCase('es-CO') + minuscula.slice(1)
 }
 
 /**
@@ -42,11 +49,22 @@ export function primerNombre(nombre: string): string {
  * Texto vacío → todos. Resultado ordenado por nombre.
  */
 export function buscarPersona<T extends { nombre: string; cedula?: string }>(lista: T[], texto: string): T[] {
-  void lista; void texto
-  throw new Error('PENDIENTE: lo implementa Codex')
+  const normalizar = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('es-CO')
+  const busqueda = normalizar(texto.trim())
+  if (!busqueda) return [...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+  const digitos = texto.replace(/\D/g, '')
+  return lista.filter((p) => normalizar(p.nombre).includes(busqueda)
+    || (!!digitos && (p.cedula ?? '').replace(/\D/g, '').includes(digitos)))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
 }
 
 /** PIN de 4 dígitos al azar (crypto), para el usuario nuevo. Nunca «0000» ni cuatro iguales. */
 export function pinNuevo(): string {
-  throw new Error('PENDIENTE: lo implementa Codex')
+  const bytes = new Uint8Array(4)
+  let pin = ''
+  do {
+    crypto.getRandomValues(bytes)
+    pin = String(((bytes[0] << 8) | bytes[1]) % 10000).padStart(4, '0')
+  } while (pin === '0000' || /^([0-9])\1{3}$/.test(pin))
+  return pin
 }

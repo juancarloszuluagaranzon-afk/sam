@@ -14,6 +14,7 @@ interface ImpersonationBarProps {
 function roleLabel(role: UserProfile['role']): string {
   if (role === 'owner') return 'Propietario'
   if (role === 'propietario') return 'Propietario 1'
+  if (role === 'quiosco_taller') return 'Quiosco del taller'
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
   if (role === 'soporte') return 'Soporte'
@@ -66,6 +67,10 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
     () => users.filter((u) => u.role === 'propietario' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
     [users],
   )
+  const quioscos = useMemo(
+    () => users.filter((u) => u.role === 'quiosco_taller' && act(u)).sort((a, b) => a.name.localeCompare(b.name)),
+    [users],
+  )
   const owners = useMemo(() => users.filter((u) => u.role === 'owner' && act(u)), [users])
   const admins = useMemo(() => users.filter((u) => u.role === 'administracion' && act(u)), [users])
   const ownerTarget: UserProfile =
@@ -83,7 +88,7 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
       onSwitch({ ...adminTarget })
       return
     }
-    const u = [...supervisors, ...insumosSups, ...analistas, ...conductores, ...conductoresMadera, ...duenosFinca, ...propietarios, ...operators].find((x) => x.id === value)
+    const u = [...supervisors, ...insumosSups, ...analistas, ...conductores, ...conductoresMadera, ...duenosFinca, ...propietarios, ...quioscos, ...operators].find((x) => x.id === value)
     if (u) onSwitch({ ...u })
   }
 
@@ -149,6 +154,11 @@ export function ImpersonationBar({ current, users, onSwitch, onExit }: Impersona
               {propietarios.map((p) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
+            </optgroup>
+          )}
+          {quioscos.length > 0 && (
+            <optgroup label="Quiosco del taller">
+              {quioscos.map((q) => <option key={q.id} value={q.id}>{q.name}</option>)}
             </optgroup>
           )}
           {operators.length > 0 && (

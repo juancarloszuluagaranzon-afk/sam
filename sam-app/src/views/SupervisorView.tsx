@@ -115,6 +115,7 @@ export interface EquipmentFormState {
 
 function getRoleLabel(role: UserProfile['role'] | undefined): string {
   if (role === 'owner') return 'Propietario'
+  if (role === 'quiosco_taller') return 'Quiosco del taller'
   if (role === 'propietario') return 'Propietario 1'
   if (role === 'supervisor') return 'Supervisor'
   if (role === 'administracion') return 'Administración'
@@ -3028,7 +3029,7 @@ export function SupervisorView({
                 .map((u) => {
                   const isActive = u.active !== false
                   const status = operatorStatusMap.get(u.id) ?? 'disponible'
-                  const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', propietario: 'Propietario 1', soporte: 'Soporte' }
+                  const rolLabels: Record<string, string> = { operador: 'Operador', supervisor: 'Supervisor', administracion: 'Admin', owner: 'Propietario', propietario: 'Propietario 1', quiosco_taller: 'Quiosco del taller', soporte: 'Soporte' }
                   const openEdit = () => {
                     setEditingUserId(u.id)
                     setUserForm({ id: u.id, nombreCompleto: u.name, rol: u.role, pin: '', equipoCodigo: u.equipmentCode, zona: u.zona ?? '', cedula: u.cedula ?? '' })
@@ -3175,6 +3176,7 @@ export function SupervisorView({
                       <option value="administracion">Administración</option>
                       <option value="owner">Propietario</option>
                       <option value="propietario">Propietario 1 (solo consulta)</option>
+                      <option value="quiosco_taller">Quiosco del taller (tableta de la entrada)</option>
                       <option value="soporte">Soporte</option>
                     </select>
                   </label>

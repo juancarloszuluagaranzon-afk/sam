@@ -45,7 +45,7 @@ export interface MarcacionFila extends Marcacion {
   quioscoId?: string
 }
 
-function mapFila(r: Record<string, unknown>): MarcacionFila {
+export function mapMarcacion(r: Record<string, unknown>): MarcacionFila {
   return {
     id: String(r.id),
     usuarioId: String(r.usuario_id),
@@ -124,7 +124,7 @@ export async function loadMarcaciones(opts: {
   if (opts.usuarioId) q = q.eq('usuario_id', opts.usuarioId)
   const { data, error } = await q
   if (error || !data) return []
-  return data.map(mapFila)
+  return data.map(mapMarcacion)
 }
 
 /** La última marcación de una persona: dice si está adentro o afuera. */
@@ -137,7 +137,7 @@ export async function ultimaMarcacion(usuarioId: string): Promise<MarcacionFila 
     .order('marcado_en', { ascending: false })
     .limit(1)
   if (error || !data || data.length === 0) return null
-  return mapFila(data[0])
+  return mapMarcacion(data[0])
 }
 
 export async function loadSitios(): Promise<Sitio[]> {

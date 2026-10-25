@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { CamaraRostro, type ResultadoCamara } from '../components/CamaraRostro'
 import { fmtFechaHora } from '../lib/fechas'
-import { buscarPersona, iniciales, primerNombre, proximoTipo } from '../lib/quiosco'
+import { buscarPersona, etiquetasCortas, iniciales, proximoTipo } from '../lib/quiosco'
 import { pendientesEnCola, sincronizarMarcaciones } from '../services/asistenciaApi'
 import { loadRosterQuiosco, marcarEnQuiosco } from '../services/tallerPersonalApi'
 import type { Mecanico, RosterQuiosco } from '../services/tallerPersonalApi'
@@ -39,7 +39,11 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
   const [busqueda, setBusqueda] = useState('')
   const [seleccionado, setSeleccionado] = useState<Mecanico | null>(null)
   const [vista, setVista] = useState<Vista>('persona')
-  const [pin, setPin] = useState('')
+  const [pin, setPinEstado] = useState('')
+  // El PIN vive también en una referencia: dos toques casi juntos leían el mismo
+  // valor viejo del estado y uno se perdía. Siempre se cambia por `setPin`.
+  const pinRef = useRef('')
+  const setPin = useCallback((v: string) => { pinRef.current = v; setPinEstado(v) }, [])
   const [avisoPin, setAvisoPin] = useState('')
   const [ocupado, setOcupado] = useState(false)
 
@@ -105,10 +109,12 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
       setSeleccionado(null)
       setBusqueda('')
       setVista('persona')
+      setPin('')
+      setAvisoPin('')
       void cargar(true)
     }, 5000)
     return () => window.clearTimeout(t)
-  }, [resultado, cargar])
+  }, [resultado, cargar, setPin])
 
   // Aparato COMPARTIDO: si alguien abre su panel y se va sin marcar, al minuto
   // vuelve solo a la lista, para que el siguiente no marque con el nombre ajeno.
@@ -124,6 +130,12 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
 
   const mecanicos = roster?.mecanicos ?? []
   const lista = useMemo(() => buscarPersona(mecanicos, busqueda), [mecanicos, busqueda])
+  // La etiqueta se calcula contra TODO el personal, no contra lo filtrado: que
+  // «Luis» no pase a «Luis Gómez» solo porque el buscador dejó uno.
+  const etiqueta = useMemo(() => {
+    const e = etiquetasCortas(mecanicos.map((m) => m.nombre))
+    return new Map(mecanicos.map((m, i) => [m.id, e[i]]))
+  }, [mecanicos])
   const adentroAhora = useMemo(
     () => mecanicos.filter((m) => proximoTipo(m.ultima).tipo === 'SALIDA').length,
     [mecanicos],
@@ -172,6 +184,9 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
     const suQue = suTipo === 'ENTRADA' ? 'Entrada' : 'Salida'
     setVista('persona')
     setOcupado(true)
+    // 🔴 El PIN se borra ANTES de enviar: si el envío falla, no puede quedar en
+    // memoria y aparecer en el teclado de la persona que viene detrás.
+    setPin('')
     try {
       const r = await marcarEnQuiosco({
         usuarioId: persona.id,
@@ -227,7 +242,7 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
   function digito(d: string) {
     if (ocupado) return
     setAvisoPin('')
-    const siguiente = (pin + d).slice(0, 4)
+    const siguiente = (pinRef.current + d).slice(0, 4)
     setPin(siguiente)
     if (siguiente.length === 4) void ejecutar({ metodo: 'PIN', pin: siguiente })
   }
@@ -281,13 +296,17 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
         </div>
       ) : seleccionado ? (
         vista === 'pin' ? (
-          <div className="quiosco__panel">
+          <div className="quiosco__panel quiosco__panel--pin">
+            {/* Tableta acostada: nombre y puntos a la izquierda, teclado a la derecha. */}
+            <div className="quiosco__panel-info">
             <h2>{seleccionado.nombre}</h2>
             <p className="quiosco__pin-titulo">Escribe tu PIN de 4 dígitos</p>
             <div className="quiosco__puntos" aria-label={`${pin.length} de 4 dígitos`}>
               {[0, 1, 2, 3].map((i) => <span key={i} className={i < pin.length ? 'is-lleno' : ''} />)}
             </div>
-            {avisoPin && <p className="quiosco__pin-error">{avisoPin}</p>}
+            <p className={`quiosco__pin-error${avisoPin ? '' : ' is-vacio'}`} role="alert">{avisoPin || ' '}</p>
+            {ocupado && <p className="quiosco__ocupado">Un momento…</p>}
+            </div>
             <div className="quiosco__teclado">
               {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
                 <button key={d} type="button" className="quiosco__tecla" onClick={() => digito(d)} disabled={ocupado}>
@@ -306,7 +325,6 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
                 ⌫
               </button>
             </div>
-            {ocupado && <p className="quiosco__ocupado">Un momento…</p>}
             <button
               type="button"
               className="quiosco__secundario"
@@ -316,13 +334,16 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
             </button>
           </div>
         ) : (
-          <div className="quiosco__panel">
-            {rostroSel?.foto
-              ? <img src={rostroSel.foto} alt={`Cara de ${seleccionado.nombre}`} className="quiosco__foto quiosco__foto--grande" />
-              : <span className="quiosco__iniciales quiosco__iniciales--grande" aria-hidden>{iniciales(seleccionado.nombre)}</span>}
-            <h2>{seleccionado.nombre}</h2>
-            <p className="quiosco__estado-persona">{estadoDe(seleccionado)}</p>
+          <div className="quiosco__panel quiosco__panel--persona">
+            <div className="quiosco__panel-info">
+              {rostroSel?.foto
+                ? <img src={rostroSel.foto} alt={`Cara de ${seleccionado.nombre}`} className="quiosco__foto quiosco__foto--grande" />
+                : <span className="quiosco__iniciales quiosco__iniciales--grande" aria-hidden>{iniciales(seleccionado.nombre)}</span>}
+              <h2>{seleccionado.nombre}</h2>
+              <p className="quiosco__estado-persona">{estadoDe(seleccionado)}</p>
+            </div>
 
+            <div className="quiosco__panel-acciones">
             {tieneCara ? (
               <>
                 <button
@@ -354,6 +375,7 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
             <button type="button" className="quiosco__secundario" onClick={volverALista} disabled={ocupado}>
               Cancelar
             </button>
+            </div>
           </div>
         )
       ) : (
@@ -384,7 +406,7 @@ export function QuioscoTallerView({ onLogout }: { onLogout: () => void }) {
                     {m.rostro?.foto
                       ? <img src={m.rostro.foto} alt="" className="quiosco__foto" />
                       : <span className="quiosco__iniciales" aria-hidden>{iniciales(m.nombre)}</span>}
-                    <span className="quiosco__nombre">{primerNombre(m.nombre)}</span>
+                    <span className="quiosco__nombre">{etiqueta.get(m.id) ?? m.nombre}</span>
                     <span className={`quiosco__chip${adentro ? ' is-dentro' : ''}`}>{adentro ? 'Adentro' : 'Afuera'}</span>
                   </button>
                 )

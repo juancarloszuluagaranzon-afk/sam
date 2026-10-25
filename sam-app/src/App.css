@@ -10266,6 +10266,9 @@ td.planilla-vacio:hover { background: #fde047; }
   color: var(--color-ink); background: rgba(179, 38, 30, .12);
   border: 1px solid rgba(179, 38, 30, .4); text-align: center; overflow-wrap: anywhere;
 }
+/* Siempre ocupa su lugar: si el aviso empujara el teclado, el toque siguiente
+   caía en otra tecla (medido en la prueba del 25-oct-2026). */
+.quiosco__pin-error.is-vacio { visibility: hidden; }
 .quiosco__teclado {
   width: 100%; max-width: 420px; display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;
@@ -10298,4 +10301,54 @@ td.planilla-vacio:hover { background: #fde047; }
   .quiosco__grid { gap: 8px; }
   .quiosco__persona { min-height: 150px; padding: 8px 4px; }
   .quiosco__panel { padding: 12px 10px; }
+}
+/* Tableta fija (horizontal y vertical): se usa de pie, a un brazo de distancia y con
+   las manos sucias, así que todo crece: tarjetas, letra, teclado y botones. */
+@media (min-width: 700px) {
+  .quiosco { padding: 24px clamp(24px, 4vw, 64px) 28px; gap: 16px; }
+  .quiosco__estado { font-size: 1.2rem; }
+  .quiosco__aviso { font-size: 1rem; padding: 5px 14px; }
+  .quiosco__ayuda { font-size: 1.3rem; }
+  .quiosco__buscador { min-height: 72px; font-size: 1.4rem; padding: 18px 22px; border-radius: 18px; }
+  .quiosco__grid { grid-template-columns: repeat(auto-fill, minmax(min(200px, 100%), 1fr)); gap: 16px; }
+  .quiosco__persona { min-height: 230px; gap: 10px; border-radius: 22px; }
+  .quiosco__foto, .quiosco__iniciales { width: 104px; height: 128px; }
+  .quiosco__iniciales { font-size: 2.2rem; }
+  .quiosco__foto--grande, .quiosco__iniciales--grande { width: 160px; height: 200px; }
+  .quiosco__nombre { font-size: 1.5rem; }
+  .quiosco__chip { font-size: 1rem; padding: 4px 14px; }
+  .quiosco__panel { max-width: 760px; padding: 28px; gap: 16px; border-radius: 24px; }
+  .quiosco__panel h2 { font-size: 2rem; }
+  .quiosco__estado-persona { font-size: 1.3rem; }
+  .quiosco__cara { min-height: 116px; font-size: 1.8rem; border-radius: 22px; }
+  .quiosco__secundario { min-height: 76px; font-size: 1.3rem; border-radius: 18px; }
+  .quiosco__puntos span { width: 26px; height: 26px; }
+  .quiosco__pin-titulo { font-size: 1.3rem; }
+  .quiosco__pin-error { font-size: 1.15rem; }
+  .quiosco__teclado { max-width: 560px; gap: 14px; }
+  .quiosco__tecla { min-height: 92px; font-size: 2.2rem; border-radius: 20px; }
+  .quiosco__resultado { max-width: 820px; padding: 32px; font-size: clamp(1.6rem, 3.4vw, 2.4rem); }
+  .quiosco__cerrar { font-size: 1rem; }
+}
+/* Las dos mitades de un panel: en vertical y en celular van una sobre otra. */
+.quiosco__panel-info, .quiosco__panel-acciones {
+  width: 100%; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 10px;
+}
+/* Tableta ACOSTADA: el panel en dos columnas para que quepa sin desplazar la pantalla
+   (a 1280×800 el panel de PIN medía 1037 px de alto y obligaba a bajar). */
+@media (min-width: 900px) and (orientation: landscape) {
+  .quiosco__panel--pin, .quiosco__panel--persona {
+    max-width: 1040px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    column-gap: 40px; align-items: center; padding: 24px 32px;
+  }
+  .quiosco__panel--pin { grid-template-areas: "info teclado" "cancelar teclado"; row-gap: 12px; }
+  .quiosco__panel--pin > .quiosco__panel-info { grid-area: info; }
+  .quiosco__panel--pin > .quiosco__teclado { grid-area: teclado; max-width: none; }
+  .quiosco__panel--pin > .quiosco__secundario { grid-area: cancelar; min-height: 64px; }
+  .quiosco__tecla { min-height: clamp(54px, 11dvh, 92px); }
+  .quiosco__cara { min-height: clamp(84px, 15dvh, 116px); }
+  .quiosco__secundario { min-height: clamp(56px, 9dvh, 76px); }
+  .quiosco__foto--grande, .quiosco__iniciales--grande {
+    width: clamp(110px, 22dvh, 160px); height: clamp(140px, 28dvh, 200px);
+  }
 }

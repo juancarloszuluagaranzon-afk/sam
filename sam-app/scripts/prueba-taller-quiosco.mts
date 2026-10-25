@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { buscarPersona, iniciales, pinNuevo, primerNombre, proximoTipo } from '../src/lib/quiosco.ts'
+import { buscarPersona, etiquetasCortas, iniciales, pinNuevo, primerNombre, proximoTipo } from '../src/lib/quiosco.ts'
 import { excesosDeExtras, minutosExtra, TOPE_EXTRA_DIA_MIN, TOPE_EXTRA_SEMANA_MIN } from '../src/lib/topesExtras.ts'
 import { clasificar } from '../src/lib/horasExtra.ts'
 import type { Franja, ResumenDia, Sesion } from '../src/lib/horasExtra.ts'
@@ -222,6 +222,31 @@ caso('19. clasificar: martes de 7:00 a 19:00 con jornada de 8 h → 240 min extr
   assert.equal(deDia.length, 1)
   assert.equal(deDia[0].periodo, '2026-10-20')
   assert.equal(deDia[0].minutosExtra, 240)
+})
+
+/* ───────────── Etiquetas de la cuadrícula (dos «Luis» no se confunden) ───────────── */
+
+caso('20. etiquetas: nombres distintos → solo el primer nombre', () => {
+  assert.deepEqual(etiquetasCortas(['ANDRÉS RUIZ', 'LUIS GÓMEZ', 'BEATRIZ ÑÚÑEZ']), ['Andrés', 'Luis', 'Beatriz'])
+})
+
+caso('21. etiquetas: dos «Luis» se distinguen con su segundo nombre o apellido', () => {
+  assert.deepEqual(
+    etiquetasCortas(['LUIS GÓMEZ', 'LUIS FERNANDO PÉREZ', 'ANDRÉS RUIZ']),
+    ['Luis Gómez', 'Luis Fernando', 'Andrés'],
+  )
+})
+
+caso('22. etiquetas: si hasta los dos primeros se repiten, sale el nombre completo', () => {
+  assert.deepEqual(
+    etiquetasCortas(['LUIS FERNANDO PÉREZ', 'LUIS FERNANDO GÓMEZ']),
+    ['Luis Fernando Pérez', 'Luis Fernando Gómez'],
+  )
+})
+
+caso('23. etiquetas: una por nombre y en el mismo orden; lista vacía → vacía', () => {
+  assert.equal(etiquetasCortas(['A B', 'C D', 'E F']).length, 3)
+  assert.deepEqual(etiquetasCortas([]), [])
 })
 
 /* ──────────────────────────────── Resumen ───────────────────────────────── */

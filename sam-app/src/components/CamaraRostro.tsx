@@ -27,13 +27,15 @@ export interface ResultadoCamara {
  * tracks), o el celular sigue con la luz de la cámara prendida.
  */
 export function CamaraRostro({
-  modo, onListo, onCancelar, onSinCara,
+  modo, onListo, onCancelar, onSinCara, titulo,
 }: {
   modo: 'registrar' | 'marcar'
   onListo: (r: ResultadoCamara) => void
   onCancelar: () => void
   /** Solo al marcar: dejarla para revisión sin cara reconocida (con la foto del momento). */
   onSinCara?: (foto: string | null) => void
+  /** Cuando el jefe registra la cara de OTRA persona «mi cara» confunde: «Registrar la cara de ANDRÉS». */
+  titulo?: string
 }) {
   const video = useRef<HTMLVideoElement>(null)
   const [texto, setTexto] = useState('Preparando la cámara…')
@@ -136,7 +138,7 @@ export function CamaraRostro({
       <div className="modal-card rostro-camara">
         <div className="labor-detail-header">
           <div>
-            <p className="eyebrow">{modo === 'registrar' ? 'Registrar mi cara' : 'Marcar con la cara'}</p>
+            <p className="eyebrow">{titulo ?? (modo === 'registrar' ? 'Registrar mi cara' : 'Marcar con la cara')}</p>
             <h3>{error ? 'No se pudo' : atascado ? 'No lo logramos' : texto}</h3>
           </div>
           <button type="button" className="modal-close-btn" onClick={onCancelar} aria-label="Cerrar">✕</button>

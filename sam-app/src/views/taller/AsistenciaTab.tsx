@@ -31,9 +31,12 @@ export function AsistenciaTab() {
   const { users, session, setError, setInfo } = useAppData()
   const hoy = hoyBogota()
 
-  const [periodo, setPeriodo] = useState<Periodo>('PRIMERA')
-  const [desde, setDesde] = useState(() => rangoDe('PRIMERA', hoy).desde)
-  const [hasta, setHasta] = useState(() => rangoDe('PRIMERA', hoy).hasta)
+  // Abre en la quincena EN CURSO: antes abría siempre en la 1.ª y, del 16 en
+  // adelante, el jefe veía «Nadie ha marcado» con la quincena de pago vigente vacía.
+  const quincenaActual: Periodo = Number(hoy.slice(8, 10)) <= 15 ? 'PRIMERA' : 'SEGUNDA'
+  const [periodo, setPeriodo] = useState<Periodo>(quincenaActual)
+  const [desde, setDesde] = useState(() => rangoDe(quincenaActual, hoy).desde)
+  const [hasta, setHasta] = useState(() => rangoDe(quincenaActual, hoy).hasta)
   const [marcas, setMarcas] = useState<MarcacionFila[]>([])
   const [cfg, setCfg] = useState<ConfigHoras>(CONFIG_POR_DEFECTO)
   const [sitios, setSitios] = useState<Sitio[]>([])

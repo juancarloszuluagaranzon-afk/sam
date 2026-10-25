@@ -43,6 +43,31 @@ export function primerNombre(nombre: string): string {
   return minuscula.charAt(0).toLocaleUpperCase('es-CO') + minuscula.slice(1)
 }
 
+/** «ANDRÉS FELIPE RUIZ» → «Andrés Felipe»: tipo oración, solo las primeras `n` palabras. */
+function palabrasBonitas(nombre: string, n: number): string {
+  return nombre.trim().split(/\s+/).filter(Boolean).slice(0, n)
+    .map((p) => p.toLocaleLowerCase('es-CO'))
+    .map((p) => p.charAt(0).toLocaleUpperCase('es-CO') + p.slice(1)).join(' ')
+}
+
+/**
+ * La etiqueta de cada tarjeta de la cuadrícula. En un taller de diez personas
+ * puede haber dos «Luis»: con solo el primer nombre, uno marcaría por el otro.
+ * Primer nombre; si se repite, los DOS primeros; si todavía se repite, el nombre
+ * completo (y para eso queda el buscador por cédula). Devuelve una etiqueta por
+ * cada nombre recibido, en el mismo orden.
+ */
+export function etiquetasCortas(nombres: string[]): string[] {
+  const nivel = (n: number) => nombres.map((x) => palabrasBonitas(x, n))
+  const cuenta = (l: string[]) => l.reduce((m, e) => m.set(e, (m.get(e) ?? 0) + 1), new Map<string, number>())
+  const uno = nivel(1)
+  const c1 = cuenta(uno)
+  const dos = nivel(2)
+  const c2 = cuenta(dos)
+  const todo = nombres.map((x) => palabrasBonitas(x, 99))
+  return nombres.map((_, i) => (c1.get(uno[i]) ?? 0) <= 1 ? uno[i] : (c2.get(dos[i]) ?? 0) <= 1 ? dos[i] : todo[i])
+}
+
 /**
  * Filtra por nombre o cédula, sin importar tildes ni mayúsculas
  * («andres» encuentra «ANDRÉS»; «1094» encuentra la cédula que lo contiene).

@@ -556,7 +556,12 @@ export function PersonalTallerTab() {
       )}
 
       {camaraPara && (
-        <CamaraRostro modo="registrar" onListo={(r) => void guardarCara(r)} onCancelar={() => setCamaraPara(null)} />
+        <CamaraRostro
+          modo="registrar"
+          titulo={`Registrar la cara de ${camaraPara.nombre}`}
+          onListo={(r) => void guardarCara(r)}
+          onCancelar={() => setCamaraPara(null)}
+        />
       )}
     </section>
   )

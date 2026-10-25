@@ -18,11 +18,13 @@ import { leerKmlPoligonos } from './kmlPoligonos'
  * fondo, polígonos con relleno tenue para que se vea el terreno, el número de la
  * suerte encima (solo de cerca), y la ficha de la suerte al tocarla.
  *
- * Se pinta de tres maneras:
+ * Se pinta de cuatro maneras:
  * - **Última labor**: cada suerte con el color de lo último que se le hizo.
  * - **Edad**: meses desde el corte (la caña se lee por su edad: madurante hacia
  *   los 10–12 meses, cosecha de 12 en adelante).
  * - **Una labor**: hecha (verde) · a medias o por aceptar (ámbar) · sin hacer.
+ * - **Solo bordes**: sin relleno, para que se vea el índice satelital de abajo. Se activa sola al escoger un
+ *   índice (vigor, humedad, nitrógeno, radar) y al volver a la foto base regresa a como estaba.
  *
  * Los polígonos son PEDAZOS (`af_poligonos`): el plano del ingenio no siempre
  * coincide con las suertes de hoy. Un pedazo sin suerte se ve en gris punteado con
@@ -81,7 +83,7 @@ const fechaLarga = (f: string) => new Date(`${f}T12:00:00`).toLocaleDateString('
 /** Lo que el proxy sabe de la finca: la imagen reciente y el CALENDARIO de un año atrás (histórico). */
 type InfoSat = { fecha: string; nubes: number; radar: string | null; todas: { fecha: string; nubes: number }[]; radares: string[] }
 
-type Modo = { tipo: 'ultima' } | { tipo: 'edad' } | { tipo: 'labor'; llave: string }
+type Modo = { tipo: 'ultima' } | { tipo: 'edad' } | { tipo: 'labor'; llave: string } | { tipo: 'bordes' }
 
 /** Colores fijos por labor: la misma labor siempre del mismo color. */
 const COLOR_LABOR: [string, string][] = [
@@ -143,6 +145,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
   }
 
   const [modo, setModo] = useState<Modo>({ tipo: 'ultima' })
+  const modoAntesRef = useRef<Modo | null>(null)
   const [selId, setSelId] = useState<string | null>(null)
   const [verPlano, setVerPlano] = useState(false)
   const [plano, setPlano] = useState<MapaConfig | null>(null)
@@ -266,7 +269,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
         const hs = hechosPor.get(s.codigo) ?? []
         if (modo.tipo === 'ultima') fill = hs[0] ? colorLabor(hs[0].llave) : null
         else if (modo.tipo === 'edad') fill = colorEdad(edadDe(s))
-        else {
+        else if (modo.tipo === 'labor') {
           const deLabor = hs.filter((h) => h.llave === modo.llave)
           fill = deLabor.some((h) => h.estado === 'hecha') ? '#16a34a' : deLabor.length ? '#f59e0b' : null
         }
@@ -274,11 +277,23 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
       const sel = p.id === selId
       // Novedad desde la última visita del dueño: borde amarillo grueso.
       const nuevo = !!s && !!ctx.resaltar?.has(s.codigo)
+      const color = sel || nuevo ? '#facc15' : s ? '#ffffff' : '#cbd5e1'
+      const peso = sel ? 3.5 : nuevo ? 4 : s ? 1.6 : 1.2
+      const dash = s ? undefined : '5 4'
+      if (modo.tipo === 'bordes') {
+        const grosor = sel ? 3.5 : nuevo ? 4 : s ? 2 : 1.4
+        L.polygon(latlngs, { renderer: render, color: '#0f172a', opacity: 0.85, weight: grosor + 2.4, dashArray: dash, fill: false, interactive: false }).addTo(capa)
+        L.polygon(latlngs, {
+          renderer: render, color, weight: grosor, dashArray: dash,
+          fillColor: fill ?? (s ? '#ffffff' : '#94a3b8'), fillOpacity: 0,
+        }).on('click', () => setSelId(p.id)).addTo(capa)
+        continue
+      }
       L.polygon(latlngs, {
         renderer: render,
-        color: sel || nuevo ? '#facc15' : s ? '#ffffff' : '#cbd5e1',
-        weight: sel ? 3.5 : nuevo ? 4 : s ? 1.6 : 1.2,
-        dashArray: s ? undefined : '5 4',
+        color,
+        weight: peso,
+        dashArray: dash,
         fillColor: fill ?? (s ? '#ffffff' : '#94a3b8'),
         fillOpacity: fill ? 0.55 : s ? 0.1 : 0.18,
       }).on('click', () => setSelId(p.id)).addTo(capa)
@@ -378,17 +393,28 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
 
   const barraModos = (
     <div className="af-mapa-modos" role="group" aria-label="Cómo pintar el mapa">
-      <button type="button" aria-pressed={modo.tipo === 'ultima'} onClick={() => setModo({ tipo: 'ultima' })}>Última labor</button>
-      <button type="button" aria-pressed={modo.tipo === 'edad'} onClick={() => setModo({ tipo: 'edad' })}>Edad</button>
+      <button type="button" aria-pressed={modo.tipo === 'ultima'} onClick={() => { modoAntesRef.current = null; setModo({ tipo: 'ultima' }) }}>Última labor</button>
+      <button type="button" aria-pressed={modo.tipo === 'edad'} onClick={() => { modoAntesRef.current = null; setModo({ tipo: 'edad' }) }}>Edad</button>
+      <button type="button" aria-pressed={modo.tipo === 'bordes'} onClick={() => { modoAntesRef.current = null; setModo({ tipo: 'bordes' }) }}>Solo bordes</button>
       {labores.map((l) => (
         <button key={l.llave} type="button" aria-pressed={modo.tipo === 'labor' && modo.llave === l.llave}
-                onClick={() => setModo({ tipo: 'labor', llave: l.llave })}>
+                onClick={() => { modoAntesRef.current = null; setModo({ tipo: 'labor', llave: l.llave }) }}>
           <i style={{ background: colorLabor(l.llave) }} aria-hidden="true" />{nombreLabor(l.nombre)}
         </button>
       ))}
       {/* 🛰 Satélite: un desplegable, no cinco botones — en celular no caben. */}
       <select className={`af-mapa-sat${capaSat ? ' af-mapa-sat--on' : ''}`} value={capaSat}
-              onChange={(e) => { setCapaSat(e.target.value); setFechaSat('') }} aria-label="Imagen satelital" title="Imagen satelital Sentinel (ESA)">
+              onChange={(e) => {
+                const valor = e.target.value
+                setCapaSat(valor); setFechaSat('')
+                if (CAPAS_SAT.find((c) => c.key === valor)?.ramp && modo.tipo !== 'bordes') {
+                  modoAntesRef.current = modo
+                  setModo({ tipo: 'bordes' })
+                } else if (!CAPAS_SAT.find((c) => c.key === valor)?.ramp && modo.tipo === 'bordes' && modoAntesRef.current) {
+                  setModo(modoAntesRef.current)
+                  modoAntesRef.current = null
+                }
+              }} aria-label="Imagen satelital" title="Imagen satelital Sentinel (ESA)">
         <option value="">🛰 Satélite: foto base</option>
         {CAPAS_SAT.map((c) => <option key={c.key} value={c.key}>🛰 {c.nombre}</option>)}
       </select>
@@ -462,6 +488,7 @@ export function MapaFinca({ ctx, finca }: { ctx: CtxFincas; finca: Finca }) {
 }
 
 function Leyenda({ modo, labores }: { modo: Modo; labores: { llave: string; nombre: string }[] }) {
+  if (modo.tipo === 'bordes') return null
   if (modo.tipo === 'edad') {
     return (
       <div className="af-mapa-leyenda">

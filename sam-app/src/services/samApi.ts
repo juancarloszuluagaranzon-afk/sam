@@ -1687,6 +1687,9 @@ function mapInsumo(row: Record<string, unknown>): Insumo {
     stockSeguridad: row.stock_seguridad == null ? undefined : Number(row.stock_seguridad),
     costoPromedio: row.costo_promedio == null ? undefined : Number(row.costo_promedio),
     fichaUrl: row.ficha_url ? String(row.ficha_url) : undefined,
+    fotoUrl: row.foto_url ? String(row.foto_url) : undefined,
+    fotoThumbUrl: row.foto_thumb_url ? String(row.foto_thumb_url) : undefined,
+    fotoHash: row.foto_hash ? String(row.foto_hash) : undefined,
   }
 }
 

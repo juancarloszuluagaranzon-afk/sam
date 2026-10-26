@@ -37,6 +37,7 @@ export type InsumoOpKind =
   | 'NOVEDAD'              // el operario reporta vacaciones, taller, incapacidad…
   | 'CONFIRMAR_TANQUEO'    // el operario aprueba el combustible que le echaron
   | 'SOPORTE'              // el operario reporta una falla de la app
+  | 'PIEZA'                // el taller da de alta una pieza (con fotos que suben después)
 
 /** Etiqueta para la pantalla de pendientes; el operario no lee códigos. */
 export const OP_LABEL: Record<InsumoOpKind, string> = {
@@ -51,6 +52,7 @@ export const OP_LABEL: Record<InsumoOpKind, string> = {
   NOVEDAD: 'Novedad reportada',
   CONFIRMAR_TANQUEO: 'Confirmación de tanqueo',
   SOPORTE: 'Reporte a soporte',
+  PIEZA: 'Pieza nueva del taller',
 }
 
 /**

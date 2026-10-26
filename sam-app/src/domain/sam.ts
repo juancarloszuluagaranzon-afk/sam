@@ -563,6 +563,11 @@ export interface Insumo {
   stockSeguridad?: number
   costoPromedio?: number
   fichaUrl?: string
+  // Foto de la pieza en DOS tamaños (migración 20261026230000): miniatura para la lista y detalle para la
+  // ficha. Las tres vacías = «sin foto». `fotoHash` es el SHA-256 del detalle y da el nombre del archivo.
+  fotoUrl?: string
+  fotoThumbUrl?: string
+  fotoHash?: string
 }
 
 export type KardexTipo = 'ENTRADA' | 'SALIDA' | 'AJUSTE'

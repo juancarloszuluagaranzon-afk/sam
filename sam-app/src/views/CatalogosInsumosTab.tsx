@@ -52,6 +52,11 @@ const LISTAS: Lista[] = [
     donde: 'Bandeja → Rechazar solicitud',
     ejemplo: 'SIN STOCK', normalizar: aMayus,
   },
+  {
+    tipo: 'UBICACION', icono: '📍', titulo: 'Estantes del taller',
+    donde: 'Taller → Repuestos → Nueva pieza',
+    ejemplo: 'ESTANTE A-3', normalizar: aMayus,
+  },
   // Transporte de madera. Van aqui y no en una pantalla propia porque esta ya
   // resuelve el problema entero — alta, edicion, pegado masivo y el espejo que
   // sigue sugiriendo sin senal. Una pantalla nueva seria la misma tres veces.

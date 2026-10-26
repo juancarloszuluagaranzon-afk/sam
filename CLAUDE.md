@@ -651,6 +651,30 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   **revisarlas con Carlos David antes de pagar.**
 - Ver memoria `project_candado_area`.
 
+## En construcción, SIN publicar — Inventario de piezas del taller (rama `inventario-piezas`, 26-oct-2026)
+
+- 🔩 **Pestaña Repuestos con fotos de baja resolución.** Lista con miniatura de 56 px, chips (Todas / Bajo mínimo / Agotadas / Sin foto),
+  píldora «Agotado» / «Mín N», ficha con foto grande y visor, y **alta rápida** («📷 Nueva pieza»: foto, nombre, estante y cantidad;
+  lo demás plegado; «Guardar y siguiente» conserva estante y familia). Archivos: `views/taller/RepuestosTab`, `NuevaPiezaModal`,
+  `piezas.css`, `components/FotoVisor`, `lib/fotoPieza.ts`, `services/piezasApi.ts`, caso `'PIEZA'` en `lib/outboxInsumos.ts`.
+- 🔴 **Dos tamaños de la MISMA foto, hechos en el celular** (miniatura ~200 px para la lista, detalle ~900 px para la ficha): el VPS no
+  redimensiona al vuelo. Nombre por **SHA-256 del detalle** (`repuestos/<2>/<hash>_thumb|full.<ext>`): no se duplica y reintentar es
+  idempotente. Depósito público `taller` (tope 300 KB), `cacheControl` de un año. ⚠️ **`canvas.toBlob('image/webp')` en Safari/iPhone NO
+  falla: devuelve un PNG**; por eso se pide WebP y se COMPRUEBA `blob.type`, con JPEG de respaldo.
+- 🔴 **Sin señal**: se encola la INTENCIÓN (`enviarOEncolar('PIEZA', …)`), las fotos quedan en `db.fotos` con marcador `local://` y se
+  suben al sincronizar. **Orden: datos → fotos** (la pieza ya sirve aunque la foto falle). 🔴 La **carga inicial** de existencia se hace UNA
+  vez por pieza y bodega (marca = su movimiento «Carga inicial del taller» en el kardex): un reintento no puede volver a «fijar» el stock.
+  Las fotos locales se borran SOLO al final (si no, un fallo a medias atasca la cola para siempre).
+- 🔴 **El paquete principal ya pesa ~2,1 MB y el tope del precache de workbox era 2 MiB: el build FALLABA** (por 688 bytes). Se subió
+  `maximumFileSizeToCacheInBytes` a 4 MiB en `vite.config.ts`. Si el build vuelve a fallar con «Assets exceeding the limit», es esto.
+- Migración `20261026230000_repuestos_fotos.sql` (columnas `foto_url`, `foto_thumb_url`, `foto_hash` NULLABLE + depósito `taller` + 3
+  políticas, sin DELETE) y `supabase/pruebas_repuestos_fotos.sql` — **NO aplicada**. Pruebas: `node scripts/prueba-foto-pieza.mts` (28).
+- Falta: aplicar la migración (con copia de seguridad), publicar, **cargar las piezas reales** (hoy hay 0 repuestos y 0 órdenes de trabajo),
+  placeholder borroso (ThumbHash), lector de código de barras (solo Android lo trae nativo) y el manual. Estado medido 26-oct: 15 insumos,
+  0 repuestos, 0 aplicabilidades; depósito `avatars` 1.150 archivos / 71 MB. Probado con un servidor falso (ninguna escritura real) a
+  390/320 px y computador, con y sin señal. Obra hecha con «trabaja como me gusta»: Antigravity investigó, Codex la lógica, DeepSeek Flash
+  las pantallas y las pruebas, Claude revisó, corrigió e integró (ver `registro-desempeno-modelos.md`).
+
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 
 Para cambios grandes de código, el escalamiento cuando algo falla es **Codex (2 intentos) →

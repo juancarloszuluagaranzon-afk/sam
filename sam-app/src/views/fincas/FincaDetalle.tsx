@@ -14,9 +14,10 @@ import { AccesoDueno } from './AccesoDueno'
 import { MapaFinca } from './MapaFinca'
 import { TableroFinca } from './TableroFinca'
 import { PlanCorte } from './PlanCorte'
+import { TableroCorte } from './TableroCorte'
 import type { AjusteRpc } from '../../lib/planCorte'
 
-type Sub = 'resumen' | 'labores' | 'cuenta' | 'bitacora'
+type Sub = 'resumen' | 'plan' | 'labores' | 'cuenta' | 'bitacora'
 
 const CHIP: Record<NivelOportunidad, { c: string; t: string }> = {
   ideal: { c: 'af-chip--ok', t: '✓ a tiempo' },
@@ -119,7 +120,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
       <MapaFinca ctx={ctx} finca={finca} />
 
       <nav className="af-sub" aria-label="Secciones de la finca">
-        {([['resumen', modoDueno ? 'Resumen' : 'Lo que ve el dueño'], ['labores', 'Labores por suerte'], ...(VER_PLATA ? [['cuenta', 'Cuenta']] : []), ['bitacora', 'Bitácora']] as [Sub, string][]).map(([k, t]) => (
+        {([['resumen', modoDueno ? 'Resumen' : 'Lo que ve el dueño'], ...(VER_PLATA ? [['plan', 'Plan y avance']] : []), ['labores', 'Labores por suerte'], ...(VER_PLATA ? [['cuenta', 'Cuenta']] : []), ['bitacora', 'Bitácora']] as [Sub, string][]).map(([k, t]) => (
           <button key={k} type="button" aria-pressed={sub === k} onClick={() => setSub(k)}>{t}</button>
         ))}
       </nav>
@@ -170,6 +171,8 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
           </div>
         </div>
       )}
+
+      {sub === 'plan' && VER_PLATA && <TableroCorte d={d} fincaId={fincaId} hoy={hoy} esAdmin={esAdmin && !modoDueno} />}
 
       {sub === 'labores' && (
         <div className="af-stack">

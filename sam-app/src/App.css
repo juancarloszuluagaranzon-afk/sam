@@ -9565,6 +9565,35 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-cat__cab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .af-cat__cab h3 { margin: 0; }
 .af-cat__cab > small { margin-left: auto; color: var(--color-ink-mid, #5a5f57); font-size: 0.78rem; white-space: nowrap; }
+/* Tablero «Plan y avance» (26-oct-2026). */
+.af-curva-caja { width: 100%; min-width: 0; }
+.af-curva { display: block; max-width: 100%; }
+.af-curva__rejilla { stroke: var(--color-divider, #e3e6df); stroke-width: 1; }
+.af-curva__txt { fill: var(--color-ink-mid, #5a5f57); font-size: 11px; }
+.af-curva__hoy { stroke: var(--color-ink-mid, #5a5f57); stroke-width: 1; stroke-dasharray: 2 3; }
+.af-curva__plan { fill: none; stroke: #898781; stroke-width: 2; stroke-dasharray: 5 4; stroke-linejoin: round; }
+.af-curva__real { fill: none; stroke: #2a78d6; stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.af-curva__proy { fill: none; stroke: #eb6834; stroke-width: 2; stroke-dasharray: 2 3; }
+.af-curva__punto { stroke: var(--color-surface, #fff); stroke-width: 2; }
+.af-curva__punto--real { fill: #2a78d6; }
+.af-curva__punto--proy { fill: #eb6834; }
+.af-curva__leyenda { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); }
+.af-curva__leyenda li { display: flex; align-items: center; gap: 6px; }
+.af-curva__sw { display: inline-block; width: 16px; height: 0; border-top: 2px solid; flex: none; }
+.af-curva__sw--plan { border-color: #898781; border-top-style: dashed; }
+.af-curva__sw--real { border-color: #2a78d6; border-top-width: 3px; }
+.af-curva__sw--proy { border-color: #eb6834; border-top-style: dotted; }
+.af-alertas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.af-alertas li { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid var(--color-divider, #e3e6df); font-size: 0.9rem; }
+.af-alertas li:last-child { border-bottom: 0; }
+.af-alertas li > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+.af-alertas .af-chip { flex: none; }
+.af-tabla.af-tab-corte td .af-chip { margin-left: 8px; }
+.af-tabla.af-tab-corte .af-barra { margin-top: 4px; }
+@media (max-width: 640px) {
+  .af-tabla.af-tab-corte td[data-label="Valor ganado"] { order: 3; }
+  .af-tabla.af-tab-corte td[data-label="Avance físico"] { order: 4; grid-column: 1 / -1; }
+}
 /* Asistente «Iniciar corte» (25-oct-2026). */
 .af-plan { gap: 12px; }
 .af-plan__pasos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }

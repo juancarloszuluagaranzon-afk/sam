@@ -510,7 +510,16 @@ la forma real de `af_datos` (sacada en una transacción deshecha) con todo lo id
   aplica los ajustes **en una sola transacción**. 🔴 Si la migración no está aplicada, «Activar corte» falla: **aplicarla
   ANTES de publicar la app**. La función vieja `af_abrir_ciclo` sigue intacta (cliente viejo en caché).
   ⚠️ Copiar de otro corte trae solo costos y pasadas; las labores y ventanas salen siempre del catálogo y la variedad.
-- ⏳ **Pendiente: tablero del corte con curva S** (presupuesto, plan a la fecha, ejecutado, variación, rubros, alertas).
+- ✅ **Tablero «Plan y avance»** (`TableroCorte.tsx`, nueva sección de la finca; cálculos en `lib/tableroCorte.ts`,
+  `node scripts/prueba-tablero-corte.mts`, 16 casos): presupuesto, **plan a la fecha**, **ejecutado**, **valor ganado**,
+  curva S con proyección al cierre, alertas y avance por labor. Método del valor ganado: variación de costo = EV − AC
+  (NO plan − ejecutado: gastar menos que el plan puede ser no haber avanzado), CPI = EV/AC, SPI = EV/PV, proyección
+  = AC + (presupuesto − EV)/CPI. 🔴 **Criterios nuestros, no estándar**: el plan reparte cada labor en línea recta desde el
+  corte hasta su fecha ideal (riego y malezas, 365 días: `HORIZONTE_DIAS`) y el semáforo es 0,95 / 0,90. El «ejecutado»
+  es el MISMO conjunto de gastos de `presupuestoFinca` (hay prueba que lo comprueba). ⚠️ En IYOMA PRUEBAS el 88 % de lo
+  gastado no está ligado a una labor: por eso la tabla no muestra «ejecutado por labor» sino avance físico y valor ganado,
+  y hay una alerta (solo administración) que lo dice. Probado con un arnés temporal (375/320/1100 px, vista del dueño y
+  labor vencida); **NO probado dentro de la pantalla real de la finca con un usuario**.
 - ⏳ **Pendiente de confirmar con Carlos David**: etapas «Cosecha (CAT)» e «Indirectos» y su lista de rubros del gremio.
 - 🔴 Lecciones: (1) un `<input type="radio">` dentro de un `label` flex heredaba `width:100%` global y desbordaba el
   panel 42 px en celular — fijarle ancho; (2) DeepSeek Flash se pegó compilando y entregó la pantalla incompleta y fuera de

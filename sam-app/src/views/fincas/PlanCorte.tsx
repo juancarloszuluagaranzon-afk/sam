@@ -7,6 +7,7 @@ import {
 } from '../../lib/planCorte'
 import { SearchableSelect } from '../../components/SearchableSelect'
 import { CronogramaDDC } from './CronogramaDDC'
+import { useCapaAtras, useVistaAtras } from '../../lib/atras'
 
 /**
  * «Iniciar corte» como un asistente de cuatro pasos (25-oct-2026): Parámetros → Punto de partida →
@@ -47,6 +48,11 @@ export function PlanCorte({ suerte, hoy, paquete, ciclos, labores, otras, hayCic
   const [error, setError] = useState('')
   // Con qué parámetros se armó el plan: si el usuario vuelve atrás y no cambia nada, no se le pierden sus ajustes.
   const armadoCon = useRef('')
+
+  // «Atrás» del celular: dentro del asistente regresa de paso (4→3→2→1) y desde el paso 1 lo cierra (como Cancelar),
+  // en vez de sacar de la app. Mientras se está activando el corte no cierra nada. Nada se ha guardado antes del paso 4.
+  useCapaAtras(true, () => { if (!ocupado) onCancelar() })
+  useVistaAtras(paso, setPaso, 'plan-corte-paso')
 
   const cortesDe = (suerteId: string): Ciclo[] =>
     ciclos.filter((c) => c.suerteId === suerteId).sort((a, b) => b.fechaCorte.localeCompare(a.fechaCorte))
@@ -220,7 +226,7 @@ export function PlanCorte({ suerte, hoy, paquete, ciclos, labores, otras, hayCic
       {error && <p className="feedback error" role="alert">{error}</p>}
 
       <div className="af-acciones af-plan__nav">
-        {paso > 1 && <button type="button" className="inline-button" disabled={ocupado} onClick={() => { setError(''); setPaso(paso - 1) }}>← Atrás</button>}
+        {paso > 1 && <button type="button" className="inline-button" disabled={ocupado} onClick={() => { setError(''); window.history.back() }}>← Atrás</button>}
         {paso < 4
           ? <button type="button" className="primary-button" onClick={siguiente}>Siguiente →</button>
           : <button type="button" className="primary-button" disabled={ocupado || lineas.length === 0} onClick={() => void activar()}>{ocupado ? 'Activando…' : 'Activar corte'}</button>}

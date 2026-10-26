@@ -4,6 +4,7 @@ import { cargarReferencias, guardarPaquete, mensajeDeError, type LaborPaquete, t
 import { fmtPesos, fmtPesosCorto, RUBROS, VER_PLATA } from '../../lib/fincas'
 import { agruparCatalogo, costoReferenciaPorHa, resumenCatalogo, sinCosto, totalPorHa } from '../../lib/catalogoFincas'
 import { Ayuda } from '../../components/Ayuda'
+import { useCapaAtras } from '../../lib/atras'
 
 /**
  * El paquete de labores: la plantilla con la que nace cada ciclo. Costo por
@@ -37,6 +38,8 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
   const [editando, setEditando] = useState<Partial<LaborPaquete> & { labor: string } | null>(null)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
+  // «Atrás» del celular cierra el editor abierto (como Cancelar) en vez de sacar de la app; mientras guarda, no cierra.
+  useCapaAtras(editando !== null, () => { if (!guardando) setEditando(null) })
   // El rubro de cada labor es un dato de `af_config` (referencias del gremio): si no llega,
   // el catálogo se dibuja igual, solo que sin chip de rubro.
   const [rubros, setRubros] = useState<Record<string, RubroCosto>>({})

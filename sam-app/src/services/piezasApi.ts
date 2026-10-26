@@ -1,5 +1,11 @@
 import type { Insumo } from '../domain/sam'
 import type { FotoPiezaLista } from '../lib/fotoPieza'
+import { rutaFotoPieza } from '../lib/fotoPieza'
+import { supabase } from '../lib/supabase'
+import { ajustarStockInsumo, mapInsumo } from './samApi'
+import { siguienteCodigo } from './tallerApi'
+import { db } from '../lib/db'
+import { enviarOEncolar, esFotoLocal, subirOGuardarFoto } from '../lib/outboxInsumos'
 
 /**
  * Piezas del taller: alta rápida con foto y cambio de foto (26-oct-2026).
@@ -47,13 +53,44 @@ export interface FotoPiezaRef {
   fotoHash: string
 }
 
+interface PayloadPieza { pieza: NuevaPieza; foto?: FotoPiezaRef }
+
+async function leerInsumo(id: string): Promise<Insumo> {
+  const { data, error } = await supabase.from('insumos').select('*').eq('id', id).single()
+  if (error || !data) throw new Error(error?.message || 'No se pudo leer la pieza')
+  // El mismo mapeo que usa todo el catálogo: una copia a mano se desfasa cuando se agrega un campo.
+  return mapInsumo(data as Record<string, unknown>)
+}
+
+const MOTIVO_CARGA_INICIAL = 'Carga inicial del taller'
+
+async function subirBlob(hash: string, variante: 'thumb' | 'full', file: File): Promise<string> {
+  const ext = file.type === 'image/webp' ? 'webp' : 'jpg'
+  const ruta = rutaFotoPieza(hash, variante, ext)
+  const { error } = await supabase.storage.from('taller').upload(ruta, file, {
+    upsert: true, cacheControl: '31536000', contentType: file.type,
+  })
+  if (error) throw error
+  return supabase.storage.from('taller').getPublicUrl(ruta).data.publicUrl
+}
+
 /**
  * Sube las dos variantes al depósito `taller` (miniatura primero) con `upsert: true` y
  * `cacheControl: '31536000'` (un año: el nombre cambia si cambia el contenido). Devuelve las URLs públicas.
  */
 export async function subirFotoPieza(foto: FotoPiezaLista): Promise<FotoPiezaSubida> {
-  void foto
-  throw new Error('no implementado')
+  const thumbPath = rutaFotoPieza(foto.hash, 'thumb', foto.ext)
+  const { error: thumbError } = await supabase.storage.from('taller').upload(thumbPath, foto.thumb, {
+    upsert: true, cacheControl: '31536000', contentType: foto.tipo,
+  })
+  if (thumbError) throw thumbError
+  const fullPath = rutaFotoPieza(foto.hash, 'full', foto.ext)
+  const { error } = await supabase.storage.from('taller').upload(fullPath, foto.full, {
+    upsert: true, cacheControl: '31536000', contentType: foto.tipo,
+  })
+  if (error) throw error
+  const storage = supabase.storage.from('taller')
+  return { fotoThumbUrl: storage.getPublicUrl(thumbPath).data.publicUrl, fotoUrl: storage.getPublicUrl(fullPath).data.publicUrl, fotoHash: foto.hash }
 }
 
 /**
@@ -65,14 +102,53 @@ export async function subirFotoPieza(foto: FotoPiezaLista): Promise<FotoPiezaSub
  * - Si trae `foto` (URLs reales), las guarda en `foto_url`/`foto_thumb_url`/`foto_hash`.
  */
 export async function crearPiezaTaller(p: NuevaPieza, foto?: FotoPiezaRef): Promise<Insumo> {
-  void p; void foto
-  throw new Error('no implementado')
+  const normal = (v?: string) => v?.trim().toUpperCase() || null
+  const { data: existente } = await supabase.from('insumos').select('*').eq('id', p.id).maybeSingle()
+  if (!existente) {
+    const payload: Record<string, unknown> = {
+      id: p.id, nombre: p.nombre.trim().toUpperCase(), categoria: 'MATERIAL', unidad: 'unidad', es_repuesto: true,
+      ubicacion: p.ubicacion.trim().toUpperCase(), stock_minimo: p.stockMinimo ?? 0,
+    }
+    if (p.codigo) payload.codigo = normal(p.codigo)
+    if (p.familia) payload.familia = normal(p.familia)
+    if (p.marca) payload.marca = normal(p.marca)
+    if (p.numeroParte) payload.numero_parte = normal(p.numeroParte)
+    if (p.referencia) payload.referencia = normal(p.referencia)
+    const { error } = await supabase.from('insumos').upsert(payload, { onConflict: 'id', ignoreDuplicates: true })
+    if (error) throw error
+  }
+  let actual = await leerInsumo(p.id)
+  if (p.familia && !p.codigo && !actual.codigo) {
+    const codigo = await siguienteCodigo(p.familia)
+    const { error } = await supabase.from('insumos').update({ codigo: codigo.trim().toUpperCase() }).eq('id', p.id).is('codigo', null)
+    if (error) throw error
+    actual = await leerInsumo(p.id)
+  }
+  // 🔴 La carga inicial se hace UNA sola vez por pieza y bodega. Un reintento de la cola (p. ej. porque falló la
+  // foto) no puede volver a «fijar» la existencia: si entretanto se gastaron repuestos, los devolvería al
+  // conteo inicial. La marca de que ya se hizo es su movimiento en el kardex. Una pieza nueva nace con 0: con
+  // cantidad 0 no hay nada que registrar.
+  if (p.cantidad > 0) {
+    const { data: yaCargada, error: kardexError } = await supabase.from('insumos_kardex').select('id')
+      .eq('insumo_id', p.id).eq('bodega_id', p.bodegaId).eq('motivo', MOTIVO_CARGA_INICIAL).limit(1)
+    if (kardexError) throw kardexError
+    if (!yaCargada || yaCargada.length === 0) {
+      actual = await ajustarStockInsumo({ insumoId: p.id, nuevoStock: p.cantidad, motivo: MOTIVO_CARGA_INICIAL, creadoPor: p.creadoPor, bodegaId: p.bodegaId })
+    }
+  }
+  if (foto && !esFotoLocal(foto.fotoUrl) && !esFotoLocal(foto.fotoThumbUrl)) {
+    const { error } = await supabase.from('insumos').update({ foto_url: foto.fotoUrl, foto_thumb_url: foto.fotoThumbUrl, foto_hash: foto.fotoHash, updated_at: new Date().toISOString() }).eq('id', p.id)
+    if (error) throw error
+  }
+  return leerInsumo(p.id)
 }
 
 /** Cambia la foto de una pieza que ya existe (sube y actualiza las tres columnas). */
 export async function cambiarFotoPieza(insumoId: string, foto: FotoPiezaLista): Promise<Insumo> {
-  void insumoId; void foto
-  throw new Error('no implementado')
+  const subida = await subirFotoPieza(foto)
+  const { error } = await supabase.from('insumos').update({ foto_url: subida.fotoUrl, foto_thumb_url: subida.fotoThumbUrl, foto_hash: subida.fotoHash, updated_at: new Date().toISOString() }).eq('id', insumoId)
+  if (error) throw error
+  return leerInsumo(insumoId)
 }
 
 /**
@@ -83,6 +159,35 @@ export async function cambiarFotoPieza(insumoId: string, foto: FotoPiezaLista): 
  * Devuelve `enviado: false` cuando quedó en cola — la pantalla debe decir «guardada, sube cuando haya señal».
  */
 export async function guardarPiezaTaller(p: NuevaPieza, foto?: FotoPiezaLista): Promise<{ enviado: boolean }> {
-  void p; void foto
-  throw new Error('no implementado')
+  let ref: FotoPiezaRef | undefined
+  if (foto) {
+    const upload = (hint: string, file: File, indice: number) => subirBlob(hint, indice === 0 ? 'thumb' : 'full', file)
+    const thumb = await subirOGuardarFoto(foto.hash, new File([foto.thumb], `${foto.hash}_thumb.${foto.ext}`, { type: foto.tipo }), 0, upload)
+    const full = await subirOGuardarFoto(foto.hash, new File([foto.full], `${foto.hash}_full.${foto.ext}`, { type: foto.tipo }), 1, upload)
+    ref = { fotoUrl: full.url, fotoThumbUrl: thumb.url, fotoHash: foto.hash }
+  }
+  const payload: PayloadPieza = { pieza: p, foto: ref }
+  return enviarOEncolar('PIEZA', payload, () => ejecutarPieza(payload))
+}
+
+export async function ejecutarPieza(payload: PayloadPieza): Promise<void> {
+  await crearPiezaTaller(payload.pieza)
+  if (!payload.foto) return
+  const foto = { ...payload.foto }
+  // 🔴 Las fotos del equipo se borran SOLO al final, cuando la pieza ya quedó con sus dos URLs. Si se borraran
+  // al subir cada una y fallara la segunda, el reintento de la cola no encontraría la primera y se atascaría
+  // para siempre. Subir de nuevo es inofensivo: el nombre sale del contenido y la subida es `upsert`.
+  const subidas: string[] = []
+  for (const [key, variante] of [['fotoThumbUrl', 'thumb'], ['fotoUrl', 'full']] as const) {
+    const url = foto[key]
+    if (!esFotoLocal(url)) continue
+    const localId = url.slice('local://'.length)
+    const pendiente = await db.fotos.get(localId)
+    if (!pendiente) throw new Error('No se encontró una foto pendiente del taller')
+    const file = new File([pendiente.blob], pendiente.nombre, { type: pendiente.blob.type || 'image/jpeg' })
+    foto[key] = await subirBlob(foto.fotoHash, variante, file)
+    subidas.push(localId)
+  }
+  await crearPiezaTaller(payload.pieza, foto)
+  for (const localId of subidas) await db.fotos.delete(localId)
 }

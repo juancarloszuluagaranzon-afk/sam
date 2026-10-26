@@ -104,6 +104,14 @@ export function resumenOperacion(kind: InsumoOpKind, payload: unknown): string {
   if (p.estacion) partes.push(String(p.estacion))
   if (p.folio) partes.push(String(p.folio))
 
+  if (kind === 'PIEZA') {
+    const pieza = p.pieza ?? {}
+    const nombre = pieza.nombre ? String(pieza.nombre).trim() : ''
+    const ubicacion = pieza.ubicacion ? String(pieza.ubicacion).trim() : ''
+    const cantidad = Number(pieza.cantidad)
+    return [nombre, ubicacion, Number.isFinite(cantidad) ? `${num(cantidad)} u.` : ''].filter(Boolean).join(' · ')
+  }
+
   return partes.join(' · ')
   /* eslint-enable @typescript-eslint/no-explicit-any */
 }
@@ -160,6 +168,11 @@ export async function ejecutarInsumo(kind: InsumoOpKind, payload: unknown): Prom
     // ⚠️ `crearCaso` es idempotente por folio: el reintento de la cola no crea
     // un caso gemelo. Probado contra produccion.
     case 'SOPORTE': await crearCaso(p); return
+    case 'PIEZA': {
+      const { ejecutarPieza } = await import('../services/piezasApi')
+      await ejecutarPieza(p)
+      return
+    }
     default: throw new Error(`Operación desconocida en la cola: ${kind}`)
   }
   /* eslint-enable @typescript-eslint/no-explicit-any */

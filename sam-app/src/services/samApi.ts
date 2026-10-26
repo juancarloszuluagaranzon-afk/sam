@@ -1664,7 +1664,7 @@ export async function deleteZona(id: string): Promise<void> {
 // MÓDULO INSUMOS — catálogo + inventario (kardex). Migración 20260622120000.
 // Sin caché Dexie (lo usan supervisor de insumos / owner / admin, en línea).
 
-function mapInsumo(row: Record<string, unknown>): Insumo {
+export function mapInsumo(row: Record<string, unknown>): Insumo {
   const cat = String(row.categoria ?? 'MATERIAL').trim().toUpperCase()
   return {
     id: String(row.id),

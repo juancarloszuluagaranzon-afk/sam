@@ -489,3 +489,62 @@ la forma real de `af_datos` (sacada en una transacción deshecha) con todo lo id
 ⚠️ Para rehacer capturas: los códigos de usuario del ejemplo NO deben existir en `app_usuarios`
 (`UEJ00`, `UEJ01`…): la app toma el nombre de la lista real de usuarios antes que de `nombres`, y con
 `U033` salió el nombre real del operario. PDF de 18 páginas con Edge (`--print-to-pdf`).
+
+
+## 🧭 25-oct-2026: REDISEÑO de Fincas — maqueta TÉCNICA aprobada (catálogo y plan del corte CONSTRUIDOS; tablero pendiente)
+
+**Estado al 25-oct-2026 (rama `fincas-rediseno`, NO publicada):**
+- ✅ **«Aparte» → «Ppto por ha»** en pantalla y manual (`PaqueteLabores`, `FincaDetalle`, `manual-fincas.html`). Las columnas
+  de la base no se renombran.
+- ✅ **Catálogo de labores** (`PaqueteLabores.tsx`, pestaña «Catálogo de labores»): una tarjeta por labor con su rubro
+  (de `af_config.referencias_sector.rubro_por_labor`), filas por tipo de corte y variedad, ventana en DDC, servicio, Ppto por
+  ha y **Total por ha**; indicadores arriba; «Duplicar» para crear una variante. Los cálculos viven en
+  `lib/catalogoFincas.ts` (`node scripts/prueba-catalogo-fincas.mts`, 11 casos). En celular cada fila es una tarjetita
+  de 2 columnas (`.af-cat__tabla`, `data-label`); ⚠️ las reglas llevan `.af-tabla.af-cat__tabla` para ganarle a
+  `.af-tabla` (misma especificidad, el orden del archivo decidía).
+- ✅ **Plan y presupuesto del corte** (`PlanCorte.tsx`, reemplaza el mini formulario «Iniciar corte»): Parámetros → Punto de
+  partida (catálogo / copiar el corte anterior / copiar de otra suerte) → Ajustar costos → Revisar y activar (con
+  cronograma ideal/normal en fechas). Lógica en `lib/planCorte.ts` (replica `af__abrir_ciclo`: la fila de la variedad le gana
+  a la genérica; `node scripts/prueba-plan-corte.mts`, 16 casos). **Nada se guarda hasta el paso 4**, y entonces la función
+  `af_abrir_ciclo_plan` (migración `20261025190000`, 21 pruebas en `supabase/pruebas_fincas_plan_corte.sql`) abre el corte y
+  aplica los ajustes **en una sola transacción**. 🔴 Si la migración no está aplicada, «Activar corte» falla: **aplicarla
+  ANTES de publicar la app**. La función vieja `af_abrir_ciclo` sigue intacta (cliente viejo en caché).
+  ⚠️ Copiar de otro corte trae solo costos y pasadas; las labores y ventanas salen siempre del catálogo y la variedad.
+- ⏳ **Pendiente: tablero del corte con curva S** (presupuesto, plan a la fecha, ejecutado, variación, rubros, alertas).
+- ⏳ **Pendiente de confirmar con Carlos David**: etapas «Cosecha (CAT)» e «Indirectos» y su lista de rubros del gremio.
+- 🔴 Lecciones: (1) un `<input type="radio">` dentro de un `label` flex heredaba `width:100%` global y desbordaba el
+  panel 42 px en celular — fijarle ancho; (2) DeepSeek Flash se pegó compilando y entregó la pantalla incompleta y fuera de
+  la especificación: la terminó Claude (ver `registro-desempeno-modelos.md`).
+
+Iván, sobre la pantalla de la finca («Lo que ve el dueño / Labores por suerte / Cuenta / Bitácora»): *«no se ve
+profesional… no veo bien los módulos donde se alimentarían los presupuestos, catálogos de labores…, quiero algo
+funcional, intuitivo y que funcione»*. Diagnóstico medido: el presupuesto se alimenta en un botón escondido dentro de la
+tabla del corte y en «Paquete de labores» (solo administración); el catálogo global tiene **8 filas** (fertilización
+sale 5 veces: genérica soca, plantilla y una por variedad) y **ninguna con «Ppto por ha» cargado**.
+
+**Aprobó la versión TÉCNICA (la 2.ª de tres maquetas; la «limpia» la descartó) con un cambio de nombre:**
+la columna **«Aparte por ha» pasa a llamarse «Ppto por ha»** (presupuesto por hectárea de lo que paga el dueño fuera del
+servicio) y la última columna del plan, «Total por ha». Hay que renombrarlo también en `PaqueteLabores`,
+`FincaDetalle` (editor de presupuesto), el manual y los tipos de pantalla; las columnas de la base
+(`costo_aparte_unitario`, `costo_aparte_unitario_plan`) **no se renombran** (misma regla que aval/aprobación).
+
+Lo que construye, en este orden:
+1. **Catálogo de labores** (pantalla propia, no pestaña de la finca): agrupado por etapa, con código (propuesto),
+   labor, aplica (soca/plantilla), rubro, variedad, ventana ideal/normal en **DDC** (días después del corte),
+   servicio $/ha, **Ppto por ha**, pasadas y «se repite». Aviso cuando faltan costos. Un cambio NO toca los cortes activos.
+2. **Plan y presupuesto del corte**: asistente de 4 pasos (Parámetros → Punto de partida [plantilla / copiar el corte
+   anterior / copiar otra suerte] → Ajustar costos → Revisar y activar), con cronograma por variedad. Total de cada línea =
+   (servicio + Ppto por ha) × pasadas × hectáreas. Nada afecta a la finca hasta el paso 4.
+3. **Tablero del corte**: presupuesto, plan a la fecha, ejecutado y variación; indicadores del gremio (costo/t y costo/ha
+   contra Procaña 2022, punto de equilibrio, costo en kg de azúcar); **curva S**; estructura por rubro; alertas; tabla
+   presupuesto vs ejecutado por etapa con avance físico. Semáforo: verde ±5 %, amarillo 5–15 %, rojo >15 % o ventana vencida.
+
+⚠️ **Lo que NO existe todavía y la maqueta propone:** etapas «Cosecha (CAT)» e «Indirectos» (administración, arriendo en
+kg de azúcar/ha, cuotas gremiales). Su lista exacta **debe confirmarla Carlos David con la plantilla Procaña**; la
+investigación de Antigravity NO sirvió para eso (sus enlaces a Procaña, Aliare y Agroptima no abren). Verificado en la
+red solo esto: Agworld guarda planes como plantillas reutilizables y compara presupuesto contra real; Conservis permite
+armar el presupuesto desde cero o copiar uno anterior.
+
+Cifras de la maqueta = finca simulada IYOMA PRUEBAS (55,25 ha, presupuesto $396,4 M = $7,18 M/ha, costo/t $62.717 con el
+TCH 114,4; punto de equilibrio 62,4 t/ha a $115.000/t; 3.618 kg de azúcar/ha de 6.635). La distribución por etapa y la
+curva S son de EJEMPLO. Antes de construir: confirmar con el cliente la lista de etapas y rubros.

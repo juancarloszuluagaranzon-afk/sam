@@ -447,6 +447,21 @@ export async function abrirCiclo(suerteId: string, fechaCorte: string, tipo: Tip
   return String(d)
 }
 
+/**
+ * Abre el corte Y aplica los ajustes de presupuesto en una sola operación (todo o nada): el
+ * asistente «Iniciar corte» no deja un corte a medias si algo falla. Los costos van en los
+ * nombres de la base (`costo` = servicio, `costo_aparte` = «Ppto por ha» en pantalla).
+ */
+export async function abrirCicloConPlan(
+  suerteId: string, fechaCorte: string, tipo: TipoCiclo,
+  ajustes: Array<{ labor: string; unidad: string; costo: number; costo_aparte: number; pasadas: number }>, token: string,
+): Promise<string> {
+  const d = await lanzar(supabase.rpc('af_abrir_ciclo_plan', {
+    p_token: token, p_suerte: suerteId, p_fecha_corte: fechaCorte, p_tipo: tipo, p_ajustes: ajustes,
+  }))
+  return String(d)
+}
+
 export async function reportarLabor(r: {
   id: string; laborId: string; cantidad: number; fecha: string; fotoUrl: string
   lat: number | null; lng: number | null; precisionM: number | null; nota: string

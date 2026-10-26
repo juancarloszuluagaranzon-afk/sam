@@ -9565,6 +9565,47 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-cat__cab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .af-cat__cab h3 { margin: 0; }
 .af-cat__cab > small { margin-left: auto; color: var(--color-ink-mid, #5a5f57); font-size: 0.78rem; white-space: nowrap; }
+/* Asistente «Iniciar corte» (25-oct-2026). */
+.af-plan { gap: 12px; }
+.af-plan__pasos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.af-plan__pasos li { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--color-divider, #e3e6df); font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); min-width: 0; }
+.af-plan__pasos li span { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--color-bg-soft, #eef1ec); font-weight: 800; font-size: 0.74rem; }
+.af-plan__pasos li b { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.af-plan__pasos li.is-actual { border-color: var(--color-brand, #155b30); color: var(--color-ink, #1f2a1f); }
+.af-plan__pasos li.is-actual span { background: var(--color-brand, #155b30); color: #fff; }
+.af-plan__pasos li.is-hecho span { background: var(--color-status-done-bg); color: var(--color-status-done); }
+.af-plan__paso-txt { display: none; margin: 0; font-weight: 700; font-size: 0.9rem; }
+.af-plan__opciones { display: flex; flex-direction: column; gap: 8px; }
+.af-plan__opcion { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--color-divider, #e3e6df); border-radius: 12px; cursor: pointer; }
+.af-plan__opcion input[type="radio"] { flex: none; width: 18px; height: 18px; min-width: 18px; margin: 2px 0 0; padding: 0; }
+.af-plan__opcion span { display: flex; flex-direction: column; flex: 1 1 0; min-width: 0; }
+.af-plan__opcion small { color: var(--color-ink-mid, #5a5f57); font-size: 0.8rem; }
+.af-plan__opcion.is-sel { border-color: var(--color-brand, #155b30); background: var(--color-bg-soft, #eef1ec); }
+.af-plan__opcion.is-off { opacity: .55; cursor: default; }
+.af-plan__in { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; color: var(--color-ink, #1f2a1f); background: var(--color-surface, #fff); border: 1px solid var(--color-divider, #cfd6c9); border-radius: 8px; padding: 7px 8px; text-align: right; font-variant-numeric: tabular-nums; }
+.af-plan__sub { margin: 4px 0 0; font-size: 0.9rem; }
+.af-plan__crono { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.af-plan__crono li { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--color-divider, #e3e6df); font-size: 0.9rem; }
+.af-plan__crono li:last-child { border-bottom: 0; }
+.af-plan__crono li span { text-align: right; font-variant-numeric: tabular-nums; }
+.af-plan__crono small { color: var(--color-ink-mid, #5a5f57); }
+.af-plan__nav { justify-content: space-between; }
+@media (min-width: 641px) {
+  /* En pantalla ancha el botón principal no se estira de lado a lado. */
+  .af-plan__nav .primary-button { flex: none; width: auto; min-width: 180px; margin-left: auto; }
+}
+@media (max-width: 640px) {
+  /* El costo de cada labor en celular: cantidad | total arriba, y debajo lo que se edita (servicio | ppto | pasadas). */
+  .af-tabla.af-plan__tabla td[data-label="Cantidad"] { order: 1; }
+  .af-tabla.af-plan__tabla td[data-label="Total"] { order: 2; text-align: right; }
+  .af-tabla.af-plan__tabla td[data-label="Servicio"] { order: 3; }
+  .af-tabla.af-plan__tabla td[data-label="Ppto por ha"] { order: 4; }
+  .af-tabla.af-plan__tabla td[data-label="Pasadas"] { order: 5; }
+  .af-tabla.af-plan__tabla td.af-plan__fija { display: none; }
+  .af-plan__pasos li b { display: none; }
+  .af-plan__pasos li { justify-content: center; }
+  .af-plan__paso-txt { display: block; }
+}
 .af-tabla.af-cat__tabla { min-width: 0; }
 .af-tabla.af-cat__tabla td b { font-variant-numeric: tabular-nums; }
 .af-cat__tipo .af-chip { margin-top: 4px; }

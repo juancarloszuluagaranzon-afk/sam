@@ -1,7 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
 import type { CtxFincas } from './FincasView'
 import {
-  abrirCiclo, anularLabor, anularMovimiento, actualizarLaborPlan, mensajeDeError, registrarMovimiento, subirFotoFinca,
+  abrirCicloConPlan, anularLabor, anularMovimiento, actualizarLaborPlan, mensajeDeError, registrarMovimiento, subirFotoFinca,
   type TipoCiclo, type TipoMovimiento,
 } from '../../services/fincasApi'
 import {
@@ -13,6 +13,8 @@ import { fmtFechaHora } from '../../lib/fechas'
 import { AccesoDueno } from './AccesoDueno'
 import { MapaFinca } from './MapaFinca'
 import { TableroFinca } from './TableroFinca'
+import { PlanCorte } from './PlanCorte'
+import type { AjusteRpc } from '../../lib/planCorte'
 
 type Sub = 'resumen' | 'labores' | 'cuenta' | 'bitacora'
 
@@ -37,6 +39,8 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
   const [sub, setSub] = useState<Sub>('resumen')
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
+  /** La suerte cuyo asistente «Iniciar corte» está abierto (uno a la vez). */
+  const [planSuerte, setPlanSuerte] = useState<string | null>(null)
   const [editandoPlan, setEditandoPlan] = useState<{ id: string; tarifa: string; aparte: string; pasadas: string; error?: string } | null>(null)
 
   const filas = useMemo(() => laboresDeFinca(fincaId, d, hoy), [fincaId, d, hoy])
@@ -57,6 +61,17 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
   async function hacer(fn: () => Promise<unknown>): Promise<boolean> {
     setOcupado(true); setError('')
     try { await fn(); await recargar(); return true } catch (e) { setError(mensajeDeError(e)); return false } finally { setOcupado(false) }
+  }
+
+  /** Abre el corte con su plan en una sola operación. Devuelve el texto del problema, o null si salió bien. */
+  async function activarCorte(suerteId: string, fecha: string, tipo: TipoCiclo, ajustes: AjusteRpc[]): Promise<string | null> {
+    setOcupado(true); setError('')
+    try {
+      await abrirCicloConPlan(suerteId, fecha, tipo, ajustes, token)
+      await recargar()
+      setPlanSuerte(null)
+      return null
+    } catch (e) { return mensajeDeError(e) } finally { setOcupado(false) }
   }
 
   const tel = (finca.duenoTelefono ?? '').replace(/\D/g, '')
@@ -172,9 +187,16 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                       {ciclo ? `Corte en curso (${ciclo.tipo.toLowerCase()}) desde el ${ciclo.fechaCorte} · ${diasEntre(ciclo.fechaCorte, hoy)} días` : 'Sin corte en curso'}
                     </p>
                   </div>
-                  {esAdmin && <AbrirCiclo hayCiclo={!!ciclo} ocupado={ocupado}
-                    onAbrir={(fecha, tipo) => hacer(() => abrirCiclo(s.id, fecha, tipo, token))} />}
+                  {esAdmin && planSuerte !== s.id && (
+                    <button type="button" className="inline-button" disabled={ocupado} onClick={() => setPlanSuerte(s.id)}>{ciclo ? 'Registrar nuevo corte' : 'Iniciar corte'}</button>
+                  )}
                 </div>
+                {esAdmin && planSuerte === s.id && (
+                  <PlanCorte suerte={s} hoy={hoy} paquete={d.paquete} ciclos={d.ciclos} labores={d.labores}
+                             otras={suertes} hayCicloAbierto={!!ciclo} ocupado={ocupado}
+                             onCancelar={() => setPlanSuerte(null)}
+                             onActivar={(fecha, tipo, ajustes) => activarCorte(s.id, fecha, tipo, ajustes)} />
+                )}
                 {maquina.length > 0 && (
                   <ul className="af-hechos">
                     {maquina.map((h) => (
@@ -321,28 +343,6 @@ function Bitacora({ eventos }: { eventos: ReturnType<typeof bitacoraFinca> }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function AbrirCiclo({ hayCiclo, ocupado, onAbrir }: { hayCiclo: boolean; ocupado: boolean; onAbrir: (fecha: string, tipo: TipoCiclo) => void }) {
-  const [abierto, setAbierto] = useState(false)
-  const [fecha, setFecha] = useState('')
-  const [tipo, setTipo] = useState<TipoCiclo>('SOCA')
-  if (!abierto) return <button type="button" className="inline-button" onClick={() => setAbierto(true)}>{hayCiclo ? 'Registrar nuevo corte' : 'Iniciar corte'}</button>
-  return (
-    <div className="af-mini-form">
-      <label>Fecha del corte<input id="af-fecha-corte" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></label>
-      <label>Tipo
-        <select id="af-tipo-ciclo" value={tipo} onChange={(e) => setTipo(e.target.value as TipoCiclo)}>
-          <option value="SOCA">Soca</option><option value="PLANTILLA">Plantilla</option>
-        </select>
-      </label>
-      {hayCiclo && <small className="af-nota">El corte en curso se cierra con esta fecha.</small>}
-      <div className="af-acciones">
-        <button type="button" className="primary-button" disabled={!fecha || ocupado} onClick={() => { onAbrir(fecha, tipo); setAbierto(false) }}>Iniciar corte</button>
-        <button type="button" className="inline-button" onClick={() => setAbierto(false)}>Cancelar</button>
-      </div>
-    </div>
   )
 }
 

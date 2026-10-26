@@ -633,6 +633,24 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
 - Detalle y lecciones en `managing-fincas` → «REDISEÑO de Fincas». Falta: etapas y rubros del gremio por confirmar con Carlos David,
   y la sección del manual del asistente y del tablero.
 
+## Cerrado el 26-oct-2026 — Candado de área (versión `ca48d4c`)
+
+- 🔒 **Regla de Iván: por ninguna razón se paga más del área de la suerte, así sean dos o tres operarios.** Cuatro capas:
+  1. **Base** (migración `20261026200000_candado_area`, aplicada; copia `/var/backups/supabase/antes_candado_area_20261026.dump`):
+     el disparador `asignaciones_cap_area` rechaza con `AREA_EXCEDIDA` si lo pagado de la suerte (COMPLETADA/PARCIAL, ±21 días,
+     misma labor) pasa del área oficial del maestro + **0,02 ha**. Lo pagado de una fila = `area_realizada>0 ? realizada : asignada`.
+     Candado de concurrencia (`pg_advisory_xact_lock`), mira el ingenio y revisa al editar suerte/labor/fecha. 35 pruebas en
+     `supabase/pruebas_candado_area.sql` (begin…rollback).
+  2. **Tarjeta del operario** (`lib/progresoSuerte.ts`): el «falta» usa el área OFICIAL, igual que el cierre. Antes tomaba la mayor
+     área asignada del ciclo y la tarjeta de Jon Arana (U018) desaparecía.
+  3. **Aviso antes de pagar** (`lib/sobreArea.ts` + `components/AvisoSobreArea`): en la Planilla, cuadro «Revise antes de pagar».
+     **Avisa, no bloquea.** ⚠️ **Falta en Resumen y Reporte.**
+  4. **Pruebas**: `scripts/prueba-progreso-suerte.mts` (12) y `prueba-sobre-area.mts` (13).
+- ⚠️ El maestro se recarga seguido: un «exceso» histórico puede ser un área corregida, no un pago doble. La Planilla de agosto (1.ª
+  quincena) avisa 6 suertes con 34,53 ha de más (p. ej. LIMONAR EDUARDO JOSE AZCARATE 02 DESPEJE, LAS LAJAS 092 DESPEJE):
+  **revisarlas con Carlos David antes de pagar.**
+- Ver memoria `project_candado_area`.
+
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 
 Para cambios grandes de código, el escalamiento cuando algo falla es **Codex (2 intentos) →

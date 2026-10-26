@@ -109,9 +109,10 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li><a href="#quien">Quién hace qué</a></li>
       <li><a href="#entrar">Cómo se entra y las pestañas</a></li>
       <li><a href="#nueva">Crear la finca y sus suertes</a></li>
-      <li><a href="#paquete">El paquete de labores</a></li>
+      <li><a href="#paquete">El catálogo de labores</a></li>
       <li><a href="#ficha">La ficha de la finca y el mapa</a></li>
-      <li><a href="#ciclo">Iniciar el corte: labores por suerte</a></li>
+      <li><a href="#ciclo">Iniciar el corte: el asistente</a></li>
+      <li><a href="#tablero">El tablero «Plan y avance»</a></li>
       <li><a href="#reportar">Reportar una labor</a></li>
       <li><a href="#aceptar">Aceptar o rechazar</a></li>
       <li><a href="#tiempo">¿A tiempo? Las ventanas</a></li>
@@ -148,7 +149,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     <h2><span class="paso__num">2</span>Quién hace qué</h2>
     <table>
       <tr><th>Quién</th><th>Qué hace</th></tr>
-      <tr><td><b>Administración</b> y el propietario</td><td>Todo: crea fincas y suertes, arma el paquete de labores, inicia los cortes, acepta o rechaza, lleva la cuenta del dueño y le da acceso.</td></tr>
+      <tr><td><b>Administración</b> y el propietario</td><td>Todo: crea fincas y suertes, arma el catálogo de labores, inicia los cortes, acepta o rechaza, lleva la cuenta del dueño y le da acceso.</td></tr>
       <tr><td><b>Supervisor</b></td><td>Reporta las labores desde el campo y acepta o rechaza los reportes de <b>otros</b>. No toca costos ni plata.</td></tr>
       <tr><td><b>Dueño de la tierra</b></td><td>Solo mira su finca (o sus fincas), en vivo: labores, mapa, satélite, presupuesto y cuenta. No puede cambiar nada.</td></tr>
       <tr><td>Operarios</td><td>No ven este módulo.</td></tr>
@@ -163,7 +164,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li><b>Fincas:</b> una tarjeta por finca; adentro está todo lo de esa finca.</li>
       <li><b>Por aceptar:</b> los reportes del campo esperando revisión (el número dice cuántos).</li>
       <li><b>Reportar labor:</b> lo que se hizo en el campo y cuánto.</li>
-      <li><b>Paquete de labores:</b> solo administración. Las labores, costos y tiempos que se cargan en cada corte.</li>
+      <li><b>Catálogo de labores:</b> solo administración. Las labores, costos y tiempos con los que nace cada corte.</li>
     </ol>
     <figure class="captura">
       <img src="fincas/01-inicio.jpg" alt="Inicio del módulo de fincas con fincas, por aceptar, atrasadas y ejecutado" loading="lazy">
@@ -180,7 +181,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <li>Nombre, <b>dueño</b> (y su celular de WhatsApp), ingenio, municipio y código de la hacienda en el ingenio.</li>
       <li><b>Cómo cobra ASM la administración:</b> porcentaje sobre los costos o pesos por hectárea al mes (o «por definir»).</li>
       <li><b>Suertes:</b> se traen del maestro del ingenio o se agregan a mano, con su área. El área es el <b>techo</b>: nadie puede reportar más hectáreas de las que tiene la suerte.</li>
-      <li>La <b>variedad</b> de cada suerte importa: cambia la ventana de la fertilización (punto 10).</li>
+      <li>La <b>variedad</b> de cada suerte importa: cambia la ventana de la fertilización (punto 11).</li>
     </ul>
     <figure class="captura">
       <img src="fincas/14-nueva-finca.jpg" alt="Formulario de nueva finca" loading="lazy">
@@ -193,13 +194,19 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="paquete">
-    <h2><span class="paso__num">5</span>El paquete de labores</h2>
-    <p class="paso__intro">Es la plantilla que se copia en cada corte: qué labores lleva la caña, para soca, plantilla o ambas; cuánto cuestan por hectárea y en qué <b>ventana de días</b> después del corte deben hacerse. La fertilización tiene ventanas distintas por <b>variedad</b>.</p>
+    <h2><span class="paso__num">5</span>El catálogo de labores</h2>
+    <p class="paso__intro">Es la plantilla con la que nace cada corte: qué labores lleva la caña, para soca, plantilla o ambas; cuánto cuestan por hectárea y en qué <b>ventana de días después del corte (DDC)</b> deben hacerse. Se abre en la pestaña <b>Catálogo de labores</b> (solo administración).</p>
     <figure class="captura">
-      <img src="fincas/13-paquete-de-labores.jpg" alt="Paquete de labores con costos y ventanas, incluida la fertilización por variedad" loading="lazy">
-      <figcaption>Paquete de labores: roturación, fertilización (general y por variedad), control de malezas y riego.</figcaption>
+      <img src="fincas/15-catalogo-de-labores.jpg" alt="Catálogo de labores agrupado por labor, con ventana, servicio, Ppto por ha y total por hectárea" loading="lazy">
+      <figcaption>Catálogo de labores: una tarjeta por labor, con una fila por tipo de corte y por variedad.</figcaption>
     </figure>
-    <p class="ojo"><strong>Ponga los costos ANTES de iniciar el primer corte.</strong> Cada labor lleva su tarifa (lo que se cobra al aceptar el reporte), el ppto por ha (insumos, agua, mano de obra) y, si se repite, cuántas pasadas se presupuestan. Cambiar el paquete después no cambia lo ya planeado en los cortes en curso (eso se ajusta en la finca, labor por labor). Una labor sin costo no suma al presupuesto ni carga plata al aceptarse.</p>
+    <ul class="puntos" style="margin-top:12px">
+      <li>Cada <b>labor</b> es una tarjeta con su rubro del gremio (maquinaria, insumos, agua) y, debajo, una fila por tipo de corte y por <b>variedad</b>. La fila de una variedad manda sobre la general para las suertes de esa variedad.</li>
+      <li>Cada fila muestra la ventana (<b>ideal</b>: hasta ese día va a tiempo; <b>normal</b>: hasta ese día todavía es aceptable), el <b>servicio</b> (la tarifa que se cobra al aceptar el reporte), el <b>Ppto por ha</b> (lo que se presupuesta aparte por hectárea: insumos, agua o mano de obra) y el <b>Total por ha</b>, que es cantidad × pasadas × (servicio + Ppto por ha).</li>
+      <li>Arriba hay cuatro indicadores: labores activas, filas <b>sin costo</b>, filas <b>sin ventana</b> y el <b>costo de referencia por hectárea</b> de un corte de soca.</li>
+      <li><b>+ Labor</b> crea una; <b>Editar</b> la cambia; <b>Duplicar</b> copia una fila para crear, por ejemplo, la de otra variedad; <b>Desactivar</b> la saca de los cortes nuevos sin borrarla.</li>
+    </ul>
+    <p class="ojo"><strong>Ponga los costos ANTES de iniciar el primer corte.</strong> Una labor sin costo no suma al presupuesto ni carga plata al aceptarse. Cambiar el catálogo después no cambia lo ya planeado en los cortes en curso (eso se ajusta en la finca, labor por labor).</p>
   </section>
 
   <section class="paso" id="ficha">
@@ -222,13 +229,31 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="ciclo">
-    <h2><span class="paso__num">7</span>Iniciar el corte: labores por suerte</h2>
-    <p class="paso__intro">En la ficha, pestaña <b>Labores por suerte</b>. Cada suerte tiene su corte en curso, de cosecha a cosecha.</p>
-    <ul class="puntos">
-      <li>Al iniciar el corte (fecha del corte y si es soca o plantilla) se copian las labores del paquete con su cantidad, su tarifa, su ppto por ha, sus pasadas y su ventana. Eso es el <b>presupuesto</b> que ve el dueño.</li>
-      <li>Cada labor muestra su <b>avance</b> (lo aceptado de lo planeado), su presupuesto, si va <b>a tiempo</b> y su estado.</li>
-      <li>Cuando vuelvan a cortar: <span class="boton boton--gris">Registrar nuevo corte</span>. El corte en curso se cierra y se inicia el siguiente con el paquete otra vez.</li>
-      <li>Una labor del corte se ajusta con <b>Presupuesto</b> o se <b>Anula</b> (con motivo).</li>
+    <h2><span class="paso__num">7</span>Iniciar el corte: el asistente</h2>
+    <p class="paso__intro">En la ficha, pestaña <b>Labores por suerte</b>, cada suerte tiene su botón <span class="boton boton--gris">Iniciar corte</span> (o <span class="boton boton--gris">Registrar nuevo corte</span>, si ya tiene uno). Abre un asistente de cuatro pasos y <b>no se guarda nada hasta el último</b>.</p>
+    <ol class="pasos">
+      <li><b>Parámetros:</b> la fecha del corte (no puede ser futura) y si es soca o plantilla. Se ven el área y la variedad de la suerte.</li>
+      <li><b>Punto de partida:</b> de dónde salen los costos: el <b>catálogo</b>, el <b>corte anterior</b> de esa suerte u <b>otra suerte</b> de la finca. Copiar solo trae costos y pasadas; las labores y sus ventanas salen siempre del catálogo y de la variedad de la suerte.</li>
+      <li><b>Ajustar costos:</b> una fila por labor, con su cantidad (el área de la suerte), el servicio, el Ppto por ha y, si se repite, las pasadas. El total de cada una es cantidad × pasadas × (servicio + Ppto por ha); abajo queda el presupuesto del corte.</li>
+      <li><b>Revisar y activar:</b> presupuesto, costo por hectárea, la parte de servicio de ASM y la de insumos y otros costos, el cronograma y un aviso si alguna labor quedó sin costo. <span class="boton">Activar corte</span> abre el corte con ese presupuesto.</li>
+    </ol>
+    <figure class="captura">
+      <img src="fincas/16-asistente-punto-de-partida.jpg" alt="Asistente Iniciar corte, paso 2: punto de partida" loading="lazy">
+      <figcaption>Paso 2: el presupuesto puede partir del catálogo, del corte anterior o de otra suerte de la finca.</figcaption>
+    </figure>
+    <figure class="captura" style="margin-top:14px">
+      <img src="fincas/17-asistente-costos.jpg" alt="Asistente Iniciar corte, paso 3: ajustar costos por labor" loading="lazy">
+      <figcaption>Paso 3: cada costo se puede ajustar antes de activar; el total se recalcula al escribir.</figcaption>
+    </figure>
+    <figure class="captura" style="margin-top:14px">
+      <img src="fincas/18-asistente-revisar.jpg" alt="Asistente Iniciar corte, paso 4: presupuesto y cronograma en días después del corte" loading="lazy">
+      <figcaption>Paso 4: el presupuesto y el cronograma, con la ventana ideal (verde) y la normal (arena) de cada labor y variedad.</figcaption>
+    </figure>
+    <ul class="puntos" style="margin-top:12px">
+      <li>En el cronograma, después de la barra arena la labor es <b>tardía</b>. Las labores de varias pasadas (riego, malezas) no llevan ventana: se programan por calendario.</li>
+      <li>Si la suerte ya tenía un corte en curso, <b>ese corte se cierra con la fecha del nuevo</b>.</li>
+      <li>El botón <b>atrás</b> del celular regresa un paso (del 4 al 3, al 2 y al 1) y, desde el primero, cierra el asistente sin guardar nada.</li>
+      <li>Ya con el corte iniciado, cada labor muestra su <b>avance</b> (lo aceptado de lo planeado), su presupuesto, si va <b>a tiempo</b> y su estado. Una labor se ajusta con <b>Presupuesto</b> o se <b>Anula</b> (con motivo).</li>
     </ul>
     <figure class="captura">
       <img src="fincas/05-labores-por-suerte.jpg" alt="Labores por suerte con avance, presupuesto y a tiempo" loading="lazy">
@@ -236,10 +261,36 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
     </figure>
   </section>
 
+  <section class="paso" id="tablero">
+    <h2><span class="paso__num">8</span>El tablero «Plan y avance»</h2>
+    <p class="paso__intro">En la ficha, pestaña <b>Plan y avance</b>. Responde una sola pregunta: ¿el corte va como se presupuestó? Lo ven administración y el dueño de la tierra; el dueño no ve el aviso sobre cómo se registran los gastos.</p>
+    <figure class="captura">
+      <img src="fincas/19-tablero-plan-y-avance.jpg" alt="Tablero Plan y avance con presupuesto, plan a la fecha, ejecutado, valor ganado, curva S, alertas y avance por labor" loading="lazy">
+      <figcaption>Plan y avance de una finca de ejemplo: $396,4 M presupuestados, $355,7 M ejecutados y el riego atrasado.</figcaption>
+    </figure>
+    <table>
+      <tr><th>Cifra</th><th>Qué es</th></tr>
+      <tr><td><b>Presupuesto</b></td><td>Lo aprobado para el corte: cantidad × pasadas × (servicio + Ppto por ha) de todas las labores, sin las anuladas.</td></tr>
+      <tr><td><b>Plan a la fecha</b></td><td>Cuánto del presupuesto debería llevarse hoy. Cada labor se reparte en línea recta desde el corte hasta su fecha ideal; el riego y las malezas, a lo largo de un año.</td></tr>
+      <tr><td><b>Ejecutado</b></td><td>Todo lo gastado de la finca en este corte. Es el mismo número de la pestaña Cuenta.</td></tr>
+      <tr><td><b>Valor ganado</b></td><td>Lo que valía lo ya avanzado: el presupuesto de cada labor por su avance físico (lo aceptado sobre lo presupuestado).</td></tr>
+      <tr><td><b>Variación de costo</b></td><td>Valor ganado menos ejecutado. Si es positiva, se gastó menos de lo que valía lo avanzado.</td></tr>
+      <tr><td><b>SPI</b></td><td>Valor ganado ÷ plan a la fecha. Menos de 1: el avance va por debajo del plan.</td></tr>
+      <tr><td><b>CPI</b></td><td>Valor ganado ÷ ejecutado. Menos de 1: se está gastando más de lo que vale lo avanzado.</td></tr>
+    </table>
+    <ul class="puntos" style="margin-top:12px">
+      <li><b>Semáforo de SPI y CPI:</b> <span class="chip chip--verde">0,95 o más</span> va bien, <span class="chip chip--ambar">0,90 a 0,95</span> pide atención y <span class="chip chip--rojo">menos de 0,90</span> es urgente. Es un criterio de ASM, no una norma.</li>
+      <li><b>Curva S:</b> la línea gris punteada es el plan acumulado, la azul lo ejecutado y la naranja punteada la <b>proyección al cierre</b>, que supone que se mantiene el costo de lo avanzado hasta ahora. Si faltan gastos por registrar, se queda corta.</li>
+      <li><b>Alertas:</b> en rojo, una labor con la ventana vencida y sin hacer, o lo ejecutado por encima del presupuesto; en ámbar, una labor de varias pasadas rezagada frente al tiempo del corte (por ejemplo, el riego al 75 % con el 93 % del tiempo).</li>
+      <li><b>Avance por labor:</b> presupuesto, plan a la fecha, avance físico y valor ganado de cada labor, con su estado: terminada, en curso o atrasada.</li>
+    </ul>
+    <p class="ojo"><strong>El gasto se mide por finca, no por labor.</strong> Los gastos que entran al aceptar un reporte quedan ligados a su labor; los que se registran a mano en la Cuenta se asocian a la suerte. Suman al ejecutado, pero no se pueden atribuir a una labor: si son más de la cuarta parte de lo gastado, administración ve un aviso que lo dice.</p>
+  </section>
+
   <h2 class="parte">El día a día</h2>
 
   <section class="paso" id="reportar">
-    <h2><span class="paso__num">8</span>Reportar una labor</h2>
+    <h2><span class="paso__num">9</span>Reportar una labor</h2>
     <p class="paso__intro">Lo hace el supervisor en el campo, el mismo día. Pestaña <b>Reportar labor</b>:</p>
     <ol class="pasos">
       <li>Finca, suerte y labor (dice cuánto <b>falta</b>).</li>
@@ -259,7 +310,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="aceptar">
-    <h2><span class="paso__num">9</span>Aceptar o rechazar</h2>
+    <h2><span class="paso__num">10</span>Aceptar o rechazar</h2>
     <p class="paso__intro">Lo hace <b>otra persona</b>: administración u otro supervisor, nunca quien reportó. Pestaña <b>Por aceptar</b>.</p>
     <ul class="puntos">
       <li>Cada reporte muestra la labor, la cantidad, la suerte, los días desde el corte, quién lo reportó, cuándo llegó y <b>cuánto se carga a la cuenta del dueño</b> al aceptarlo.</li>
@@ -274,7 +325,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="tiempo">
-    <h2><span class="paso__num">10</span>¿A tiempo? Las ventanas</h2>
+    <h2><span class="paso__num">11</span>¿A tiempo? Las ventanas</h2>
     <p class="paso__intro">Se cuentan los días desde el corte hasta el primer reporte aceptado (o hasta hoy, si no se ha hecho). La app lo calcula sola: <span class="chip chip--verde">✓ a tiempo</span> dentro de la ventana ideal, <span class="chip chip--ambar">▲ normal</span> hasta el límite normal, <span class="chip chip--rojo">⚠ tardía</span> después. Las tardías sin hacer salen en el Inicio como <b>atrasadas</b>.</p>
     <table>
       <tr><th>Labor</th><th>✓ A tiempo</th><th>▲ Normal</th><th>⚠ Tardía</th></tr>
@@ -286,11 +337,11 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <tr><td>Fertilización · CC 11-595</td><td>hasta 11 días</td><td>12 a 31</td><td>más de 31</td></tr>
       <tr><td>Control de malezas, riego</td><td colspan="3">sin ventana: la app no inventa una</td></tr>
     </table>
-    <p class="tip">Las ventanas vienen del <b>paquete de labores</b> (punto 5) y siguen las curvas de Cenicaña. Si la suerte no tiene variedad, se usa la ventana general.</p>
+    <p class="tip">Las ventanas vienen del <b>catálogo de labores</b> (punto 5) y siguen las curvas de Cenicaña. Si la suerte no tiene variedad, se usa la ventana general.</p>
   </section>
 
   <section class="paso" id="cuenta">
-    <h2><span class="paso__num">11</span>La cuenta del dueño</h2>
+    <h2><span class="paso__num">12</span>La cuenta del dueño</h2>
     <p class="paso__intro">En la ficha, pestaña <b>Cuenta</b>. Arriba: anticipos, gastos con soporte, honorarios y el <b>saldo</b>.</p>
     <ul class="puntos">
       <li><b>Anticipo del dueño</b> (entra): cuando el dueño gira plata. El soporte es opcional (la foto de la consignación).</li>
@@ -306,7 +357,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="bitacora">
-    <h2><span class="paso__num">12</span>La bitácora</h2>
+    <h2><span class="paso__num">13</span>La bitácora</h2>
     <p class="paso__intro">Todo lo que pasó en la finca, en orden: cada reporte (por aceptar, aceptado o rechazado, con su motivo) y cada movimiento de plata. Nada se borra; lo anulado aparece como anulado.</p>
     <figure class="captura">
       <img src="fincas/10-bitacora.jpg" alt="Bitácora completa de la finca" loading="lazy">
@@ -317,7 +368,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   <h2 class="parte">El dueño de la tierra</h2>
 
   <section class="paso" id="dueno-ve">
-    <h2><span class="paso__num">13</span>Lo que ve el dueño</h2>
+    <h2><span class="paso__num">14</span>Lo que ve el dueño</h2>
     <p class="paso__intro">La primera pestaña de la ficha, <b>Lo que ve el dueño</b>, es exactamente lo que él ve: no es un informe preparado, son las mismas cifras de ASM, en vivo.</p>
     <figure class="captura">
       <img src="fincas/08-lo-que-ve-el-dueno.jpg" alt="Tarjetas Hoy en su finca, El corte en curso contra lo presupuestado, A tiempo y Su cuenta" loading="lazy">
@@ -326,7 +377,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="acceso">
-    <h2><span class="paso__num">14</span>Darle acceso al dueño</h2>
+    <h2><span class="paso__num">15</span>Darle acceso al dueño</h2>
     <p class="paso__intro">En la ficha → <b>Lo que ve el dueño</b> → tarjeta <b>Acceso del dueño</b>. Hay dos caminos y pueden convivir:</p>
     <ol class="pasos">
       <li><b>Con usuario y PIN (el recomendado):</b> en <b>Más → Usuarios</b> se crea el usuario con el rol <b>«Dueño de finca»</b>. Luego, aquí, se escoge y se toca <span class="boton">Ligar a esta finca</span>. El dueño entra a la app como cualquiera y ve solo sus fincas. Si tiene varias, se le ligan todas.</li>
@@ -340,7 +391,7 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
   </section>
 
   <section class="paso" id="portal">
-    <h2><span class="paso__num">15</span>El dueño en su celular</h2>
+    <h2><span class="paso__num">16</span>El dueño en su celular</h2>
     <ul class="puntos">
       <li>Al entrar ve <b>su negocio</b>: cuántas fincas, hectáreas, edad de la caña, labores atrasadas, reportes por aceptar y el saldo de su cuenta. Debajo, cada finca con su mapa, satélite, labores, cuenta y bitácora.</li>
       <li><b>📲 Deje su finca en el celular:</b> la instala como una app, con su ícono.</li>
@@ -375,10 +426,13 @@ th { font-size: 0.76rem; text-transform: uppercase; color: var(--tinta-media); }
       <tr><th>Si…</th><th>Haga esto</th></tr>
       <tr><td>No hay señal en la finca</td><td>Reporte igual: queda guardado y sale solo. No lo repita.</td></tr>
       <tr><td>Me rechazaron un reporte</td><td>En Reportar labor, arriba, toque «Corregir y reenviar».</td></tr>
-      <tr><td>Una labor sale «sin ventana»</td><td>Esa labor no tiene ventana en el paquete; administración se la puede poner.</td></tr>
+      <tr><td>Una labor sale «sin ventana»</td><td>Esa labor no tiene ventana en el catálogo; administración se la puede poner.</td></tr>
       <tr><td>La fertilización sale tardía muy pronto</td><td>Revise la variedad de la suerte: cada variedad tiene su ventana.</td></tr>
-      <tr><td>El presupuesto sale en cero</td><td>A las labores del paquete les falta el costo. Póngalo antes de iniciar el corte; en uno en curso, use «Presupuesto» en cada labor.</td></tr>
-      <tr><td>Volvieron a cortar una suerte</td><td>Labores por suerte → «Registrar nuevo corte».</td></tr>
+      <tr><td>El presupuesto sale en cero</td><td>A las labores del catálogo les falta el costo. Póngalo antes de iniciar el corte, o ajústelo en el paso 3 del asistente; en uno en curso, use «Presupuesto» en cada labor.</td></tr>
+      <tr><td>Volvieron a cortar una suerte</td><td>Labores por suerte → «Registrar nuevo corte»: el asistente cierra el corte en curso con la nueva fecha.</td></tr>
+      <tr><td>«Activar corte» muestra un mensaje en rojo</td><td>Léalo en el mismo asistente: la fecha no puede ser futura y una labor de un solo paso no admite varias pasadas. Corrija y vuelva a tocar «Activar corte»; hasta entonces no se guardó nada.</td></tr>
+      <tr><td>El tablero avisa de gastos sin labor</td><td>Son gastos registrados a mano en la Cuenta: se asocian a la suerte, no a una labor. Suman al ejecutado y no hay nada que corregir.</td></tr>
+      <tr><td>El tablero sale con SPI o CPI en rojo</td><td>Mire la tabla «Avance por labor»: la labor atrasada o con el costo más alto explica la diferencia. El semáforo es una guía, no un veredicto.</td></tr>
       <tr><td>El dueño perdió el celular</td><td>Quite el enlace y cree uno nuevo, o (con usuario) cámbiele el PIN.</td></tr>
       <tr><td>Registré mal un movimiento</td><td>Anúlelo con el motivo y regístrelo bien.</td></tr>
     </table>

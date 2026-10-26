@@ -53,6 +53,16 @@
 /* El nombre largo no puede desbordar la columna a 320 px. La referencia viene
    en una píldora con `white-space: nowrap`; con la miniatura al lado ya no cabe
    en un celular angosto, así que aquí se deja partir en vez de salirse. */
+.rep-lista .inv-row__main { display: flex; flex-wrap: nowrap; align-items: flex-start; gap: 10px; min-width: 0; }
+/* Celular angosto (320–360 px): con miniatura + existencia + botón en la misma línea al nombre le quedan ~100 px y se
+   parte a media palabra. Los textos toman toda la línea y la existencia y «Ficha» van juntas debajo. */
+@media (max-width: 360px) {
+  .rep-lista .inv-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .rep-lista .inv-row__main { grid-column: 1 / -1; }
+  .rep-lista .rep-stock { grid-column: 1; justify-self: start; flex-direction: row; align-items: center; gap: 8px; }
+  .rep-lista .inv-row__actions { grid-column: 2; }
+}
+.rep-textos { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; flex: 1 1 auto; }
 .rep-lista .inv-row__main strong,
 .rep-lista .inv-row__main .rep-codigo,
 .rep-lista .inv-row__main .inv-cat { overflow-wrap: anywhere; }
@@ -127,8 +137,8 @@
   border: 1px solid var(--color-border); border-radius: 12px;
   background: var(--color-bg-soft);
 }
-.pieza-foto-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
-.pieza-foto-acciones .inline-button { min-height: 44px; }
+.pieza-foto-acciones { display: flex; gap: 8px; }
+.pieza-foto-acciones .inline-button { min-height: 44px; flex: 1 1 0; width: auto; }
 
 /* ── Alta rápida: campos ──────────────────────────────────────────────────── */
 .pieza-campo {
@@ -182,10 +192,6 @@
 
 /* ── Alta rápida: botones al pie ────────────────────────────────────────────
    48 px de alto: es una decisión con plata y con inventario, no un enlace. */
-.pieza-pie { flex-wrap: wrap; justify-content: flex-end; }
-.pieza-pie button { min-height: 48px; }
-.pieza-pie .primary-button { width: auto; flex: 1 1 180px; padding: 0 16px; }
-@media (max-width: 480px) {
-  .pieza-pie .inline-button,
-  .pieza-pie .primary-button { width: 100%; flex: 1 1 100%; }
-}
+/* Con `.modal-card` delante para ganarle a `.modal-footer` (App.css), que en celular apila los botones en columna. */
+.modal-card .pieza-pie { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 8px; }
+.modal-card .pieza-pie button { min-height: 48px; width: 100%; padding: 6px 10px; line-height: 1.15; }

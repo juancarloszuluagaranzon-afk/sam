@@ -258,11 +258,15 @@ export function RepuestosTab() {
                     ) : (
                       <span className="rep-thumb rep-thumb--vacia">sin foto</span>
                     )}
-                    {i.codigo && <span className="rep-codigo">{i.codigo}</span>}
-                    <strong>{i.nombre}</strong>
-                    {i.referencia && <span className="inv-cat inv-cat--mat">{i.referencia}</span>}
-                    {i.marca && <span className="subtle-copy">{i.marca}</span>}
-                    {i.ubicacion && <span className="subtle-copy">📍 {i.ubicacion}</span>}
+                    {/* Los textos en su propia columna: sin esto, en el celular el código quedaba al lado de
+                        la miniatura y el nombre debajo de ella, y la fila se leía desordenada. */}
+                    <div className="rep-textos">
+                      {i.codigo && <span className="rep-codigo">{i.codigo}</span>}
+                      <strong>{i.nombre}</strong>
+                      {i.referencia && <span className="inv-cat inv-cat--mat">{i.referencia}</span>}
+                      {i.marca && <span className="subtle-copy">{i.marca}</span>}
+                      {i.ubicacion && <span className="subtle-copy">📍 {i.ubicacion}</span>}
+                    </div>
                   </div>
                   <div className="rep-stock">
                     <div className={`inv-stock${s <= 0 ? ' inv-stock--zero' : ''}`}>

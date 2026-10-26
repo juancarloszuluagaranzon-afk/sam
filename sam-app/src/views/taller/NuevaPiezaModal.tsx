@@ -77,12 +77,12 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
 
   useEffect(() => { void loadFamilias().then(setFamilias) }, [])
 
-  // Vista previa de la miniatura ya comprimida (no del archivo original). La URL
-  // del blob se revoca al cambiar de foto y al desmontar: si no, el celular se
-  // queda con la foto en memoria toda la sesión.
+  // Vista previa del DETALLE ya comprimido (no del archivo original, que pesa MB): la miniatura de 200 px
+  // estirada al ancho del celular se vería pixelada y parecería que la foto salió mal. La URL del blob se
+  // revoca al cambiar de foto y al desmontar: si no, el celular se queda con la foto en memoria toda la sesión.
   useEffect(() => {
     if (!foto) { setPreview(null); return }
-    const url = URL.createObjectURL(foto.thumb)
+    const url = URL.createObjectURL(foto.full)
     setPreview(url)
     return () => URL.revokeObjectURL(url)
   }, [foto])
@@ -225,7 +225,7 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
             autoCorrect="off"
             spellCheck={false}
             disabled={guardando}
-            onChange={(e) => setNombre(aMayus(e.target.value))}
+            onChange={(e) => { setNombre(aMayus(e.target.value)); setErrores((er) => ({ ...er, nombre: undefined })) }}
           />
           {errores.nombre && <span className="pieza-error">{errores.nombre}</span>}
         </label>
@@ -236,7 +236,7 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
           <CampoLista
             tipo="UBICACION"
             value={ubicacion}
-            onChange={setUbicacion}
+            onChange={(v) => { setUbicacion(v); setErrores((er) => ({ ...er, estante: undefined })) }}
             placeholder="ESTANTE A-3"
             disabled={guardando}
           />
@@ -252,7 +252,7 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
             value={cantidad}
             placeholder="0"
             disabled={guardando}
-            onChange={(e) => setCantidad(soloNumero(e.target.value))}
+            onChange={(e) => { setCantidad(soloNumero(e.target.value)); setErrores((er) => ({ ...er, cantidad: undefined })) }}
           />
           {errores.cantidad && <span className="pieza-error">{errores.cantidad}</span>}
         </label>
@@ -299,9 +299,8 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
         {errores.general && <p className="pieza-error">{errores.general}</p>}
 
         <div className="modal-footer pieza-pie">
-          <button type="button" className="inline-button" onClick={onClose} disabled={guardando}>
-            Cancelar
-          </button>
+          {/* Sin «Cancelar»: la ✕ de arriba y el botón «atrás» del celular ya cierran, y tres botones apilados
+              se comían media pantalla del celular. */}
           <button type="button" className="inline-button" onClick={() => void guardar(false)} disabled={guardando}>
             {guardando ? 'Guardando…' : 'Guardar'}
           </button>

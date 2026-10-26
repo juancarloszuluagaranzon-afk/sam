@@ -42,6 +42,7 @@ export function ciclosEnExceso(
   rango: { desde: string; hasta: string } | null,
   esHectareas: (labor: string) => boolean,
   margen: number = MARGEN_AREA,
+  soloConFilas?: Set<string>,
 ): CicloEnExceso[] {
   const grupos = new Map<string, Assignment[]>()
   for (const a of asignaciones ?? []) {
@@ -72,6 +73,9 @@ export function ciclosEnExceso(
     }
     for (const ciclo of ciclos) {
       if (rango && !ciclo.some((a) => fechaDe(a) >= rango.desde && fechaDe(a) <= rango.hasta)) continue
+      // Resumen y Reporte ya filtran por su cuenta (periodo, estado, operario…): se muestran solo los ciclos que
+      // tocan alguna de las filas que la pantalla está mostrando, pero el total del ciclo cuenta TODAS las filas.
+      if (soloConFilas && !ciclo.some((a) => soloConFilas.has(a.id))) continue
       const oficial = areaOficialSuerte(porSuerte.get(norm(ciclo[0].suerte)) ?? [], ciclo[0])
       if (oficial == null) continue // sin área oficial no hay con qué comparar
       const pagada = ciclo.reduce((s, a) => s + areaPagada(a), 0)

@@ -51,6 +51,8 @@ import { FacturacionTab } from './FacturacionTab'
 import { CarteraTab } from './CarteraTab'
 import { TrazaFacturacion } from '../components/TrazaFacturacion'
 import { PlanillaTab } from './PlanillaTab'
+import { ciclosEnExceso } from '../lib/sobreArea'
+import { AvisoSobreArea } from '../components/AvisoSobreArea'
 import { RealizadasTab } from './RealizadasTab'
 import { LaboresTab } from './LaboresTab'
 import { IngeniosTab } from './IngeniosTab'
@@ -752,6 +754,20 @@ export function SupervisorView({
   // APARTE: ahí `area`/`executedArea` son horas, y metidos en estas sumas
   // inflarían las «hectáreas ejecutadas» con un número que no es terreno.
   const summaryAssignments = useMemo(() => summaryTodas.filter((a) => !esPorHoras(a.labor)), [summaryTodas])
+  // «Revise antes de pagar» (candado de área, 26-oct-2026): ciclos que tocan lo que Resumen y Reporte están mostrando
+  // y cuyo total pasa del área oficial. Solo se calcula en la pestaña que lo muestra (el maestro pesa).
+  const sobreAreaResumen = useMemo(
+    () => (supervisorTab === 'resumen'
+      ? ciclosEnExceso(assignments, maestro, null, (l) => unidadDeLabor(l) === 'ha', undefined, new Set(summaryAssignments.map((a) => a.id)))
+      : []),
+    [supervisorTab, assignments, maestro, summaryAssignments],
+  )
+  const sobreAreaReporte = useMemo(
+    () => (supervisorTab === 'reporte'
+      ? ciclosEnExceso(assignments, maestro, null, (l) => unidadDeLabor(l) === 'ha', undefined, new Set(filteredReport.map((a) => a.id)))
+      : []),
+    [supervisorTab, assignments, maestro, filteredReport],
+  )
   const summaryServicios = useMemo(() => {
     const lista = summaryTodas.filter((a) => esPorHoras(a.labor))
     const cerrados = lista.filter((a) => a.status === 'COMPLETADA' || a.status === 'PARCIAL')
@@ -1963,6 +1979,8 @@ export function SupervisorView({
           </section>
         ) : null}
 
+        {supervisorTab === 'resumen' ? <AvisoSobreArea ciclos={sobreAreaResumen} /> : null}
+
         {supervisorTab === 'resumen' ? (
           <section className="summary-search-bar">
             <div className="labores-search-row">
@@ -2718,6 +2736,8 @@ export function SupervisorView({
                 />
               </div>
             </div>
+
+            <AvisoSobreArea ciclos={sobreAreaReporte} />
 
             {(() => {
               // KPIs del reporte segmentados por los filtros activos (período +

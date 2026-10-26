@@ -87,6 +87,18 @@ caso('varios ciclos en exceso salen del mayor exceso al menor', () => {
   assert.deepEqual(r.map((x) => x.suerte), ['26C', '25A'])
 })
 
+caso('Resumen y Reporte: solo avisa los ciclos que tocan lo que la pantalla muestra, pero el total cuenta todas las filas', () => {
+  const a = fila({ op: 'A', executedArea: 8 }), b = fila({ op: 'B', executedArea: 8 })
+  const otra = fila({ op: 'C', executedArea: 20, suerteCode: 'SE-99Z', suerte: '99Z' })
+  const m2 = [...maestro, { haciendaCode: 'SE', haciendaName: 'SILENCIO', suerte: '99Z', area: 5, ingenio_id: 'san_carlos' }] as MaestroRow[]
+  const todas = [a, b, otra]
+  // la pantalla muestra solo la fila de A: el ciclo de la 25A sale con las dos filas (16 ha), el de la 99Z no
+  const r = ciclosEnExceso(todas, m2, todo, ha, undefined, new Set([a.id]))
+  assert.equal(r.length, 1); assert.equal(r[0].suerte, '25A'); cerca(r[0].areaPagada, 16)
+  // la pantalla no muestra ninguna fila de exceso: sin aviso
+  assert.deepEqual(ciclosEnExceso(todas, m2, todo, ha, undefined, new Set(['no-existe'])), [])
+})
+
 caso('datos vacíos no lanzan', () => {
   assert.deepEqual(ciclosEnExceso(undefined as unknown as Assignment[], maestro, todo, ha), [])
   assert.deepEqual(ciclosEnExceso([], undefined as unknown as MaestroRow[], todo, ha), [])

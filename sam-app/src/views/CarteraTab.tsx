@@ -10,6 +10,10 @@ import {
   type Acuerdo, type EstadoCartera, type FacturaCartera, type Pago,
 } from '../services/carteraApi'
 import { AcuerdoDetalle, AcuerdoForm, ListaAcuerdos, type PrefillAcuerdo } from '../components/AcuerdosCartera'
+import { FiltrosPeriodoLabor } from '../components/FiltrosPeriodoLabor'
+import { cumpleLabor, cumplePeriodo, filtrosIniciales, hayFiltroLabor, type FiltrosLabor } from '../lib/filtrosPeriodoLabor'
+import { getAssignmentIngenioId } from '../services/samApi'
+import type { Assignment } from '../domain/sam'
 
 /**
  * CARTERA (2-oct-2026) — la revisa Viviana. Cada factura con su vencimiento
@@ -22,7 +26,7 @@ import { AcuerdoDetalle, AcuerdoForm, ListaAcuerdos, type PrefillAcuerdo } from 
  * según su plan (la próxima cuota) y el anticipo se descuenta de ella.
  */
 export function CarteraTab() {
-  const { session, todayKey, assignments, setError, setInfo } = useAppData()
+  const { session, todayKey, assignments, maestro, ingenios, setError, setInfo } = useAppData()
   const [facturas, setFacturas] = useState<FacturaCartera[]>([])
   const [acuerdos, setAcuerdos] = useState<Acuerdo[]>([])
   const [cargando, setCargando] = useState(true)
@@ -50,18 +54,33 @@ export function CarteraTab() {
     return () => { vivo = false }
   }, [])
 
+  // Los mismos filtros del Reporte (26-oct-2026). El período se mide sobre la FECHA DE LA FACTURA; ingenio,
+  // hacienda, suerte y operador se buscan en las labores que esa factura cubre. Todo lo que muestra la pantalla
+  // (cifras por estado, alertas y lista) sale de las facturas que pasan estos filtros.
+  const [filtros, setFiltros] = useState<FiltrosLabor>(() => filtrosIniciales('TODO', todayKey))
+  const ingenioDe = useCallback((a: Assignment) => getAssignmentIngenioId(a, maestro), [maestro])
+  const lineasDeFactura = useMemo(() => {
+    const m = new Map<string, Assignment[]>()
+    for (const a of assignments) if (a.facturaId) { const l = m.get(a.facturaId); if (l) l.push(a); else m.set(a.facturaId, [a]) }
+    return m
+  }, [assignments])
+  const facturasVista = useMemo(() => facturas.filter((f) =>
+    cumplePeriodo(String(f.fecha).slice(0, 10), filtros, todayKey)
+    && (!hayFiltroLabor(filtros) || (lineasDeFactura.get(f.id) ?? []).some((a) => cumpleLabor(a, filtros, ingenioDe)))),
+  [facturas, filtros, todayKey, lineasDeFactura, ingenioDe])
+
   const resumen = useMemo(() => {
     const out = new Map<EstadoCartera, { n: number; saldo: number }>()
-    for (const f of facturas) {
+    for (const f of facturasVista) {
       const r = out.get(f.estado) ?? { n: 0, saldo: 0 }
       r.n += 1; r.saldo += f.saldo ?? 0
       out.set(f.estado, r)
     }
     return out
-  }, [facturas])
-  const pendientes = facturas.filter((f) => f.estado !== 'PAGADA')
+  }, [facturasVista])
+  const pendientes = facturasVista.filter((f) => f.estado !== 'PAGADA')
   const saldoTotal = pendientes.reduce((s, f) => s + (f.saldo ?? 0), 0)
-  const alertas = facturas.filter((f) => f.estado === 'CRITICA' || f.estado === 'OTRAS_MEDIDAS')
+  const alertas = facturasVista.filter((f) => f.estado === 'CRITICA' || f.estado === 'OTRAS_MEDIDAS')
 
   // Cuotas de los acuerdos: las vencidas y las que vencen esta semana.
   const cuotasAviso = useMemo(() => {
@@ -102,7 +121,7 @@ export function CarteraTab() {
 
   const lista = useMemo(() => {
     const q = buscar.trim().toLowerCase()
-    return facturas
+    return facturasVista
       .filter((f) => {
         if (filtro === 'TODAS') return true
         if (filtro === 'PENDIENTES') return f.estado !== 'PAGADA'
@@ -111,7 +130,7 @@ export function CarteraTab() {
         return f.estado === filtro
       })
       .filter((f) => !q || `${f.numero} ${f.cliente ?? ''} ${f.razonSocial ?? ''} ${f.colono ?? ''}`.toLowerCase().includes(q))
-  }, [facturas, filtro, buscar])
+  }, [facturasVista, filtro, buscar])
 
   async function ver(path: string | null) {
     if (!path) return
@@ -165,6 +184,10 @@ export function CarteraTab() {
       {vista === 'ACUERDOS' ? (
         <ListaAcuerdos acuerdos={acuerdos} hoy={todayKey} onAbrir={setAcuerdoAbierto} onNuevo={() => setForm({ acuerdo: null })} />
       ) : (<>
+      <FiltrosPeriodoLabor
+        filtros={filtros} onChange={setFiltros} asignaciones={assignments} ingenios={ingenios}
+        ingenioDe={ingenioDe} todayKey={todayKey} textoTodo="Todas las fechas"
+      />
       <div className="fact-etapas">
         {ESTADOS_CARTERA.map((e) => {
           const r = resumen.get(e.id) ?? { n: 0, saldo: 0 }

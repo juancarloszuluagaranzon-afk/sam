@@ -51,6 +51,15 @@ export function ciclosEnExceso(
     if (g) g.push(a); else grupos.set(k, [a])
   }
 
+  // El maestro tiene ~21.000 filas: se indexa UNA vez por suerte. Buscar el área de cada ciclo recorriéndolo
+  // entero era lo que volvía lenta la planilla.
+  const porSuerte = new Map<string, MaestroRow[]>()
+  for (const m of maestro ?? []) {
+    const k = norm(m.suerte)
+    const g = porSuerte.get(k)
+    if (g) g.push(m); else porSuerte.set(k, [m])
+  }
+
   const salida: CicloEnExceso[] = []
   for (const [clave, filas] of grupos) {
     const ordenadas = [...filas].sort((x, y) => fechaDe(x).localeCompare(fechaDe(y)) || x.id.localeCompare(y.id))
@@ -62,12 +71,12 @@ export function ciclosEnExceso(
       else ciclos.push([a])
     }
     for (const ciclo of ciclos) {
-      const oficial = areaOficialSuerte(maestro, ciclo[0])
+      if (rango && !ciclo.some((a) => fechaDe(a) >= rango.desde && fechaDe(a) <= rango.hasta)) continue
+      const oficial = areaOficialSuerte(porSuerte.get(norm(ciclo[0].suerte)) ?? [], ciclo[0])
       if (oficial == null) continue // sin área oficial no hay con qué comparar
       const pagada = ciclo.reduce((s, a) => s + areaPagada(a), 0)
       if (pagada <= oficial + margen + 1e-9) continue // el 1e-9 absorbe el ruido de los decimales flotantes
       const desde = fechaDe(ciclo[0]), hasta = fechaDe(ciclo[ciclo.length - 1])
-      if (rango && !ciclo.some((a) => fechaDe(a) >= rango.desde && fechaDe(a) <= rango.hasta)) continue
       salida.push({
         clave: `${clave}|${desde}`,
         haciendaName: ciclo[0].haciendaName ?? '',

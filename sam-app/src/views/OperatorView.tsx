@@ -33,6 +33,8 @@ import { CampoLista } from '../components/CampoPlaca'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { parseSpokenNumber, findItemByVoice } from '../utils/voiceParser'
 import { isSameCycle } from '../utils/suerteCycle'
+import { areaOficialSuerte } from '../lib/areaSuerte'
+import { progresoSuerte } from '../lib/progresoSuerte'
 import { WORKFLOW } from '../data/constants'
 import type { Assignment, UserProfile } from '../domain/sam'
 import { TanqueoModal } from '../components/TanqueoModal'
@@ -151,67 +153,8 @@ function getRemainingArea(
   return Math.max(0, totalArea - executed)
 }
 
-/**
- * Calcula el avance "a nivel de suerte+labor" para una asignacion del
- * operario en su CICLO ACTUAL. Si varios operarios estan trabajando la
- * misma suerte+labor en el MISMO CICLO, comparten un mismo "remaining" —
- * lo hecho por el companero consume el area planificada del ciclo.
- *
- * El ciclo se agrupa con `isSameCycle` (ventana tolerante en dias), NO con
- * `dateKey` exacto. Esto es clave para labores TOMADAS EN CAMPO: dos
- * operarios que toman la misma suerte en dias distintos pertenecen al mismo
- * ciclo y su avance se suma para cerrar la labor (antes, con dateKey exacto,
- * cada uno veia solo su parte y la labor nunca cerraba). Un re-laboreo meses
- * despues (ej: DESPEJE en marzo y otro en mayo) queda FUERA de la ventana y
- * sigue siendo un CICLO DISTINTO — el viejo no consume area del nuevo.
- *
- * Sincronizado en tiempo real via Realtime: cuando otro operario notifica
- * 5 ha y la suerte total son 10, este operario ve "Falta 5 ha" sin recargar.
- */
-function getSuerteProgress(assignment: Assignment, allAssignments: Assignment[]) {
-  const sameSuerteLabor = allAssignments.filter(
-    (a) =>
-      a.suerteCode === assignment.suerteCode &&
-      normalizeText(a.labor) === normalizeText(assignment.labor) &&
-      isSameCycle(a.dateKey, assignment.dateKey) &&
-      // EN_PROCESO cuenta su `executedArea` SOLO para la PROPIA asignación: una
-      // PARCIAL re-iniciada conserva su avance y no debe "desaparecer" al
-      // retomar. Pero el EN_PROCESO de OTRO operario (área "en vuelo", aún no
-      // registrada) NO debe cerrar prematuramente la card de un tercero (zombie).
-      (a.status === 'COMPLETADA' ||
-        a.status === 'PARCIAL' ||
-        (a.status === 'EN_PROCESO' && a.id === assignment.id)),
-  )
-  const executedTotal = sameSuerteLabor.reduce((sum, a) => sum + (a.executedArea ?? 0), 0)
-  const ownExecuted = assignment.executedArea ?? 0
-  const sharedExecuted = Math.max(0, executedTotal - ownExecuted)
-  // Area TOTAL de la suerte en el ciclo = el MAX de las areas del ciclo. La
-  // primera toma (o la ASIGNADA) lleva el area completa; una RE-TOMA del
-  // restante (tras liberar un parcial) lleva solo lo que faltaba. Usar
-  // `assignment.area` directo en una re-toma restaria dos veces lo ya hecho
-  // y dejaria remaining=0 (la card desapareceria como "zombie" al instante).
-  const suerteTotalArea = Math.max(
-    assignment.area,
-    ...allAssignments
-      .filter(
-        (a) =>
-          a.suerteCode === assignment.suerteCode &&
-          normalizeText(a.labor) === normalizeText(assignment.labor) &&
-          isSameCycle(a.dateKey, assignment.dateKey) &&
-          a.status !== 'CANCELADA',
-      )
-      .map((a) => a.area),
-  )
-  const remaining = Math.max(0, suerteTotalArea - executedTotal)
-  return {
-    executedTotal,
-    sharedExecuted,
-    ownExecuted,
-    remaining,
-    hasProgress: executedTotal > 0,
-    hasSharedProgress: sharedExecuted > 0,
-  }
-}
+// El avance por suerte y labor (restante compartido entre operarios del mismo ciclo) vive en lib/progresoSuerte.ts,
+// con pruebas; el componente solo le da el área OFICIAL del maestro (ver getSuerteProgress dentro de OperatorView).
 
 function getSuggestedLabor(assignments: Assignment[], suerteCode: string) {
   // Solo COMPLETADA cuenta como "labor cerrada" para sugerir la siguiente.
@@ -289,6 +232,13 @@ export function OperatorView({
   onSaveSession,
 }: Props) {
   const { session, assignments, setAssignments, sortedEquipment, isOnline, outboxCount, busy, error, info, todayKey, setError, maestro, setMaestro, setInfo, fieldLabores, insumos, ingenios, labores, motivacion } = useAppData()
+  // Avance por suerte y labor contra el ÁREA OFICIAL del maestro: la misma cifra con la que programa el supervisor,
+  // se topa al cerrar y se vigila en la base. Con «la mayor área asignada» se le escondía la labor al operario cuando
+  // la suerte se programó en pedazos (Jon Arana, 26-oct-2026).
+  const getSuerteProgress = useCallback(
+    (a: Assignment, todas: Assignment[]) => progresoSuerte(a, todas, areaOficialSuerte(maestro, a)),
+    [maestro],
+  )
   // Ingenios activos para los selectores (toma en campo).
   const ingeniosOpts = useMemo(() => ingenios.filter((i) => i.activo), [ingenios])
   // Chequeo diario: qué lista le toca a su máquina y si ya lo hizo hoy. `null`
@@ -660,7 +610,7 @@ export function OperatorView({
       // Siempre las MÁS RECIENTES primero (por fecha de creación; ISO ordena
       // cronológicamente como texto).
       .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))
-  }, [operatorAssignments, assignments])
+  }, [operatorAssignments, assignments, getSuerteProgress])
 
   const [selectedActiveAssignment, setSelectedActiveAssignment] = useState<Assignment | null>(null)
 
@@ -688,14 +638,15 @@ export function OperatorView({
       return {
         ...current,
         [selectedActiveAssignment.id]: {
-          area: progress.remaining.toFixed(2),
+          // Sin pasar de lo que se le asignó a ÉL: el restante de la suerte puede ser mayor que su pedazo.
+          area: (selectedActiveAssignment.area > 0 ? Math.min(progress.remaining, selectedActiveAssignment.area) : progress.remaining).toFixed(2),
           notes: existing?.notes ?? '',
           horometroFinal: existing?.horometroFinal ?? '',
           isComplete: existing?.isComplete ?? false,
         },
       }
     })
-  }, [selectedActiveAssignment, assignments, setFinishDrafts])
+  }, [selectedActiveAssignment, assignments, setFinishDrafts, getSuerteProgress])
 
 
   // Historial incluye COMPLETADA + CANCELADA + PARCIAL. Las PARCIAL aparecen

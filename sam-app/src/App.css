@@ -5858,6 +5858,15 @@ button.movement-row--clickable:active {
 }
 
 /* ===== Planilla quincenal ===== */
+/* «Revise antes de pagar» (26-oct-2026): suertes que pasan del área oficial. */
+.aviso-sobre-area { margin: 8px 0 14px; padding: 10px 14px; border: 1px solid var(--color-status-cancel, #b3261e); border-left-width: 5px; border-radius: 10px; background: var(--color-status-cancel-bg, #fdecea); color: var(--color-ink, #1f2a1f); min-width: 0; }
+.aviso-sobre-area__titulo { margin: 0 0 4px; font-size: 0.92rem; }
+.aviso-sobre-area summary { cursor: pointer; font-weight: 700; font-size: 0.86rem; color: var(--color-status-cancel, #b3261e); }
+.aviso-sobre-area__lista { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; }
+.aviso-sobre-area__lista li { display: flex; flex-direction: column; gap: 2px; padding: 8px 0; border-top: 1px solid rgba(179, 38, 30, .25); font-size: 0.86rem; min-width: 0; overflow-wrap: anywhere; }
+.aviso-sobre-area__lista small { color: var(--color-ink-mid, #5a5f57); }
+.aviso-sobre-area__mas { color: var(--color-status-cancel, #b3261e); }
+.aviso-sobre-area__nota { margin: 8px 0 0; font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); }
 .planilla-caption {
   margin: 4px 0 14px;
   color: var(--color-ink-mid);

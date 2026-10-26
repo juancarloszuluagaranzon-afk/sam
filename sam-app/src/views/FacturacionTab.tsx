@@ -1,7 +1,7 @@
 import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { esPorHoras, unidadDeLabor } from '../lib/texto'
 import { useAppData } from '../context/AppDataContext'
-import { executionDateKey, setModalidadBulk, setPrecioManualBulk, setTarifaManualBulk } from '../services/samApi'
+import { executionDateKey, getAssignmentIngenioId, setModalidadBulk, setPrecioManualBulk, setTarifaManualBulk } from '../services/samApi'
 import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades, type MapaModalidades } from '../lib/modalidad'
 import {
   RAZONES_SOCIALES, abrirArchivo, desvincularDocumento, loadDocumentos,
@@ -11,11 +11,9 @@ import { DocumentoFacturacionModal } from '../components/DocumentoFacturacionMod
 import { EditarLineaFacturacion, type CambioLinea } from '../components/EditarLineaFacturacion'
 import { NOMBRE_CLIENTE, clienteDeducido, clienteForzado, pesosCortos, useTarifas, valorarLinea, type Tarifa, type Valoracion } from '../lib/tarifas'
 import { ingenioNombre } from '../data/ingenios'
-import {
-  matchesSummaryFilter,
-  buildMonthOptions,
-  type SummaryQuincena,
-} from '../components/EntityHistoryModal'
+import { buildMonthOptions } from '../components/EntityHistoryModal'
+import { FiltrosPeriodoLabor } from '../components/FiltrosPeriodoLabor'
+import { cumpleLabor, cumplePeriodo, filtrosIniciales, textoPeriodo, type FiltrosLabor } from '../lib/filtrosPeriodoLabor'
 import { Ayuda } from '../components/Ayuda'
 import type { Assignment } from '../domain/sam'
 import { claveHacienda, loadAcuerdos } from '../services/carteraApi'
@@ -45,13 +43,15 @@ type Grupo = 'SIN_FACTURAR' | 'FACTURADAS' | 'TODAS'
 const facturada = (a: Assignment) => !!a.facturaId || conFactura(a.facturaNumero)
 
 export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void }) {
-  const { assignments, setAssignments, session, todayKey, busy, setBusy, setError, setInfo } = useAppData()
+  const { assignments, setAssignments, session, todayKey, busy, setBusy, setError, setInfo, maestro, ingenios } = useAppData()
 
   const [search, setSearch] = useState('')
   // De entrada TODO el realizado (pedido de Iván); se puede acotar a un mes o quincena.
-  const [mes, setMes] = useState('')
-  const [quincena, setQuincena] = useState<SummaryQuincena>('TODO')
+  // Desde el 26-oct-2026 lleva los MISMOS filtros del Reporte (período, mes, fechas, ingenio, hacienda, suerte, operador).
+  const [filtros, setFiltros] = useState<FiltrosLabor>(() => filtrosIniciales('TODO', todayKey))
   const [selected, setSelected] = useState<Set<string>>(new Set())
+  const cambiarFiltros = (f: FiltrosLabor) => { setFiltros(f); setSelected(new Set()) }
+  const ingenioDe = useCallback((a: Assignment) => getAssignmentIngenioId(a, maestro), [maestro])
   const modalidades = useModalidades()
   // «Sin modalidad» y «Sin tarifa» FIJAN las líneas que cumplían al activarlos:
   // al ponerles modalidad o tarifa NO se van de la lista (antes desaparecían y no
@@ -122,14 +122,14 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const delPeriodo = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     return realizado
-      .filter(({ dia }) => matchesSummaryFilter(dia, mes, mes ? quincena : 'TODO', todayKey))
+      .filter(({ a, dia }) => cumplePeriodo(dia, filtros, todayKey) && cumpleLabor(a, filtros, ingenioDe))
       .map(({ a }) => a)
       .filter((a) => {
         if (!q) return true
         const s = a.soporteId ? docPorId.get(a.soporteId)?.numero ?? '' : ''
         return `${a.haciendaName} ${a.suerte} ${a.labor} ${a.operatorName} ${a.facturaNumero ?? ''} ${s}`.toLowerCase().includes(q)
       })
-  }, [realizado, busqueda, mes, quincena, todayKey, docPorId])
+  }, [realizado, busqueda, filtros, ingenioDe, todayKey, docPorId])
   const sinTarifa = useMemo(() => delPeriodo.filter((a) => valores.get(a.id)?.valor == null).length, [delPeriodo, valores])
   const sinModalidad = useMemo(() => delPeriodo.filter((a) => faltaModalidad(modalidades, a)).length, [delPeriodo, modalidades])
   const fijarSinTarifa = () => new Set(delPeriodo.filter((a) => valores.get(a.id)?.valor == null).map((a) => a.id))
@@ -144,7 +144,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   }, [delPeriodo, valores])
   // Si cambia lo que se mira (mes, quincena, búsqueda, empresa), los filtros activos
   // se vuelven a fijar sobre lo nuevo; poner una tarifa o modalidad NO los cambia.
-  const claveVista = `${mes}|${quincena}|${busqueda}|${empresa}`
+  const claveVista = `${JSON.stringify(filtros)}|${busqueda}|${empresa}`
   useEffect(() => {
     setFijasSinTarifa((f) => (f ? fijarSinTarifa() : f))
     setFijasSinModalidad((f) => (f ? fijarSinModalidad() : f))
@@ -215,9 +215,11 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   }, [porFacturar, valores, modalidades])
   // Marcar todas solo alcanza a las que se ven (400): con más, primero se acota.
   const demasiadas = vistaCliente.length > LIMIT
-  const periodoTexto = mes
-    ? `en ${(monthOptions.find((m) => m.value === mes)?.label ?? mes).toLowerCase()}${quincena === 'PRIMERA' ? ' (1ra quincena)' : quincena === 'SEGUNDA' ? ' (2da quincena)' : ''}`
-    : 'en todo el realizado'
+  const etiquetaMes = monthOptions.find((m) => m.value === filtros.mes)?.label ?? filtros.mes
+  const periodoTexto = textoPeriodo(filtros, etiquetaMes)
+  const tituloPeriodo = filtros.period === 'TODO' ? 'Todo el realizado'
+    : filtros.period === 'HOY' ? 'Hoy' : filtros.period === 'AYER' ? 'Ayer' : filtros.period === 'CUSTOM' ? 'Fechas escogidas'
+    : `${etiquetaMes}${filtros.period === 'PRIMERA' ? ' · 1ra quincena' : filtros.period === 'SEGUNDA' ? ' · 2da quincena' : ''}`
   function facturarTodas(tipo: TipoDocumento) {
     // Se quitan los filtros de revisar: así las marcadas son TODAS las pendientes (se ven).
     setFijasSinTarifa(null); setFijasSinModalidad(null)
@@ -317,7 +319,9 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         }
       })
       utils.book_append_sheet(wb, utils.json_to_sheet(filas), 'Facturación')
-      const sufijo = [mes || 'Todo', mes && quincena !== 'TODO' ? quincena.toLowerCase() : '', cliente.replace(/\s+/g, '-')].filter(Boolean).join('_')
+      const periodoArchivo = filtros.period === 'TODO' ? 'Todo' : filtros.period === 'CUSTOM' ? `${filtros.desde || 'inicio'}_${filtros.hasta || 'hoy'}`
+        : filtros.period === 'HOY' || filtros.period === 'AYER' ? filtros.period.toLowerCase() : `${filtros.mes}${filtros.period === 'MES' ? '' : `_${filtros.period.toLowerCase()}`}`
+      const sufijo = [periodoArchivo, cliente.replace(/\s+/g, '-')].filter(Boolean).join('_')
       writeFile(wb, `Facturacion_${sufijo}.xlsx`)
     } catch (err) {
       console.error(err)
@@ -503,14 +507,14 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       <div className="panel-title split">
         <h2>Facturación</h2>
         <span className="subtle-copy">
-          {mes ? `${monthOptions.find((m) => m.value === mes)?.label ?? mes}` : 'Todo el realizado'}: <strong>{fmt(porEtapa.TODAS.ha)} ha</strong>
+          {tituloPeriodo}: <strong>{fmt(porEtapa.TODAS.ha)} ha</strong>
           {porEtapa.TODAS.h > 0 && <> + <strong>{fmt(porEtapa.TODAS.h)} h</strong></>} en {porEtapa.TODAS.n} labores
           {' '}· valor <strong>{pesosCortos(porEtapa.TODAS.valor)}</strong>
         </span>
       </div>
       <Ayuda>
         <p><a href="/manuales/manual-facturacion.html" target="_blank" rel="noopener">📖 Ver el manual completo de Facturación y Cartera</a></p>
-        <p><b>Para facturar:</b> arriba, en <b>¿Qué vas a facturar?</b>, escoge el <b>mes</b> y el <b>cliente</b>. Sale lo que le falta por facturar con su valor. Si dice «sin precio» o «sin modalidad», tócalo para corregir esas líneas. Luego toca <b>🧾 Facturar estas líneas</b>: se abre la factura con el valor ya sumado; escribe el número, la fecha y sube el PDF.</p>
+        <p><b>Para facturar:</b> arriba, en <b>¿Qué vas a facturar?</b>, escoge el <b>período</b> (los mismos filtros del Reporte) y el <b>cliente</b>. Sale lo que le falta por facturar con su valor. Si dice «sin precio» o «sin modalidad», tócalo para corregir esas líneas. Luego toca <b>🧾 Facturar estas líneas</b>: se abre la factura con el valor ya sumado; escribe el número, la fecha y sube el PDF.</p>
         <p>En cada línea, «<b>sin tarifa ✎</b>» te lleva a su casilla <b>Valor/ha</b> para escribir el precio, y «<b>falta modalidad ✎</b>» la marca y abre dónde ponerla.</p>
         <p>Para corregir <b>una sola línea</b> (a quién se factura, su soporte o su factura), toca su <b>cliente</b> o el ✏️ junto al soporte o la factura.</p>
         <p><b>Facturar por</b>: escoge la empresa (AGROMORALES o CEBALLOS Y LOZANO) y cada línea toma el precio de la tabla de esa empresa; si esa empresa no tiene precio para ese cliente, la línea sale «sin tarifa». Las líneas ya facturadas usan la empresa de su factura.</p>
@@ -534,26 +538,11 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       {/* ── ¿Qué vas a facturar? Lo principal, arriba y grande ── */}
       <div className="fact-armar">
         <p className="fact-armar__titulo">¿Qué vas a facturar?</p>
+        <FiltrosPeriodoLabor
+          filtros={filtros} onChange={cambiarFiltros} asignaciones={assignments} ingenios={ingenios}
+          ingenioDe={ingenioDe} todayKey={todayKey} textoTodo="Todo el realizado"
+        />
         <div className="fact-armar__campos">
-          <label className="fact-campo">
-            <span>Mes</span>
-            <select id="fact-mes" value={mes} onChange={(e) => { setMes(e.target.value); setSelected(new Set()) }} className="base-input">
-              <option value="">Todo el realizado</option>
-              {monthOptions.map((m) => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </label>
-          {mes && (
-            <label className="fact-campo">
-              <span>Quincena</span>
-              <select id="fact-quincena" value={quincena} onChange={(e) => { setQuincena(e.target.value as SummaryQuincena); setSelected(new Set()) }} className="base-input">
-                <option value="TODO">Todo el mes</option>
-                <option value="PRIMERA">1ra quincena</option>
-                <option value="SEGUNDA">2da quincena</option>
-              </select>
-            </label>
-          )}
           <label className="fact-campo fact-campo--ancho">
             <span>Cliente</span>
             <select id="fact-cliente" value={cliente} className="base-input"
@@ -567,7 +556,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         </div>
 
         {!cliente ? (
-          <p className="fact-armar__guia">Escoge el <b>cliente</b> (y el mes) y aquí te sale lo que le falta por facturar, listo para facturar de un solo toque.</p>
+          <p className="fact-armar__guia">Escoge el <b>cliente</b> (y el período) y aquí te sale lo que le falta por facturar, listo para facturar de un solo toque.</p>
         ) : porFacturar.length === 0 ? (
           <p className="fact-armar__listo">✓ Todo lo de {cliente} {periodoTexto} ya está facturado.</p>
         ) : (
@@ -600,7 +589,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
               </span>
             </div>
             {demasiadas ? (
-              <p className="fact-armar__guia">Son {vistaCliente.length} líneas: escoge el <b>mes</b> (o la quincena) para facturarlas por partes.</p>
+              <p className="fact-armar__guia">Son {vistaCliente.length} líneas: escoge el <b>período</b> (mes o quincena) para facturarlas por partes.</p>
             ) : (
               <div className="fact-armar__botones">
                 <button type="button" className="primary-button fact-armar__cta" disabled={busy || !session} onClick={() => facturarTodas('FACTURA')}>
@@ -660,7 +649,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         <div className="factura-bulk-bar">
           {overLimit && seleccion.length >= shown.length && (
             <span className="factura-chip factura-chip--falta" style={{ flexBasis: '100%' }}>
-              Solo se marcaron las {shown.length} que se ven de {realizadas.length}: escoge el mes o el cliente para marcarlas todas.
+              Solo se marcaron las {shown.length} que se ven de {realizadas.length}: escoge el período o el cliente para marcarlas todas.
             </span>
           )}
           <span><strong>{seleccion.length}</strong> marcada(s) · {fmt(haSel)} ha{hSel > 0 ? ` + ${fmt(hSel)} h` : ''} · <strong>{pesosCortos(valorSel)}</strong>{sinTarifaSel > 0 ? ` (${sinTarifaSel} sin tarifa)` : ''}</span>
@@ -791,7 +780,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
         </table>
         {overLimit && (
           <p className="field-hint" style={{ padding: '8px 12px' }}>
-            Mostrando las primeras {LIMIT} de {realizadas.length}. Escoge un mes o busca para acotar.
+            Mostrando las primeras {LIMIT} de {realizadas.length}. Escoge un período o busca para acotar.
           </p>
         )}
       </div>

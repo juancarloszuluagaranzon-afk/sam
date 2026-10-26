@@ -580,7 +580,10 @@ export function RepuestosTab() {
           bodegaId={bodegaTaller.id}
           usuarioId={session?.id}
           onClose={() => setNuevaAbierta(false)}
-          onGuardada={() => void recargarCatalogo()}
+          onGuardada={(enviado) => {
+            setInfo(enviado ? 'Pieza guardada.' : 'Pieza guardada sin señal: sube sola cuando haya señal.')
+            void recargarCatalogo()
+          }}
         />
       )}
 

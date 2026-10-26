@@ -28,14 +28,27 @@ interface Props {
   /** Quién la registra. Va a `creadoPor`. */
   usuarioId?: string
   onClose: () => void
-  /** Se llama después de CADA guardado (para que la lista se recargue). */
-  onGuardada: () => void
+  /** Se llama después de CADA guardado (para que la lista se recargue). `enviado` false = quedó en cola sin señal. */
+  onGuardada: (enviado: boolean) => void
 }
 
 type Errores = { nombre?: string; estante?: string; cantidad?: string; foto?: string; general?: string }
 
 /** Solo dígitos y separadores: en un campo numérico no debe entrar nada más. */
 const soloNumero = (v: string) => v.replace(/[^0-9.,]/g, '')
+/**
+ * El id lo pone el celular: así reintentar el guardado no crea una pieza gemela. `randomUUID` exige
+ * Chrome 92+ y conexión segura; en un celular viejo se arma uno válido (v4) con `getRandomValues`.
+ */
+function nuevoId(): string {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  const b = crypto.getRandomValues(new Uint8Array(16))
+  b[6] = (b[6] & 0x0f) | 0x40
+  b[8] = (b[8] & 0x3f) | 0x80
+  const h = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('')
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`
+}
+
 /** El mismo número que se teclea, con coma o con punto. */
 const aNumero = (v: string) => Number(v.replace(',', '.'))
 
@@ -104,7 +117,7 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
     const nombreLimpio = aMayus(nombre.trim())
     const min = stockMinimo.trim() ? aNumero(stockMinimo) : NaN
     const pieza: NuevaPieza = {
-      id: crypto.randomUUID(),
+      id: nuevoId(),
       nombre: nombreLimpio,
       ubicacion: aMayus(ubicacion.trim()),
       cantidad: aNumero(cantidad),
@@ -120,7 +133,7 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
       const { enviado } = await guardarPiezaTaller(pieza, foto ?? undefined)
       // El estante queda sugerido la próxima vez: casi siempre se repite.
       recordarValor('UBICACION', pieza.ubicacion)
-      onGuardada()
+      onGuardada(enviado)
       if (!seguir) { onClose(); return }
       setUltima({ nombre: nombreLimpio, enviado })
       setGuardadas((n) => n + 1)

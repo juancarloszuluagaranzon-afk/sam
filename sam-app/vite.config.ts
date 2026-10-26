@@ -100,6 +100,10 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,ico,woff,woff2}'],
+        // 🔴 El paquete principal de la app ya pesa ~2 MB y el tope por defecto de workbox es 2 MiB: al pasarlo
+        // el build FALLA (26-oct-2026, por 688 bytes, al sumar el inventario de piezas) y Vercel no publica.
+        // Es el archivo que la app necesita para abrir sin señal, así que tiene que quedar en el precache.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Avisos al celular del dueño de la finca (notificaciones push): el
         // service worker generado importa el que las recibe y las muestra.
         importScripts: ['sw-avisos.js'],

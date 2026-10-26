@@ -133,7 +133,14 @@ export function tableroCorte(fincaId: string, d: DatosFincas, hoy: string): Tabl
   const tiempo = hectareas > 0
     ? pares.reduce((t, p) => t + n(p.s.areaHa) * Math.max(0, Math.min(1, diasEntre(p.c.fechaCorte, hoy) / HORIZONTE_DIAS)), 0) / hectareas * 100
     : 0
-  const alertasVentana: { nivel: 'mal' | 'ojo'; texto: string }[] = []
+  // Las ventanas vencidas se juntan por labor: «Roturación, suertes A1 y B2» y no una alerta por suerte.
+  const ventanas = new Map<string, { nivel: 'mal' | 'ojo'; labor: string; suertes: string[]; max: number }>()
+  const acumularVentana = (nivel: 'mal' | 'ojo', labor: string, suerte: string, ddc: number) => {
+    const k = `${nivel}|${sinTildes(labor)}`
+    const v = ventanas.get(k) ?? { nivel, labor, suertes: [], max: 0 }
+    v.suertes.push(suerte); v.max = Math.max(v.max, ddc)
+    ventanas.set(k, v)
+  }
 
   for (const l of labores) {
     const par = cicloDe.get(l.cicloId)!
@@ -161,13 +168,23 @@ export function tableroCorte(fincaId: string, d: DatosFincas, hoy: string): Tabl
     const op = oportunidad(l, par.c, d.reportes ?? [], hoy)
     if (op && op.nivel === 'tardia' && !op.hecha) {
       g._ven++
-      alertasVentana.push({ nivel: 'mal', texto: `${nombreLabor(l.labor)}, suerte ${par.s.codigo}: ya pasó su ventana (van ${op.ddc} días del corte) y sigue sin hacerse.` })
+      acumularVentana('mal', l.labor, par.s.codigo, op.ddc)
     } else if (op && op.nivel === 'normal' && !op.hecha) {
       g._norm = true
-      alertasVentana.push({ nivel: 'ojo', texto: `${nombreLabor(l.labor)}, suerte ${par.s.codigo}: ya no está en su fecha ideal (van ${op.ddc} días del corte).` })
+      acumularVentana('ojo', l.labor, par.s.codigo, op.ddc)
     }
     if (l.repetible && l.estado !== 'TERMINADA' && frac < 1 && dias > 0 && frac < Math.min(1, dias / HORIZONTE_DIAS) - 0.1) g._rez = true
   }
+
+  const alertasVentana: { nivel: 'mal' | 'ojo'; texto: string }[] = [...ventanas.values()].map((v) => {
+    const donde = v.suertes.length === 1 ? `suerte ${v.suertes[0]}` : `suertes ${v.suertes.slice(0, -1).join(', ')} y ${v.suertes[v.suertes.length - 1]}`
+    return {
+      nivel: v.nivel,
+      texto: v.nivel === 'mal'
+        ? `${nombreLabor(v.labor)}, ${donde}: ya pasó su ventana (van ${v.max} días del corte) y sigue sin hacerse.`
+        : `${nombreLabor(v.labor)}, ${donde}: ya no está en su fecha ideal (van ${v.max} días del corte).`,
+    }
+  })
 
   const filas: FilaLaborTablero[] = [...grupos.values()].map((g) => {
     const avance = g.presupuesto > 0 ? g.valorGanado / g.presupuesto : 0

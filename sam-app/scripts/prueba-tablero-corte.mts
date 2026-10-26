@@ -128,8 +128,10 @@ caso('una labor con la ventana vencida y sin hacer da alerta roja', () => {
   d.reportes = d.reportes.filter((r) => !/^r\d+-[01]$/.test(r.id)) // roturación y fertilización sin ningún reporte
   const t = tableroCorte(FINCA, d, HOY)
   const rojas = t.alertas.filter((a) => a.nivel === 'mal')
-  // 5 suertes × (roturación y fertilización) sin hacer = 10 ventanas vencidas
-  assert.equal(rojas.filter((a) => /ya pasó su ventana/.test(a.texto)).length, 10, JSON.stringify(rojas))
+  // roturación y fertilización sin hacer en las 5 suertes: una alerta por labor, con todas sus suertes
+  const vencidas = rojas.filter((a) => /ya pasó su ventana/.test(a.texto))
+  assert.equal(vencidas.length, 2, JSON.stringify(rojas))
+  assert.ok(vencidas.every((a) => /suertes 010, 020, 030, 040 y 050/.test(a.texto)), JSON.stringify(vencidas))
   // y como lo no avanzado no vale nada, el avance queda por debajo del plan
   assert.ok(rojas.some((a) => /SPI/.test(a.texto)))
   assert.equal(t.alertas[0].nivel, 'mal')

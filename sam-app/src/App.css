@@ -9565,6 +9565,32 @@ td.planilla-vacio:hover { background: #fde047; }
 .af-cat__cab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .af-cat__cab h3 { margin: 0; }
 .af-cat__cab > small { margin-left: auto; color: var(--color-ink-mid, #5a5f57); font-size: 0.78rem; white-space: nowrap; }
+/* Cronograma en DDC del asistente «Iniciar corte» (maqueta aprobada 25-oct-2026). */
+.af-crono { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.af-crono__tit { margin: 0; font-size: 0.72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--color-ink-mid, #5a5f57); }
+.af-crono__eje, .af-crono__fila { display: grid; grid-template-columns: minmax(96px, 34%) minmax(0, 1fr); gap: 8px; align-items: center; }
+.af-crono__regla { position: relative; height: 16px; margin-right: 34px; }
+.af-crono__regla span { position: absolute; transform: translateX(-50%); font-size: 0.72rem; color: var(--color-ink-mid, #5a5f57); }
+.af-crono__regla span:first-child { transform: none; }
+.af-crono__regla em { position: absolute; right: -34px; top: 1px; font-size: 0.66rem; font-style: normal; color: var(--color-ink-mid, #5a5f57); }
+.af-crono__lab { font-size: 0.84rem; font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
+.af-crono__pista { position: relative; height: 16px; margin-right: 34px; }
+.af-crono__linea { position: absolute; top: -3px; bottom: -3px; width: 0; border-left: 1px solid var(--color-divider, #e3e6df); }
+.af-crono__ideal, .af-crono__normal { position: absolute; top: 2px; height: 12px; border: 1px solid; }
+.af-crono__ideal { background: #1f7a3a; border-color: #165c2b; border-radius: 99px 0 0 99px; }
+.af-crono__normal { background: #f2dcae; border-color: #b9975a; border-radius: 0 99px 99px 0; }
+.af-crono__marca { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 2px solid var(--color-ink, #1f2a1f); text-decoration: none; }
+.af-crono__leyenda { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; color: var(--color-ink-mid, #5a5f57); }
+.af-crono__leyenda li { display: flex; align-items: center; gap: 6px; }
+.af-crono__sw { display: inline-block; flex: none; width: 22px; height: 9px; border: 1px solid; border-radius: 99px; }
+.af-crono__sw--ideal { background: #1f7a3a; border-color: #165c2b; }
+.af-crono__sw--normal { background: #f2dcae; border-color: #b9975a; }
+.af-crono__sw--marca { width: 0; height: 12px; border: 0; border-left: 2px solid var(--color-ink, #1f2a1f); border-radius: 0; }
+@media (max-width: 520px) {
+  .af-crono__eje { grid-template-columns: 1fr; }
+  .af-crono__eje > span { display: none; }
+  .af-crono__fila { grid-template-columns: 1fr; gap: 2px; margin-top: 4px; }
+}
 /* Tablero «Plan y avance» (26-oct-2026). */
 .af-curva-caja { width: 100%; min-width: 0; }
 .af-curva { display: block; max-width: 100%; }

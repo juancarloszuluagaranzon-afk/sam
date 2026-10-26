@@ -6,6 +6,7 @@ import {
   type AjusteRpc, type LineaPlan,
 } from '../../lib/planCorte'
 import { SearchableSelect } from '../../components/SearchableSelect'
+import { CronogramaDDC } from './CronogramaDDC'
 
 /**
  * «Iniciar corte» como un asistente de cuatro pasos (25-oct-2026): Parámetros → Punto de partida →
@@ -197,15 +198,18 @@ export function PlanCorte({ suerte, hoy, paquete, ciclos, labores, otras, hayCic
             <div className="af-kpi"><b>{fmtPesosCorto(totales.ppto)}</b><span>Insumos y otros costos</span><small>suma del Ppto por ha</small></div>
           </div>
           {totales.sinCosto > 0 && <p className="af-nota af-rojo">▲ {plural(totales.sinCosto, 'labor sin costo', 'labores sin costo')}: no suman al presupuesto. Puede volver al paso 3 para cargarlo.</p>}
-          <h4 className="af-plan__sub">Cuándo toca cada labor</h4>
-          <ul className="af-plan__crono">
-            {hitos.map((h) => (
-              <li key={h.linea.clave}>
-                <b>{nombreLabor(h.linea.labor)}</b>
-                <span>{h.ideal ? <>ideal hasta el {dia(h.ideal)}{h.normal ? <small> · normal hasta el {dia(h.normal)}</small> : null}</> : <small>{h.linea.repetible ? 'se repite durante el corte' : 'sin ventana'}</small>}</span>
-              </li>
-            ))}
-          </ul>
+          <CronogramaDDC lineas={lineas} />
+          <details className="af-plan__fechas">
+            <summary>Ver las fechas de cada labor</summary>
+            <ul className="af-plan__crono">
+              {hitos.map((h) => (
+                <li key={h.linea.clave}>
+                  <b>{nombreLabor(h.linea.labor)}{h.linea.variedadFila ? ` ${h.linea.variedadFila}` : ''}</b>
+                  <span>{h.ideal ? <>ideal hasta el {dia(h.ideal)}{h.normal ? <small> · normal hasta el {dia(h.normal)}</small> : null}</> : <small>{h.linea.repetible ? 'se repite durante el corte' : 'sin ventana'}</small>}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
           <p className="af-nota">
             Fecha del corte: {dia(fecha)} · {tipo === 'SOCA' ? 'soca' : 'plantilla'}.
             {hayCicloAbierto ? ' Al activar, el corte en curso se cierra con esta fecha.' : ''} Hasta aquí no se ha guardado nada.

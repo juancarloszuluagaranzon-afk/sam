@@ -1,4 +1,6 @@
 import { unidadDeLabor } from '../lib/texto'
+import { ciclosEnExceso } from '../lib/sobreArea'
+import { AvisoSobreArea } from '../components/AvisoSobreArea'
 import { horasDeServicio } from '../lib/horasServicio'
 import { fmtHora } from '../lib/fechas'
 import { useEffect, useMemo, useState } from 'react'
@@ -352,6 +354,12 @@ export function PlanillaTab({ onEditLabor }: { onEditLabor?: (a: Assignment) => 
     }
     return out
   }, [planillaMonth, planillaQuincena, todayKey])
+
+  // «Revise antes de pagar»: suertes cuyo total registrado en estos días pasa del área oficial (candado de área).
+  const sobreArea = useMemo(
+    () => (days.length ? ciclosEnExceso(assignments, maestro, { desde: days[0].key, hasta: days[days.length - 1].key }, (l) => unidadDeLabor(l) === 'ha') : []),
+    [assignments, maestro, days],
+  )
 
   // Matriz operario x dia. Se muestran TODOS los operarios del catálogo (aunque
   // no hayan trabajado), más cualquier trabajador con labores/novedad que no esté
@@ -819,6 +827,8 @@ Al final van <strong>tres columnas</strong>: el <strong>Total</strong> de siempr
         número es de cada cosa. Dentro de la casilla del día, lo que esté en hectómetros
         aparece debajo y siempre con su unidad.
       </p>
+
+      <AvisoSobreArea ciclos={sobreArea} />
 
       <div className="planilla-legend">
         <span className="planilla-legend__item"><i className="planilla-legend__dot planilla-num--proceso" />En proceso</span>

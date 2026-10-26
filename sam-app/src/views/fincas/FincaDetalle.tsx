@@ -128,7 +128,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
             <div className="af-fila2"><span>Ejecutado del presupuesto</span><b>{p.pct != null ? `${p.pct} %` : '—'}</b></div>
             {(p.presupuestoAparte > 0 || p.ejecutadoAparte > 0) && <div className="af-desglose">
               <div className="af-fila2"><span>Servicios de AgroMorales<small>{fmtPesosCorto(p.ejecutadoServicio)} de {fmtPesosCorto(p.presupuestoServicio)}</small></span><b>{p.pctServicio != null ? `${p.pctServicio} %` : '—'}</b></div>
-              <div className="af-fila2"><span>Pagado aparte<small>Insumos, agua y mano de obra · {fmtPesosCorto(p.ejecutadoAparte)} de {fmtPesosCorto(p.presupuestoAparte)}</small></span><b>{p.pctAparte != null ? `${p.pctAparte} %` : '—'}</b></div>
+              <div className="af-fila2"><span>Ppto por ha ejecutado<small>Insumos, agua y mano de obra · {fmtPesosCorto(p.ejecutadoAparte)} de {fmtPesosCorto(p.presupuestoAparte)}</small></span><b>{p.pctAparte != null ? `${p.pctAparte} %` : '—'}</b></div>
             </div>}
             {p.sinCosto > 0 && <p className="af-nota">▲ {p.sinCosto} labor{p.sinCosto === 1 ? '' : 'es'} sin costo: no suman al presupuesto.</p>}
           </div>}
@@ -207,7 +207,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                               const aparte = x.labor.costoAparteUnitarioPlan || 0
                               const pasadas = x.labor.pasadasPlan || 1
                               return <td>{plan.total > 0 ? fmtPesosCorto(plan.total) : <span className="af-rojo">sin costo</span>}
-                                {plan.total > 0 && <small>{pasadas > 1 ? `${pasadas} pasadas · ` : ''}{[tarifa > 0 ? fmtPesos(tarifa) : '', aparte > 0 ? `${fmtPesos(aparte)} aparte` : ''].filter(Boolean).join(' + ')} / {x.labor.unidad}</small>}</td>
+                                {plan.total > 0 && <small>{pasadas > 1 ? `${pasadas} pasadas · ` : ''}{[tarifa > 0 ? fmtPesos(tarifa) : '', aparte > 0 ? `${fmtPesos(aparte)} ppto` : ''].filter(Boolean).join(' + ')} / {x.labor.unidad}</small>}</td>
                             })()}
                             <td>{x.oport ? <span className={`af-chip ${CHIP[x.oport.nivel].c}`}>{CHIP[x.oport.nivel].t}</span> : <small>sin ventana</small>}</td>
                             <td><small>{x.labor.estado === 'ANULADA' ? `anulada: ${x.labor.anuladaMotivo}` : x.labor.estado.replace('_', ' ').toLowerCase()}</small></td>
@@ -237,7 +237,7 @@ export function FincaDetalle({ ctx, fincaId, onVolver, onEditar }: {
                   <div key={x.labor.id} className="af-form af-editor-plan">
                     <b className="af-form__ancho">Presupuesto de {x.labor.labor.toLowerCase()} · suerte {s.codigo}</b>
                     <label>Tarifa por {x.labor.unidad}<input inputMode="numeric" value={editandoPlan.tarifa} onChange={(e) => setEditandoPlan({ ...editandoPlan, tarifa: e.target.value })} /></label>
-                    <label>Costo aparte por {x.labor.unidad} y pasada<input inputMode="numeric" value={editandoPlan.aparte} onChange={(e) => setEditandoPlan({ ...editandoPlan, aparte: e.target.value })} /></label>
+                    <label>Ppto por {x.labor.unidad} y pasada<input inputMode="numeric" value={editandoPlan.aparte} onChange={(e) => setEditandoPlan({ ...editandoPlan, aparte: e.target.value })} /></label>
                     {x.labor.repetible && <label>Pasadas<input inputMode="numeric" value={editandoPlan.pasadas} onChange={(e) => setEditandoPlan({ ...editandoPlan, pasadas: e.target.value })} /></label>}
                     {editandoPlan.error && <p className="feedback error af-form__ancho">{editandoPlan.error}</p>}
                     <div className="af-form__ancho af-acciones">

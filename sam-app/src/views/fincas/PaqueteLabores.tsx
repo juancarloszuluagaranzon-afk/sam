@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { CtxFincas } from './FincasView'
-import { guardarPaquete, mensajeDeError, type LaborPaquete } from '../../services/fincasApi'
-import { fmtPesos, VER_PLATA } from '../../lib/fincas'
+import { cargarReferencias, guardarPaquete, mensajeDeError, type LaborPaquete, type RubroCosto } from '../../services/fincasApi'
+import { fmtPesos, fmtPesosCorto, RUBROS, VER_PLATA } from '../../lib/fincas'
+import { agruparCatalogo, costoReferenciaPorHa, resumenCatalogo, sinCosto, totalPorHa } from '../../lib/catalogoFincas'
+import { Ayuda } from '../../components/Ayuda'
 
 /**
  * El paquete de labores: la plantilla con la que nace cada ciclo. Costo por
@@ -9,12 +11,43 @@ import { fmtPesos, VER_PLATA } from '../../lib/fincas'
  * ciclos ya abiertos: cada ciclo guarda su propio presupuesto, que es el que el
  * dueño aprobó.
  */
+
+/** «ROTURACIÓN» → «Roturación»: el catálogo se digita en mayúscula; el título de la tarjeta no la repite. */
+const capitalizar = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase()
+
+const APLICA: Record<LaborPaquete['aplica'], string> = { AMBOS: 'Soca y plantilla', SOCA: 'Soca', PLANTILLA: 'Plantilla' }
+
+/** Ventana en DDC (días después del corte). Las que se repiten (riego, malezas) no llevan ventana a propósito: no es un faltante. */
+function celdaVentana(p: LaborPaquete) {
+  const { ventanaIdeal: ideal, ventanaNormal: normal } = p
+  if (p.repetible) {
+    const pasadas = Math.max(1, Number(p.pasadasPlan) || 1)
+    return <><b>Se repite</b><small>{pasadas} {pasadas === 1 ? 'pasada' : 'pasadas'}</small></>
+  }
+  if (ideal != null && normal != null) return <><b>ideal ≤ {ideal}</b><small>normal ≤ {normal}</small></>
+  if (ideal != null || normal != null) return <small>falta la {ideal == null ? 'ideal' : 'normal'}</small>
+  return <small>sin ventana</small>
+}
+
+/** «—» cuando la cifra es cero: un cero grande en la columna parece un dato y no una falta. */
+const pesosOGuion = (v: number | undefined) => ((Number(v) || 0) > 0 ? fmtPesos(Number(v)) : '—')
+
 export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
   const { datos: d, token, recargar, esAdmin } = ctx
   const [editando, setEditando] = useState<Partial<LaborPaquete> & { labor: string } | null>(null)
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
-  if (!esAdmin) return <p className="subtle-copy">Solo administración edita el paquete.</p>
+  // El rubro de cada labor es un dato de `af_config` (referencias del gremio): si no llega,
+  // el catálogo se dibuja igual, solo que sin chip de rubro.
+  const [rubros, setRubros] = useState<Record<string, RubroCosto>>({})
+  useEffect(() => {
+    let vivo = true
+    cargarReferencias()
+      .then((r) => { if (vivo && r) setRubros(r.rubroPorLabor) })
+      .catch(() => { /* sin referencias se dibuja sin rubros */ })
+    return () => { vivo = false }
+  }, [])
+  if (!esAdmin) return <p className="subtle-copy">Solo administración edita el catálogo de labores.</p>
 
   async function guardar() {
     if (!editando) return
@@ -27,14 +60,23 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
     catch (e) { setError(mensajeDeError(e)) } finally { setGuardando(false) }
   }
   const nulo = (v: string) => (v.trim() === '' ? null : Number(v))
+  // El formulario vive arriba de la lista: al abrirlo desde una fila de abajo hay que llevar la vista hasta él.
+  const abrirEditor = (x: Partial<LaborPaquete> & { labor: string }) => {
+    setEditando(x)
+    requestAnimationFrame(() => document.getElementById('af-p-labor')?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+  }
+  const hayFilas = (d.paquete ?? []).length > 0
+  const resumen = resumenCatalogo(d.paquete)
+  const grupos = agruparCatalogo(d.paquete, rubros)
+  const referencia = costoReferenciaPorHa(d.paquete, 'SOCA')
 
   return (
     <div className="af-stack">
       <div className="af-cab">
-        <div><p className="eyebrow">Plantilla</p><h2>Paquete de labores</h2></div>
+        <div><p className="eyebrow">Plantilla</p><h2>Catálogo de labores</h2></div>
         <button type="button" className="primary-button" onClick={() => setEditando({ labor: '', unidad: 'ha', cantidadPorHa: 1, costoUnitario: 0, costoAparteUnitario: 0, pasadasPlan: 1, aplica: 'AMBOS', orden: 100, activa: true, repetible: false })}>+ Labor</button>
       </div>
-      <p className="subtle-copy" style={{ marginTop: 0 }}>Con esto nace cada corte: sus labores, cuánto cuestan y hasta qué día después del corte están a tiempo. Una labor puede tener una ventana distinta por <b>variedad</b> (curvas de Cenicaña): esa fila manda para las suertes de esa variedad. Cambiarlo no toca los cortes en curso.</p>
+      <Ayuda>Con esto nace cada corte: sus labores, su costo y hasta qué día después del corte (DDC) están a tiempo. Una labor puede tener una ventana distinta por variedad: esa fila manda para las suertes de esa variedad. Cambiar el catálogo no toca los cortes en curso.</Ayuda>
       {error && <p className="feedback error">{error}</p>}
 
       {editando && (
@@ -50,7 +92,7 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
             <label>Cantidad por hectárea<input id="af-p-cxha" inputMode="decimal" value={String(editando.cantidadPorHa ?? 1)} onChange={(e) => setEditando({ ...editando, cantidadPorHa: Number(e.target.value.replace(',', '.')) || 1 })} /></label>
             {VER_PLATA && <>
               <label>Tarifa del servicio por unidad (pesos)<input id="af-p-costo" inputMode="numeric" value={String(editando.costoUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /></label>
-              <label>Costo aparte por unidad y pasada (pesos)<input id="af-p-aparte" inputMode="numeric" value={String(editando.costoAparteUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoAparteUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /><small className="af-nota">Insumos, agua o mano de obra. Entra al presupuesto; no se cobra al aceptar el reporte.</small></label>
+              <label>Ppto por {editando.unidad || 'ha'} y pasada (pesos)<input id="af-p-aparte" inputMode="numeric" value={String(editando.costoAparteUnitario ?? 0)} onChange={(e) => setEditando({ ...editando, costoAparteUnitario: Number(e.target.value.replace(/\./g, '')) || 0 })} /><small className="af-nota">Insumos, agua o mano de obra. Entra al presupuesto; no se cobra al aceptar el reporte.</small></label>
             </>}
             <label>A tiempo hasta (días del corte)<input id="af-p-vi" inputMode="numeric" value={editando.ventanaIdeal ?? ''} onChange={(e) => setEditando({ ...editando, ventanaIdeal: nulo(e.target.value) })} placeholder="sin ventana" /></label>
             <label>Tardía después de (días)<input id="af-p-vn" inputMode="numeric" value={editando.ventanaNormal ?? ''} onChange={(e) => setEditando({ ...editando, ventanaNormal: nulo(e.target.value) })} placeholder="sin ventana" /></label>
@@ -80,29 +122,89 @@ export function PaqueteLabores({ ctx }: { ctx: CtxFincas }) {
         </div>
       )}
 
-      <div className="af-card">
-        <div className="af-tabla-wrap">
-          <table className="af-tabla">
-            <thead><tr><th>Labor</th><th>Aplica</th>{VER_PLATA && <th>Costo</th>}<th>A tiempo</th><th /></tr></thead>
-            <tbody>
-              {d.paquete.map((p) => (
-                <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
-                  <td><b>{p.labor.toLowerCase()}</b><small>{p.cantidadPorHa !== 1 ? `${p.cantidadPorHa} ${p.unidad} por ha` : `por ${p.unidad}`}{p.repetible ? ' · varias pasadas' : ''}</small></td>
-                  <td><small>{p.aplica === 'AMBOS' ? 'soca y plantilla' : p.aplica.toLowerCase()}{p.variedad ? <><br />🌱 {p.variedad}</> : ''}</small></td>
-                  {VER_PLATA && <td>{p.costoUnitario > 0 || (p.costoAparteUnitario || 0) > 0 ? <>{[p.costoUnitario > 0 ? fmtPesos(p.costoUnitario) : '', (p.costoAparteUnitario || 0) > 0 ? `${fmtPesos(p.costoAparteUnitario || 0)} aparte` : ''].filter(Boolean).join(' + ')} / {p.unidad}{p.repetible && p.pasadasPlan > 1 && <small>{p.pasadasPlan} pasadas</small>}</> : <span className="af-rojo">sin costo</span>}</td>}
-                  <td><small>{p.ventanaIdeal != null && p.ventanaNormal != null ? `ideal ≤${p.ventanaIdeal} · normal ≤${p.ventanaNormal} días` : 'sin ventana'}</small></td>
-                  <td className="af-td-acc">
-                    <button type="button" className="af-link" onClick={() => setEditando({ ...p })}>Editar</button>
-                    <button type="button" className="af-link" onClick={async () => {
-                      try { await guardarPaquete({ ...p, activa: !p.activa }, token); await recargar() } catch (e) { setError(mensajeDeError(e)) }
-                    }}>{p.activa ? 'Desactivar' : 'Activar'}</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!hayFilas ? (
+        <div className="af-card af-vacio">
+          <h3>Todavía no hay labores</h3>
+          <p className="af-nota">Cree la primera con «+ Labor». Sin catálogo, cada corte nuevo nace sin presupuesto.</p>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="af-kpis af-kpis--compacto">
+            <div className="af-kpi">
+              <b>{resumen.laboresActivas}</b>
+              <span>Labores activas</span>
+              <small>{resumen.filasActivas} {resumen.filasActivas === 1 ? 'fila' : 'filas'} con variedades y tipos de corte</small>
+            </div>
+            <div className={`af-kpi${resumen.filasSinCosto > 0 ? ' af-kpi--mal' : ''}`}>
+              <b>{resumen.filasSinCosto}</b>
+              <span>Sin costo</span>
+              <small>no suman al presupuesto</small>
+            </div>
+            <div className={`af-kpi${resumen.filasSinVentana > 0 ? ' af-kpi--ojo' : ''}`}>
+              <b>{resumen.filasSinVentana}</b>
+              <span>Sin ventana</span>
+              <small>falta ideal o normal en DDC</small>
+            </div>
+            {VER_PLATA && (
+              <div className="af-kpi">
+                <b>{fmtPesosCorto(referencia.total)}</b>
+                <span>Costo de referencia por ha</span>
+                <small>corte de soca · labores genéricas</small>
+              </div>
+            )}
+          </div>
+
+          {grupos.map((g) => {
+            const rubroId = g.rubro
+            const rubro = rubroId ? RUBROS.find((r) => r.id === rubroId)?.nombre ?? null : null
+            return (
+              <div key={g.labor} className="af-card">
+                <div className="af-cat__cab">
+                  <h3>{capitalizar(g.labor)}</h3>
+                  {rubro && <span className="af-chip af-chip--neutro">{rubro}</span>}
+                  {g.sinCosto > 0 && <span className="af-chip af-chip--mal">{g.sinCosto} sin costo</span>}
+                  <small>{g.activas} {g.activas === 1 ? 'fila activa' : 'filas activas'}</small>
+                </div>
+                <div className="af-tabla-wrap">
+                  <table className="af-tabla af-cat__tabla">
+                    <thead>
+                      <tr>
+                        <th>Tipo y variedad</th><th>Ventana (DDC)</th>
+                        {VER_PLATA && <><th>Servicio</th><th>Ppto por ha</th><th>Total por ha</th></>}
+                        <th><span className="af-cat__solo-lector">Acciones</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {g.filas.map((p) => (
+                        <tr key={p.id} className={p.activa ? '' : 'af-anulada'}>
+                          <td data-label="Tipo y variedad" className="af-cat__tipo">
+                            <b>{APLICA[p.aplica]}</b>
+                            <small>{p.variedad ? `🌱 ${p.variedad}` : 'Todas las variedades'}</small>
+                            {!p.activa && <span className="af-chip af-chip--neutro">Inactiva</span>}
+                          </td>
+                          <td data-label="Ventana (DDC)">{celdaVentana(p)}</td>
+                          {VER_PLATA && <>
+                            <td data-label="Servicio">{pesosOGuion(p.costoUnitario)}<small>/ {p.unidad}</small></td>
+                            <td data-label="Ppto por ha">{pesosOGuion(p.costoAparteUnitario)}</td>
+                            <td data-label="Total por ha">{sinCosto(p) ? <span className="af-rojo">sin costo</span> : <b>{fmtPesos(totalPorHa(p))}</b>}</td>
+                          </>}
+                          <td className="af-td-acc af-cat__acc">
+                            <button type="button" className="af-link" onClick={() => abrirEditor({ ...p })}>Editar</button>
+                            <button type="button" className="af-link" onClick={() => abrirEditor({ ...p, id: undefined, activa: true })}>Duplicar</button>
+                            <button type="button" className="af-link" onClick={async () => {
+                              try { await guardarPaquete({ ...p, activa: !p.activa }, token); await recargar() } catch (e) { setError(mensajeDeError(e)) }
+                            }}>{p.activa ? 'Desactivar' : 'Activar'}</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })}
+        </>
+      )}
     </div>
   )
 }

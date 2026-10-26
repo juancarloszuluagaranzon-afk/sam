@@ -194,7 +194,7 @@ export function FincasView({ onLogout }: { onLogout: () => void }) {
     { id: 'fincas', label: 'Fincas' },
     { id: 'aceptar', label: porAceptar ? `Por aceptar (${porAceptar})` : 'Por aceptar' },
     { id: 'reportar', label: `Reportar labor${porEnviar ? ` · ${porEnviar} por enviar` : ''}${porCorregir ? ` · ⚠ ${porCorregir} por corregir` : ''}` },
-    { id: 'paquete', label: 'Paquete de labores', solo: true },
+    { id: 'paquete', label: 'Catálogo de labores', solo: true },
   ]
 
   return (

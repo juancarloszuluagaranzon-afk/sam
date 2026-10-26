@@ -9560,6 +9560,28 @@ td.planilla-vacio:hover { background: #fde047; }
   padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0;
 }
 .af-card h3 { margin: 0; font-size: 1rem; }
+/* Catálogo de labores (25-oct-2026): una tarjeta por labor. Título, rubro y avisos en una
+   línea que se envuelve; «N filas activas» se va a la derecha cuando cabe. */
+.af-cat__cab { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.af-cat__cab h3 { margin: 0; }
+.af-cat__cab > small { margin-left: auto; color: var(--color-ink-mid, #5a5f57); font-size: 0.78rem; white-space: nowrap; }
+.af-tabla.af-cat__tabla { min-width: 0; }
+.af-tabla.af-cat__tabla td b { font-variant-numeric: tabular-nums; }
+.af-cat__tipo .af-chip { margin-top: 4px; }
+.af-cat__acc { white-space: nowrap; }
+.af-cat__solo-lector { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* En celular cada fila del catálogo es una tarjetita de 2 columnas (ventana | servicio, ppto | total).
+   No se oculta ninguna celda suelta: en una tabla eso corre las demás columnas (lección del 24-oct). */
+@media (max-width: 640px) {
+  .af-tabla.af-cat__tabla thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .af-tabla.af-cat__tabla, .af-tabla.af-cat__tabla tbody { display: block; }
+  .af-tabla.af-cat__tabla tr { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding: 10px 0; border-bottom: 1px solid var(--color-divider, #e3e6df); }
+  .af-tabla.af-cat__tabla tr:last-child { border-bottom: 0; }
+  .af-tabla.af-cat__tabla td { display: block; border: 0; padding: 0; min-width: 0; overflow-wrap: anywhere; }
+  .af-tabla.af-cat__tabla td[data-label]::before { content: attr(data-label); display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: .05em; color: var(--color-ink-mid, #5a5f57); margin-bottom: 1px; }
+  .af-tabla.af-cat__tabla td.af-cat__tipo { grid-column: 1 / -1; }
+  .af-tabla.af-cat__tabla td.af-cat__acc { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; white-space: normal; }
+}
 .af-vacio { align-items: flex-start; }
 .af-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
 .af-kpi {

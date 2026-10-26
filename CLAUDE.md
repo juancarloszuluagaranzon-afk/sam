@@ -617,6 +617,22 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   finca y ponía 2026 más barato que 2025), OpenCode la tarjeta, Claude revisó, corrigió y ensayó en la base
   con rollback antes de entregar.
 
+## Cerrado el 26-oct-2026 — Rediseño de Fincas (versión `f4417aa`)
+
+- 🌱 **Catálogo de labores** (`views/fincas/PaqueteLabores`, `lib/catalogoFincas.ts`): una tarjeta por labor con rubro, tipo de
+  corte y variedad, ventana en DDC, servicio, **Ppto por ha** y **Total por ha** (la columna de la base sigue siendo
+  `costo_aparte_unitario`: capa de traducción permanente, como aval/aprobación).
+- 🧭 **Asistente «Iniciar corte»** en 4 pasos (`PlanCorte`, `CronogramaDDC`, `lib/planCorte.ts`): parámetros → punto de partida
+  (catálogo, corte anterior u otra suerte) → ajustar costos → revisar con el cronograma. Nada se guarda hasta el paso 4, y entonces la
+  función `af_abrir_ciclo_plan` (migración `20261025190000`) abre el corte y aplica los ajustes **en una sola transacción**.
+- 📊 **Tablero «Plan y avance»** (`TableroCorte`, `lib/tableroCorte.ts`): presupuesto, plan a la fecha, ejecutado, valor ganado,
+  curva S con proyección y alertas. Variación de costo = valor ganado − ejecutado. Plan en línea recta y semáforo 0,95 / 0,90 son
+  criterios propios, no un estándar. En IYOMA PRUEBAS el 88 % del gasto no está ligado a una labor (alerta solo para administración).
+- ↩️ **Botón «atrás»** del celular en el asistente y el editor del catálogo (`lib/atras.ts`, el mismo de la rama `atras-celular`).
+  Quedan por estado las pestañas de la finca y `FincasView`.
+- Detalle y lecciones en `managing-fincas` → «REDISEÑO de Fincas». Falta: etapas y rubros del gremio por confirmar con Carlos David,
+  y la sección del manual del asistente y del tablero.
+
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 
 Para cambios grandes de código, el escalamiento cuando algo falla es **Codex (2 intentos) →

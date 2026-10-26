@@ -1,0 +1,191 @@
+/* ── Piezas del taller (26-oct-2026) ─────────────────────────────────────────
+   Lista con miniatura, alta rápida y visor de foto. Aquí SOLO va lo que no
+   existe en App.css: las clases de siempre (.inv-row, .inv-stock, .modal-card,
+   .primary-button, .inline-button…) se usan tal cual. Ningún color suelto: todo
+   sale de las variables del tema, así que el modo oscuro funciona sin tocar nada. */
+
+/* ── Botón «📷 Nueva pieza» ───────────────────────────────────────────────────
+   Ancho completo en celular (el dedo apunta fácil); en computador del ancho de
+   su texto, porque un botón de 1.400 px de ancho no se ve como un botón. */
+.pieza-nueva-btn { margin-top: 10px; }
+@media (min-width: 560px) {
+  .pieza-nueva-btn { width: fit-content; min-width: 210px; }
+}
+
+/* ── Chips de filtro ──────────────────────────────────────────────────────────
+   40 px de alto mínimo: en el taller se tocan con guantes o con dedos sucios. */
+.rep-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.rep-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 40px; padding: 6px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-soft);
+  color: var(--color-ink-mid);
+  font: inherit; font-size: 0.9rem; font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.rep-chip:active { transform: scale(0.98); }
+.rep-chip--on { background: var(--color-brand); border-color: var(--color-brand); color: var(--color-ink-on-brand); }
+.rep-chip__n { font-weight: 800; opacity: 0.8; }
+
+/* ── Miniatura de la fila ─────────────────────────────────────────────────────
+   56 px: lo suficiente para reconocer la pieza sin que la fila se vuelva una
+   tarjeta. Sin foto, el mismo cuadro dice «sin foto» en vez de dejar un hueco. */
+.rep-thumb {
+  flex: 0 0 auto;
+  width: 56px; height: 56px;
+  padding: 0; overflow: hidden;
+  border: 1px solid var(--color-border); border-radius: 10px;
+  background: var(--color-bg-muted);
+  display: grid; place-items: center;
+  cursor: zoom-in;
+}
+.rep-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rep-thumb--vacia {
+  cursor: default;
+  background: var(--color-bg-soft);
+  color: var(--color-ink-light);
+  font-size: 0.72rem; line-height: 1.1; text-align: center;
+}
+
+/* El nombre largo no puede desbordar la columna a 320 px. La referencia viene
+   en una píldora con `white-space: nowrap`; con la miniatura al lado ya no cabe
+   en un celular angosto, así que aquí se deja partir en vez de salirse. */
+.rep-lista .inv-row__main strong,
+.rep-lista .inv-row__main .rep-codigo,
+.rep-lista .inv-row__main .inv-cat { overflow-wrap: anywhere; }
+.rep-lista .inv-row__main .inv-cat { white-space: normal; }
+
+/* ── Píldora junto a la existencia ────────────────────────────────────────────
+   Rojo solo para «Agotado»; ámbar para «Mín N». En existencia normal no hay
+   píldora: pintar de verde lo que está bien vuelve ilegible lo que está mal. */
+.rep-stock { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.rep-pill {
+  font-size: 0.72rem; font-weight: 800;
+  padding: 2px 8px; border-radius: var(--radius-pill); white-space: nowrap;
+}
+.rep-pill--agotado { background: var(--color-status-cancel-bg); color: var(--color-status-cancel); }
+.rep-pill--min { background: var(--color-status-progress-bg); color: var(--color-status-progress); }
+
+/* ── Foto grande de la ficha ──────────────────────────────────────────────────
+   `object-fit: contain` (no cover): recortar la pieza es justo lo que impide
+   compararla con la que se tiene en la mano. */
+.rep-ficha-foto {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  margin-top: 12px;
+}
+.rep-ficha-foto .inline-button { min-height: 44px; }
+.rep-foto-grande {
+  width: 100%; max-width: 420px; padding: 4px;
+  border: 1px solid var(--color-border); border-radius: 12px;
+  background: var(--color-bg-soft);
+  cursor: zoom-in;
+}
+.rep-foto-grande img {
+  display: block; width: 100%; max-height: 220px;
+  object-fit: contain; border-radius: 8px;
+}
+
+/* ── Visor a pantalla completa ────────────────────────────────────────────────
+   Usa `.modal-overlay open`, que ya es `position: fixed; inset: 0` y lo cierra
+   el botón «atrás» del celular. Solo se cambia el color del fondo. */
+.pieza-visor { background: rgba(8, 10, 8, 0.94); padding: 12px; }
+.pieza-visor__img {
+  max-width: 100%; max-height: 90vh;
+  object-fit: contain; border-radius: 8px;
+}
+.pieza-visor__cerrar {
+  position: absolute; top: 12px; right: 12px;
+  width: 48px; height: 48px;
+  border: 0; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18); color: #fff;
+  font-size: 1.2rem; line-height: 1;
+  display: grid; place-items: center;
+  cursor: pointer;
+}
+.pieza-visor__cerrar:hover { background: rgba(255, 255, 255, 0.3); }
+
+/* ── Alta rápida: recuadro de la foto ──────────────────────────────────────── */
+.pieza-foto {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px;
+  width: 100%; min-height: 136px; padding: 16px;
+  border: 2px dashed var(--color-border); border-radius: 14px;
+  background: var(--color-bg-soft); color: var(--color-ink-mid);
+  font: inherit; font-size: 0.95rem; font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pieza-foto:disabled { opacity: 0.65; cursor: progress; }
+.pieza-foto small { font-size: 0.85rem; font-weight: 500; color: var(--color-ink-light); }
+.pieza-foto-vista { display: flex; flex-direction: column; gap: 8px; }
+.pieza-foto-vista img {
+  width: 100%; max-height: 220px;
+  object-fit: contain;
+  border: 1px solid var(--color-border); border-radius: 12px;
+  background: var(--color-bg-soft);
+}
+.pieza-foto-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.pieza-foto-acciones .inline-button { min-height: 44px; }
+
+/* ── Alta rápida: campos ──────────────────────────────────────────────────── */
+.pieza-campo {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 0.85rem; font-weight: 600;
+}
+.pieza-campo > input,
+.pieza-campo .searchable-select-input {
+  width: 100%; box-sizing: border-box; min-height: 44px;
+}
+.pieza-oblig { color: var(--color-status-cancel); }
+.pieza-error {
+  margin: 0;
+  color: var(--color-status-cancel);
+  font-size: 0.875rem; font-weight: 600;
+}
+.pieza-ayuda {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-ink-mid);
+}
+
+/* «Más datos»: cerrado por defecto para que la pantalla no parezca un formulario
+   de banco. El triangulito es propio porque `display: flex` borra el nativo. */
+.pieza-mas { border-top: 1px solid var(--color-border); padding-top: 8px; }
+.pieza-mas summary {
+  min-height: 40px;
+  display: flex; align-items: center; gap: 6px;
+  font-size: 0.9rem; font-weight: 700;
+  color: var(--color-brand);
+  cursor: pointer;
+}
+.pieza-mas summary::-webkit-details-marker { display: none; }
+.pieza-mas summary::before { content: '▸'; }
+.pieza-mas[open] summary::before { content: '▾'; }
+.pieza-mas__cuerpo { display: flex; flex-direction: column; gap: 10px; padding-top: 4px; }
+
+/* ── Alta rápida: avisos ──────────────────────────────────────────────────── */
+.pieza-ok {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 12px; border-radius: 10px;
+  background: var(--color-status-done-bg); color: var(--color-status-done);
+  font-size: 0.9rem;
+}
+.pieza-ok span { font-weight: 600; opacity: 0.9; }
+.pieza-nota {
+  margin: 0; padding: 8px 12px; border-radius: 10px;
+  background: var(--color-status-pending-bg); color: var(--color-status-pending);
+  font-size: 0.875rem; font-weight: 600;
+}
+
+/* ── Alta rápida: botones al pie ────────────────────────────────────────────
+   48 px de alto: es una decisión con plata y con inventario, no un enlace. */
+.pieza-pie { flex-wrap: wrap; justify-content: flex-end; }
+.pieza-pie button { min-height: 48px; }
+.pieza-pie .primary-button { width: auto; flex: 1 1 180px; padding: 0 16px; }
+@media (max-width: 480px) {
+  .pieza-pie .inline-button,
+  .pieza-pie .primary-button { width: 100%; flex: 1 1 100%; }
+}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useAppData } from '../../context/AppDataContext'
 import { useTaller } from './TallerContext'
 import {
@@ -12,6 +12,11 @@ import { SearchableSelect } from '../../components/SearchableSelect'
 import { fmtCantidad } from '../../lib/cantidad'
 import type { Aplicabilidad, InsumoProveedor, StockBodega } from '../../domain/sam'
 import { Ayuda } from '../../components/Ayuda'
+import { FotoVisor } from '../../components/FotoVisor'
+import { prepararFotoPieza } from '../../lib/fotoPieza'
+import { cambiarFotoPieza } from '../../services/piezasApi'
+import { NuevaPiezaModal } from './NuevaPiezaModal'
+import './piezas.css'
 
 /**
  * Catálogo de repuestos.
@@ -28,7 +33,7 @@ import { Ayuda } from '../../components/Ayuda'
 const money = (v: number) => `$${Math.round(v).toLocaleString('es-CO')}`
 
 export function RepuestosTab() {
-  const { insumos, setInsumos, equipment, busy, setBusy, setError, setInfo } = useAppData()
+  const { insumos, setInsumos, equipment, busy, setBusy, setError, setInfo, session } = useAppData()
   const { proveedores, bodegaTaller, refrescar } = useTaller()
 
   const [q, setQ] = useState('')
@@ -37,6 +42,18 @@ export function RepuestosTab() {
   const [stock, setStock] = useState<StockBodega[]>([])
   const [aplic, setAplic] = useState<Aplicabilidad[]>([])
   const [provs, setProvs] = useState<InsumoProveedor[]>([])
+
+  // ── Piezas con foto (26-oct-2026) ──
+  // Un solo filtro activo a la vez: «Todas», «Bajo mínimo», «Agotadas», «Sin foto».
+  const [filtro, setFiltro] = useState<'todas' | 'bajo' | 'agotadas' | 'sinfoto'>('todas')
+  const [nuevaAbierta, setNuevaAbierta] = useState(false)
+  const [visor, setVisor] = useState<{ src: string; titulo?: string } | null>(null)
+  // Qué pieza tiene la foto en camino; el botón dice «Subiendo foto…» mientras tanto.
+  const [fotoDe, setFotoDe] = useState('')
+  // La existencia sale de la bodega del taller. Hasta que llegue no se afirma
+  // «Agotado»: un cero de carga se leería como una pieza que no hay.
+  const [stockListo, setStockListo] = useState(false)
+  const inputFotoFicha = useRef<HTMLInputElement>(null)
 
   const [ficha, setFicha] = useState<{
     id: string; codigo: string; familia: string; descripcion: string
@@ -52,7 +69,8 @@ export function RepuestosTab() {
   useEffect(() => { void loadFamilias().then(setFamilias) }, [])
 
   useEffect(() => {
-    if (bodegaTaller) void loadStockBodega(bodegaTaller.id).then(setStock)
+    if (!bodegaTaller) { setStock([]); setStockListo(false); return }
+    void loadStockBodega(bodegaTaller.id).then((s) => { setStock(s); setStockListo(true) })
   }, [bodegaTaller])
 
   useEffect(() => {
@@ -76,6 +94,60 @@ export function RepuestosTab() {
         .filter(Boolean).some((v) => String(v).toUpperCase().includes(t)))
       .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es', { sensitivity: 'base' }))
   }, [insumos, q, soloRepuestos])
+
+  /**
+   * Cuántas hay de cada cosa, para los chips. Se cuenta sobre `lista`, o sea
+   * después del buscador y de «Solo repuestos de taller»: un chip que dice 40
+   * cuando el buscador ya dejó 3 no ayuda a nadie.
+   */
+  const conteos = useMemo(() => {
+    let agotadas = 0
+    let bajo = 0
+    let sinfoto = 0
+    for (const i of lista) {
+      const s = stockDe.get(i.id) ?? 0
+      const min = i.stockMinimo ?? 0
+      if (s <= 0) agotadas++
+      else if (min > 0 && s <= min) bajo++
+      if (!i.fotoThumbUrl) sinfoto++
+    }
+    return { todas: lista.length, agotadas, bajo, sinfoto }
+  }, [lista, stockDe])
+
+  const visibles = useMemo(() => lista.filter((i) => {
+    const s = stockDe.get(i.id) ?? 0
+    const min = i.stockMinimo ?? 0
+    if (filtro === 'agotadas') return s <= 0
+    if (filtro === 'bajo') return s > 0 && min > 0 && s <= min
+    if (filtro === 'sinfoto') return !i.fotoThumbUrl
+    return true
+  }), [lista, stockDe, filtro])
+
+  /** La lista y la existencia se recargan después de guardar una pieza o su foto. */
+  async function recargarCatalogo() {
+    try {
+      const { data } = await loadInsumos()
+      setInsumos(data)
+      if (bodegaTaller) { setStock(await loadStockBodega(bodegaTaller.id)); setStockListo(true) }
+    } catch {
+      // La pieza SÍ quedó guardada (con o sin señal); lo que falló fue refrescar la
+      // lista. Se dice, en vez de mostrar una lista vieja como si nada hubiera pasado.
+      setError('La pieza se guardó, pero la lista no se pudo actualizar. Vuelve a abrir la pestaña.')
+    }
+  }
+
+  async function subirFotoFicha(insumoId: string, file: File) {
+    setBusy(true); setError(''); setFotoDe(insumoId)
+    try {
+      const foto = await prepararFotoPieza(file)
+      await cambiarFotoPieza(insumoId, foto)
+      const { data } = await loadInsumos()
+      setInsumos(data)
+      setInfo('Foto guardada.')
+    } catch (err) {
+      setError((err as { message?: string })?.message || 'No se pudo guardar la foto.')
+    } finally { setBusy(false); setFotoDe('') }
+  }
 
   async function guardarFicha() {
     if (!ficha) return
@@ -123,6 +195,14 @@ export function RepuestosTab() {
         mismo con nombres distintos.</p>
       </Ayuda>
 
+      <button type="button" className="primary-button pieza-nueva-btn"
+        onClick={() => {
+          if (!bodegaTaller) { setError('No hay una bodega de taller configurada.'); return }
+          setNuevaAbierta(true)
+        }}>
+        📷 Nueva pieza
+      </button>
+
       <label style={{ marginTop: 10 }}>Buscar por código, nombre, referencia, marca o N° de parte
         <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ROD-0002, rodamiento, 30206…" />
       </label>
@@ -133,31 +213,66 @@ export function RepuestosTab() {
         </span>
       </label>
 
+      <div className="rep-chips" role="group" aria-label="Filtrar piezas">
+        {([
+          ['todas', 'Todas', conteos.todas],
+          ['bajo', 'Bajo mínimo', conteos.bajo],
+          ['agotadas', 'Agotadas', conteos.agotadas],
+          ['sinfoto', 'Sin foto', conteos.sinfoto],
+        ] as const).map(([valor, rotulo, n]) => (
+          <button key={valor} type="button"
+            className={`rep-chip${filtro === valor ? ' rep-chip--on' : ''}`}
+            aria-pressed={filtro === valor}
+            onClick={() => setFiltro(valor)}>
+            {rotulo} <span className="rep-chip__n">{n}</span>
+          </button>
+        ))}
+      </div>
+
       {lista.length === 0 ? (
         <p className="muted-text" style={{ marginTop: 12 }}>
           {soloRepuestos
             ? 'Todavía no hay repuestos marcados. Desmarca el filtro y marca los que sean de taller.'
             : 'Sin resultados.'}
         </p>
+      ) : visibles.length === 0 ? (
+        <p className="muted-text" style={{ marginTop: 12 }}>Ninguna pieza en este filtro.</p>
       ) : (
-        <div className="inv-list" style={{ marginTop: 12 }}>
-          {lista.map((i) => {
+        <div className="inv-list rep-lista" style={{ marginTop: 12 }}>
+          {visibles.map((i) => {
             const open = abierto === i.id
             const s = stockDe.get(i.id) ?? 0
-            const bajo = i.stockMinimo != null && s <= i.stockMinimo
             return (
               <div key={i.id} className="bod-item">
                 <div className={`inv-row${open ? ' bod-row--abierta' : ''}`}>
                   <div className="inv-row__main">
+                    {/* La miniatura va de primeras: la pieza se reconoce por la forma,
+                        no por el nombre que alguien escribió de afán. */}
+                    {i.fotoThumbUrl ? (
+                      <button type="button" className="rep-thumb"
+                        aria-label={`Ver foto de ${i.nombre}`}
+                        onClick={() => setVisor({ src: i.fotoUrl ?? i.fotoThumbUrl ?? '', titulo: i.nombre })}>
+                        <img src={i.fotoThumbUrl} alt={i.nombre} width={56} height={56}
+                          loading="lazy" decoding="async" />
+                      </button>
+                    ) : (
+                      <span className="rep-thumb rep-thumb--vacia">sin foto</span>
+                    )}
                     {i.codigo && <span className="rep-codigo">{i.codigo}</span>}
                     <strong>{i.nombre}</strong>
                     {i.referencia && <span className="inv-cat inv-cat--mat">{i.referencia}</span>}
                     {i.marca && <span className="subtle-copy">{i.marca}</span>}
                     {i.ubicacion && <span className="subtle-copy">📍 {i.ubicacion}</span>}
-                    {bajo && <span className="inv-cat inv-cat--off">⚠ Bajo mínimo</span>}
                   </div>
-                  <div className={`inv-stock${s <= 0 ? ' inv-stock--zero' : ''}`}>
-                    {fmtCantidad(s, i.unidad)} <small>{i.unidad}</small>
+                  <div className="rep-stock">
+                    <div className={`inv-stock${s <= 0 ? ' inv-stock--zero' : ''}`}>
+                      {fmtCantidad(s, i.unidad)} <small>{i.unidad}</small>
+                    </div>
+                    {/* La píldora solo aparece cuando hay un problema que atender. */}
+                    {stockListo && s <= 0 && <span className="rep-pill rep-pill--agotado">Agotado</span>}
+                    {stockListo && s > 0 && (i.stockMinimo ?? 0) > 0 && s <= (i.stockMinimo ?? 0) && (
+                      <span className="rep-pill rep-pill--min">Mín {fmtCantidad(i.stockMinimo, i.unidad)}</span>
+                    )}
                   </div>
                   <div className="inv-row__actions">
                     <button type="button" className="inline-button" onClick={() => setAbierto(open ? '' : i.id)} aria-expanded={open}>
@@ -168,6 +283,30 @@ export function RepuestosTab() {
 
                 {open && (
                   <div className="bod-stock">
+                    {/* Foto de la pieza: se toma ahí mismo, frente al estante. Tocar la
+                        foto la abre en grande; sirve para compararla con la que se tiene
+                        en la mano antes de bajarla. */}
+                    <div className="rep-ficha-foto">
+                      {(i.fotoUrl || i.fotoThumbUrl) && (
+                        <button type="button" className="rep-foto-grande"
+                          aria-label={`Ver foto de ${i.nombre}`}
+                          onClick={() => setVisor({ src: i.fotoUrl ?? i.fotoThumbUrl ?? '', titulo: i.nombre })}>
+                          <img src={i.fotoUrl ?? i.fotoThumbUrl} alt={i.nombre} loading="lazy" decoding="async" />
+                        </button>
+                      )}
+                      <input ref={inputFotoFicha} type="file" accept="image/*" capture="environment" hidden
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          e.target.value = ''
+                          if (file) void subirFotoFicha(i.id, file)
+                        }} />
+                      <button type="button" className="inline-button" disabled={busy}
+                        onClick={() => inputFotoFicha.current?.click()}>
+                        {fotoDe === i.id
+                          ? 'Subiendo foto…'
+                          : (i.fotoUrl || i.fotoThumbUrl) ? 'Cambiar foto' : '📷 Agregar foto'}
+                      </button>
+                    </div>
                     <div className="taller-ficha">
                       <div><span>Código propio</span><strong>{i.codigo ?? '—'}</strong></div>
                       <div><span>Referencia fabricante</span><strong>{i.referencia ?? '—'}</strong></div>
@@ -434,6 +573,18 @@ export function RepuestosTab() {
           </div>
         </div>
       )}
+
+      {/* Alta rápida: la pieza nueva se registra con el celular en la mano. */}
+      {nuevaAbierta && bodegaTaller && (
+        <NuevaPiezaModal
+          bodegaId={bodegaTaller.id}
+          usuarioId={session?.id}
+          onClose={() => setNuevaAbierta(false)}
+          onGuardada={() => void recargarCatalogo()}
+        />
+      )}
+
+      {visor && <FotoVisor src={visor.src} titulo={visor.titulo} onClose={() => setVisor(null)} />}
     </section>
   )
 }

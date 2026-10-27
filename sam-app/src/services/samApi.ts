@@ -1,5 +1,5 @@
 import { etiquetasFact, unirEtiquetasFact } from '../lib/etiquetasFact'
-import { setToken } from '../lib/sesion'
+import { getToken, setToken } from '../lib/sesion'
 import { LOCAL_MAESTRO } from '../data/constants'
 import { ingenioNombre, idSuerte, slugIngenio } from '../data/ingenios'
 import { DESTINO_LABEL } from '../domain/sam'
@@ -924,6 +924,16 @@ export async function loadEquipmentTodos(): Promise<Array<Equipment & { active: 
     plate: row.placa ? String(row.placa) : undefined,
     active: row.activo !== false,
   }))
+}
+
+/**
+ * Guarda el ORDEN de las máquinas de los informes: la posición de cada una es su lugar en `codigos` (todo de una vez).
+ * Devuelve cuántas máquinas quedaron con posición. Migración 20261027100000 (`equipos_guardar_orden`).
+ */
+export async function guardarOrdenEquipos(codigos: string[], usuario: string): Promise<number> {
+  const { data, error } = await supabase.rpc('equipos_guardar_orden', { p_codigos: codigos, p_usuario: usuario, p_token: getToken() })
+  if (error) throw new Error((error.message || 'No se pudo guardar el orden').replace(/^[A-Z_]+:\s*/, ''))
+  return Number(data ?? 0)
 }
 
 export async function loadEquipment(): Promise<{
@@ -2461,6 +2471,8 @@ export async function registrarCombustibleExterno(input: {
   /** Operario que recibe. Solo se guarda en destino=MAQUINA. */
   operarioId?: string
   operarioNombre?: string
+  /** ¿El tanque quedó lleno? `false` = NO quedó lleno. `undefined` = no se preguntó. Solo se guarda en destino=MAQUINA. */
+  tanqueLleno?: boolean
 }): Promise<void> {
   const origen: CombustibleOrigen = input.origen ?? 'ESTACION'
   const galones = redondear2(Number(input.galones))
@@ -2698,6 +2710,8 @@ export async function entregarDirecto(input: {
   bodegaId?: string
   /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
   engraso?: boolean
+  /** ¿El tanque quedó lleno? `false` = NO quedó lleno. `undefined` = no se preguntó (o no se entregó combustible). */
+  tanqueLleno?: boolean
   /**
    * Cuándo OCURRIÓ la entrega (ISO). `undefined` = ahora.
    *
@@ -3063,6 +3077,8 @@ export async function entregarSolicitud(input: {
   bodegaId?: string
   /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
   engraso?: boolean
+  /** ¿El tanque quedó lleno? `false` = NO quedó lleno. `undefined` = no se preguntó (o no se entregó combustible). */
+  tanqueLleno?: boolean
   /**
    * Lo que se entrega. Un ítem SIN `itemId` es adicional: el operario no lo
    * pidió pero el supervisor se lo lleva de una — pasa todo el tiempo, y antes

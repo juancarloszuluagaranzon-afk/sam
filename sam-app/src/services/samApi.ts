@@ -989,7 +989,7 @@ export interface EquipoEstado {
 export async function loadEquiposEstado(): Promise<EquipoEstado[]> {
   const { data, error } = await supabase.from('equipos').select('*').order('codigo')
   if (error || !data) return []
-  return (data as Record<string, unknown>[]).map((r) => {
+  return (data as Record<string, unknown>[]).map((r): EquipoEstado => {
     const e = String(r.estado ?? 'activo').toLowerCase()
     return {
       code: String(r.codigo ?? ''),

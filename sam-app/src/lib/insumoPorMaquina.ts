@@ -1,5 +1,5 @@
 import type { InsumoKardex } from '../domain/sam'
-import { compararEquipos } from './ordenEquipos'
+import { compararEquipos } from './ordenEquipos.ts'   // con extensión: así también lo cargan las pruebas de Node
 
 /**
  * «Otros insumos» de Eficiencia de maquinaria (Ola 1 de la reunión con ASM, 26-oct-2026): cuánto se le ha entregado de UN

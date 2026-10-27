@@ -170,6 +170,32 @@ export async function guardarPiezaTaller(p: NuevaPieza, foto?: FotoPiezaLista): 
   return enviarOEncolar('PIEZA', payload, () => ejecutarPieza(payload))
 }
 
+export interface ProgresoCarga { hechas: number; total: number }
+
+/**
+ * Guarda MUCHAS piezas de una vez (la carga desde Excel). Por tandas de 50, con 3 peticiones por tanda en vez de 5-6
+ * por pieza (500 piezas ≈ 30 peticiones, no 3.000). Todas las piezas traen su `id` (uuid) desde el análisis, así que
+ * una tanda que se repite NO crea gemelas. Cada pieza lleva su `bodegaId` y `creadoPor` (el mismo para todas).
+ *
+ * Por tanda, en este orden:
+ *  1. `insumos`: insert con `ignoreDuplicates` (nombre, ubicación, es_repuesto, stock = cantidad, stock_minimo y lo opcional en
+ *     MAYÚSCULA; categoría 'MATERIAL', unidad 'unidad'). Si trae `familia` y no `codigo`, el código propio lo pide
+ *     `siguienteCodigo(familia)` ANTES, de a una, solo a esas.
+ *  2. Pregunta qué ids de la tanda YA tienen su movimiento «Carga inicial del taller» en `insumos_kardex` (para esa bodega) y
+ *     a las que ya lo tienen NO les repite nada (así un reintento no vuelve a «fijar» la existencia).
+ *  3. A las demás, con cantidad > 0: un insert en `insumos_kardex` (tipo 'AJUSTE', cantidad = saldo = la cantidad, motivo
+ *     «Carga inicial del taller», creado_por) y un upsert en `insumos_stock` (insumo_id,bodega_id → stock).
+ * Si una tanda falla, lanza el error con cuántas llevaba hechas (`error.hechas`): lo ya guardado queda guardado y se puede
+ * reintentar el MISMO arreglo. Devuelve cuántas piezas se crearon y cuántas ya existían.
+ */
+export async function importarPiezas(
+  piezas: Array<NuevaPieza & { codigo?: string }>,
+  onProgreso?: (p: ProgresoCarga) => void,
+): Promise<{ creadas: number; yaExistian: number }> {
+  void piezas; void onProgreso
+  throw new Error('no implementado')
+}
+
 export async function ejecutarPieza(payload: PayloadPieza): Promise<void> {
   await crearPiezaTaller(payload.pieza)
   if (!payload.foto) return

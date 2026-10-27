@@ -693,7 +693,13 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   390/320 px y computador, con y sin señal. Obra hecha con «trabaja como me gusta»: Antigravity investigó, Codex la lógica, DeepSeek Flash
   las pantallas y las pruebas, Claude revisó, corrigió e integró (ver `registro-desempeno-modelos.md`).
 
-## En construcción, SIN publicar — Ola 1 de la reunión con ASM (rama `ola1-reunion`, 26-27-oct-2026)
+## PUBLICADO el 27-oct-2026 (versión `79ea695`) — Ola 1 de la reunión con ASM
+
+> Publicada con copia de seguridad (`/var/backups/supabase/antes_ola1_reunion_20261027.dump`) y la migración `20261027100000` aplicada ANTES del
+> deploy; verificada en vivo a 390 px (usuarios, eficiencia y facturación: 0 escrituras, 0 errores de consola). **Sin probar todavía con un usuario real
+> escribiendo**: eliminar un documento, guardar el valor de una factura, guardar el orden de las máquinas y un tanqueo con «No quedó lleno». Para revisar
+> con Carlos David: dos facturas sin líneas (FE 3242, una con valor $3.572.160.898 que parece mal digitado) y dos que no cuadran (FECE 1217 le faltan
+> $7.867.580; FECE 1213 se pasa $3.455.085). El texto de abajo se escribió antes de publicar.
 
 - **Seis cambios aprobados por Iván** a partir de las notas de la reunión del 26-oct: (1) **eliminar (anular) soportes y facturas sin líneas**
   (`fact_documento_anular`; el PDF queda en el depósito privado `facturacion`; con líneas o pagos la base responde `TIENE_LINEAS`/`TIENE_PAGOS`);
@@ -705,8 +711,8 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   cuenta del consumo tanque a tanque y sus galones pasan al siguiente tanque lleno (`consumoHora.ts`, `esBuena = horometroBueno && !parcial`);
   (6) **orden de máquinas configurable** (`equipos.orden`, `equipos_guardar_orden`, `lib/ordenEquipos.ts`, `OrdenMaquinasModal` en Máquinas;
   sin posición va al final por código). Aplicado en informes, eficiencia, tablero de consumo y máquinas.
-- **Migración `20261027100000_ola1_reunion_asm.sql` NO aplicada** (ensayada con rollback; pruebas en `supabase/pruebas_ola1_reunion.sql`).
-  Va **ANTES** del deploy. Pruebas de lógica: `node scripts/prueba-ola1-reunion.mts` (22).
+- **Migración `20261027100000_ola1_reunion_asm.sql`** (aplicada; pruebas en `supabase/pruebas_ola1_reunion.sql`). Pruebas de lógica:
+  `node scripts/prueba-ola1-reunion.mts` (22).
 - 🔴 **Lecciones**: (a) `tsc` NO ve los imports de CSS: Codex dejó dos componentes importando `./olaReunion.css` desde la carpeta equivocada y
   el **build fallaba** con `tsc` en 0 — correr siempre `npm run build`. (b) El atributo `hidden` pierde contra un `display` de clase
   (`.cons-tabla`, `.mural-kpi`): hace falta `[hidden]{display:none!important}` o renderizado condicional. (c) Una tabla ancha dentro de una
@@ -715,9 +721,26 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   categoría del menú: buscar por el texto exclusivo del ítem.
 - Probado con servidor falso (lecturas reales, ninguna escritura) a 390/320 y computador. **Ya existían en producción**: sobreancho de 12 px
   en computador y barra superior del analista de 413 px a 320 px (afecta a todos los roles; arreglo aparte).
-- Falta: autorización de Iván para publicar (con tarjeta de Opus, copia de seguridad, migración y verificación en vivo), manual de las pantallas
-  nuevas, y las Olas 2 (cartera contable: descuentos por cliente, observaciones, catálogo de razón social, quién factura frente a quién paga) y
-  3 (importar facturas del Excel de Carlos y subir fincas y documentos en masa).
+- Falta: manual de las pantallas nuevas, y las Olas 2 y 3.
+
+## En construcción, SIN publicar — Ola 2 de la reunión: CARTERA CONTABLE (rama `ola2-cartera`, 27-oct-2026)
+
+- **Pedido**: deducciones contables por cliente en Cartera (retefuente, reteICA, ICA, fondo de garantía, timbre, descuentos) con lista de
+  predeterminadas por cliente y opción manual para lo excepcional; observaciones por factura; catálogo de clientes (el campo «Cliente» de hoy pasa
+  a ser «Tipo de cliente»); y separar **a quién se facturó** de **quién pagó** (el Ingenio Risaralda paga facturas de sus proveedores).
+- **Hecho**: migración `20261027140000_ola2_cartera_contable.sql` (NO aplicada; ensayada contra la base real con rollback y 40+ pruebas en
+  `supabase/pruebas_ola2_cartera.sql`), `lib/deduccionesCartera.ts` (lógica pura, redondeo como `round(x,2)` de Postgres), servicios en
+  `services/carteraApi.ts` y `scripts/prueba-ola2-cartera.mts` (8). Maqueta mostrada; **falta el visto bueno de Iván antes de hacer pantallas**.
+- 🔴 **Decisiones de diseño**: (1) una deducción **NO es un pago**: baja el saldo pero no cuenta como plata que entró (`fact_deducciones` aparte
+  de `fact_pagos`); la vista `cartera_facturas_v` suma lo deducido y trae 7 columnas nuevas AL FINAL (la PWA vieja sigue leyéndola); (2) las tablas
+  nuevas son de SOLO LECTURA para la app, todo se escribe por funciones con token (`fact_usuario`); (3) **ningún porcentaje va sembrado**: los de cada
+  cliente los dicta cartera (Viviana). Lo que se dijo en la reunión (4 % Riopaila, 4 % + 1 % San Carlos, reteICA de Mayagüez) está POR VERIFICAR;
+  (4) la base de cálculo (si el % va sobre el valor con o sin IVA) también está POR VERIFICAR: el valor es editable por factura; (5) el mismo concepto
+  no se aplica dos veces a una factura (salvo «Descuento» y «Otro») y lo pagado + lo deducido nunca pasa del valor.
+- Falta: pantallas (detalle de factura, lista, catálogo «Clientes de facturación»), «atrás» del celular en lo nuevo, observaciones del analista en
+  Ganchos/Otros insumos (hoy solo existen en combustible), el archivo de Viviana, aplicar y publicar. Más adelante (Ola 3): importar facturas del
+  Excel de Carlos, lectura de PDF de facturas, subir fincas y documentos en masa. Referencias de diseño: ver `registro-desempeno-modelos.md`
+  (Antigravity: patrones útiles pero 3 de 5 enlaces no sirven).
 
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 

@@ -195,3 +195,196 @@
 /* Con `.modal-card` delante para ganarle a `.modal-footer` (App.css), que en celular apila los botones en columna. */
 .modal-card .pieza-pie { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 8px; }
 .modal-card .pieza-pie button { min-height: 48px; width: 100%; padding: 6px 10px; line-height: 1.15; }
+/* Hay parecidas: el pie queda con UN solo botón y le toca todo el ancho, no media rejilla. */
+.modal-card .pieza-pie > button:only-child { grid-column: 1 / -1; }
+
+/* ── Aviso «ya hay piezas parecidas» del alta rápida ─────────────────────────
+   Ámbar, no rojo: no es un error, es una pausa para mirar antes de crear una
+   gemela que después nadie sabe cuál es. Va debajo del nombre, que es donde
+   nace la duda. */
+.pieza-parecidas {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 10px 12px; border-radius: 12px;
+  background: var(--color-status-progress-bg);
+  min-width: 0;
+}
+.pieza-parecidas__titulo {
+  margin: 0;
+  font-size: 0.875rem; font-weight: 800;
+  color: var(--color-status-progress);
+  overflow-wrap: anywhere;
+}
+.pieza-parecidas__lista {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  min-width: 0;
+}
+.pieza-parecidas__fila {
+  display: flex; align-items: center; gap: 10px; min-width: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border);
+}
+.pieza-parecidas__fila:first-child { border-top: 0; }
+.pieza-parecidas__thumb {
+  flex: 0 0 auto;
+  width: 44px; height: 44px;
+  border: 1px solid var(--color-border); border-radius: 8px;
+  background: var(--color-bg-muted);
+  object-fit: cover;
+  display: grid; place-items: center;
+}
+.pieza-parecidas__thumb--vacia {
+  color: var(--color-ink-light);
+  font-size: 0.75rem; line-height: 1.1; text-align: center;
+}
+.pieza-parecidas__textos { display: flex; flex-direction: column; gap: 1px; flex: 1 1 auto; min-width: 0; }
+.pieza-parecidas__textos strong { font-size: 0.9rem; overflow-wrap: anywhere; }
+.pieza-parecidas__meta { font-size: 0.8rem; color: var(--color-ink-mid); overflow-wrap: anywhere; }
+.pieza-parecidas__abrir {
+  flex: 0 0 auto;
+  min-width: 48px; min-height: 44px;
+  padding: 6px 8px;
+  border: 0; border-radius: 10px;
+  background: transparent; color: var(--color-brand);
+  font: inherit; font-size: 0.9rem; font-weight: 800;
+  text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.pieza-parecidas__abrir:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* ── Carga de piezas desde Excel ────────────────────────────────────────────
+   Modal de 3 pasos: archivo → revisar → listo. Se mira primero a 320 px: el
+   indicador de pasos, las tres cuentas y el pie tienen que caber sin salirse. */
+
+/* Los dos botones de arriba de Repuestos: apilados en celular, lado a lado en computador. */
+.pieza-botones { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.pieza-botones > * { flex: 1 1 100%; min-width: 0; }
+.pieza-botones .pieza-nueva-btn { margin-top: 0; }
+.pieza-botones .pieza-carga-btn { width: auto; min-height: 52px; }
+@media (min-width: 560px) {
+  /* En computador, del ancho de su texto (como estaba «Nueva pieza»): dos botones de
+     media pantalla cada uno no se leen como botones. */
+  .pieza-botones > * { flex: 0 0 auto; }
+  .pieza-botones .pieza-nueva-btn,
+  .pieza-botones .pieza-carga-btn { width: fit-content; min-width: 210px; }
+}
+
+/* Indicador «1 Archivo · 2 Revisar · 3 Listo». El paso actual, en verde marca. */
+.carga-pasos {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px;
+  margin: 0;
+  font-size: 0.9rem; font-weight: 600;
+  color: var(--color-ink-light);
+}
+.carga-pasos__on { color: var(--color-brand); font-weight: 800; }
+.carga-pasos__sep { color: var(--color-ink-light); }
+
+/* Los botones del paso 1, a lo ancho: se tocan con el celular en la mano. */
+.carga-boton { width: 100%; min-height: 48px; }
+
+/* Nota al pie de cada paso (columnas, tandas de 50…). Letra chica de verdad. */
+.carga-nota {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-ink-mid);
+  overflow-wrap: anywhere;
+}
+
+/* Las tres cuentas de la revisión. En 320 px cada una queda de ~85 px: el número
+   grande se ve de un vistazo y el rótulo puede partirse en vez de desbordar. */
+.carga-cuentas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.carga-cuenta {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0;
+  padding: 10px 8px;
+  border: 1px solid var(--color-border); border-radius: 12px;
+  background: var(--color-bg-soft);
+}
+.carga-cuenta__n {
+  font-size: 1.55rem; font-weight: 800; line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+.carga-cuenta__lbl {
+  font-size: 0.875rem; font-weight: 600;
+  color: var(--color-ink-mid);
+  overflow-wrap: anywhere;
+}
+.carga-cuenta--lista .carga-cuenta__n { color: var(--color-status-done); }
+.carga-cuenta--parecida { background: var(--color-status-progress-bg); border-color: transparent; }
+.carga-cuenta--parecida .carga-cuenta__n { color: var(--color-status-progress); }
+.carga-cuenta--error { background: var(--color-status-cancel-bg); border-color: transparent; }
+.carga-cuenta--error .carga-cuenta__n { color: var(--color-status-cancel); }
+
+/* Filas que no pasaron: renglones con línea fina, sin tarjetas dentro de tarjetas. */
+.carga-filas { display: flex; flex-direction: column; min-width: 0; }
+.carga-fila {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: 4px 8px;
+  min-width: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--color-border);
+}
+.carga-fila:last-child { border-bottom: 1px solid var(--color-border); }
+.carga-fila__main { display: flex; flex-direction: column; gap: 1px; flex: 1 1 150px; min-width: 0; }
+.carga-fila__main strong { font-size: 0.95rem; overflow-wrap: anywhere; }
+.carga-fila__motivo { font-size: 0.82rem; color: var(--color-ink-mid); overflow-wrap: anywhere; }
+.carga-etq {
+  flex: 0 0 auto; align-self: flex-start;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem; font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.carga-etq--parecida { background: var(--color-status-progress-bg); color: var(--color-status-progress); }
+.carga-etq--error { background: var(--color-status-cancel-bg); color: var(--color-status-cancel); }
+
+/* Todo listo: una línea verde en vez de una lista vacía. */
+.carga-todo-bien {
+  margin: 0; padding: 8px 12px; border-radius: 10px;
+  background: var(--color-status-done-bg); color: var(--color-status-done);
+  font-size: 0.9rem; font-weight: 600;
+}
+
+/* Paso 3. */
+.carga-listo {
+  margin: 0;
+  font-size: 1.1rem; font-weight: 800;
+  color: var(--color-status-done);
+}
+.carga-pendientes { display: flex; flex-direction: column; gap: 6px; }
+.carga-pendientes .inline-button { width: 100%; min-height: 44px; }
+
+/* Barra de progreso: verde marca sobre fondo neutro. */
+.carga-progreso-caja { display: flex; flex-direction: column; gap: 6px; width: 100%; min-width: 0; }
+.carga-progreso {
+  width: 100%; height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-muted);
+  overflow: hidden;
+}
+.carga-progreso__barra {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-brand);
+  transition: width 0.2s ease;
+}
+.carga-progreso__txt { margin: 0; font-size: 0.9rem; font-weight: 700; color: var(--color-ink-mid); }
+
+/* Pie del modal de carga. Con `.modal-card` delante para ganarle a `.modal-footer`
+   (App.css), que en celular apila los botones y los deja uno por renglón. */
+.modal-card .carga-pie { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+.modal-card .carga-pie > button { width: 100%; min-height: 48px; }
+.carga-acciones { display: flex; flex-direction: column; gap: 8px; }
+/* Dos columnas SOLO cuando hay dos botones (los dos de verdad, no un botón y una nota). */
+.carga-acciones--dos { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+.carga-acciones > button { width: 100%; min-height: 48px; padding: 6px 10px; line-height: 1.15; }
+.carga-enlace {
+  min-height: 44px;
+  padding: 6px 8px;
+  border: 0; background: transparent;
+  color: var(--color-brand);
+  font: inherit; font-size: 0.9rem; font-weight: 700;
+  text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.modal-card .carga-pie .carga-enlace { min-height: 44px; }

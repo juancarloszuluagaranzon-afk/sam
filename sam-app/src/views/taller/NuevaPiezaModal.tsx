@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from 'react'
 import { prepararFotoPieza, type FotoPiezaLista } from '../../lib/fotoPieza'
 import { guardarPiezaTaller, type NuevaPieza } from '../../services/piezasApi'
 import { loadFamilias, type Familia } from '../../services/tallerApi'
 import { CampoLista, recordarValor } from '../../components/CampoPlaca'
 import { SearchableSelect } from '../../components/SearchableSelect'
 import { aMayus } from '../../lib/texto'
+import { buscarParecidas } from '../../lib/cargaPiezas'
+import type { Insumo } from '../../domain/sam'
 
 /**
  * Alta rápida de una pieza del taller (26-oct-2026).
@@ -30,6 +32,10 @@ interface Props {
   onClose: () => void
   /** Se llama después de CADA guardado (para que la lista se recargue). `enviado` false = quedó en cola sin señal. */
   onGuardada: (enviado: boolean) => void
+  /** Catálogo actual. Con esto se avisa «ya hay piezas parecidas» antes de crear una gemela. */
+  existentes?: Insumo[]
+  /** Abre la ficha de una pieza que ya existe (la lista queda visible detrás del modal). */
+  onAbrirPieza?: (id: string) => void
 }
 
 type Errores = { nombre?: string; estante?: string; cantidad?: string; foto?: string; general?: string }
@@ -40,7 +46,7 @@ const soloNumero = (v: string) => v.replace(/[^0-9.,]/g, '')
  * El id lo pone el celular: así reintentar el guardado no crea una pieza gemela. `randomUUID` exige
  * Chrome 92+ y conexión segura; en un celular viejo se arma uno válido (v4) con `getRandomValues`.
  */
-function nuevoId(): string {
+export function nuevoId(): string {
   if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
   const b = crypto.getRandomValues(new Uint8Array(16))
   b[6] = (b[6] & 0x0f) | 0x40
@@ -52,7 +58,7 @@ function nuevoId(): string {
 /** El mismo número que se teclea, con coma o con punto. */
 const aNumero = (v: string) => Number(v.replace(',', '.'))
 
-export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Props) {
+export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada, existentes, onAbrirPieza }: Props) {
   const [nombre, setNombre] = useState('')
   const [ubicacion, setUbicacion] = useState('')
   const [cantidad, setCantidad] = useState('')
@@ -76,6 +82,16 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
   const nombreRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { void loadFamilias().then(setFamilias) }, [])
+
+  // «Ya hay piezas parecidas»: se calcula con el nombre un poco atrasado (`useDeferredValue`) para que
+  // teclear siga siendo fluido con 500 piezas delante. Es una AYUDA, no un requisito: si el cálculo
+  // fallara, el alta tiene que seguir funcionando, así que se calla en vez de tumbar el modal.
+  const nombreDiferido = useDeferredValue(nombre)
+  const parecidas = useMemo(() => {
+    const n = nombreDiferido.trim()
+    if (!existentes || n.length < 3) return []
+    try { return buscarParecidas(n, parte, existentes, 3) } catch { return [] }
+  }, [nombreDiferido, parte, existentes])
 
   // Vista previa del DETALLE ya comprimido (no del archivo original, que pesa MB): la miniatura de 200 px
   // estirada al ancho del celular se vería pixelada y parecería que la foto salió mal. La URL del blob se
@@ -230,6 +246,40 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
           {errores.nombre && <span className="pieza-error">{errores.nombre}</span>}
         </label>
 
+        {/* Casi siempre «la pieza nueva» es una que ya está escrita distinto. Se avisa ANTES de
+            guardar, con la miniatura a la vista: reconocerla por la forma es más rápido que leer. */}
+        {parecidas.length > 0 && (
+          <div className="pieza-parecidas">
+            <p className="pieza-parecidas__titulo">Ya hay piezas parecidas · mira antes de crear otra</p>
+            <ul className="pieza-parecidas__lista">
+              {parecidas.map((p) => (
+                <li key={p.id} className="pieza-parecidas__fila">
+                  {p.fotoThumbUrl ? (
+                    <img className="pieza-parecidas__thumb" src={p.fotoThumbUrl} alt=""
+                      width={44} height={44} loading="lazy" decoding="async" />
+                  ) : (
+                    <span className="pieza-parecidas__thumb pieza-parecidas__thumb--vacia">foto</span>
+                  )}
+                  <div className="pieza-parecidas__textos">
+                    <strong>{p.nombre}</strong>
+                    {(p.codigo || p.ubicacion) && (
+                      <span className="pieza-parecidas__meta">
+                        {[p.codigo, p.ubicacion].filter(Boolean).join(' · ')}
+                      </span>
+                    )}
+                  </div>
+                  {onAbrirPieza && (
+                    <button type="button" className="pieza-parecidas__abrir" disabled={guardando}
+                      onClick={() => { onAbrirPieza(p.id); onClose() }}>
+                      Abrir
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* (c) Estante: sugiere lo que ya se escribió en este equipo, sin obligar. */}
         <label className="pieza-campo">
           <span>Estante <span className="pieza-oblig">*</span></span>
@@ -301,12 +351,22 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada }: Pr
         <div className="modal-footer pieza-pie">
           {/* Sin «Cancelar»: la ✕ de arriba y el botón «atrás» del celular ya cierran, y tres botones apilados
               se comían media pantalla del celular. */}
-          <button type="button" className="inline-button" onClick={() => void guardar(false)} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar'}
-          </button>
-          <button type="button" className="primary-button" onClick={() => void guardar(true)} disabled={guardando}>
-            {guardando ? 'Guardando…' : 'Guardar y siguiente'}
-          </button>
+          {parecidas.length > 0 ? (
+            // Hay algo parecido: un solo botón, y que diga lo que va a pasar. Un «Guardar» de siempre
+            // se pulsa por costumbre sin haber mirado la lista de arriba.
+            <button type="button" className="primary-button" onClick={() => void guardar(true)} disabled={guardando}>
+              {guardando ? 'Guardando…' : 'Es otra pieza, guardar igual'}
+            </button>
+          ) : (
+            <>
+              <button type="button" className="inline-button" onClick={() => void guardar(false)} disabled={guardando}>
+                {guardando ? 'Guardando…' : 'Guardar'}
+              </button>
+              <button type="button" className="primary-button" onClick={() => void guardar(true)} disabled={guardando}>
+                {guardando ? 'Guardando…' : 'Guardar y siguiente'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

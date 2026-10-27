@@ -16,6 +16,7 @@ import { FotoVisor } from '../../components/FotoVisor'
 import { prepararFotoPieza } from '../../lib/fotoPieza'
 import { cambiarFotoPieza } from '../../services/piezasApi'
 import { NuevaPiezaModal } from './NuevaPiezaModal'
+import { CargaExcelModal } from './CargaExcelModal'
 import './piezas.css'
 
 /**
@@ -47,6 +48,7 @@ export function RepuestosTab() {
   // Un solo filtro activo a la vez: «Todas», «Bajo mínimo», «Agotadas», «Sin foto».
   const [filtro, setFiltro] = useState<'todas' | 'bajo' | 'agotadas' | 'sinfoto'>('todas')
   const [nuevaAbierta, setNuevaAbierta] = useState(false)
+  const [cargaAbierta, setCargaAbierta] = useState(false)
   const [visor, setVisor] = useState<{ src: string; titulo?: string } | null>(null)
   // Qué pieza tiene la foto en camino; el botón dice «Subiendo foto…» mientras tanto.
   const [fotoDe, setFotoDe] = useState('')
@@ -195,13 +197,23 @@ export function RepuestosTab() {
         mismo con nombres distintos.</p>
       </Ayuda>
 
-      <button type="button" className="primary-button pieza-nueva-btn"
-        onClick={() => {
-          if (!bodegaTaller) { setError('No hay una bodega de taller configurada.'); return }
-          setNuevaAbierta(true)
-        }}>
-        📷 Nueva pieza
-      </button>
+      <div className="pieza-botones">
+        <button type="button" className="primary-button pieza-nueva-btn"
+          onClick={() => {
+            if (!bodegaTaller) { setError('No hay una bodega de taller configurada.'); return }
+            setNuevaAbierta(true)
+          }}>
+          📷 Nueva pieza
+        </button>
+        {/* Dos caminos para lo mismo: el almacén entero de una vez (Excel) o la pieza que se
+            tiene en la mano (alta rápida). Sin bodega del taller no hay dónde dejar la existencia. */}
+        {bodegaTaller && (
+          <button type="button" className="inline-button pieza-carga-btn"
+            onClick={() => { setError(''); setCargaAbierta(true) }}>
+            📥 Cargar desde Excel
+          </button>
+        )}
+      </div>
 
       <label style={{ marginTop: 10 }}>Buscar por código, nombre, referencia, marca o N° de parte
         <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="ROD-0002, rodamiento, 30206…" />
@@ -583,11 +595,31 @@ export function RepuestosTab() {
         <NuevaPiezaModal
           bodegaId={bodegaTaller.id}
           usuarioId={session?.id}
+          existentes={insumos}
+          onAbrirPieza={(id) => {
+            // La «pieza nueva» ya existía: se cierra el alta y se abre su ficha, con la lista
+            // completa y sin filtros que la escondan.
+            setFiltro('todas')
+            setQ('')
+            setSoloRepuestos(false)
+            setAbierto(id)
+          }}
           onClose={() => setNuevaAbierta(false)}
           onGuardada={(enviado) => {
             setInfo(enviado ? 'Pieza guardada.' : 'Pieza guardada sin señal: sube sola cuando haya señal.')
             void recargarCatalogo()
           }}
+        />
+      )}
+
+      {/* Carga del almacén entero desde el Excel de la plantilla. */}
+      {cargaAbierta && bodegaTaller && (
+        <CargaExcelModal
+          bodegaId={bodegaTaller.id}
+          usuarioId={session?.id}
+          existentes={insumos}
+          onClose={() => setCargaAbierta(false)}
+          onTerminada={() => void recargarCatalogo()}
         />
       )}
 

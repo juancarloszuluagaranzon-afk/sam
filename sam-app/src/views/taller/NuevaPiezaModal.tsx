@@ -174,7 +174,7 @@ export function NuevaPiezaModal({ bodegaId, usuarioId, onClose, onGuardada, exis
   return (
     <div className="modal-overlay open" onClick={() => { if (!guardando) onClose() }}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="labor-detail-header">
+        <div className="labor-detail-header pieza-cab">
           <div><p className="eyebrow">Taller</p><h3>Nueva pieza</h3></div>
           <button type="button" className="modal-close-btn" onClick={onClose} disabled={guardando}>
             &#x2715;

@@ -168,7 +168,7 @@ export function CargaExcelModal({ bodegaId, usuarioId, existentes, onClose, onTe
     <div className="modal-overlay open" onClick={() => { if (!guardando) onClose() }}>
       <div className="modal-card" onClick={(e) => e.stopPropagation()}
         style={{ maxWidth: 'min(560px, calc(100vw - 32px))' }}>
-        <div className="labor-detail-header">
+        <div className="labor-detail-header pieza-cab">
           <div>
             <p className="eyebrow">Taller</p>
             <h3>Cargar piezas desde Excel</h3>

@@ -1,0 +1,27 @@
+.ola-filtros{display:flex;gap:8px;overflow-x:auto;padding:8px 0;scrollbar-width:thin}
+.ola-filtros .ola-chip{min-height:40px}
+.ola-selector-medida{max-width:100%}
+.ola-selector-medida .realizadas-seg{display:flex;flex-wrap:wrap;width:fit-content;max-width:100%}
+.ola-selector-medida .realizadas-seg__btn{min-height:40px;white-space:normal}
+.ola-error{color:var(--color-status-cancel)}
+.ola-chip{flex:0 0 auto;min-height:40px;padding:7px 12px;border:1px solid var(--color-border);border-radius:var(--radius-pill);background:var(--color-bg-card);color:var(--color-ink);font:inherit;white-space:nowrap}
+.ola-chip.is-activo{border-color:var(--color-brand);background:var(--color-brand);color:var(--color-ink-on-brand)}
+.ola-tanque-switch{display:flex;align-items:center;gap:12px;width:100%;min-height:54px;margin:10px 0;padding:10px 12px;border:1px solid var(--color-border);border-radius:var(--radius-md);background:var(--color-bg-soft);color:var(--color-ink);text-align:left;font:inherit}
+.ola-tanque-switch__punto{position:relative;flex:0 0 42px;height:24px;border-radius:var(--radius-pill);background:var(--color-bg-muted)}
+.ola-tanque-switch__punto:after{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--color-surface);content:"";transition:transform .15s}
+.ola-tanque-switch.is-incompleto{border-color:var(--color-status-progress);background:var(--color-status-progress-bg)}
+.ola-tanque-switch.is-incompleto .ola-tanque-switch__punto{background:var(--color-status-progress)}
+.ola-tanque-switch.is-incompleto .ola-tanque-switch__punto:after{transform:translateX(18px)}
+.ola-tanque-switch strong,.ola-tanque-switch small{display:block}
+.ola-tanque-switch small{color:var(--color-ink-mid);font-size:.82rem}
+.ola-orden-lista{display:grid;gap:8px;padding:0;list-style:none}
+.ola-orden-fila{display:flex;align-items:center;gap:10px;min-width:0;padding:8px;border:1px solid var(--color-border);border-radius:var(--radius-md)}
+.ola-orden-datos{flex:1;min-width:0;overflow-wrap:anywhere}
+.ola-orden-flechas{display:flex;gap:6px}
+.ola-orden-flechas button{width:44px;height:44px;font-size:1.2rem}
+.ola-consumo-barra{display:grid;grid-template-columns:minmax(90px,1fr) 2fr auto;align-items:center;gap:8px;margin:8px 0}
+.ola-consumo-barra__pista{height:18px;overflow:hidden;border-radius:var(--radius-pill);background:var(--color-bg-muted)}
+.ola-consumo-barra__relleno{height:100%;border-radius:inherit;background:var(--color-brand)}
+.ola-consumo-tabla{width:100%;border-collapse:collapse}
+.ola-consumo-tabla th,.ola-consumo-tabla td{padding:8px 6px;border-bottom:1px solid var(--color-border);text-align:left;overflow-wrap:anywhere}
+@media(max-width:480px){.ola-consumo-barra{grid-template-columns:minmax(80px,1fr) 1.2fr auto}.ola-consumo-tabla th,.ola-consumo-tabla td{padding:7px 3px;font-size:.82rem}}

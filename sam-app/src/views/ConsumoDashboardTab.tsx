@@ -16,6 +16,9 @@ import { NIVEL, describirRango, nivelDe, rangoDe, type RangoSemaforo } from '../
 import { GraficaGalHora, type ColumnaGalHora } from './GraficaGalHora'
 import { fmtFechaHora } from '../lib/fechas'
 import { PERIODOS, rangoDe as rangoDePeriodo, hoyBogota, type Periodo } from '../lib/periodos'
+import { compararEquipos } from '../lib/ordenEquipos'
+import { ConsumoOtrosInsumos } from './ConsumoOtrosInsumos'
+import './olaReunion.css'
 
 /**
  * Tablero de consumo para el dueño.
@@ -119,7 +122,7 @@ export function ConsumoDashboardTab() {
   // cinco y en celular no cabe una sexta sin volverse ilegible.
   // Abre en GANCHOS: lo pidió el cliente (21-sep-2026, «déjalo predeterminado en
   // ganchos»). El combustible ya se ve arriba, en la gráfica de galones y gal/h.
-  const [medida, setMedida] = useState<'COMBUSTIBLE' | 'GANCHOS'>('GANCHOS')
+  const [medida, setMedida] = useState<'COMBUSTIBLE' | 'GANCHOS' | 'OTROS'>('GANCHOS')
   // Rangos del semáforo (los ajusta el cliente en la base, sin publicar versión).
   // Si no cargan, la columna dice «sin rango»: nunca se inventa un verde.
   const [rangos, setRangos] = useState<RangoSemaforo[]>([])
@@ -290,7 +293,7 @@ export function ConsumoDashboardTab() {
         problemaTanque: porTanque ? tq.problema : null,
         usaGanchos: refGan != null,
       }
-    }).sort((a, b) => b.gal - a.gal)
+    }).sort((a, b) => compararEquipos(a.codigo, b.codigo))
   }, [delMes, horas, refDe, equipoNombre, extremos, hectareas, tanques])
 
   // En ganchos solo se listan las que los usan: mostrar un PUMA con "—" en todo
@@ -298,7 +301,7 @@ export function ConsumoDashboardTab() {
   const visibles = useMemo(
     () => (medida === 'COMBUSTIBLE'
       ? porMaquina
-      : porMaquina.filter((m) => m.gan > 0).sort((a, b) => b.gan - a.gan)),
+      : porMaquina.filter((m) => m.gan > 0)),
     [porMaquina, medida],
   )
   const esGan = medida === 'GANCHOS'
@@ -359,11 +362,18 @@ export function ConsumoDashboardTab() {
         </p>
       </Ayuda>
 
+      <div className="ola-selector-medida"><div className="realizadas-seg" role="group" aria-label="Tipo de consumo">
+        <button type="button" className={`realizadas-seg__btn${medida === 'COMBUSTIBLE' ? ' is-active' : ''}`} aria-pressed={medida === 'COMBUSTIBLE'} onClick={() => setMedida('COMBUSTIBLE')}>Combustible</button>
+        <button type="button" className={`realizadas-seg__btn${medida === 'GANCHOS' ? ' is-active' : ''}`} aria-pressed={medida === 'GANCHOS'} onClick={() => setMedida('GANCHOS')}>Ganchos</button>
+        <button type="button" className={`realizadas-seg__btn${medida === 'OTROS' ? ' is-active' : ''}`} aria-pressed={medida === 'OTROS'} onClick={() => setMedida('OTROS')}>Otros insumos ▾</button>
+      </div>
+      </div>
+
       {cargando ? <p className="muted-text">Cargando…</p> : (
         <>
           {/* ── La serie: de dónde venimos ─────────────────────────────────── */}
-          <p className="ins-res__lbl" style={{ marginTop: 14 }}>Histórico mensual de combustible</p>
-          <div className="cons-serie">
+          <p className="ins-res__lbl" style={{ marginTop: 14 }} hidden={medida !== 'COMBUSTIBLE'}>Histórico mensual de combustible</p>
+          <div className="cons-serie" hidden={medida !== 'COMBUSTIBLE'}>
             {meses.map((m) => (
               <button key={m.mes} type="button"
                       className={`cons-mes${m.mes === mesSel ? ' is-sel' : ''}`}
@@ -407,21 +417,20 @@ export function ConsumoDashboardTab() {
             )}
           </div>
 
-          <div className="mural-kpi">
-            <div className="kpi"><span className="kpi__n">{totalGal.toLocaleString('es-CO')}</span>
-              <span className="kpi__l">{porMaquina.some((m) => m.porTanque) ? 'galones gastados' : 'galones'}</span></div>
-            <div className="kpi"><span className="kpi__n">{totalGan.toLocaleString('es-CO')}</span>
-              <span className="kpi__l">ganchos</span></div>
-            <div className="kpi"><span className="kpi__n">{porMaquina.length}</span>
-              <span className="kpi__l">máquinas</span></div>
-            <div className={`kpi${galHoraFlota == null ? ' kpi--vacio' : ''}`}>
-              <span className="kpi__n">{galHoraFlota ?? '—'}</span>
-              <span className="kpi__l">galones por hora</span></div>
+          <div className="mural-kpi" hidden={medida === 'OTROS'}>
+            {medida === 'COMBUSTIBLE' ? <>
+              <div className="kpi"><span className="kpi__n">{totalGal.toLocaleString('es-CO')}</span><span className="kpi__l">{porMaquina.some((m) => m.porTanque) ? 'galones gastados' : 'galones'}</span></div>
+              <div className="kpi"><span className="kpi__n">{porMaquina.length}</span><span className="kpi__l">máquinas</span></div>
+              <div className={`kpi${galHoraFlota == null ? ' kpi--vacio' : ''}`}><span className="kpi__n">{galHoraFlota ?? '—'}</span><span className="kpi__l">galones por hora</span></div>
+            </> : <>
+              <div className="kpi"><span className="kpi__n">{totalGan.toLocaleString('es-CO')}</span><span className="kpi__l">ganchos</span></div>
+              <div className="kpi"><span className="kpi__n">{visibles.length}</span><span className="kpi__l">máquinas</span></div>
+            </>}
           </div>
 
           {/* La gráfica que dibujó el cliente: barra = galones, encima gal/h con
               su semáforo, y debajo máquina · horómetro inicial · final · horas. */}
-          <GraficaGalHora
+          <div hidden={medida !== 'COMBUSTIBLE'}><GraficaGalHora
             columnas={porMaquina.map((m) => {
               const rango = rangoDe(rangos, 'gal_hora', m.nombre)
               return {
@@ -435,8 +444,8 @@ export function ConsumoDashboardTab() {
               }
             })}
             onVer={(codigo) => setVerMaq(codigo)}
-          />
-          {tanques.size > 0 && (
+          /></div>
+          {medida === 'COMBUSTIBLE' && tanques.size > 0 && (
             <p className="field-hint" style={{ marginTop: 4 }}>
               Consumo entre tanqueos: cada tanqueo repone lo gastado desde el anterior. Se cuentan los
               galones de los tanqueos del periodo contra las horas desde el último tanqueo del periodo
@@ -444,7 +453,7 @@ export function ConsumoDashboardTab() {
               dejar comentarios.
             </p>
           )}
-          {verMaq && (
+          {verMaq && medida === 'COMBUSTIBLE' && (
             <TanqueosMaquina
               nombre={equipoNombre.get(verMaq) ?? verMaq}
               tq={tanques.get(verMaq) ?? null}
@@ -460,7 +469,7 @@ export function ConsumoDashboardTab() {
               sucio se QUITARON a pedido del cliente (21-sep-2026, «quita estos
               comentarios»). Lo sucio sigue marcado donde se mira: «Σ» en la casilla de
               horas de la gráfica, con la explicación al pasar el dedo. */}
-          {fuenteMes?.has('papel') && (
+          {medida === 'COMBUSTIBLE' && fuenteMes?.has('papel') && (
             <p className="subtle-copy" style={{ marginTop: 4 }}>
               📄 Este mes viene del formato en papel. Las horas trabajadas salen de las
               labores del sistema, así que el galones/hora puede quedar incompleto.
@@ -470,12 +479,6 @@ export function ConsumoDashboardTab() {
           {/* ── Máquina por máquina ────────────────────────────────────────── */}
           <div className="panel-title split" style={{ marginTop: 16, marginBottom: 0 }}>
             <p className="ins-res__lbl" style={{ margin: 0 }}>Máquina por máquina</p>
-            <div className="cons-toggle">
-              <button type="button" className={!esGan ? 'is-sel' : ''}
-                      onClick={() => setMedida('COMBUSTIBLE')}>⛽ Combustible</button>
-              <button type="button" className={esGan ? 'is-sel' : ''}
-                      onClick={() => setMedida('GANCHOS')}>🪝 Ganchos</button>
-            </div>
           </div>
 
           {esGan && (
@@ -486,7 +489,7 @@ export function ConsumoDashboardTab() {
             </p>
           )}
 
-          <div className="cons-tabla">
+          <div className="cons-tabla" hidden={medida === 'OTROS'}>
             <div className="cons-fila cons-fila--cab">
               <span>Máquina</span><span>{esGan ? 'Ganchos' : 'Galones'}</span>
               <span className="cons-col-ha">Ha realizadas</span><span>Horas</span>
@@ -536,6 +539,7 @@ export function ConsumoDashboardTab() {
               )
             })}
           </div>
+          {medida === 'OTROS' && <ConsumoOtrosInsumos desde={desde} hasta={hasta} periodoTexto={etiquetaPeriodo} />}
         </>
       )}
     </section>
@@ -680,6 +684,7 @@ function TanqueosMaquina({ nombre, tq, rango, periodo, comentarios, onComentario
                 <>
                   <p style={{ margin: '6px 0' }}>
                     <strong>{fmtFechaHora(escogido.cuando)}</strong> · {fmtN(escogido.galones)} gal
+                    {escogido.lleno === false && <span style={{ display: 'inline-block', marginLeft: 6, padding: '2px 8px', borderRadius: 'var(--radius-pill)', color: 'var(--color-status-progress)', background: 'var(--color-status-progress-bg)' }}>No quedó lleno</span>}
                     {colEscogida.galHora != null ? ` · ${fmtN(colEscogida.galHora)} gal/h` : ''}
                     {escogido.horometro != null ? ` · horómetro ${fmtN(escogido.horometro)}` : ''}
                     {escogido.detalle ? ` · ${escogido.detalle}` : ''}

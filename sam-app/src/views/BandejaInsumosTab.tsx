@@ -31,6 +31,7 @@ import type { SolicitudInsumo, SolicitudEstado } from '../domain/sam'
 import { Ayuda } from '../components/Ayuda'
 import { TanqueoModal } from '../components/TanqueoModal'
 import { SwitchEngraso } from '../components/SwitchEngraso'
+import { SwitchTanqueLleno } from '../components/SwitchTanqueLleno'
 import { EditarDespachoModal } from '../components/EditarDespachoModal'
 
 /** Quién puede corregir un despacho entregado: el que despacha y el que administra. */
@@ -138,6 +139,8 @@ export function BandejaInsumosTab() {
   // por defecto — un descuido no debe quedar como "no engrasó".
   const [entregaEngraso, setEntregaEngraso] = useState<boolean | undefined>(undefined)
   const [dirEngraso, setDirEngraso] = useState<boolean | undefined>(undefined)
+  const [entregaTanqueLleno, setEntregaTanqueLleno] = useState(true)
+  const [dirTanqueLleno, setDirTanqueLleno] = useState(true)
   const [rechazoTarget, setRechazoTarget] = useState<SolicitudInsumo | null>(null)
   const [corrigiendo, setCorrigiendo] = useState<SolicitudInsumo | null>(null)
   const [motivo, setMotivo] = useState('')
@@ -227,6 +230,7 @@ export function BandejaInsumosTab() {
     setEntregaEquipo(equipoDeOperario(s.operarioId))
     setEntregaHorometro('')
     setEntregaEngraso(undefined)
+    setEntregaTanqueLleno(true)
     setEvidencias([])
     setError('')
   }
@@ -281,6 +285,7 @@ export function BandejaInsumosTab() {
         evidenciaUrls: evidencias,
         bodegaId: miBodega?.id,
         engraso: entregaEngraso,
+        tanqueLleno: items.some((it) => insumos.find((i) => i.id === it.insumoId)?.categoria === 'COMBUSTIBLE') ? entregaTanqueLleno : undefined,
         items,
       }
       const { enviado } = await enviarOEncolar('DESPACHO', payload, async () => {
@@ -298,6 +303,7 @@ export function BandejaInsumosTab() {
         setInfo('Entrega guardada sin señal. Se envía sola cuando haya cobertura.')
       }
       setEntregaTarget(null)
+      setEntregaTanqueLleno(true)
       void refresh()
     } catch (err) {
       const e = err as { message?: string }
@@ -314,6 +320,7 @@ export function BandejaInsumosTab() {
     setDirHorometro('')
     setDirNota('')
     setDirEngraso(undefined)
+    setDirTanqueLleno(true)
     setDirFotos([])
     setError('')
     setDirectaOpen(true)
@@ -372,6 +379,7 @@ export function BandejaInsumosTab() {
         fechaEfectiva: dirFecha ? new Date(dirFecha).toISOString() : undefined,
         nota: dirNota.trim() || undefined,
         engraso: dirEngraso,
+        tanqueLleno: items.some((it) => insumos.find((i) => i.id === it.insumoId)?.categoria === 'COMBUSTIBLE') ? dirTanqueLleno : undefined,
         evidenciaUrls: dirFotos,
         bodegaId: miBodega?.id,
         items,
@@ -391,6 +399,7 @@ export function BandejaInsumosTab() {
         setInfo(`Entrega a ${operario.name} guardada sin señal. Se envía sola cuando haya cobertura.`)
       }
       setDirectaOpen(false)
+      setDirTanqueLleno(true)
       void refresh()
     } catch (err) {
       const e = err as { message?: string }
@@ -662,6 +671,7 @@ export function BandejaInsumosTab() {
               />
             </label>
             <SwitchEngraso value={entregaEngraso} onChange={setEntregaEngraso} disabled={busy} />
+            {Boolean(entregaEquipo && entregaItems.some((r) => insumos.find((i) => i.id === r.insumoId)?.categoria === 'COMBUSTIBLE')) && <SwitchTanqueLleno lleno={entregaTanqueLleno} onChange={setEntregaTanqueLleno} disabled={busy} />}
 
             <label style={{ marginTop: 10 }}>
               Máquina (tractor) <span style={{ color: '#b3261e' }}>*</span>
@@ -802,6 +812,7 @@ export function BandejaInsumosTab() {
               />
             </label>
             <SwitchEngraso value={dirEngraso} onChange={setDirEngraso} disabled={busy} />
+            {Boolean(dirEquipo && dirItems.some((r) => insumos.find((i) => i.id === r.insumoId)?.categoria === 'COMBUSTIBLE')) && <SwitchTanqueLleno lleno={dirTanqueLleno} onChange={setDirTanqueLleno} disabled={busy} />}
 
             <label style={{ marginTop: 10 }}>
               Nota <span className="field-optional">(opcional)</span>

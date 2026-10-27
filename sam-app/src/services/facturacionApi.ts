@@ -132,6 +132,26 @@ export async function desvincularDocumento(tipo: TipoDocumento, ids: string[], u
   return Number(data ?? 0)
 }
 
+/**
+ * «Eliminar» un soporte o una factura (Ola 1 de la reunión, 26-oct-2026): en realidad se ANULA (queda quién y por qué)
+ * y deja de aparecer. La base lo rechaza si todavía tiene líneas pegadas o pagos vivos (`TIENE_LINEAS` / `TIENE_PAGOS`).
+ */
+export async function anularDocumento(documentoId: string, motivo: string, usuario: string): Promise<void> {
+  const { error } = await supabase.rpc('fact_documento_anular', {
+    p_documento: documentoId, p_motivo: motivo, p_usuario: usuario, p_token: getToken(),
+  })
+  if (error) throw mensaje(error, 'No se pudo eliminar el documento')
+}
+
+/** Cambia el valor total de una factura (la suma de sus líneas, o el que dice el PDF). Devuelve el valor guardado. */
+export async function ajustarValorDocumento(documentoId: string, valor: number, usuario: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fact_documento_valor', {
+    p_documento: documentoId, p_valor: valor, p_usuario: usuario, p_token: getToken(),
+  })
+  if (error) throw mensaje(error, 'No se pudo cambiar el valor de la factura')
+  return Number(data ?? valor)
+}
+
 /** Abre el archivo con un enlace firmado de 10 minutos (el depósito es privado). */
 export async function abrirArchivo(path: string): Promise<void> {
   // La ventana se abre YA (dentro del clic) para que el navegador no la bloquee.

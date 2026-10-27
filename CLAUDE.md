@@ -693,6 +693,32 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   390/320 px y computador, con y sin señal. Obra hecha con «trabaja como me gusta»: Antigravity investigó, Codex la lógica, DeepSeek Flash
   las pantallas y las pruebas, Claude revisó, corrigió e integró (ver `registro-desempeno-modelos.md`).
 
+## En construcción, SIN publicar — Ola 1 de la reunión con ASM (rama `ola1-reunion`, 26-27-oct-2026)
+
+- **Seis cambios aprobados por Iván** a partir de las notas de la reunión del 26-oct: (1) **eliminar (anular) soportes y facturas sin líneas**
+  (`fact_documento_anular`; el PDF queda en el depósito privado `facturacion`; con líneas o pagos la base responde `TIENE_LINEAS`/`TIENE_PAGOS`);
+  (2) **valor de la factura** que se acumula al vincular más fincas y se compara con la suma de sus líneas (`lib/valorFactura.ts`,
+  `components/CuadreFactura`; total «automático» = igual a la suma antes de vincular; `TOLERANCIA_CUADRE = 100`);
+  (3) **botones de usuarios por categoría** (`lib/categoriasUsuario.ts`, `FiltroCategoriasUsuario`);
+  (4) **Eficiencia de maquinaria con selector Combustible / Ganchos / Otros insumos** (`ConsumoOtrosInsumos`, `lib/insumoPorMaquina.ts`);
+  (5) **«No quedó lleno»** (`tanque_lleno` nullable de tres estados en `combustible_externo` e `insumos_solicitudes`): el parcial NO corta la
+  cuenta del consumo tanque a tanque y sus galones pasan al siguiente tanque lleno (`consumoHora.ts`, `esBuena = horometroBueno && !parcial`);
+  (6) **orden de máquinas configurable** (`equipos.orden`, `equipos_guardar_orden`, `lib/ordenEquipos.ts`, `OrdenMaquinasModal` en Máquinas;
+  sin posición va al final por código). Aplicado en informes, eficiencia, tablero de consumo y máquinas.
+- **Migración `20261027100000_ola1_reunion_asm.sql` NO aplicada** (ensayada con rollback; pruebas en `supabase/pruebas_ola1_reunion.sql`).
+  Va **ANTES** del deploy. Pruebas de lógica: `node scripts/prueba-ola1-reunion.mts` (22).
+- 🔴 **Lecciones**: (a) `tsc` NO ve los imports de CSS: Codex dejó dos componentes importando `./olaReunion.css` desde la carpeta equivocada y
+  el **build fallaba** con `tsc` en 0 — correr siempre `npm run build`. (b) El atributo `hidden` pierde contra un `display` de clase
+  (`.cons-tabla`, `.mural-kpi`): hace falta `[hidden]{display:none!important}` o renderizado condicional. (c) Una tabla ancha dentro de una
+  tarjeta necesita su propio contenedor con `overflow-x:auto`, o ensancha toda la página. (d) La entrega directa guarda `tanque_lleno` en un
+  segundo paso (no se tocó `entregar_directo`). (e) Los textos «Usuarios» etc. de una prueba automática pueden coincidir con la descripción de una
+  categoría del menú: buscar por el texto exclusivo del ítem.
+- Probado con servidor falso (lecturas reales, ninguna escritura) a 390/320 y computador. **Ya existían en producción**: sobreancho de 12 px
+  en computador y barra superior del analista de 413 px a 320 px (afecta a todos los roles; arreglo aparte).
+- Falta: autorización de Iván para publicar (con tarjeta de Opus, copia de seguridad, migración y verificación en vivo), manual de las pantallas
+  nuevas, y las Olas 2 (cartera contable: descuentos por cliente, observaciones, catálogo de razón social, quién factura frente a quién paga) y
+  3 (importar facturas del Excel de Carlos y subir fincas y documentos en masa).
+
 ## Flujo multi-modelo (Codex / Antigravity / Claude)
 
 Para cambios grandes de código, el escalamiento cuando algo falla es **Codex (2 intentos) →

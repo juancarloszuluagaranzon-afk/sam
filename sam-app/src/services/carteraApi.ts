@@ -1,5 +1,7 @@
 import { supabase } from '../lib/supabase'
 import { getToken } from '../lib/sesion'
+import type { ConceptoDeduccion, ItemDeduccion, ReglaDeduccion } from '../lib/deduccionesCartera'
+export type { ConceptoDeduccion } from '../lib/deduccionesCartera'
 
 /**
  * CARTERA (2-oct-2026, migración 20261002170000). Una fila por factura desde la
@@ -47,6 +49,13 @@ export interface FacturaCartera {
   colono: string | null
   /** Anticipo del acuerdo ya descontado de esta factura. */
   anticipo: number
+  deducido: number
+  nDeducciones: number
+  facturadoAId: string | null
+  facturadoA: string | null
+  pagadorId: string | null
+  pagador: string | null
+  nObservaciones: number
 }
 
 export interface Pago {
@@ -81,6 +90,10 @@ function mapFactura(r: Record<string, unknown>): FacturaCartera {
     estado: (r.estado as EstadoCartera) ?? 'AL_DIA', archivoPath: r.archivo_path ? String(r.archivo_path) : null,
     acuerdoId: r.acuerdo_id ? String(r.acuerdo_id) : null, colono: r.colono ? String(r.colono) : null,
     anticipo: num(r.anticipo),
+    deducido: num(r.deducido), nDeducciones: num(r.n_deducciones),
+    facturadoAId: r.facturado_a_id ? String(r.facturado_a_id) : null, facturadoA: r.facturado_a ? String(r.facturado_a) : null,
+    pagadorId: r.pagador_id ? String(r.pagador_id) : null, pagador: r.pagador ? String(r.pagador) : null,
+    nObservaciones: num(r.n_observaciones),
   }
 }
 
@@ -364,5 +377,75 @@ export const claveHacienda = (h: string) => h.trim().replace(/\s+/g, ' ').toUppe
 export function acuerdosDeHaciendas(acuerdos: Acuerdo[], haciendas: string[]): Acuerdo[] {
   const claves = new Set(haciendas.map(claveHacienda))
   return acuerdos.filter((a) => !a.anulado && a.haciendas.some((h) => claves.has(claveHacienda(h))))
+}
+
+export type TipoClienteFact = 'INGENIO' | 'PROVEEDOR' | 'COLONO' | 'PARTICULAR' | 'OTRO'
+export interface ClienteFact { id: string; nombre: string; tipo: TipoClienteFact; nit: string | null; activo: boolean }
+export const TIPOS_CLIENTE: { id: TipoClienteFact; titulo: string }[] = [
+  { id: 'INGENIO', titulo: 'Ingenio' }, { id: 'PROVEEDOR', titulo: 'Proveedor' }, { id: 'COLONO', titulo: 'Colono' },
+  { id: 'PARTICULAR', titulo: 'Particular' }, { id: 'OTRO', titulo: 'Otro' },
+]
+export interface Deduccion { id: string; facturaId: string; concepto: string; porcentaje: number | null; valor: number; fecha: string; nota: string | null; anulado: boolean; anuladoMotivo: string | null; creadoPor: string; createdAt: string }
+export interface Observacion { id: string; facturaId: string; texto: string; creadoPor: string; createdAt: string }
+
+const textoNulo = (v: unknown): string | null => v == null || v === '' ? null : String(v)
+export async function loadClientesFact(): Promise<ClienteFact[]> {
+  const { data, error } = await supabase.from('fact_clientes').select('*').order('nombre')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => ({ id: String(r.id), nombre: String(r.nombre ?? ''), tipo: String(r.tipo ?? 'OTRO') as TipoClienteFact, nit: textoNulo(r.nit), activo: r.activo === true }))
+}
+export async function loadConceptosDeduccion(): Promise<ConceptoDeduccion[]> {
+  const { data, error } = await supabase.from('fact_deduccion_conceptos').select('*').eq('activo', true).order('orden')
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => ({ codigo: String(r.codigo), nombre: String(r.nombre ?? ''), modo: String(r.modo) as ConceptoDeduccion['modo'], orden: num(r.orden) }))
+}
+export async function loadReglasClientes(): Promise<Record<string, ReglaDeduccion[]>> {
+  const { data, error } = await supabase.from('fact_cliente_reglas').select('*')
+  if (error || !data) return {}
+  const resultado: Record<string, ReglaDeduccion[]> = {}
+  for (const r of data as Record<string, unknown>[]) {
+    const cliente = String(r.cliente_id)
+    ;(resultado[cliente] ??= []).push({ concepto: String(r.concepto), porcentaje: Number(r.porcentaje) })
+  }
+  return resultado
+}
+export async function loadDeducciones(facturaId: string): Promise<Deduccion[]> {
+  const { data, error } = await supabase.from('fact_deducciones').select('*').eq('factura_id', facturaId).order('created_at', { ascending: false })
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => ({ id: String(r.id), facturaId: String(r.factura_id), concepto: String(r.concepto), porcentaje: r.porcentaje == null ? null : Number(r.porcentaje), valor: num(r.valor), fecha: String(r.fecha ?? ''), nota: textoNulo(r.nota), anulado: r.anulado === true, anuladoMotivo: textoNulo(r.anulado_motivo), creadoPor: String(r.creado_por ?? ''), createdAt: String(r.created_at ?? '') }))
+}
+export async function loadObservaciones(facturaId: string): Promise<Observacion[]> {
+  const { data, error } = await supabase.from('fact_observaciones').select('*').eq('factura_id', facturaId).order('created_at', { ascending: false })
+  if (error || !data) return []
+  return (data as Record<string, unknown>[]).map((r) => ({ id: String(r.id), facturaId: String(r.factura_id), texto: String(r.texto ?? ''), creadoPor: String(r.creado_por ?? ''), createdAt: String(r.created_at ?? '') }))
+}
+
+export async function guardarClienteFact(input: { id?: string | null; nombre: string; tipo: TipoClienteFact; nit?: string; activo?: boolean }, usuario: string): Promise<string> {
+  const { data, error } = await supabase.rpc('fact_cliente_guardar', { p_id: input.id ?? null, p_nombre: input.nombre, p_tipo: input.tipo, p_nit: input.nit ?? '', p_activo: input.activo ?? true, p_usuario: usuario, p_token: getToken() })
+  if (error || !data) throw new Error(sinCodigo(error?.message) || 'No se pudo guardar el cliente')
+  return String(data)
+}
+export async function guardarReglasCliente(clienteId: string, reglas: ReglaDeduccion[], usuario: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fact_cliente_reglas_guardar', { p_cliente: clienteId, p_reglas: reglas.map((r) => ({ concepto: r.concepto, porcentaje: r.porcentaje })), p_usuario: usuario, p_token: getToken() })
+  if (error) throw new Error(sinCodigo(error.message) || 'No se pudieron guardar las reglas del cliente')
+  return Number(data ?? 0)
+}
+export async function asignarClientesFactura(facturaId: string, facturadoAId: string | null, pagadorId: string | null, usuario: string): Promise<void> {
+  const { error } = await supabase.rpc('fact_factura_clientes', { p_factura: facturaId, p_facturado_a: facturadoAId, p_pagador: pagadorId, p_usuario: usuario, p_token: getToken() })
+  if (error) throw new Error(sinCodigo(error.message) || 'No se pudieron asignar los clientes a la factura')
+}
+export async function aplicarDeducciones(facturaId: string, items: ItemDeduccion[], fecha: string | null, usuario: string): Promise<number> {
+  const { data, error } = await supabase.rpc('fact_deducciones_guardar', { p_factura: facturaId, p_items: items.map((i) => ({ concepto: i.concepto, ...(i.porcentaje != null ? { porcentaje: i.porcentaje } : {}), valor: i.valor, nota: i.nota ?? '' })), p_fecha: fecha, p_usuario: usuario, p_token: getToken() })
+  if (error) throw new Error(sinCodigo(error.message) || 'No se pudieron aplicar las deducciones')
+  return Number(data ?? 0)
+}
+export async function anularDeduccion(id: string, motivo: string, usuario: string): Promise<void> {
+  const { error } = await supabase.rpc('fact_deduccion_anular', { p_id: id, p_motivo: motivo, p_usuario: usuario, p_token: getToken() })
+  if (error) throw new Error(sinCodigo(error.message) || 'No se pudo anular la deducción')
+}
+export async function agregarObservacion(facturaId: string, texto: string, usuario: string): Promise<string> {
+  const { data, error } = await supabase.rpc('fact_observacion_agregar', { p_factura: facturaId, p_texto: texto, p_usuario: usuario, p_token: getToken() })
+  if (error || !data) throw new Error(sinCodigo(error?.message) || 'No se pudo agregar la observación')
+  return String(data)
 }
 

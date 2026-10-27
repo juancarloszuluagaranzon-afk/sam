@@ -651,7 +651,13 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   **revisarlas con Carlos David antes de pagar.**
 - Ver memoria `project_candado_area`.
 
-## En construcción, SIN publicar — Inventario de piezas del taller (rama `inventario-piezas`, 26-oct-2026)
+## PUBLICADO el 26-oct-2026 (versión `5daaaea`) — Inventario de piezas del taller
+
+> Publicado con copia de seguridad (`/var/backups/supabase/antes_inventario_piezas_20261026.dump`) y las dos migraciones aplicadas
+> (`20261026230000`, `20261026235000`). Prueba real de punta a punta en producción con piezas `ZZ PRUEBA` (alta con foto, carga desde Excel,
+> códigos ROD distintos y consecutivos, aviso de parecidas) y limpieza total: la base quedó igual (15 insumos, 0 repuestos). Con señal la app
+> sube primero las 2 fotos y después crea la pieza (el orden «datos → fotos» es el de la cola sin señal). Ojo: el usuario `U058` tiene
+> `es_prueba = false` en la base aunque se use como de pruebas. **Falta cargar las piezas reales** (hoy 0). El texto de abajo se escribió antes de publicar.
 
 - 🔩 **Pestaña Repuestos con fotos de baja resolución.** Lista con miniatura de 56 px, chips (Todas / Bajo mínimo / Agotadas / Sin foto),
   píldora «Agotado» / «Mín N», ficha con foto grande y visor, y **alta rápida** («📷 Nueva pieza»: foto, nombre, estante y cantidad;

@@ -667,8 +667,20 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   Las fotos locales se borran SOLO al final (si no, un fallo a medias atasca la cola para siempre).
 - 🔴 **El paquete principal ya pesa ~2,1 MB y el tope del precache de workbox era 2 MiB: el build FALLABA** (por 688 bytes). Se subió
   `maximumFileSizeToCacheInBytes` a 4 MiB en `vite.config.ts`. Si el build vuelve a fallar con «Assets exceeding the limit», es esto.
+- 📥 **Carga desde Excel** (pedida porque el almacén tiene **más de 500 piezas** y las cargan **varias personas**): botón «Cargar desde Excel»
+  → `CargaExcelModal` (Archivo → Revisar → Listo), `lib/cargaPiezas.ts` (análisis puro: `analizarFilas`, `buscarParecidas`, `resolverFamilia`,
+  lectura y plantilla de Excel) y `importarPiezas` en `services/piezasApi.ts`. Una fila **parecida a una existente o repetida en el archivo,
+  o con error, NO se crea** (se baja un Excel «piezas-que-no-pasaron» con su motivo). El mismo `buscarParecidas` avisa en el alta rápida
+  («Ya hay piezas parecidas»; el botón pasa a «Es otra pieza, guardar igual»). Por tandas de 50 y **3 peticiones por tanda** (505 piezas ≈ 33).
+  🔴 Lecciones: (1) leer el Excel con **`raw: true`**: con `raw: false` una celda de 1200 con formato de miles llega «1,200» y se leía 1,2; un número
+  real se pasa con COMA decimal y solo el TEXTO tecleado usa la regla del punto de miles; (2) **la base rechaza una familia que no existe**
+  (`insumos_familia_fk`): se valida contra `insumos_familias` antes y la plantilla lleva una hoja con los códigos; (3) pedir `siguienteCodigo`
+  pieza por pieza ANTES de insertar da el mismo código a toda la familia → lo reparte la función `asignar_codigos_insumos(uuid[])`
+  (migración `20261026235000`, candado por familia, idempotente, ensayada con rollback); (4) en una carga a mitad: primero la existencia
+  y DESPUÉS su movimiento del kardex (la marca de «ya cargado»), o un reintento deja la pieza en 0. Pruebas: `node scripts/prueba-carga-piezas.mts` (50).
+  ⚠️ Las ventanas con encabezado/pie pegajoso dejan ver lo que se desplaza por detrás en el relleno de la ventana (clase `pieza-cab`/`bottom` negativo en `piezas.css`).
 - Migración `20261026230000_repuestos_fotos.sql` (columnas `foto_url`, `foto_thumb_url`, `foto_hash` NULLABLE + depósito `taller` + 3
-  políticas, sin DELETE) y `supabase/pruebas_repuestos_fotos.sql` — **NO aplicada**. Pruebas: `node scripts/prueba-foto-pieza.mts` (28).
+  políticas, sin DELETE) y `supabase/pruebas_repuestos_fotos.sql` — **NO aplicadas** (las dos se ensayaron en la base real dentro de una transacción con rollback, sin dejar nada). Pruebas: `node scripts/prueba-foto-pieza.mts` (28).
 - Falta: aplicar la migración (con copia de seguridad), publicar, **cargar las piezas reales** (hoy hay 0 repuestos y 0 órdenes de trabajo),
   placeholder borroso (ThumbHash), lector de código de barras (solo Android lo trae nativo) y el manual. Estado medido 26-oct: 15 insumos,
   0 repuestos, 0 aplicabilidades; depósito `avatars` 1.150 archivos / 71 MB. Probado con un servidor falso (ninguna escritura real) a

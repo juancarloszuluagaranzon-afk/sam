@@ -1,0 +1,28 @@
+.cuadre-factura {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-soft);
+  color: var(--color-ink-mid);
+  font-size: 0.88rem;
+}
+.cuadre-factura-fila { min-width: 0; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; }
+.cuadre-factura-fila b { color: var(--color-ink); }
+.cuadre-factura-barra { height: 4px; overflow: hidden; border-radius: var(--radius-pill); background: var(--color-bg-muted); }
+.cuadre-factura-barra span { display: block; height: 100%; background: var(--color-status-done); }
+.cuadre-factura-estado { border-radius: var(--radius-pill); padding: 1px 7px; }
+.cuadre-factura-estado.cuadra { color: var(--color-status-done); background: var(--color-status-done-bg); }
+.cuadre-factura-estado.faltan, .cuadre-factura-estado.sin-total { color: var(--color-status-progress); background: var(--color-status-progress-bg); }
+.cuadre-factura-estado.se_pasa { color: var(--color-status-cancel); background: var(--color-status-cancel-bg); }
+.cuadre-factura-ayuda { margin: 0; color: var(--color-ink-mid); }
+.cuadre-factura.compacto { min-width: 150px; padding: 6px; gap: 3px; font-size: 0.75rem; white-space: nowrap; }
+.cuadre-factura.compacto .cuadre-factura-estado { justify-self: start; }
+.fact-docs-scroll { max-width: 100%; overflow-x: auto; }
+.fact-docs-scroll .validacion-table { min-width: 880px; }
+.fact-doc-sin-lineas { display: inline-block; padding: 3px 8px; border-radius: var(--radius-pill); color: var(--color-status-progress); background: var(--color-status-progress-bg); }
+.fact-doc-eliminar { min-height: 40px; border-color: var(--color-status-cancel); color: var(--color-status-cancel); }
+.fact-doc-quitar { color: var(--color-ink-mid); font-size: 0.78rem; }
+.factura-cuadre-modal { min-width: 0; }

@@ -30,6 +30,8 @@ import logoAgromorales from '../assets/logo-agromorales.jpeg'
 import SearchableSelect from '../components/SearchableSelect'
 import { DiagnosticModal } from '../components/DiagnosticModal'
 import { ThemeToggle } from '../components/ThemeToggle'
+import { FiltroCategoriasUsuario } from '../components/FiltroCategoriasUsuario'
+import { categoriaDeRol, type CategoriaUsuario } from '../lib/categoriasUsuario'
 import { MapButton } from '../components/MapButton'
 import { NewSuerteModal } from '../components/NewSuerteModal'
 import { RegistrarLaborModal } from '../components/RegistrarLaborModal'
@@ -321,6 +323,7 @@ export function SupervisorView({
   // son la misma pregunta ("¿cómo va la operación?") mirada desde dos ángulos, y
   // separarlas obliga a acordarse de que existen dos sitios.
   const [caraTablero, setCaraTablero] = useState<'operacion' | 'maquinaria' | 'insumos'>('operacion')
+  const [filtroCategoriaUsuario, setFiltroCategoriaUsuario] = useState<CategoriaUsuario | 'TODOS'>('TODOS')
   const [mountedCaras, setMountedCaras] = useState({ operacion: true, maquinaria: false, insumos: false })
   const [equipoConsumo, setEquipoConsumo] = useState<Equipment | null>(null)
   const [equipoConsumoRows, setEquipoConsumoRows] = useState<InsumoKardex[]>([])
@@ -3034,9 +3037,12 @@ export function SupervisorView({
               onChange={(e) => setUserSearch(e.target.value)}
             />
 
+            <FiltroCategoriasUsuario usuarios={users} valor={filtroCategoriaUsuario} onChange={setFiltroCategoriaUsuario} />
+
             <ul className="user-cards-list">
               {users
-                .filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase()))
+                .filter((u) => u.name.toLowerCase().includes(userSearch.toLowerCase())
+                  && (filtroCategoriaUsuario === 'TODOS' || categoriaDeRol(u.role) === filtroCategoriaUsuario))
                 .sort((a, b) => {
                   // Activos primero; entre activos, ocupados primero.
                   const aAct = a.active !== false ? 0 : 1

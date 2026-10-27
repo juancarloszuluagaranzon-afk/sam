@@ -43,6 +43,8 @@ export interface Equipment {
   serial?: string
   /** Solo la llevan los equipos tipo `vehiculo`; un tractor no tiene placa. */
   plate?: string
+  /** Posición que fijó el usuario para los informes (`equipos.orden`). Vacía = sin posición: va al final, por código. */
+  order?: number | null
   type?: 'tractor' | 'implemento' | 'vehiculo' | 'otro'
 }
 

@@ -2,9 +2,11 @@ import SearchableSelect from './SearchableSelect'
 import { useEffect, useMemo, useState } from 'react'
 import { loadCatalogo } from '../services/samApi'
 import {
-  RAZONES_SOCIALES, crearDocumento, vincularDocumento,
+  RAZONES_SOCIALES, ajustarValorDocumento, crearDocumento, vincularDocumento,
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
+import { CuadreFactura } from './CuadreFactura'
+import { totalAlVincular } from '../lib/valorFactura'
 import { aligerarDocumento } from '../lib/pdfLigero'
 import { acuerdosDeHaciendas, ligarFacturaAcuerdo, loadAcuerdos, pesos, type Acuerdo } from '../services/carteraApi'
 
@@ -18,7 +20,7 @@ import { acuerdosDeHaciendas, ligarFacturaAcuerdo, loadAcuerdos, pesos, type Acu
  * ligarla al acuerdo; el anticipo que el colono ya pagó se descuenta de ella.
  */
 export function DocumentoFacturacionModal({
-  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo, modoInicial, haciendas,
+  tipo, ids, resumen, clienteSugerido, razonSugerida, valorSugerido, documentos, usuario, hoy, onCerrar, onListo, modoInicial, haciendas, sumaDeLineasDe, sinPrecioDeLineasDe,
 }: {
   tipo: TipoDocumento
   ids: string[]
@@ -38,6 +40,8 @@ export function DocumentoFacturacionModal({
   modoInicial?: 'nuevo' | 'existente'
   /** Haciendas de las líneas marcadas: para encontrar el acuerdo de pago del colono. */
   haciendas?: string[]
+  sumaDeLineasDe?: (documentoId: string) => number
+  sinPrecioDeLineasDe?: (ids: string[]) => number
 }) {
   const propios = useMemo(() => documentos.filter((d) => d.tipo === tipo), [documentos, tipo])
   const [modo, setModo] = useState<'nuevo' | 'existente'>(modoInicial ?? (propios.length ? 'existente' : 'nuevo'))
@@ -78,6 +82,9 @@ export function DocumentoFacturacionModal({
     return () => { vivo = false }
   }, [tipo, clavesHaciendas])
   const acuerdo = acuerdos.find((x) => x.id === acuerdoId) ?? null
+  const docElegido = propios.find((d) => d.id === elegido) ?? (creado?.id === elegido ? creado : null)
+  const sumaAntes = docElegido ? (sumaDeLineasDe?.(docElegido.id) ?? 0) : 0
+  const propuesta = valorSugerido != null && docElegido ? totalAlVincular(docElegido.valor, sumaAntes, sumaAntes + valorSugerido) : null
 
   useEffect(() => {
     if (tipo !== 'SOPORTE') return
@@ -123,6 +130,19 @@ export function DocumentoFacturacionModal({
       if (modo === 'nuevo') { setCreado(doc); setModo('existente'); setElegido(doc.id) }
       try {
         const vinculadas = await vincularDocumento(doc.id, ids, usuario, reemplazar)
+        let docListo = doc
+        if (tipo === 'FACTURA' && modo === 'existente' && valorSugerido != null) {
+          const antes = sumaDeLineasDe?.(doc.id) ?? 0
+          const totalNuevo = totalAlVincular(doc.valor, antes, antes + valorSugerido).total
+          if (totalNuevo !== doc.valor) {
+            try {
+              const guardado = await ajustarValorDocumento(doc.id, totalNuevo, usuario)
+              docListo = { ...doc, valor: guardado }
+            } catch (e) {
+              setError(`Las líneas quedaron pegadas, pero el total no se pudo actualizar: ${(e as Error).message}`)
+            }
+          }
+        }
         let extra: string | undefined
         if (tipo === 'FACTURA' && modo === 'nuevo' && acuerdo && ligarAcuerdo) {
           try {
@@ -132,7 +152,7 @@ export function DocumentoFacturacionModal({
             extra = `⚠ No se pudo ligar al acuerdo con ${acuerdo.colono} (${(e as Error).message}): lígala en Cartera.`
           }
         }
-        onListo(doc, vinculadas, extra)
+        onListo(docListo, vinculadas, extra)
       } catch (e) {
         const m = (e as Error).message
         if (/ya tienen/.test(m)) setPideReemplazo(m)
@@ -182,6 +202,7 @@ export function DocumentoFacturacionModal({
         )}
 
         {modo === 'existente' ? (
+          <>
           <label className="assignment-detail-field">
             <span>{tipo === 'SOPORTE' ? 'Soporte' : 'Factura'}</span>
             <SearchableSelect
@@ -192,6 +213,15 @@ export function DocumentoFacturacionModal({
               options={[...(creado && !propios.some((d) => d.id === creado.id) ? [creado] : []), ...propios].map((d) => ({ value: d.id, label: [d.clase ?? d.razonSocial, d.numero, d.cliente, d.fecha].filter(Boolean).join(' · ') }))}
             />
           </label>
+          {tipo === 'FACTURA' && docElegido && (
+            <div className="factura-cuadre-modal">
+              <CuadreFactura total={docElegido.valor} suma={sumaAntes + (valorSugerido ?? 0)} sinPrecio={valorSugerido == null ? (sinPrecioDeLineasDe?.(ids) ?? 1) : 0} />
+              <p className="field-hint">{valorSugerido == null ? 'Hay líneas sin precio: el total no se toca.'
+                : propuesta?.automatico ? `El total se suma solo: quedará en $${Math.round(propuesta.total).toLocaleString('es-CO')}`
+                  : `Se respeta el total que escribiste ($${Math.round(docElegido.valor ?? 0).toLocaleString('es-CO')}) y se compara con lo pegado.`}</p>
+            </div>
+          )}
+          </>
         ) : (
           <>
             <label className="assignment-detail-field">

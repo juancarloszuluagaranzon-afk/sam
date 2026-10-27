@@ -4,9 +4,11 @@ import { useAppData } from '../context/AppDataContext'
 import { executionDateKey, getAssignmentIngenioId, setModalidadBulk, setPrecioManualBulk, setTarifaManualBulk } from '../services/samApi'
 import { faltaModalidad, laborFacturable, modalidadEfectiva, modalidadesDe, modalidadSugerida, pasesAdicionales, useModalidades, type MapaModalidades } from '../lib/modalidad'
 import {
-  RAZONES_SOCIALES, abrirArchivo, desvincularDocumento, loadDocumentos,
+  RAZONES_SOCIALES, anularDocumento, abrirArchivo, desvincularDocumento, loadDocumentos,
   type DocumentoFact, type TipoDocumento,
 } from '../services/facturacionApi'
+import { sumaDeLineas } from '../lib/valorFactura'
+import { CuadreFactura } from '../components/CuadreFactura'
 import { DocumentoFacturacionModal } from '../components/DocumentoFacturacionModal'
 import { EditarLineaFacturacion, type CambioLinea } from '../components/EditarLineaFacturacion'
 import { NOMBRE_CLIENTE, clienteDeducido, clienteForzado, pesosCortos, useTarifas, valorarLinea, type Tarifa, type Valoracion } from '../lib/tarifas'
@@ -67,6 +69,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   const [masAcciones, setMasAcciones] = useState(false)
   const [modoModal, setModoModal] = useState<'nuevo' | 'existente' | undefined>(undefined)
   const [documentos, setDocumentos] = useState<DocumentoFact[]>([])
+  const [eliminando, setEliminando] = useState<string | null>(null)
   const [modal, setModal] = useState<TipoDocumento | null>(null)
   // Valor a facturar de cada línea: cantidad × tarifa (ver `lib/tarifas`).
   const { tarifas, haciendasRA } = useTarifas()
@@ -130,6 +133,16 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     }
     return m
   }, [realizado, tarifas, haciendasRA, empresa, docPorId])
+  const lineasPorDocumento = useMemo(() => {
+    const m = new Map<string, string[]>()
+    for (const { a } of realizado) for (const id of [a.facturaId, a.soporteId]) {
+      if (id) m.set(id, [...(m.get(id) ?? []), a.id])
+    }
+    return m
+  }, [realizado])
+  const conteoPorDocumento = useMemo(() => new Map([...lineasPorDocumento].map(([id, ids]) => [id, ids.length])), [lineasPorDocumento])
+  const sumaDelDocumento = useCallback((id: string) => sumaDeLineas(lineasPorDocumento.get(id) ?? [], (linea) => valores.get(linea)?.valor).suma, [lineasPorDocumento, valores])
+  const sinPrecioDelDocumento = useCallback((id: string) => sumaDeLineas(lineasPorDocumento.get(id) ?? [], (linea) => valores.get(linea)?.valor).sinPrecio, [lineasPorDocumento, valores])
 
   // El realizado del período y la búsqueda. La búsqueda va diferida: el texto se
   // escribe sin esperar a la tabla.
@@ -321,12 +334,27 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       if (!ids.has(a.id)) return a
       return doc.tipo === 'SOPORTE' ? { ...a, soporteId: doc.id } : { ...a, facturaId: doc.id, facturaNumero: doc.numero }
     }))
-    setDocumentos((prev) => (prev.some((d) => d.id === doc.id) ? prev : [doc, ...prev]))
+    setDocumentos((prev) => (prev.some((d) => d.id === doc.id) ? prev.map((d) => d.id === doc.id ? doc : d) : [doc, ...prev]))
     setInfo(doc.tipo === 'SOPORTE'
       ? `Soporte ${doc.numero} puesto a ${vinculadas} línea(s).`
       : `✓ Factura ${doc.numero} creada con ${vinculadas} línea(s). Ya está en Cartera (Más → 💰 Cartera) para registrar sus pagos.${extra ? ` ${extra}` : ''}`)
     setModal(null)
     setSelected(new Set())
+  }
+
+  async function eliminarDocumento(doc: DocumentoFact) {
+    const nombre = doc.tipo === 'FACTURA' ? 'la factura' : 'el soporte'
+    if (!window.confirm(`¿Eliminar ${nombre} ${doc.numero}? Queda anotado quién lo eliminó y cuándo. El archivo PDF queda guardado, pero el documento ya no aparece.`)) return
+    setEliminando(doc.id)
+    try {
+      await anularDocumento(doc.id, '', session?.id ?? '')
+      setDocumentos((d) => d.filter((x) => x.id !== doc.id))
+      setInfo(`${doc.tipo === 'FACTURA' ? 'Factura' : 'Soporte'} ${doc.numero} eliminada.`)
+    } catch (e) {
+      setError((e as Error).message)
+    } finally {
+      setEliminando(null)
+    }
   }
 
   async function exportarAExcel() {
@@ -853,8 +881,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       {documentos.length > 0 && (
         <details className="fact-docs">
           <summary>Soportes y facturas ({documentos.length})</summary>
-          <table className="validacion-table">
-            <thead><tr><th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th className="num">Líneas</th><th className="num">Cant.</th><th>Archivo</th></tr></thead>
+          <div className="fact-docs-scroll"><table className="validacion-table">
+            <thead><tr><th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th className="num">Líneas</th><th className="num">Cant.</th><th>Archivo</th><th>Valor</th><th>Acciones</th></tr></thead>
             <tbody>
               {documentos.map((d) => (
                 <tr key={d.id}>
@@ -862,13 +890,16 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                   <td><b>{d.numero}</b></td>
                   <td className="nowrap">{d.fecha}</td>
                   <td>{d.cliente ?? '—'}</td>
-                  <td className="num">{usoDocs.get(d.id)?.n ?? 0}</td>
+                  <td className="num">{(conteoPorDocumento.get(d.id) ?? 0) === 0 ? <span className="fact-doc-sin-lineas">Sin líneas</span> : conteoPorDocumento.get(d.id)}</td>
                   <td className="num">{fmt(usoDocs.get(d.id)?.ha ?? 0)}</td>
                   <td>{d.archivoPath ? <button type="button" className="af-link" onClick={() => void verArchivo(d)}>Abrir</button> : <span className="subtle-copy">sin archivo</span>}</td>
+                  <td>{d.tipo === 'FACTURA' ? <CuadreFactura compacto total={d.valor} suma={sumaDelDocumento(d.id)} sinPrecio={sinPrecioDelDocumento(d.id)} /> : '—'}</td>
+                  <td>{(conteoPorDocumento.get(d.id) ?? 0) > 0 ? <span className="fact-doc-quitar">Quita sus líneas primero</span>
+                    : session && (session.role === 'owner' || session.role === 'administracion') ? <button type="button" className="inline-button fact-doc-eliminar" disabled={eliminando === d.id} onClick={() => void eliminarDocumento(d)}>{eliminando === d.id ? 'Eliminando…' : 'Eliminar'}</button> : null}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </details>
       )}
 
@@ -900,6 +931,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
           onCerrar={() => setModal(null)}
           onListo={listo}
           haciendas={[...new Set(seleccion.map((a) => a.haciendaName))]}
+          sumaDeLineasDe={sumaDelDocumento}
+          sinPrecioDeLineasDe={(ids) => ids.filter((id) => valores.get(id)?.valor == null).length}
         />
       )}
     </section>

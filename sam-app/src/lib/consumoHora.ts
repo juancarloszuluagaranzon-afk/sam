@@ -326,6 +326,12 @@ export interface Tanqueo {
   galones: number
   fuente: 'Entrega' | 'Tanqueo'
   detalle: string
+  /**
+   * ¿El tanque quedó lleno? `false` = NO quedó lleno (26-oct-2026, pedido de Cristian): ese tanqueo no sirve de punto de
+   * medición —no se sabe cuánto faltó—, así que NO corta la cuenta: sus galones entran en el tramo del siguiente tanqueo
+   * lleno, igual que uno sin horómetro. `true`/`null`/ausente = se trata como lleno (todo lo anterior a este dato).
+   */
+  lleno?: boolean | null
 }
 
 export interface TramoTanque extends Tanqueo {
@@ -395,7 +401,10 @@ export function consumoTanqueATanque(tanqueos: Tanqueo[], dias: number, previos:
     const { buenas: b2 } = cercaDeLaMediana(b1, diasLectura)
     const { buenas } = enOrdenDelTiempo(b2)
     const buena = new Set(buenas.map((l) => `${l.cuando}|${l.horometro}`))
-    const esBuena = (t: Tanqueo) => (t.horometro ?? 0) > 0 && buena.has(`${t.cuando}|${t.horometro}`)
+    const horometroBueno = (t: Tanqueo) => (t.horometro ?? 0) > 0 && buena.has(`${t.cuando}|${t.horometro}`)
+    const parcial = (t: Tanqueo) => t.lleno === false
+    // Punto de medición = horómetro bueno Y tanque lleno. Un parcial no corta la cuenta: sus galones pasan al siguiente.
+    const esBuena = (t: Tanqueo) => horometroBueno(t) && !parcial(t)
 
     // Punto de partida: el último bueno de ANTES; si no hay, el primero bueno del periodo.
     let iPartida = -1
@@ -412,7 +421,8 @@ export function consumoTanqueATanque(tanqueos: Tanqueo[], dias: number, previos:
       if (antes && i !== iPartida) { if (ok) hAnterior = t.horometro!; return }
       const cuenta = !antes && iPartida >= 0 && i > iPartida && i <= iUltimo
       let nota: string | null = null
-      if (!(t.horometro ?? 0)) nota = 'sin horómetro: sus galones entran en el tramo del siguiente'
+      if (parcial(t)) nota = 'no quedó lleno: no es punto de medición, sus galones entran en el tramo del siguiente tanqueo lleno'
+      else if (!(t.horometro ?? 0)) nota = 'sin horómetro: sus galones entran en el tramo del siguiente'
       else if (!ok) nota = 'horómetro que no cuadra con los demás: sus galones entran en el tramo del siguiente'
       if (antes) nota = 'punto de partida: último tanqueo del periodo anterior'
       else if (i === iPartida) nota = 'sin tanqueo anterior: es el punto de partida'
@@ -432,7 +442,7 @@ export function consumoTanqueATanque(tanqueos: Tanqueo[], dias: number, previos:
     let gastado: number | null = null
     let horas: number | null = null
     let problema: string | null = null
-    if (!inicial || !final) problema = 'ningún tanqueo con horómetro en el periodo'
+    if (!inicial || !final) problema = orden.some(parcial) && orden.some(horometroBueno) ? 'ningún tanqueo lleno con horómetro en el periodo' : 'ningún tanqueo con horómetro en el periodo'
     else if (iPartida >= iUltimo) problema = 'un solo tanqueo con horómetro y ninguno antes: se mide con el siguiente'
     else {
       const h = final.horometro! - inicial.horometro!

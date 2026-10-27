@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import { useAppData } from '../context/AppDataContext'
 import { registrarCombustibleExterno, uploadEvidencia } from '../services/samApi'
+import { SwitchTanqueLleno } from './SwitchTanqueLleno'
 import { DESTINO_LABEL, type CombustibleDestino, type CombustibleOrigen } from '../domain/sam'
 import { SearchableSelect } from './SearchableSelect'
 import { CampoPlaca, CampoLista, recordarPlaca, recordarValor } from './CampoPlaca'
@@ -78,6 +79,7 @@ export function TanqueoModal({
   const [subiendo, setSubiendo] = useState(false)
   /** Segundo toque cuando la cifra es absurda. Ver GALONES_SOSPECHOSO. */
   const [confirmaGrande, setConfirmaGrande] = useState(false)
+  const [lleno, setLleno] = useState(true)
   const fotoRef = useRef<HTMLInputElement>(null)
 
   // El propio analista también tanquea: decirle que "lo aprueba el analista"
@@ -121,6 +123,7 @@ export function TanqueoModal({
     setPimpCant(''); setPimpCap('5')
     setEquipoCodigo(equipoFijo ?? '')
     setOperarioId('')
+    setLleno(true)
     setPlaca(localStorage.getItem(`${PLACA_KEY}:${session?.id ?? ''}`) ?? '')
     setError('')
     /* eslint-disable-next-line react-hooks/exhaustive-deps */
@@ -201,6 +204,7 @@ export function TanqueoModal({
         pimpinasCapacidad: destino === 'PIMPINAS' ? Number(pimpCap) : undefined,
         insumoId,
         galones: galonesFinal,
+        tanqueLleno: destino === 'MAQUINA' ? lleno : undefined,
         valor: Number(valor) || 0,
         estacion: origen === 'ESTACION' ? (estacion.trim() || undefined) : undefined,
         factura: factura.trim() || undefined,
@@ -225,6 +229,7 @@ export function TanqueoModal({
         ? `Registrado: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Queda pendiente de la aprobación ${quienAvala}.`
         : `Guardado sin señal: ${galonesFinal} galones · ${DESTINO_LABEL[destino]}. Se envía solo cuando haya cobertura.`)
       onClose()
+      setLleno(true)
       onSaved?.()
     } catch (err) {
       const e = err as { message?: string }
@@ -331,9 +336,12 @@ export function TanqueoModal({
           )}
 
           {destino === 'MAQUINA' && (
-            <label>Horómetro <span style={{ color: '#b3261e' }}>*</span>
-              <input type="number" min={0} step="any" value={horometro} onChange={(e) => setHorometro(e.target.value)} disabled={busy} />
-            </label>
+            <>
+              <label>Horómetro <span style={{ color: '#b3261e' }}>*</span>
+                <input type="number" min={0} step="any" value={horometro} onChange={(e) => setHorometro(e.target.value)} disabled={busy} />
+              </label>
+              <SwitchTanqueLleno lleno={lleno} onChange={setLleno} disabled={busy} />
+            </>
           )}
 
           {/* A quién se le entregó: él es quien lo confirma después. */}

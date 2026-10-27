@@ -1,5 +1,5 @@
 import { etiquetasFact, unirEtiquetasFact } from '../lib/etiquetasFact'
-import { setToken } from '../lib/sesion'
+import { getToken, setToken } from '../lib/sesion'
 import { LOCAL_MAESTRO } from '../data/constants'
 import { ingenioNombre, idSuerte, slugIngenio } from '../data/ingenios'
 import { DESTINO_LABEL } from '../domain/sam'
@@ -50,6 +50,7 @@ import { comprimirImagen, PERFIL_IMAGEN } from '../lib/imagenLigera'
 import { redondear2 } from '../lib/cantidad'
 import { filaMaestro } from '../lib/areaSuerte'
 import { esPorHoras } from '../lib/texto'
+import { compararEquipos, registrarOrdenEquipos } from '../lib/ordenEquipos'
 import type { RangoSemaforo } from '../lib/semaforo'
 import type { Tanqueo } from '../lib/consumoHora'
 
@@ -912,18 +913,31 @@ export async function loadAppUsers(): Promise<{
 export async function loadEquipmentTodos(): Promise<Array<Equipment & { active: boolean }>> {
   const { data, error } = await supabase
     .from('equipos')
-    .select('codigo,nombre,marca,modelo,numero_serie,placa,activo')
+    .select('*')
     .order('codigo')
   if (error || !data) return []
-  return (data as Record<string, unknown>[]).map((row) => ({
+  const mapped = (data as Record<string, unknown>[]).map((row) => ({
     code: String(row.codigo),
     name: String(row.nombre),
     brand: row.marca ? String(row.marca) : undefined,
     model: row.modelo ? String(row.modelo) : undefined,
     serial: row.numero_serie ? String(row.numero_serie) : undefined,
     plate: row.placa ? String(row.placa) : undefined,
+    order: row.orden == null ? null : Number(row.orden),
     active: row.activo !== false,
   }))
+  registrarOrdenEquipos(mapped.map((e) => ({ code: e.code, orden: e.order })))
+  return mapped.sort((a, b) => compararEquipos(a.code, b.code))
+}
+
+/**
+ * Guarda el ORDEN de las máquinas de los informes: la posición de cada una es su lugar en `codigos` (todo de una vez).
+ * Devuelve cuántas máquinas quedaron con posición. Migración 20261027100000 (`equipos_guardar_orden`).
+ */
+export async function guardarOrdenEquipos(codigos: string[], usuario: string): Promise<number> {
+  const { data, error } = await supabase.rpc('equipos_guardar_orden', { p_codigos: codigos, p_usuario: usuario, p_token: getToken() })
+  if (error) throw new Error((error.message || 'No se pudo guardar el orden').replace(/^[A-Z_]+:\s*/, ''))
+  return Number(data ?? 0)
 }
 
 export async function loadEquipment(): Promise<{
@@ -933,7 +947,7 @@ export async function loadEquipment(): Promise<{
   try {
     const { data, error } = await supabase
       .from('equipos')
-      .select('codigo,nombre,marca,modelo,numero_serie,placa,tipo')
+      .select('*')
       .eq('activo', true)
       .order('codigo')
 
@@ -947,12 +961,15 @@ export async function loadEquipment(): Promise<{
       serial: row.numero_serie ? String(row.numero_serie) : undefined,
       plate: row.placa ? String(row.placa) : undefined,
       type: row.tipo ? (String(row.tipo) as Equipment['type']) : undefined,
+      order: row.orden == null ? null : Number(row.orden),
     }))
+    registrarOrdenEquipos(mapped.map((e) => ({ code: e.code, orden: e.order })))
     void db.equipment.clear().then(() => db.equipment.bulkPut(mapped))
-    return { data: mapped, source: 'supabase' }
+    return { data: mapped.sort((a, b) => compararEquipos(a.code, b.code)), source: 'supabase' }
   } catch {
     const cached = await db.equipment.toArray()
-    return { data: cached, source: 'fallback' }
+    registrarOrdenEquipos(cached.map((e) => ({ code: e.code, orden: e.order })))
+    return { data: cached.sort((a, b) => compararEquipos(a.code, b.code)), source: 'fallback' }
   }
 }
 
@@ -972,7 +989,7 @@ export interface EquipoEstado {
 export async function loadEquiposEstado(): Promise<EquipoEstado[]> {
   const { data, error } = await supabase.from('equipos').select('*').order('codigo')
   if (error || !data) return []
-  return (data as Record<string, unknown>[]).map((r) => {
+  return (data as Record<string, unknown>[]).map((r): EquipoEstado => {
     const e = String(r.estado ?? 'activo').toLowerCase()
     return {
       code: String(r.codigo ?? ''),
@@ -981,7 +998,7 @@ export async function loadEquiposEstado(): Promise<EquipoEstado[]> {
       estado: e === 'en_mantenimiento' ? 'en_mantenimiento' : e === 'inactivo' ? 'inactivo' : 'activo',
       activo: r.activo == null ? true : Boolean(r.activo),
     }
-  })
+  }).sort((a, b) => compararEquipos(a.code, b.code))
 }
 
 export async function createEquipment(input: CreateEquipmentInput) {
@@ -2461,6 +2478,8 @@ export async function registrarCombustibleExterno(input: {
   /** Operario que recibe. Solo se guarda en destino=MAQUINA. */
   operarioId?: string
   operarioNombre?: string
+  /** ¿El tanque quedó lleno? `false` = NO quedó lleno. `undefined` = no se preguntó. Solo se guarda en destino=MAQUINA. */
+  tanqueLleno?: boolean
 }): Promise<void> {
   const origen: CombustibleOrigen = input.origen ?? 'ESTACION'
   const galones = redondear2(Number(input.galones))
@@ -2501,6 +2520,7 @@ export async function registrarCombustibleExterno(input: {
       // (decisión del cliente): guardarlo ahí crearía una aprobación que nadie espera.
       operario_id: input.destino === 'MAQUINA' ? (input.operarioId ?? null) : null,
       operario_nombre: input.destino === 'MAQUINA' ? (input.operarioNombre ?? null) : null,
+      tanque_lleno: input.destino === 'MAQUINA' ? (input.tanqueLleno ?? null) : null,
     })
     .select('id')
     .single()
@@ -2698,6 +2718,8 @@ export async function entregarDirecto(input: {
   bodegaId?: string
   /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
   engraso?: boolean
+  /** ¿El tanque quedó lleno? `false` = NO quedó lleno. `undefined` = no se preguntó (o no se entregó combustible). */
+  tanqueLleno?: boolean
   /**
    * Cuándo OCURRIÓ la entrega (ISO). `undefined` = ahora.
    *
@@ -2745,6 +2767,16 @@ export async function entregarDirecto(input: {
     })),
   })
   if (error) throw new Error(error.message || 'No se pudo registrar la entrega')
+
+  // Se guarda aparte: `entregar_directo` mantiene atómica la entrega y no se modifica su transacción.
+  if (input.tanqueLleno !== undefined) {
+    try {
+      const { error: tanqueError } = await supabase.from('insumos_solicitudes').update({ tanque_lleno: input.tanqueLleno }).eq('id', id)
+      if (tanqueError) console.warn('No se pudo guardar si el tanque quedó lleno en la entrega directa', tanqueError)
+    } catch (tanqueError) {
+      console.warn('No se pudo guardar si el tanque quedó lleno en la entrega directa', tanqueError)
+    }
+  }
 
   // Los insumos actualizados se releen: la función ya dejó el stock bueno.
   const tocados = [...new Set(input.items.filter((it) => it.insumoId && it.cantidad > 0).map((it) => it.insumoId))]
@@ -2876,7 +2908,7 @@ async function tanqueosEntre(desde: string, hasta: string): Promise<Tanqueo[]> {
   const [ent, tq] = await Promise.all([
     supabase
       .from('insumos_solicitudes')
-      .select('id,equipo_codigo,horometro,entregado_en,created_at,operario_nombre,items:insumos_solicitud_items(insumo_nombre,cantidad,cantidad_despachada)')
+      .select('id,equipo_codigo,horometro,entregado_en,created_at,operario_nombre,tanque_lleno,items:insumos_solicitud_items(insumo_nombre,cantidad,cantidad_despachada)')
       .not('equipo_codigo', 'is', null)
       .neq('estado', 'CANCELADA')
       .gte('entregado_en', `${desde}T00:00:00-05:00`)
@@ -2884,7 +2916,7 @@ async function tanqueosEntre(desde: string, hasta: string): Promise<Tanqueo[]> {
       .limit(5000),
     supabase
       .from('combustible_externo')
-      .select('id,equipo_codigo,horometro,galones,created_at,fecha,operario_nombre')
+      .select('id,equipo_codigo,horometro,galones,created_at,fecha,operario_nombre,tanque_lleno')
       .not('equipo_codigo', 'is', null)
       .neq('estado', 'RECHAZADO')
       .gte('fecha', desde)
@@ -2903,6 +2935,7 @@ async function tanqueosEntre(desde: string, hasta: string): Promise<Tanqueo[]> {
     out.push({
       id: String(r.id), maquina: String(r.equipo_codigo), cuando: String(r.entregado_en ?? r.created_at),
       horometro: h(r.horometro), galones, fuente: 'Entrega', detalle: String(r.operario_nombre ?? ''),
+      lleno: r.tanque_lleno == null ? null : Boolean(r.tanque_lleno),
     })
   }
   for (const r of (tq.data ?? []) as Record<string, unknown>[]) {
@@ -2911,6 +2944,7 @@ async function tanqueosEntre(desde: string, hasta: string): Promise<Tanqueo[]> {
     out.push({
       id: String(r.id), maquina: String(r.equipo_codigo), cuando: String(r.created_at ?? `${r.fecha}T12:00:00-05:00`),
       horometro: h(r.horometro), galones, fuente: 'Tanqueo', detalle: String(r.operario_nombre ?? ''),
+      lleno: r.tanque_lleno == null ? null : Boolean(r.tanque_lleno),
     })
   }
   return out
@@ -3063,6 +3097,8 @@ export async function entregarSolicitud(input: {
   bodegaId?: string
   /** ¿Engrasó la máquina? `undefined` = no se preguntó. */
   engraso?: boolean
+  /** ¿El tanque quedó lleno? `false` = NO quedó lleno. `undefined` = no se preguntó (o no se entregó combustible). */
+  tanqueLleno?: boolean
   /**
    * Lo que se entrega. Un ítem SIN `itemId` es adicional: el operario no lo
    * pidió pero el supervisor se lo lleva de una — pasa todo el tiempo, y antes
@@ -3117,6 +3153,7 @@ export async function entregarSolicitud(input: {
       bodega_id: input.bodegaId ?? null,
       evidencia_urls: input.evidenciaUrls,
       engraso: input.engraso ?? null,
+      tanque_lleno: input.tanqueLleno ?? null,
       updated_at: new Date().toISOString(),
     })
     .eq('id', input.solicitudId)

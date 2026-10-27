@@ -3,6 +3,7 @@ import { useAppData } from '../context/AppDataContext'
 import { Ayuda } from '../components/Ayuda'
 import { useEquipmentForm } from '../hooks/useEquipmentForm'
 import { loadEquipmentTodos } from '../services/samApi'
+import { OrdenMaquinasModal } from './OrdenMaquinasModal'
 
 /**
  * El maestro de máquinas: crear, editar, apagar y borrar.
@@ -18,7 +19,7 @@ import { loadEquipmentTodos } from '../services/samApi'
  * agrega una vez.
  */
 export function MaquinasCrudTab() {
-  const { busy } = useAppData()
+  const { busy, session } = useAppData()
   const {
     equipmentForm, updateEquipmentForm, isEquipmentFormOpen,
     handleCreateEquipment, editando, nuevaMaquina, cerrarFormulario,
@@ -28,6 +29,7 @@ export function MaquinasCrudTab() {
   const [todas, setTodas] = useState<Array<{ code: string; name: string; plate?: string; active: boolean }>>([])
   const [cargando, setCargando] = useState(true)
   const [busca, setBusca] = useState('')
+  const [ordenOpen, setOrdenOpen] = useState(false)
 
   const cargar = useCallback(async () => {
     setCargando(true)
@@ -56,11 +58,15 @@ export function MaquinasCrudTab() {
     <section className="panel-card">
       <div className="panel-title split">
         <h2>Máquinas</h2>
-        <button type="button" className="primary-button"
-                onClick={() => (isEquipmentFormOpen ? cerrarFormulario() : nuevaMaquina())} disabled={busy}>
-          {isEquipmentFormOpen ? (editando ? `Editando ${editando}` : 'Cerrar') : '+ Nueva máquina'}
-        </button>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button type="button" className="inline-button" onClick={() => setOrdenOpen(true)} disabled={busy}>↕ Orden de los informes</button>
+          <button type="button" className="primary-button"
+                  onClick={() => (isEquipmentFormOpen ? cerrarFormulario() : nuevaMaquina())} disabled={busy}>
+            {isEquipmentFormOpen ? (editando ? `Editando ${editando}` : 'Cerrar') : '+ Nueva máquina'}
+          </button>
+        </div>
       </div>
+      {ordenOpen && session?.id && <OrdenMaquinasModal usuarioId={session.id} onClose={() => setOrdenOpen(false)} onGuardado={() => { void cargar() }} />}
 
       <Ayuda>
         <p>

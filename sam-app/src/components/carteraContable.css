@@ -1,0 +1,170 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   CARTERA CONTABLE — Ola 2 de la reunión con ASM (27-oct-2026)
+   Clientes de facturación, deducciones y observaciones de una factura.
+
+   Todo lleva el prefijo `cc-` para no tocar nada del resto del módulo. Los
+   colores salen de las variables del proyecto, así que el modo oscuro
+   funciona sin reglas aparte. Nada de reglas globales.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+.cc-seccion { margin-top: 10px; display: grid; gap: 8px; min-width: 0; }
+.cc-titulo { margin: 0; font-size: 0.92rem; font-weight: 700; color: var(--color-ink); }
+.cc-vacio { margin: 0; font-size: 0.86rem; color: var(--color-ink-light); }
+
+/* Un campo de formulario (etiqueta arriba, control abajo). */
+.cc-campo { display: grid; gap: 4px; min-width: 0; }
+.cc-campo > span { font-size: 0.82rem; font-weight: 600; color: var(--color-ink-mid); }
+
+/* ── Deducciones ────────────────────────────────────────────────────────── */
+.cc-lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+
+.cc-item {
+  display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: flex-start; justify-content: space-between;
+  padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-soft); min-width: 0;
+}
+.cc-item--anulada { opacity: 0.62; }
+.cc-item--anulada .cc-item__nombre { text-decoration: line-through; }
+.cc-item__cuerpo { flex: 1 1 160px; min-width: 0; }
+.cc-item__nombre { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.cc-item__meta { display: block; font-size: 0.78rem; color: var(--color-ink-light); overflow-wrap: anywhere; }
+.cc-item__lado { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+.cc-item__valor { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Casilla + nombre de la deducción; 40 px de alto para el dedo. */
+.cc-check { display: flex; align-items: center; gap: 8px; min-height: 40px; flex: 1 1 170px; min-width: 0; }
+.cc-check > span { overflow-wrap: anywhere; }
+.cc-check input[type="checkbox"] { width: 20px; height: 20px; flex: 0 0 auto; margin: 0; }
+.cc-check--solo { flex: 0 0 auto; }
+
+.cc-num {
+  width: 118px; min-height: 40px; padding: 8px 10px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-input); color: var(--color-ink);
+  text-align: right; font-variant-numeric: tabular-nums;
+}
+.cc-num--pct { width: 78px; }
+/* La nota es texto, no un número: va a la izquierda y ocupa lo que sobre. */
+.cc-num.cc-nota { flex: 1 1 150px; width: auto; min-width: 0; text-align: left; }
+
+/* Fila agregada a mano (concepto editable). */
+.cc-fila-manual {
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+  padding: 8px 10px; border: 1px dashed var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-soft); min-width: 0;
+}
+.cc-fila-manual select {
+  flex: 1 1 160px; min-width: 0; min-height: 40px; padding: 8px 10px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-input); color: var(--color-ink);
+}
+
+.cc-boton-quitar {
+  width: 40px; min-height: 40px; flex: 0 0 auto;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-card); color: var(--color-ink-mid);
+  cursor: pointer; font-size: 1rem; line-height: 1;
+}
+.cc-boton-quitar:hover:not(:disabled) { color: var(--color-status-cancel); border-color: var(--color-status-cancel); }
+.cc-boton-quitar:disabled { opacity: 0.5; cursor: default; }
+
+.cc-botones { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cc-botones .primary-button, .cc-botones .inline-button { width: auto; }
+
+/* Resumen en vivo del saldo antes y después de las deducciones marcadas. */
+.cc-resumen {
+  display: grid; gap: 4px; padding: 10px 12px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-muted); font-size: 0.88rem;
+}
+.cc-resumen__fila { display: flex; justify-content: space-between; gap: 10px; }
+.cc-resumen__fila strong { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cc-resumen__fila--total { padding-top: 5px; border-top: 1px dashed var(--color-border); font-weight: 700; }
+
+.cc-error { margin: 0; color: var(--color-status-cancel); font-size: 0.84rem; font-weight: 600; overflow-wrap: anywhere; }
+.cc-error--fila { flex: 1 0 100%; margin: 0; font-size: 0.78rem; }
+
+/* ── Observaciones ──────────────────────────────────────────────────────── */
+.cc-obs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.cc-obs__item {
+  padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-soft); min-width: 0;
+}
+.cc-obs__texto { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cc-obs__meta { display: block; margin-top: 3px; font-size: 0.78rem; color: var(--color-ink-light); }
+.cc-campo textarea {
+  width: 100%; min-height: 76px; padding: 10px 12px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-input); color: var(--color-ink); resize: vertical; font: inherit;
+}
+
+/* ── Indicadores en la tabla de facturas ────────────────────────────────── */
+.cc-ind { margin-left: 6px; font-size: 0.8rem; color: var(--color-ink-mid); white-space: nowrap; }
+.cc-chip-ded {
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: var(--radius-pill);
+  font-size: 0.74rem; font-weight: 700; white-space: nowrap;
+  color: var(--color-status-progress); background: var(--color-status-progress-bg);
+}
+/* Con la tercera pestaña (Clientes) la barra mide 452 px y, en el celular, ensanchaba la página entera:
+   la ventana de detalle quedaba corrida a la derecha. Ahora las pestañas se parten en dos líneas. */
+.acu-vistas { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; }
+.acu-vistas .realizadas-seg__btn { flex: 1 1 auto; min-height: 40px; white-space: normal; }
+
+/* Sin un ancho mínimo, en el celular el nombre se parte en cuatro líneas y cada fila crece. */
+.cc-col-facturado { min-width: 170px; }
+.cc-pagador-nota { display: block; font-size: 0.78rem; color: var(--color-ink-light); overflow-wrap: anywhere; }
+.cc-sin-asignar { color: var(--color-ink-light); }
+
+/* ── Clientes de facturación ────────────────────────────────────────────── */
+.cc-cli-barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 10px 0; }
+.cc-cli-barra .user-search-input { flex: 1 1 200px; min-width: 0; margin-bottom: 0; }
+.cc-cli-barra select { width: auto; min-height: 40px; }
+.cc-cli-barra .primary-button { width: auto; }
+.cc-cli-check {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 40px;
+  font-size: 0.9rem; color: var(--color-ink-mid);
+}
+.cc-cli-check input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
+
+/* Tarjetas, no tabla: así caben en un celular de 320 px. */
+.cc-cli-lista {
+  list-style: none; margin: 0; padding: 0; display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+}
+.cc-cli-card {
+  display: grid; gap: 5px; width: 100%; text-align: left; min-width: 0;
+  padding: 10px 12px; border: 1px solid var(--color-border); border-radius: var(--radius-md);
+  background: var(--color-bg-card); color: var(--color-ink); cursor: pointer; font: inherit;
+}
+.cc-cli-card:hover { border-color: var(--color-brand); }
+.cc-cli-card--inactivo { opacity: 0.62; }
+.cc-cli-card__cab { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+.cc-cli-card__nombre { font-size: 0.95rem; font-weight: 700; overflow-wrap: anywhere; min-width: 0; }
+.cc-cli-card__meta { font-size: 0.8rem; color: var(--color-ink-mid); overflow-wrap: anywhere; }
+.cc-cli-card__reglas { display: flex; flex-wrap: wrap; gap: 4px; }
+.cc-regla-chip {
+  display: inline-block; padding: 1px 7px; border-radius: var(--radius-pill);
+  font-size: 0.74rem; background: var(--color-bg-muted); color: var(--color-ink-mid);
+}
+
+/* ── Editor de cliente ──────────────────────────────────────────────────── */
+.cc-editor { display: grid; gap: 10px; min-width: 0; }
+.cc-editor__campos { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 480px) { .cc-editor__campos { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.cc-editor__ancho { grid-column: 1 / -1; }
+/* Solo los controles DIRECTOS del campo: el selector con búsqueda trae su propio
+   estilo y su flecha, y pisarle el relleno le monta la flecha sobre el texto. */
+.cc-campo > input, .cc-campo > select {
+  width: 100%; min-height: 40px; padding: 8px 10px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-input); color: var(--color-ink);
+}
+.cc-reglas { display: grid; gap: 6px; }
+.cc-regla { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cc-regla select {
+  flex: 1 1 160px; min-width: 0; min-height: 40px; padding: 8px 10px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-bg-input); color: var(--color-ink);
+}
+.cc-editor__pie { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.cc-editor__pie .primary-button, .cc-editor__pie .inline-button { width: auto; }

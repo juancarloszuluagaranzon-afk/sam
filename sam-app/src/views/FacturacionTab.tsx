@@ -15,6 +15,8 @@ import { buildMonthOptions } from '../components/EntityHistoryModal'
 import { FiltrosPeriodoLabor } from '../components/FiltrosPeriodoLabor'
 import { cumpleLabor, cumplePeriodo, filtrosIniciales, textoPeriodo, type FiltrosLabor } from '../lib/filtrosPeriodoLabor'
 import { Ayuda } from '../components/Ayuda'
+import { SearchableSelect } from '../components/SearchableSelect'
+import { fijarFactura, fijarMostrar, opcionesFactura, ordenarPorFactura, type Mostrar, type OrdenLista } from '../lib/filtroFacturadas'
 import type { Assignment } from '../domain/sam'
 import { claveHacienda, loadAcuerdos } from '../services/carteraApi'
 
@@ -73,6 +75,13 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   // las líneas al escogerlo: cambiarle el cliente a una no la saca de la vista.
   const [cliente, setCliente] = useState('')
   const [fijasCliente, setFijasCliente] = useState<Set<string> | null>(null)
+  // «Mostrar» (todas / sin facturar / ya facturadas), el orden y UNA factura (26-oct-2026): también FIJAN las
+  // líneas al escogerlos, para que una línea recién facturada no se vaya de «Sin facturar» a mitad de trabajo.
+  const [mostrar, setMostrar] = useState<Mostrar>('TODAS')
+  const [fijasMostrar, setFijasMostrar] = useState<Set<string> | null>(null)
+  const [orden, setOrden] = useState<OrdenLista>('FECHA')
+  const [facturaSel, setFacturaSel] = useState('')
+  const [fijasFactura, setFijasFactura] = useState<Set<string> | null>(null)
   // Con qué EMPRESA se factura (la escoge Carlos David): define qué tabla de precios aplica.
   // '' = automático. Se recuerda en este equipo.
   const [empresa, setEmpresa] = useState<string>(() => {
@@ -95,6 +104,12 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     })
   }, [])
   const docPorId = useMemo(() => new Map(documentos.map((d) => [d.id, d])), [documentos])
+
+  // Número de la factura de una línea: el del documento y, si no, el escrito antes de existir los documentos.
+  const numeroDe = useCallback((a: Assignment): string | null => {
+    const n = (a.facturaId ? docPorId.get(a.facturaId)?.numero : null) ?? a.facturaNumero
+    return n && n.trim() ? n.trim() : null
+  }, [docPorId])
 
   const monthOptions = useMemo(() => buildMonthOptions(todayKey.slice(0, 7)), [todayKey])
 
@@ -149,14 +164,36 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
     setFijasSinTarifa((f) => (f ? fijarSinTarifa() : f))
     setFijasSinModalidad((f) => (f ? fijarSinModalidad() : f))
     setFijasCliente(fijarCliente(cliente))
+    setFijasMostrar(fijarMostrar(delPeriodo, mostrar, facturada))
+    setFijasFactura(fijarFactura(delPeriodo, facturaSel, numeroDe))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveVista])
+  function cambiarMostrar(m: Mostrar) {
+    setMostrar(m)
+    setFijasMostrar(fijarMostrar(delPeriodo, m, facturada))
+    // Una sola factura no tiene sentido fuera de «Ya facturadas».
+    if (m !== 'YA') { setFacturaSel(''); setFijasFactura(null) }
+    setSelected(new Set())
+  }
+  function cambiarFactura(n: string) {
+    setFacturaSel(n)
+    setFijasFactura(fijarFactura(delPeriodo, n, numeroDe))
+    if (n) { setMostrar('YA'); setFijasMostrar(fijarMostrar(delPeriodo, 'YA', facturada)) }
+    setSelected(new Set())
+  }
+  // Las facturas del período, para el selector «Factura».
+  const facturasDelPeriodo = useMemo(() => opcionesFactura(delPeriodo, numeroDe), [delPeriodo, numeroDe])
 
-  // La lista: SIEMPRE en el mismo orden (fecha), sin repartir por etapas.
-  const realizadas = useMemo(() => delPeriodo
-    .filter((a) => !fijasSinModalidad || fijasSinModalidad.has(a.id))
-    .filter((a) => !fijasSinTarifa || fijasSinTarifa.has(a.id))
-    .filter((a) => !fijasCliente || fijasCliente.has(a.id)), [delPeriodo, fijasSinModalidad, fijasSinTarifa, fijasCliente])
+  // La lista: por fecha, o junta por número de factura (las sin factura al final). Sin repartir por etapas.
+  const realizadas = useMemo(() => {
+    const lista = delPeriodo
+      .filter((a) => !fijasSinModalidad || fijasSinModalidad.has(a.id))
+      .filter((a) => !fijasSinTarifa || fijasSinTarifa.has(a.id))
+      .filter((a) => !fijasCliente || fijasCliente.has(a.id))
+      .filter((a) => !fijasMostrar || fijasMostrar.has(a.id))
+      .filter((a) => !fijasFactura || fijasFactura.has(a.id))
+    return orden === 'FACTURA' ? ordenarPorFactura(lista, numeroDe) : lista
+  }, [delPeriodo, fijasSinModalidad, fijasSinTarifa, fijasCliente, fijasMostrar, fijasFactura, orden, numeroDe])
   const shown = realizadas.slice(0, LIMIT)
   const overLimit = realizadas.length > LIMIT
 
@@ -223,6 +260,8 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
   function facturarTodas(tipo: TipoDocumento) {
     // Se quitan los filtros de revisar: así las marcadas son TODAS las pendientes (se ven).
     setFijasSinTarifa(null); setFijasSinModalidad(null)
+    // Y «Mostrar»/«Factura»: si la lista está en «Ya facturadas», las marcadas no se verían.
+    setMostrar('TODAS'); setFijasMostrar(null); setFacturaSel(''); setFijasFactura(null)
     const lista = tipo === 'FACTURA' ? porFacturar : porFacturar.filter((a) => !a.soporteId)
     setSelected(new Set(lista.map((a) => a.id)))
     setModoModal('nuevo')
@@ -616,6 +655,32 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
           value={search}
           onChange={(e) => { setSearch(e.target.value); setSelected(new Set()) }}
         />
+        <div className="fact-mostrar">
+          <span className="fact-mostrar__rotulo">Mostrar</span>
+          <div className="realizadas-seg" role="group" aria-label="Mostrar líneas">
+            {([['TODAS', 'Todas'], ['SIN', 'Sin facturar'], ['YA', 'Ya facturadas']] as Array<[Mostrar, string]>).map(([k, t]) => (
+              <button key={k} type="button" aria-pressed={mostrar === k} className={`realizadas-seg__btn${mostrar === k ? ' is-active' : ''}`}
+                onClick={() => cambiarMostrar(k)}>
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+        <label className="fact-empresa">
+          <span>Ordenar por</span>
+          <select id="fact-orden" value={orden} onChange={(e) => setOrden(e.target.value as OrdenLista)} className="base-input" style={{ width: 'auto' }}>
+            <option value="FECHA">Fecha</option>
+            <option value="FACTURA">Número de factura</option>
+          </select>
+        </label>
+        <div className="fact-factura">
+          <SearchableSelect
+            value={facturaSel}
+            onChange={cambiarFactura}
+            placeholder={`Todas las facturas (${facturasDelPeriodo.length})`}
+            options={facturasDelPeriodo.map((f) => ({ value: f.numero, label: `${f.numero} · ${f.lineas} ${f.lineas === 1 ? 'línea' : 'líneas'}` }))}
+          />
+        </div>
         <label className="fact-empresa">
           <span>Facturar por</span>
           <select id="fact-empresa" value={empresa} onChange={(e) => cambiarEmpresa(e.target.value)} className="base-input" style={{ width: 'auto' }}>

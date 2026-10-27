@@ -10023,6 +10023,14 @@ td.planilla-vacio:hover { background: #fde047; }
 .fact-aviso:hover { background: rgba(217, 119, 6, .18); }
 .fact-herramientas { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0 10px; }
 .fact-buscar { flex: 1 1 260px; margin: 0; }
+.fact-mostrar { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.fact-mostrar__rotulo { font-weight: 600; }
+.fact-factura { flex: 1 1 220px; min-width: 0; max-width: 340px; }
+@media (max-width: 520px) {
+  .fact-mostrar, .fact-factura { flex: 1 1 100%; max-width: none; }
+  .fact-mostrar .realizadas-seg { flex: 1 1 auto; }
+  .fact-mostrar .realizadas-seg__btn { flex: 1 1 auto; padding-inline: 6px; }
+}
 .fact-mas summary { cursor: pointer; font-size: 0.85rem; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--color-border); list-style: none; }
 .fact-mas summary::-webkit-details-marker { display: none; }
 .fact-mas summary::after { content: ' ▾'; }

@@ -730,15 +730,24 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   a ser «Tipo de cliente»); y separar **a quién se facturó** de **quién pagó** (el Ingenio Risaralda paga facturas de sus proveedores).
 - **Hecho**: migración `20261027140000_ola2_cartera_contable.sql` (NO aplicada; ensayada contra la base real con rollback y 40+ pruebas en
   `supabase/pruebas_ola2_cartera.sql`), `lib/deduccionesCartera.ts` (lógica pura, redondeo como `round(x,2)` de Postgres), servicios en
-  `services/carteraApi.ts` y `scripts/prueba-ola2-cartera.mts` (8). Maqueta mostrada; **falta el visto bueno de Iván antes de hacer pantallas**.
+  `services/carteraApi.ts` y `scripts/prueba-ola2-cartera.mts` (8). Maqueta aprobada («continúa», 27-oct) y **pantallas hechas** (commit `034933f` en la
+  rama `ola2-cartera`, worktree `Desarrollos\wt-ola2`): `components/DeduccionesFactura` (secciones **Quién / Deducciones / Observaciones** dentro del
+  detalle de la factura), `components/ClientesFact` (catálogo con editor y deducciones predeterminadas), `components/carteraContable.css` (prefijo `cc-`)
+  y `views/CarteraTab` (columna «Facturado a» con «↳ Pagó: …», «Tipo de cliente», 💬 y chip «Ded.», pestaña «👥 Clientes», «atrás» del celular).
+  Hecha por DeepSeek Flash (1 vuelta, compiló a la primera), revisada y corregida por Claude. Probada con servidor falso a 390/320/computador:
+  sin traslapes, «atrás» cierra el detalle y el editor, escrituras interceptadas (`fact_deducciones_guardar`, `fact_observacion_agregar`,
+  `fact_cliente_guardar`/`_reglas_guardar`). 🔴 **Lección**: una pestaña más en `.acu-vistas` (3 en vez de 2) medía 452 px y **ensanchaba toda la
+  página a 484 px en el celular** (la ventana de detalle quedaba corrida 63 px y cortada); ahora la barra parte en dos líneas. Y un selector con
+  búsqueda **no va dentro de un `<label>`**: el clic en la opción sube al label y reabre la lista.
 - 🔴 **Decisiones de diseño**: (1) una deducción **NO es un pago**: baja el saldo pero no cuenta como plata que entró (`fact_deducciones` aparte
   de `fact_pagos`); la vista `cartera_facturas_v` suma lo deducido y trae 7 columnas nuevas AL FINAL (la PWA vieja sigue leyéndola); (2) las tablas
   nuevas son de SOLO LECTURA para la app, todo se escribe por funciones con token (`fact_usuario`); (3) **ningún porcentaje va sembrado**: los de cada
   cliente los dicta cartera (Viviana). Lo que se dijo en la reunión (4 % Riopaila, 4 % + 1 % San Carlos, reteICA de Mayagüez) está POR VERIFICAR;
   (4) la base de cálculo (si el % va sobre el valor con o sin IVA) también está POR VERIFICAR: el valor es editable por factura; (5) el mismo concepto
   no se aplica dos veces a una factura (salvo «Descuento» y «Otro») y lo pagado + lo deducido nunca pasa del valor.
-- Falta: pantallas (detalle de factura, lista, catálogo «Clientes de facturación»), «atrás» del celular en lo nuevo, observaciones del analista en
-  Ganchos/Otros insumos (hoy solo existen en combustible), el archivo de Viviana, aplicar y publicar. Más adelante (Ola 3): importar facturas del
+- Falta: observaciones del analista en Ganchos/Otros insumos (hoy solo existen en combustible), el archivo de Viviana (porcentajes reales por cliente),
+  el manual, y **aplicar la migración `20261027140000` ANTES del deploy y publicar** (con la frase de Iván, tarjeta de Opus y copia de seguridad). Las
+  pruebas de pantalla usaron clientes y porcentajes de EJEMPLO simulados; con la migración aplicada hay que probar una vez con un usuario real escribiendo. Más adelante (Ola 3): importar facturas del
   Excel de Carlos, lectura de PDF de facturas, subir fincas y documentos en masa. Referencias de diseño: ver `registro-desempeno-modelos.md`
   (Antigravity: patrones útiles pero 3 de 5 enlaces no sirven).
 

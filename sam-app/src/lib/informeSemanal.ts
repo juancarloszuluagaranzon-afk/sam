@@ -1,5 +1,6 @@
 import type { SolicitudInsumo, CombustibleExterno } from '../domain/sam'
 import { consumoTanqueATanque } from './consumoHora'
+import { compararEquipos } from './ordenEquipos'
 
 /**
  * Informe semanal por máquina: horas trabajadas y rendimiento del combustible.
@@ -234,7 +235,7 @@ export function armarInformeSemanal(input: {
     })
   }
 
-  return filas.sort((a, b) => b.semana - a.semana || a.equipo.localeCompare(b.equipo, 'es', { numeric: true }))
+  return filas.sort((a, b) => b.semana - a.semana || compararEquipos(a.equipo, b.equipo))
 }
 
 /**

@@ -6,6 +6,7 @@ import { fmtFechaHora } from '../../lib/fechas'
 import { calcularIndicadores } from '../../lib/indicadores'
 import { OT_TIPO_LABEL, type OrdenTrabajo } from '../../domain/sam'
 import { Ayuda } from '../../components/Ayuda'
+import { compararEquipos } from '../../lib/ordenEquipos'
 
 /**
  * Hoja de vida de la máquina.
@@ -62,7 +63,7 @@ export function MaquinasTab() {
     const t = q.trim().toUpperCase()
     return [...equipment]
       .filter((e) => !t || e.code.toUpperCase().includes(t) || e.name.toUpperCase().includes(t))
-      .sort((a, b) => a.code.localeCompare(b.code, 'es', { numeric: true }))
+      .sort((a, b) => compararEquipos(a.code, b.code))
   }, [equipment, q])
 
   async function guardarHorometro() {

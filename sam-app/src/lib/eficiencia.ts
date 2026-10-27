@@ -1,3 +1,5 @@
+import { compararEquipos } from './ordenEquipos'
+
 /**
  * Eficiencia de maquinaria y operarios — horas por día desde el HORÓMETRO (17-oct-2026).
  *
@@ -271,7 +273,7 @@ export function armarEficiencia(sesiones: SesionMaquina[], opts: { desde: string
   })
 
   // Las peores primero: es lo que hay que mirar.
-  maquinas.sort((a, b) => a.horasPorDia - b.horasPorDia || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
+  maquinas.sort((a, b) => a.horasPorDia - b.horasPorDia || compararEquipos(a.equipo, b.equipo))
   operadores.sort((a, b) => a.horasPorDia - b.horasPorDia || a.nombre.localeCompare(b.nombre, 'es'))
 
   const horasFlota = r1(maquinas.reduce((s, m) => s + m.horas, 0))

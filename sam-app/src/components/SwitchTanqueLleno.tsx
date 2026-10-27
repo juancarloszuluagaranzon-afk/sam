@@ -1,4 +1,4 @@
-import './olaReunion.css'
+import '../views/olaReunion.css'
 
 export function SwitchTanqueLleno({ lleno, onChange, disabled = false }: {
   lleno: boolean

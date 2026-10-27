@@ -372,8 +372,8 @@ export function ConsumoDashboardTab() {
       {cargando ? <p className="muted-text">Cargando…</p> : (
         <>
           {/* ── La serie: de dónde venimos ─────────────────────────────────── */}
-          <p className="ins-res__lbl" style={{ marginTop: 14 }} hidden={medida !== 'COMBUSTIBLE'}>Histórico mensual de combustible</p>
-          <div className="cons-serie" hidden={medida !== 'COMBUSTIBLE'}>
+          <p className="ins-res__lbl" style={{ marginTop: 14 }}>Histórico mensual de combustible</p>
+          <div className="cons-serie">
             {meses.map((m) => (
               <button key={m.mes} type="button"
                       className={`cons-mes${m.mes === mesSel ? ' is-sel' : ''}`}

@@ -1,5 +1,5 @@
 import { CATEGORIAS_USUARIO, contarPorCategoria, type CategoriaUsuario } from '../lib/categoriasUsuario'
-import './olaReunion.css'
+import '../views/olaReunion.css'
 
 export function FiltroCategoriasUsuario({ usuarios, valor, onChange }: {
   usuarios: Array<{ role?: string | null }>

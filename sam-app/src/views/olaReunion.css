@@ -3,6 +3,7 @@
 .ola-selector-medida{max-width:100%}
 .ola-selector-medida .realizadas-seg{display:flex;flex-wrap:wrap;width:fit-content;max-width:100%}
 .ola-selector-medida .realizadas-seg__btn{min-height:40px;white-space:normal}
+.cons-tabla[hidden],.mural-kpi[hidden]{display:none!important}
 .ola-error{color:var(--color-status-cancel)}
 .ola-chip{flex:0 0 auto;min-height:40px;padding:7px 12px;border:1px solid var(--color-border);border-radius:var(--radius-pill);background:var(--color-bg-card);color:var(--color-ink);font:inherit;white-space:nowrap}
 .ola-chip.is-activo{border-color:var(--color-brand);background:var(--color-brand);color:var(--color-ink-on-brand)}
@@ -19,9 +20,10 @@
 .ola-orden-datos{flex:1;min-width:0;overflow-wrap:anywhere}
 .ola-orden-flechas{display:flex;gap:6px}
 .ola-orden-flechas button{width:44px;height:44px;font-size:1.2rem}
-.ola-consumo-barra{display:grid;grid-template-columns:minmax(90px,1fr) 2fr auto;align-items:center;gap:8px;margin:8px 0}
+.ola-consumo-barra{display:grid;grid-template-columns:minmax(88px,30%) minmax(0,1fr) 7.5rem;align-items:center;gap:8px;margin:8px 0}
+.ola-consumo-barra strong{text-align:right;white-space:nowrap}
 .ola-consumo-barra__pista{height:18px;overflow:hidden;border-radius:var(--radius-pill);background:var(--color-bg-muted)}
 .ola-consumo-barra__relleno{height:100%;border-radius:inherit;background:var(--color-brand)}
 .ola-consumo-tabla{width:100%;border-collapse:collapse}
 .ola-consumo-tabla th,.ola-consumo-tabla td{padding:8px 6px;border-bottom:1px solid var(--color-border);text-align:left;overflow-wrap:anywhere}
-@media(max-width:480px){.ola-consumo-barra{grid-template-columns:minmax(80px,1fr) 1.2fr auto}.ola-consumo-tabla th,.ola-consumo-tabla td{padding:7px 3px;font-size:.82rem}}
+@media(max-width:480px){.ola-consumo-barra{grid-template-columns:minmax(80px,30%) minmax(0,1fr) 6.8rem}.ola-consumo-tabla th,.ola-consumo-tabla td{padding:7px 3px;font-size:.82rem}}

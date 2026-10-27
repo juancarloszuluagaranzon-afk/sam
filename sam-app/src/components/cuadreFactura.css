@@ -18,7 +18,10 @@
 .cuadre-factura-estado.faltan, .cuadre-factura-estado.sin-total { color: var(--color-status-progress); background: var(--color-status-progress-bg); }
 .cuadre-factura-estado.se_pasa { color: var(--color-status-cancel); background: var(--color-status-cancel-bg); }
 .cuadre-factura-ayuda { margin: 0; color: var(--color-ink-mid); }
-.cuadre-factura.compacto { min-width: 150px; padding: 6px; gap: 3px; font-size: 0.75rem; }
+.cuadre-factura.compacto { min-width: 150px; padding: 6px; gap: 3px; font-size: 0.75rem; white-space: nowrap; }
+.cuadre-factura.compacto .cuadre-factura-estado { justify-self: start; }
+.fact-docs-scroll { max-width: 100%; overflow-x: auto; }
+.fact-docs-scroll .validacion-table { min-width: 880px; }
 .fact-doc-sin-lineas { display: inline-block; padding: 3px 8px; border-radius: var(--radius-pill); color: var(--color-status-progress); background: var(--color-status-progress-bg); }
 .fact-doc-eliminar { min-height: 40px; border-color: var(--color-status-cancel); color: var(--color-status-cancel); }
 .fact-doc-quitar { color: var(--color-ink-mid); font-size: 0.78rem; }

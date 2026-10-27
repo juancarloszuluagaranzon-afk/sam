@@ -881,7 +881,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
       {documentos.length > 0 && (
         <details className="fact-docs">
           <summary>Soportes y facturas ({documentos.length})</summary>
-          <table className="validacion-table">
+          <div className="fact-docs-scroll"><table className="validacion-table">
             <thead><tr><th>Tipo</th><th>Número</th><th>Fecha</th><th>Cliente</th><th className="num">Líneas</th><th className="num">Cant.</th><th>Archivo</th><th>Valor</th><th>Acciones</th></tr></thead>
             <tbody>
               {documentos.map((d) => (
@@ -899,7 +899,7 @@ export function FacturacionTab({ onEdit }: { onEdit?: (a: Assignment) => void })
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </details>
       )}
 

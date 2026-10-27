@@ -477,9 +477,11 @@ export function ConsumoDashboardTab() {
           )}
 
           {/* ── Máquina por máquina ────────────────────────────────────────── */}
-          <div className="panel-title split" style={{ marginTop: 16, marginBottom: 0 }}>
-            <p className="ins-res__lbl" style={{ margin: 0 }}>Máquina por máquina</p>
-          </div>
+          {medida !== 'OTROS' && (
+            <div className="panel-title split" style={{ marginTop: 16, marginBottom: 0 }}>
+              <p className="ins-res__lbl" style={{ margin: 0 }}>Máquina por máquina</p>
+            </div>
+          )}
 
           {esGan && (
             <p className="subtle-copy" style={{ marginTop: 6 }}>

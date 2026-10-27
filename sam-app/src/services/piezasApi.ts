@@ -192,8 +192,63 @@ export async function importarPiezas(
   piezas: Array<NuevaPieza & { codigo?: string }>,
   onProgreso?: (p: ProgresoCarga) => void,
 ): Promise<{ creadas: number; yaExistian: number }> {
-  void piezas; void onProgreso
-  throw new Error('no implementado')
+  if (piezas.length === 0) return { creadas: 0, yaExistian: 0 }
+  let hechas = 0
+  let creadas = 0
+  let yaExistian = 0
+  const motivo = MOTIVO_CARGA_INICIAL
+  for (let inicio = 0; inicio < piezas.length; inicio += 50) {
+    const tanda = piezas.slice(inicio, inicio + 50)
+    try {
+      const ids = tanda.map((p) => p.id)
+      const { data: antes, error: errorIds } = await supabase.from('insumos').select('id').in('id', ids)
+      if (errorIds) throw errorIds
+      const ya = new Set((antes ?? []).map((r) => String(r.id)))
+      const filas = tanda.map((p) => {
+        const fila: Record<string, unknown> = { id: p.id, nombre: p.nombre.trim().toUpperCase(), ubicacion: p.ubicacion.trim().toUpperCase(), categoria: 'MATERIAL', unidad: 'unidad', es_repuesto: true, stock: p.cantidad, stock_minimo: p.stockMinimo ?? 0 }
+        if (p.codigo) fila.codigo = p.codigo.trim().toUpperCase()
+        if (p.familia) fila.familia = p.familia.trim().toUpperCase()
+        if (p.marca) fila.marca = p.marca.trim().toUpperCase()
+        if (p.numeroParte) fila.numero_parte = p.numeroParte.trim().toUpperCase()
+        if (p.referencia) fila.referencia = p.referencia.trim().toUpperCase()
+        return fila
+      })
+      const { error: errorInsumos } = await supabase.from('insumos').upsert(filas, { onConflict: 'id', ignoreDuplicates: true })
+      if (errorInsumos) throw errorInsumos
+      const { data: movimientos, error: errorKardex } = await supabase.from('insumos_kardex').select('insumo_id')
+        .in('insumo_id', ids).eq('bodega_id', tanda[0].bodegaId).eq('motivo', motivo)
+      if (errorKardex) throw errorKardex
+      const cargados = new Set((movimientos ?? []).map((r) => String(r.insumo_id)))
+      const paraCargar = tanda.filter((p) => p.cantidad > 0 && !cargados.has(p.id))
+      if (paraCargar.length) {
+        // 🔴 Primero la EXISTENCIA y después su movimiento: la marca de «ya se cargó» es el movimiento del kardex. Si fuera
+        // al revés y fallara la existencia, el reintento vería el movimiento, daría la carga por hecha y la pieza
+        // quedaría en 0 para siempre. Así, un corte a mitad solo repite lo que falta (sin movimiento no se ha gastado nada).
+        const { error: errorStock } = await supabase.from('insumos_stock').upsert(paraCargar.map((p) => ({ insumo_id: p.id, bodega_id: p.bodegaId, stock: p.cantidad })), { onConflict: 'insumo_id,bodega_id' })
+        if (errorStock) throw errorStock
+        const { error: errorInsertKardex } = await supabase.from('insumos_kardex').insert(paraCargar.map((p) => ({
+          insumo_id: p.id, bodega_id: p.bodegaId, tipo: 'AJUSTE', cantidad: p.cantidad, saldo: p.cantidad, motivo, creado_por: p.creadoPor ?? null,
+        })))
+        if (errorInsertKardex) throw errorInsertKardex
+      }
+      // 🔴 Los códigos propios (ROD-0001…) los reparte la BASE, de un solo golpe y con candado por familia (migración
+      // 20261026235000): pedir `siguienteCodigo` pieza por pieza antes de insertar daba el MISMO código a todas las de una familia.
+      if (tanda.some((p) => p.familia && !p.codigo)) {
+        const { error: errorCodigos } = await supabase.rpc('asignar_codigos_insumos', { p_ids: ids })
+        if (errorCodigos) throw errorCodigos
+      }
+      yaExistian += tanda.filter((p) => ya.has(p.id)).length
+      creadas += tanda.length - tanda.filter((p) => ya.has(p.id)).length
+      hechas += tanda.length
+      onProgreso?.({ hechas, total: piezas.length })
+    } catch (error) {
+      // Los errores de la base llegan como objetos {message, code}, no como `Error`: sin esto el mensaje era «[object Object]».
+      const fallo = error instanceof Error ? error : new Error((error as { message?: string })?.message || 'No se pudo guardar la tanda')
+      Object.assign(fallo, { hechas })
+      throw fallo
+    }
+  }
+  return { creadas, yaExistian }
 }
 
 export async function ejecutarPieza(payload: PayloadPieza): Promise<void> {

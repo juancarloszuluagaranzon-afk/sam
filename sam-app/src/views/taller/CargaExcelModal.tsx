@@ -1,10 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Insumo } from '../../domain/sam'
 import {
   analizarFilas, descargarNoPasaron, descargarPlantillaPiezas, leerArchivoPiezas,
-  type Analisis,
+  type Analisis, type FamiliaCarga,
 } from '../../lib/cargaPiezas'
 import { importarPiezas, type NuevaPieza } from '../../services/piezasApi'
+import { loadFamilias } from '../../services/tallerApi'
 import { nuevoId } from './NuevaPiezaModal'
 import './piezas.css'
 
@@ -48,6 +49,9 @@ export function CargaExcelModal({ bodegaId, usuarioId, existentes, onClose, onTe
   const [guardando, setGuardando] = useState(false)
   const [progreso, setProgreso] = useState<{ hechas: number; total: number } | null>(null)
   const [resultado, setResultado] = useState<{ creadas: number; yaExistian: number } | null>(null)
+  // Las familias válidas (ROD, FIL…): una familia escrita que no exista es un ERROR de esa fila, y la plantilla las lista.
+  const [familias, setFamilias] = useState<FamiliaCarga[]>([])
+  useEffect(() => { void loadFamilias().then((fs) => setFamilias(fs.map((f) => ({ codigo: f.codigo, nombre: f.nombre })))).catch(() => { /* sin familias no se valida */ }) }, [])
   const inputArchivo = useRef<HTMLInputElement>(null)
   // `onTerminada` se llama UNA sola vez: la lista de atrás no necesita recargarse dos veces.
   const terminada = useRef(false)
@@ -85,6 +89,16 @@ export function CargaExcelModal({ bodegaId, usuarioId, existentes, onClose, onTe
     setError('')
     setLeyendo(true)
     try {
+      // 🔴 La base RECHAZA una familia que no existe (llave foránea): si la lista no cargó, una familia escrita a mano
+      // tumbaría la tanda entera. Sin la lista no se analiza nada.
+      let fams = familias
+      if (fams.length === 0) {
+        try { fams = (await loadFamilias()).map((f) => ({ codigo: f.codigo, nombre: f.nombre })); setFamilias(fams) } catch { /* abajo */ }
+      }
+      if (fams.length === 0) {
+        setError('No se pudieron cargar las familias de piezas. Revisa la señal e inténtalo otra vez.')
+        return
+      }
       const { filas, faltan } = await leerArchivoPiezas(file)
       if (faltan.length > 0) {
         setError(`Al archivo le faltan las columnas: ${faltan.join(', ')}.`)
@@ -94,7 +108,7 @@ export function CargaExcelModal({ bodegaId, usuarioId, existentes, onClose, onTe
         setError('El archivo no tiene filas con datos.')
         return
       }
-      const a = analizarFilas(filas, existentes, nuevoId)
+      const a = analizarFilas(filas, existentes, nuevoId, fams)
       if (a.filas.length === 0) {
         setError('El archivo no tiene filas con datos.')
         return
@@ -112,7 +126,7 @@ export function CargaExcelModal({ bodegaId, usuarioId, existentes, onClose, onTe
     setError('')
     setBajandoPlantilla(true)
     try {
-      await descargarPlantillaPiezas()
+      await descargarPlantillaPiezas(familias)
     } catch (err) {
       setError((err as { message?: string })?.message || 'No se pudo bajar la plantilla.')
     } finally { setBajandoPlantilla(false) }

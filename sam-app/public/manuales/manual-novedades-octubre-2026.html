@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Novedades de la app — octubre de 2026 — AgroMorales</title>
+<style>
+/* Mismo estilo de los manuales (ver manual-facturacion.html). Para leer en el celular e imprimir (A4). */
+:root {
+  --verde: #155b30;
+  --verde-claro: #e9f3ed;
+  --verde-medio: #4f9a6b;
+  --tinta: #161a14;
+  --tinta-media: #4a5040;
+  --borde: #e3e2dc;
+  --papel: #ffffff;
+  --suave: #fafaf7;
+  --alerta: #b3261e;
+  --alerta-suave: #fdecea;
+  --ambar: #9a5b00;
+  --ambar-suave: #fdf3dc;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--tinta); background: var(--suave); line-height: 1.5; }
+.hoja { max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; }
+
+.portada { background: var(--verde); color: #fff; border-radius: 18px; padding: 26px 22px; margin-bottom: 22px; }
+.portada__marca { font-size: 0.78rem; letter-spacing: 0.12em; text-transform: uppercase; opacity: 0.8; margin: 0; }
+.portada h1 { margin: 6px 0 4px; font-size: 1.75rem; line-height: 1.2; }
+.portada__para { font-size: 1rem; opacity: 0.92; margin: 0; }
+.portada__nota { margin: 14px 0 0; font-size: 0.86rem; opacity: 0.88; }
+
+h2.parte { margin: 30px 0 10px; padding-bottom: 6px; border-bottom: 2px solid var(--verde); color: var(--verde); font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+.num { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 50%; background: var(--verde); color: #fff; font-weight: 700; font-size: 0.95rem; flex: 0 0 auto; }
+.intro { margin: 0 0 12px; color: var(--tinta-media); }
+h3 { margin: 18px 0 6px; font-size: 1.02rem; color: var(--verde); }
+ul.puntos, ol.pasos { margin: 0 0 12px; padding-left: 22px; }
+ul.puntos li, ol.pasos li { margin-bottom: 5px; }
+
+/* Tarjetas del resumen */
+.mapa { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; margin: 8px 0 6px; }
+.tarjeta { background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; align-items: start; break-inside: avoid; }
+.tarjeta svg { width: 40px; height: 40px; grid-row: span 3; }
+.tarjeta b { font-size: 1rem; }
+.tarjeta span { font-size: 0.88rem; color: var(--tinta-media); }
+.tarjeta small { font-size: 0.78rem; color: var(--verde); font-weight: 700; }
+.nuevo { display: inline-block; background: var(--ambar-suave); color: var(--ambar); border-radius: 999px; padding: 1px 8px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+
+/* Infografías */
+.infografia { margin: 12px 0; background: var(--papel); border: 1px solid var(--borde); border-radius: 14px; padding: 14px; break-inside: avoid; }
+.infografia h4 { margin: 0 0 8px; font-size: 0.92rem; color: var(--tinta-media); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.infografia svg { display: block; width: 100%; max-width: 560px; height: auto; margin: 0 auto; }
+.infografia figcaption, .pie { margin: 8px 0 0; font-size: 0.84rem; color: var(--tinta-media); }
+.dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; }
+
+.cadena { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin: 6px 0 0; }
+.eslabon { background: var(--suave); border: 1px solid var(--borde); border-radius: 10px; padding: 7px 10px; font-size: 0.88rem; font-weight: 600; flex: 1 1 120px; }
+.eslabon small { display: block; font-weight: 400; color: var(--tinta-media); font-size: 0.76rem; }
+.eslabon em { display: block; font-style: normal; margin-top: 5px; background: var(--ambar-suave); color: var(--ambar); border-radius: 8px; padding: 2px 7px; font-size: 0.76rem; font-weight: 700; }
+.eslabon--fin { background: var(--verde); color: #fff; border-color: var(--verde); }
+.eslabon--fin small { color: #fff; opacity: 0.85; }
+.flecha { align-self: center; color: var(--tinta-media); font-weight: 700; }
+/* Dentro de dos columnas los pasos van uno debajo de otro, numerados, sin flechas. */
+.dos .flecha { display: none; }
+.dos .eslabon { flex-basis: 100%; }
+@media (max-width: 560px) { .flecha { display: none; } .eslabon { flex-basis: 100%; } }
+
+/* Ejemplo de la lista de cartera */
+.mock { border: 1px solid var(--borde); border-radius: 10px; overflow: hidden; font-size: 0.84rem; background: #fff; }
+.mock__fila { display: grid; grid-template-columns: 1.1fr 1.5fr 0.9fr; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--borde); align-items: start; }
+.mock__fila:first-child { border-top: 0; background: var(--suave); font-weight: 700; font-size: 0.74rem; text-transform: uppercase; color: var(--tinta-media); }
+.mock small { display: block; color: var(--tinta-media); font-size: 0.76rem; }
+.chip { display: inline-block; background: var(--ambar-suave); color: var(--ambar); border-radius: 999px; padding: 0 7px; font-size: 0.72rem; font-weight: 700; }
+.boton { display: inline-block; background: var(--verde); color: #fff; border-radius: 8px; padding: 1px 8px; font-weight: 700; font-size: 0.88em; white-space: nowrap; }
+.boton--claro { background: #e8e6df; color: var(--tinta); }
+
+/* Qué debe hacer */
+.hacer { background: var(--verde-claro); border: 1px solid #cfe3d6; border-radius: 12px; padding: 10px 14px; margin: 12px 0; break-inside: avoid; }
+.hacer b.titulo { display: block; color: var(--verde); margin-bottom: 4px; }
+.hacer ul { margin: 0; padding-left: 20px; }
+.hacer li { margin-bottom: 3px; }
+.ojo { background: var(--ambar-suave); border: 1px solid #efd9a3; border-radius: 12px; padding: 9px 14px; margin: 12px 0; font-size: 0.9rem; break-inside: avoid; }
+
+/* Tabla final */
+.quien { width: 100%; border-collapse: collapse; background: var(--papel); border: 1px solid var(--borde); border-radius: 12px; overflow: hidden; font-size: 0.9rem; }
+.quien th { background: var(--verde); color: #fff; text-align: left; padding: 8px 10px; font-size: 0.82rem; }
+.quien td { padding: 9px 10px; border-top: 1px solid var(--borde); vertical-align: top; }
+.quien td:first-child { white-space: nowrap; font-weight: 700; color: var(--verde); }
+.quien tr { break-inside: avoid; }
+.quien ul { margin: 0; padding-left: 18px; }
+/* En el celular cada fila se apila: persona, qué hacer y dónde, una debajo de otra. */
+@media (max-width: 560px) {
+  .quien, .quien tbody, .quien tr, .quien td { display: block; width: 100%; }
+  .quien thead { display: none; }
+  .quien tr { border-top: 1px solid var(--borde); padding: 8px 0; }
+  .quien td { border-top: 0; padding: 4px 12px; }
+  .quien td:first-child { white-space: normal; font-size: 1rem; }
+  .quien td:nth-child(3)::before { content: "Dónde: "; font-weight: 700; color: var(--tinta-media); }
+  .quien td:nth-child(3) { color: var(--tinta-media); font-size: 0.86rem; }
+}
+
+.pie-doc { margin-top: 30px; padding-top: 12px; border-top: 1px solid var(--borde); font-size: 0.82rem; color: var(--tinta-media); }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff; font-size: 10pt; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .hoja { max-width: none; padding: 0; }
+  .portada { margin-bottom: 14px; }
+  h2.parte, h3 { break-after: avoid; }
+  ol.pasos { break-inside: avoid; }
+  .hacer, .ojo { break-inside: avoid; }
+  .salto { break-before: page; }
+  .infografia svg { max-width: 470px; }
+}
+</style>
+</head>
+<body>
+<main class="hoja">
+
+<header class="portada">
+  <p class="portada__marca">AgroMorales · AgroServicios Morales</p>
+  <h1>Novedades de la app<br>octubre de 2026</h1>
+  <p class="portada__para">Lo que cambió y lo que necesitamos que haga cada persona del equipo.</p>
+  <p class="portada__nota">28 de octubre de 2026 · versión 99b6bcc · Se lee en el celular y se imprime en una hoja carta o A4.</p>
+</header>
+
+<!-- ───────────── Resumen ───────────── -->
+<h2 class="parte"><span class="num">0</span> Lo nuevo en una mirada</h2>
+<p class="intro">Seis grupos de mejoras, todas ya publicadas. Cada tarjeta dice dónde se ve el cambio; las páginas siguientes explican cómo usarlo.</p>
+
+<div class="mapa">
+  <div class="tarjeta">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><rect x="9" y="5" width="22" height="30" rx="3" fill="#e9f3ed" stroke="#155b30" stroke-width="2"/><path d="M14 14h12M14 20h12M14 26h7" stroke="#155b30" stroke-width="2" stroke-linecap="round"/></svg>
+    <b>Facturación <span class="nuevo">Nuevo</span></b>
+    <span>Eliminar documentos mal hechos, ver si la factura cuadra con sus líneas y filtrar las ya facturadas.</span>
+    <small>Menú Más · Facturación</small>
+  </div>
+  <div class="tarjeta">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="15" fill="#fdf3dc" stroke="#9a5b00" stroke-width="2"/><path d="M20 11v18M24 15c-1-2-7-2-7 1.5S24 20 24 24s-6 3.500-8 1" fill="none" stroke="#9a5b00" stroke-width="2" stroke-linecap="round"/></svg>
+    <b>Cartera <span class="nuevo">Nuevo</span></b>
+    <span>Clientes de facturación, quién pagó, descuentos contables (retenciones) y observaciones por factura.</span>
+    <small>Menú Más · Cartera</small>
+  </div>
+  <div class="tarjeta">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5C20 5 9 18 9 25a11 11 0 0 0 22 0C31 18 20 5 20 5z" fill="#e9f3ed" stroke="#155b30" stroke-width="2"/><path d="M14 26h12" stroke="#155b30" stroke-width="2" stroke-linecap="round"/></svg>
+    <b>Combustible y máquinas <span class="nuevo">Nuevo</span></b>
+    <span>Interruptor «No quedó lleno», selector de combustible, ganchos y otros insumos, y orden de las máquinas.</span>
+    <small>Tanqueo · Eficiencia maquinaria · Máquinas</small>
+  </div>
+  <div class="tarjeta">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="6" fill="#e9f3ed" stroke="#155b30" stroke-width="2"/><path d="M20 5v6M20 29v6M5 20h6M29 20h6M9.500 9.500l4 4M26.500 26.500l4 4M30.500 9.500l-4 4M13.500 26.500l-4 4" stroke="#155b30" stroke-width="2" stroke-linecap="round"/></svg>
+    <b>Taller <span class="nuevo">Nuevo</span></b>
+    <span>Inventario de piezas con foto, carga desde Excel y asistencia de los mecánicos con la cara.</span>
+    <small>Taller · Repuestos y Asistencia</small>
+  </div>
+  <div class="tarjeta">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4l14 5v10c0 9-6 15-14 18-8-3-14-9-14-18V9z" fill="#e9f3ed" stroke="#155b30" stroke-width="2"/><path d="M13 20l5 5 9-10" fill="none" stroke="#155b30" stroke-width="2.500" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <b>Pago seguro <span class="nuevo">Nuevo</span></b>
+    <span>Nunca se paga más del área de la suerte; la planilla avisa antes de pagar.</span>
+    <small>Planilla · Labores</small>
+  </div>
+  <div class="tarjeta">
+    <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="15" cy="14" r="6" fill="#e9f3ed" stroke="#155b30" stroke-width="2"/><path d="M4 33c0-6 5-10 11-10s11 4 11 10" fill="none" stroke="#155b30" stroke-width="2" stroke-linecap="round"/><circle cx="29" cy="16" r="4.500" fill="#fdf3dc" stroke="#9a5b00" stroke-width="2"/><path d="M26 30c0-4 3-7 7-7" fill="none" stroke="#9a5b00" stroke-width="2" stroke-linecap="round"/></svg>
+    <b>Usuarios y fincas <span class="nuevo">Nuevo</span></b>
+    <span>Usuario de solo consulta, filtros por categoría y el nuevo plan de cada corte en Fincas.</span>
+    <small>Más · Usuarios · Fincas</small>
+  </div>
+</div>
+
+<!-- ───────────── 1 Facturación ───────────── -->
+<h2 class="parte salto"><span class="num">1</span> Facturación: de la labor a la factura</h2>
+<p class="intro">El recorrido de una labor no cambió. Lo nuevo está en los tres puntos marcados.</p>
+
+<div class="infografia">
+  <h4>El recorrido y lo que se agregó</h4>
+  <div class="cadena">
+    <div class="eslabon">Labor realizada<small>la cierra el operario</small><em>Filtro «Ya facturadas»</em></div><span class="flecha">→</span>
+    <div class="eslabon">Soporte del cliente<small>PDF del ingenio</small><em>Eliminar si quedó mal</em></div><span class="flecha">→</span>
+    <div class="eslabon">Factura<small>PDF con su total</small><em>Cuadre contra las líneas</em></div><span class="flecha">→</span>
+    <div class="eslabon">Cartera<small>cobro y saldo</small><em>Quién pagó · retenciones</em></div><span class="flecha">→</span>
+    <div class="eslabon eslabon--fin">Pagada<small>saldo en cero</small></div>
+  </div>
+</div>
+
+<h3>Eliminar un soporte o una factura equivocados</h3>
+<ul class="puntos">
+  <li>En la tabla <b>Soportes y facturas</b> aparece el botón <span class="boton boton--claro">Eliminar</span> (lo ven propietario y administración).</li>
+  <li>Solo se puede eliminar si el documento <b>no tiene líneas pegadas ni pagos</b>. Si tiene, primero se desvinculan las líneas.</li>
+  <li>Queda anotado quién lo eliminó y cuándo. El PDF se conserva guardado; solo deja de aparecer.</li>
+</ul>
+
+<h3>El total de la factura y el cuadre</h3>
+<p class="intro">Antes, al vincular más fincas a una misma factura, el total se quedaba con el de la primera. Ahora el total se va acumulando y la pantalla lo compara con la suma de las líneas pegadas.</p>
+<div class="infografia">
+  <h4>Los tres resultados del cuadre (ejemplo)</h4>
+  <svg viewBox="0 0 360 200" role="img" aria-label="Tres barras: cuadra, faltan y se pasa">
+    <g font-family="system-ui, Segoe UI, sans-serif" font-size="13">
+      <text x="8" y="20" fill="#4a5040" font-weight="700">Total de la factura</text>
+      <rect x="8" y="26" width="240" height="14" rx="7" fill="#e3e2dc"/>
+
+      <text x="8" y="70" fill="#161a14" font-weight="700">Cuadra</text>
+      <rect x="8" y="76" width="240" height="14" rx="7" fill="#155b30"/>
+      <text x="258" y="88" fill="#155b30" font-weight="700">✔ Cuadra</text>
+
+      <text x="8" y="116" fill="#161a14" font-weight="700">Faltan</text>
+      <rect x="8" y="122" width="240" height="14" rx="7" fill="#e3e2dc"/>
+      <rect x="8" y="122" width="168" height="14" rx="7" fill="#9a5b00"/>
+      <text x="258" y="134" fill="#9a5b00" font-weight="700">Faltan $…</text>
+
+      <text x="8" y="162" fill="#161a14" font-weight="700">Se pasa</text>
+      <rect x="8" y="168" width="240" height="14" rx="7" fill="#155b30"/>
+      <rect x="248" y="168" width="44" height="14" rx="3" fill="#b3261e"/>
+      <line x1="248" y1="162" x2="248" y2="188" stroke="#161a14" stroke-width="1.500" stroke-dasharray="3 2"/>
+      <text x="354" y="161" fill="#b3261e" font-weight="700" text-anchor="end">Se pasa $…</text>
+    </g>
+  </svg>
+  <figcaption>«Faltan» o «Se pasa» casi siempre es una tarifa que falta o un valor digitado mal. Hay que revisarlas antes de enviar la factura a cartera. También puede decir «Sin total» o «Sin precio en N líneas».</figcaption>
+</div>
+
+<h3>Ver solo lo que falta por facturar</h3>
+<p>En la lista de Facturación, el selector <b>Mostrar</b> tiene tres opciones: <b>Todas</b>, <b>Sin facturar</b> y <b>Ya facturadas</b>. Una línea recién facturada no desaparece a mitad de trabajo.</p>
+
+<div class="hacer">
+  <b class="titulo">Qué hacer — Administración (Carlos David)</b>
+  <ul>
+    <li>Revisar las facturas que salgan con «Faltan» o «Se pasa» y corregir el total o la tarifa de la línea.</li>
+    <li>Eliminar los soportes y facturas que quedaron duplicados o sin predio.</li>
+  </ul>
+</div>
+
+<!-- ───────────── 2 Cartera ───────────── -->
+<h2 class="parte"><span class="num">2</span> Cartera: clientes, retenciones y observaciones</h2>
+<p class="intro">Cartera ahora tiene tres pestañas: <b>Facturas</b>, <b>Acuerdos de pago</b> y <b>👥 Clientes</b>. Dentro de cada factura hay tres secciones nuevas: <b>Quién</b>, <b>Deducciones</b> y <b>Observaciones</b>.</p>
+
+<div class="infografia">
+  <h4>La lista de facturas (ejemplo)</h4>
+  <div class="mock">
+    <div class="mock__fila"><span>Factura</span><span>Facturado a</span><span>Tipo de cliente</span></div>
+    <div class="mock__fila"><span><b>FE 0001</b> 💬 2</span><span><b>COLONO DE EJEMPLO</b><small>↳ Pagó: INGENIO DE EJEMPLO S.A.</small></span><span>Proveedor</span></div>
+    <div class="mock__fila"><span><b>FE 0002</b> <span class="chip">Ded. $100.000</span></span><span><b>INGENIO DE EJEMPLO S.A.</b></span><span>Proveedor</span></div>
+  </div>
+  <figcaption>El campo que antes decía «Cliente» ahora se llama <b>Tipo de cliente</b>. El nombre real va en <b>Facturado a</b>, y si paga otra empresa se ve debajo, en «Pagó». El 💬 avisa que hay observaciones y «Ded.» que ya tiene retenciones aplicadas.</figcaption>
+</div>
+
+<h3>Quién: a quién se facturó y quién paga</h3>
+<p>A veces el ingenio pide facturar a nombre de cada proveedor, pero es el ingenio quien paga. En el detalle de la factura, la sección <b>Quién</b> tiene dos selectores con búsqueda: <b>Facturado a</b> y <b>Quién paga</b> (queda «Igual al facturado» si no se cambia).</p>
+
+<h3>Deducciones: retefuente, reteICA y demás</h3>
+<div class="infografia">
+  <h4>Una deducción baja el saldo, pero no es plata recibida</h4>
+  <svg viewBox="0 0 362 112" role="img" aria-label="Valor menos pagado menos deducido es igual al saldo">
+    <g font-family="system-ui, Segoe UI, sans-serif" text-anchor="middle">
+      <rect x="6" y="12" width="74" height="42" rx="9" fill="#e9f3ed" stroke="#155b30"/>
+      <text x="43" y="30" font-size="12" fill="#155b30" font-weight="700">Valor</text><text x="43" y="46" font-size="10" fill="#4a5040">factura</text>
+      <text x="89" y="38" font-size="20" fill="#4a5040" font-weight="700">−</text>
+      <rect x="98" y="12" width="74" height="42" rx="9" fill="#e9f3ed" stroke="#155b30"/>
+      <text x="135" y="30" font-size="12" fill="#155b30" font-weight="700">Pagado</text><text x="135" y="46" font-size="10" fill="#4a5040">plata que entró</text>
+      <text x="181" y="38" font-size="20" fill="#4a5040" font-weight="700">−</text>
+      <rect x="190" y="12" width="74" height="42" rx="9" fill="#fdf3dc" stroke="#9a5b00"/>
+      <text x="227" y="30" font-size="12" fill="#9a5b00" font-weight="700">Deducido</text><text x="227" y="46" font-size="10" fill="#4a5040">retenciones</text>
+      <text x="273" y="38" font-size="20" fill="#4a5040" font-weight="700">=</text>
+      <rect x="282" y="12" width="74" height="42" rx="9" fill="#155b30"/>
+      <text x="319" y="30" font-size="12" fill="#fff" font-weight="700">Saldo</text><text x="319" y="46" font-size="10" fill="#fff">por cobrar</text>
+      <text x="181" y="84" font-size="11.500" fill="#4a5040">Cuando Pagado + Deducido = Valor, la factura queda</text>
+      <text x="181" y="100" font-size="11.500" fill="#155b30" font-weight="700">«Pagada» sin tener que inventar un pago.</text>
+    </g>
+  </svg>
+</div>
+<ol class="pasos">
+  <li>Abra la factura y la sección <b>Deducciones</b>. Salen las del cliente ya marcadas, con su valor calculado sobre el valor de la factura.</li>
+  <li>Desmarque las que no apliquen, corrija el valor si hace falta o agregue otra con <span class="boton boton--claro">＋ Otra deducción</span> (retención, reteICA, ICA, fondo de garantía, timbre, descuento u otro manual).</li>
+  <li>Mire el resumen <b>Saldo hoy · Deducciones marcadas · Saldo después</b> y toque <span class="boton">Aplicar deducciones</span>.</li>
+  <li>Si se equivocó, <b>Anular</b> la deducción y escriba el motivo: queda registrado.</li>
+</ol>
+<div class="ojo"><b>Reglas que cuida el sistema:</b> el mismo concepto no se aplica dos veces a una factura (salvo «Descuento» y «Otro»), y lo pagado más lo deducido nunca puede pasar del valor de la factura. Si falta el valor de la factura, primero se escribe en «Valor y plazo de la factura».</div>
+
+<h3>Observaciones</h3>
+<p>Un espacio para dejar anotado lo que se habló del cobro. Cada nota guarda quién la escribió y cuándo. <b>No se editan ni se borran</b>: si hubo un error, se agrega otra nota que lo aclare.</p>
+
+<h3>La pestaña Clientes: se escribe una sola vez</h3>
+<p>Aquí se crea la lista de clientes de facturación (nombre en mayúscula, tipo: Ingenio, Proveedor, Colono, Particular u Otro, y NIT si lo hay) y, para cada uno, sus <b>deducciones predeterminadas</b>. Si la factura la paga otra empresa, se usan las deducciones de quien paga. Los porcentajes <b>no vienen cargados</b>: los define cartera.</p>
+
+<div class="hacer">
+  <b class="titulo">Qué hacer — Cartera (Viviana)</b>
+  <ul>
+    <li>Enviar el archivo con los descuentos que aplica cada cliente (porcentajes y si se calculan sobre el valor con o sin IVA).</li>
+    <li>Con ese archivo, cargar en <b>Clientes</b> cada cliente y sus deducciones predeterminadas.</li>
+    <li>Al revisar un pago, usar <b>Quién</b>, <b>Deducciones</b> y <b>Observaciones</b> en lugar de dejarlo en notas aparte.</li>
+  </ul>
+</div>
+
+<!-- ───────────── 3 Combustible y máquinas ───────────── -->
+<h2 class="parte"><span class="num">3</span> Combustible y máquinas</h2>
+
+<h3>Interruptor «No quedó lleno»</h3>
+<p class="intro">El consumo por hora se calcula de tanque lleno a tanque lleno. Si un tanqueo parcial se tomaba como lleno, el promedio salía mal. Ahora, al registrar un tanqueo a máquina o una entrega directa de combustible, aparece el interruptor <b>No quedó lleno</b> («Actívalo si el tanque no se llenó del todo»).</p>
+<div class="infografia">
+  <h4>Cómo se calcula con un tanqueo parcial</h4>
+  <svg viewBox="0 0 360 190" role="img" aria-label="Tres tanqueos: lleno, no quedó lleno, lleno">
+    <defs><marker id="f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4a5040"/></marker></defs>
+    <g font-family="system-ui, Segoe UI, sans-serif" text-anchor="middle">
+      <text x="50" y="16" font-size="12" fill="#4a5040" font-weight="700">Tanqueo 1</text>
+      <rect x="20" y="24" width="60" height="80" rx="8" fill="#fff" stroke="#155b30" stroke-width="2"/>
+      <rect x="22" y="26" width="56" height="76" rx="6" fill="#155b30"/>
+      <text x="50" y="122" font-size="12" fill="#155b30" font-weight="700">Lleno</text>
+
+      <text x="180" y="16" font-size="12" fill="#4a5040" font-weight="700">Tanqueo 2</text>
+      <rect x="150" y="24" width="60" height="80" rx="8" fill="#fff" stroke="#9a5b00" stroke-width="2" stroke-dasharray="5 3"/>
+      <rect x="152" y="58" width="56" height="44" rx="6" fill="#d9a441"/>
+      <text x="180" y="122" font-size="12" fill="#9a5b00" font-weight="700">No quedó lleno</text>
+
+      <text x="310" y="16" font-size="12" fill="#4a5040" font-weight="700">Tanqueo 3</text>
+      <rect x="280" y="24" width="60" height="80" rx="8" fill="#fff" stroke="#155b30" stroke-width="2"/>
+      <rect x="282" y="26" width="56" height="76" rx="6" fill="#155b30"/>
+      <text x="310" y="122" font-size="12" fill="#155b30" font-weight="700">Lleno</text>
+
+      <path d="M88 64h54" stroke="#4a5040" stroke-width="1.500" marker-end="url(#f)"/>
+      <path d="M218 64h54" stroke="#4a5040" stroke-width="1.500" marker-end="url(#f)"/>
+      <path d="M50 134v10h260v-10" fill="none" stroke="#155b30" stroke-width="1.500"/>
+      <text x="180" y="162" font-size="11.500" fill="#4a5040">Se mide del 1 al 3 y se suman los galones</text>
+      <text x="180" y="178" font-size="11.500" fill="#4a5040">de los tanqueos 2 y 3 sobre las horas trabajadas.</text>
+    </g>
+  </svg>
+  <figcaption>El tanqueo parcial queda marcado «No quedó lleno» en Eficiencia maquinaria y sus galones no se pierden: entran en el tramo del siguiente tanque lleno.</figcaption>
+</div>
+
+<h3>Eficiencia de maquinaria: combustible, ganchos y otros insumos</h3>
+<p>Arriba de la pantalla hay un selector con tres opciones: <b>Combustible</b>, <b>Ganchos</b> y <b>Otros insumos</b> (aceites, rodamientos y demás). La opción escogida cambia las gráficas y las tablas de abajo. El analista también puede dejar observaciones sobre los consumos de combustible.</p>
+
+<h3>Orden de las máquinas para los informes</h3>
+<ol class="pasos">
+  <li>Entre a <b>Máquinas</b> y toque <span class="boton boton--claro">↕ Orden de los informes</span>.</li>
+  <li>Suba o baje cada máquina hasta dejarlas como se quieren ver; aparece «Sin guardar» mientras no se guarde.</li>
+  <li>Toque <span class="boton">Guardar orden</span>. Todos los informes, la eficiencia y los tableros usan ese orden.</li>
+</ol>
+<p class="pie">Una máquina nueva queda al final de la lista hasta que se le asigne un puesto.</p>
+
+<div class="hacer">
+  <b class="titulo">Qué hacer</b>
+  <ul>
+    <li><b>Analista de insumos (Diego) y quien entregue combustible:</b> activar «No quedó lleno» cada vez que el tanque no se llene del todo.</li>
+    <li><b>Dirección (Cristian):</b> ordenar las máquinas una vez en «Orden de los informes».</li>
+  </ul>
+</div>
+
+<!-- ───────────── 4 Taller ───────────── -->
+<h2 class="parte"><span class="num">4</span> Taller: inventario de piezas con foto</h2>
+<p class="intro">En <b>Taller → Repuestos</b> cada pieza tiene su foto, su estante y su cantidad. Ya está lista para cargar el almacén completo.</p>
+
+<div class="infografia">
+  <h4>Dos formas de cargar piezas</h4>
+  <div class="dos">
+    <div>
+      <b>Una por una, desde el celular</b>
+      <div class="cadena">
+        <div class="eslabon">1 · 📷 Nueva pieza<small>toma la foto</small></div><span class="flecha">→</span>
+        <div class="eslabon">2 · Nombre, estante y cantidad<small>lo demás es opcional</small></div><span class="flecha">→</span>
+        <div class="eslabon eslabon--fin">3 · Guardar y siguiente<small>conserva estante y familia</small></div>
+      </div>
+    </div>
+    <div>
+      <b>Muchas de una vez, desde Excel</b>
+      <div class="cadena">
+        <div class="eslabon">1 · 📥 Cargar desde Excel<small>baja la plantilla y llénala</small></div><span class="flecha">→</span>
+        <div class="eslabon">2 · Revisar<small>las parecidas o repetidas no se crean</small></div><span class="flecha">→</span>
+        <div class="eslabon eslabon--fin">3 · Listo<small>baja un Excel con las que no pasaron</small></div>
+      </div>
+    </div>
+  </div>
+  <figcaption>Funciona aunque no haya señal: la pieza queda guardada y la foto se sube al volver la conexión. Si ya existe una pieza parecida, la pantalla avisa antes de duplicarla. La lista se puede filtrar por <b>Todas</b>, <b>Bajo mínimo</b>, <b>Agotadas</b> y <b>Sin foto</b>.</figcaption>
+</div>
+
+<h3>Asistencia de los mecánicos</h3>
+<p>Los mecánicos marcan entrada y salida con la cara, o en una tableta fija en la entrada (<b>quiosco</b>): tocan su nombre y se toman la selfie o escriben su PIN. Lo dudoso queda «por revisar» y el jefe lo acepta viendo la foto. La pestaña <b>Personal</b> sirve para crear a cada mecánico y registrar su cara en persona.</p>
+
+<div class="hacer">
+  <b class="titulo">Qué hacer — Almacén del taller (Alex y Diego) y administración</b>
+  <ul>
+    <li>Fotografiar y registrar las piezas del almacén, desde «Nueva pieza» o con la carga desde Excel.</li>
+    <li>Revisar los insumos que faltan en el inventario (por ejemplo los aceites 424 y 80W90) y crearlos.</li>
+    <li>Administración: crear a los mecánicos en <b>Personal</b> y el usuario del quiosco, y definir dónde queda la tableta.</li>
+  </ul>
+</div>
+
+<!-- ───────────── 5 Pago seguro ───────────── -->
+<h2 class="parte"><span class="num">5</span> Pago seguro: nunca más del área de la suerte</h2>
+<p class="intro">Regla de la casa: por ninguna razón se paga más del área oficial de la suerte, así trabajen dos o tres operarios en ella. Ahora lo cuida la base de datos y la planilla avisa antes de pagar.</p>
+
+<div class="infografia">
+  <h4>Ejemplo con una suerte de 10 hectáreas</h4>
+  <svg viewBox="0 0 360 160" role="img" aria-label="Dos operarios suman 10 ha: se paga. Suman 11 ha: se rechaza">
+    <g font-family="system-ui, Segoe UI, sans-serif">
+      <text x="20" y="16" font-size="12" fill="#4a5040" font-weight="700">Área oficial de la suerte: 10 ha</text>
+      <rect x="20" y="22" width="320" height="14" rx="7" fill="#e3e2dc"/>
+
+      <rect x="20" y="52" width="192" height="26" rx="6" fill="#155b30"/>
+      <text x="116" y="70" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">Operario 1 · 6 ha</text>
+      <rect x="214" y="52" width="126" height="26" rx="6" fill="#4f9a6b"/>
+      <text x="277" y="70" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">Operario 2 · 4 ha</text>
+      <text x="20" y="96" font-size="12" fill="#155b30" font-weight="700">✔ Suman 10 ha: se puede pagar.</text>
+
+      <rect x="20" y="108" width="192" height="26" rx="6" fill="#155b30"/>
+      <text x="116" y="126" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">Operario 1 · 6 ha</text>
+      <rect x="214" y="108" width="126" height="26" rx="6" fill="#4f9a6b"/>
+      <rect x="340" y="108" width="20" height="26" rx="4" fill="#b3261e"/>
+      <text x="277" y="126" font-size="12" fill="#fff" text-anchor="middle" font-weight="700">Operario 2 · 5 ha</text>
+      <line x1="340" y1="100" x2="340" y2="140" stroke="#161a14" stroke-width="1.500" stroke-dasharray="3 2"/>
+      <text x="20" y="152" font-size="12" fill="#b3261e" font-weight="700">✖ Suman 11 ha: el sistema no deja registrarlo.</text>
+    </g>
+  </svg>
+  <figcaption>Se permite un margen de 0,02 ha. Los números del dibujo son un ejemplo.</figcaption>
+</div>
+<ul class="puntos">
+  <li>Si al cerrar una labor el área excede lo permitido, el sistema responde con un aviso y no la guarda.</li>
+  <li>En la <b>Planilla</b>, el cuadro <b>⚠ Revise antes de pagar</b> lista las suertes cuyo total registrado pasa del área oficial. Avisa, no bloquea.</li>
+  <li>La tarjeta del operario muestra lo que <b>falta</b> de la suerte según el área oficial, igual que el cierre.</li>
+</ul>
+<div class="hacer">
+  <b class="titulo">Qué hacer — Administración (Carlos David)</b>
+  <ul>
+    <li>Antes de cada pago de quincena, mirar el cuadro «Revise antes de pagar» y resolver cada caso con el supervisor. A veces es un área corregida en el maestro y no un pago doble.</li>
+  </ul>
+</div>
+
+<!-- ───────────── 6 Accesos y fincas ───────────── -->
+<h2 class="parte"><span class="num">6</span> Usuarios y fincas</h2>
+<h3>Usuario de solo consulta («Propietario 1»)</h3>
+<p>Para quien necesita ver y no tocar. Ve <b>Tableros</b> (las tres caras), <b>Planilla</b>, <b>Resumen</b> y <b>Reporte</b>, con filtros, detalles y Excel. No puede asignar, editar, aprobar, cancelar ni borrar. Administración lo crea en <b>Más → Usuarios</b>, con el rol «Propietario 1 (solo consulta)».</p>
+<h3>Filtros en la lista de usuarios</h3>
+<p>Debajo de la lista hay botones por categoría: <b>Operativos</b>, <b>Dueños de finca</b>, <b>Propietarios</b>, <b>Administrativos</b> y más. Tocar uno muestra solo ese grupo; «Todos» vuelve a mostrar la lista completa.</p>
+<h3>Fincas: el plan de cada corte</h3>
+<ul class="puntos">
+  <li>El <b>catálogo de labores</b> tiene una tarjeta por labor, con presupuesto por hectárea, ventana en días después del corte (DDC) y servicio.</li>
+  <li>El asistente <b>Iniciar corte</b> arma el plan en cuatro pasos y no guarda nada hasta el último.</li>
+  <li>El tablero <b>Plan y avance</b> compara lo presupuestado con lo ejecutado y avisa lo atrasado.</li>
+</ul>
+<div class="hacer">
+  <b class="titulo">Qué hacer</b>
+  <ul>
+    <li><b>Administración:</b> crear los usuarios que falten (por ejemplo el de consulta) y revisar con Iván las etapas y rubros del gremio en Fincas.</li>
+  </ul>
+</div>
+
+<!-- ───────────── Resumen por persona ───────────── -->
+<h2 class="parte"><span class="num">7</span> Qué necesitamos de cada persona</h2>
+<p class="intro">La lista completa en un solo lugar. Lo que no está marcado como urgente se puede hacer en la semana.</p>
+<table class="quien">
+  <thead><tr><th>Quién</th><th>Qué debe hacer</th><th>Dónde</th></tr></thead>
+  <tbody>
+    <tr><td>Cartera<br>(Viviana)</td><td><ul>
+      <li><b>Enviar el archivo de descuentos por cliente</b> (porcentajes y base de cálculo).</li>
+      <li>Cargar cada cliente y sus deducciones predeterminadas.</li>
+      <li>Usar Quién, Deducciones y Observaciones en cada factura.</li></ul></td><td>Cartera → Clientes y detalle de la factura</td></tr>
+    <tr><td>Administración<br>(Carlos David)</td><td><ul>
+      <li>Revisar las facturas con «Faltan» o «Se pasa» y eliminar documentos duplicados.</li>
+      <li>Mirar «Revise antes de pagar» antes de cada quincena.</li>
+      <li>Crear los mecánicos, el usuario del quiosco y los usuarios de consulta.</li>
+      <li>Enviar a Iván el Excel de facturas para conciliar.</li></ul></td><td>Facturación · Planilla · Taller → Personal · Más → Usuarios</td></tr>
+    <tr><td>Analista de insumos<br>(Diego)</td><td><ul>
+      <li>Activar «No quedó lleno» cuando el tanque no se llene.</li>
+      <li>Dejar observaciones sobre los consumos de combustible.</li></ul></td><td>Tanqueo · Entrega directa · Eficiencia maquinaria</td></tr>
+    <tr><td>Almacén del taller<br>(Alex y Diego, según la reunión)</td><td><ul>
+      <li>Fotografiar y cargar las piezas del almacén.</li>
+      <li>Crear los insumos que faltan (aceites 424 y 80W90).</li></ul></td><td>Taller → Repuestos</td></tr>
+    <tr><td>Dirección<br>(Cristian)</td><td><ul>
+      <li>Ordenar las máquinas para los informes.</li>
+      <li><b>Enviar el Excel de septiembre y octubre</b> para la carga masiva de fincas.</li>
+      <li>Pedir el análisis de suelo de Río Grande.</li></ul></td><td>Máquinas → Orden de los informes</td></tr>
+    <tr><td>Todos</td><td><ul>
+      <li>Probar lo nuevo con sus propios usuarios y <b>avisar a Iván</b> de cualquier cosa que no se entienda o no funcione, con una captura de pantalla.</li></ul></td><td>WhatsApp con Iván</td></tr>
+  </tbody>
+</table>
+
+<div class="infografia" style="margin-top:16px">
+  <h4>Lo que sigue (lo construye Iván)</h4>
+  <div class="cadena">
+    <div class="eslabon">1 · Importar las facturas del Excel<small>para conciliar con el sistema contable</small></div><span class="flecha">→</span>
+    <div class="eslabon">2 · Carga masiva de fincas y documentos<small>cuando llegue el Excel</small></div><span class="flecha">→</span>
+    <div class="eslabon">3 · Leer el PDF de la factura<small>para comparar su total</small></div><span class="flecha">→</span>
+    <div class="eslabon eslabon--fin">Piloto Río Grande<small>curva de fertilización</small></div>
+  </div>
+</div>
+
+<p class="pie-doc">Manual breve de las novedades de octubre de 2026 · AgroServicios Morales. Los nombres, valores y porcentajes de los dibujos son ejemplos. Las guías completas de cada módulo están en el menú de la app (botón «Manual»).</p>
+
+</main>
+</body>
+</html>

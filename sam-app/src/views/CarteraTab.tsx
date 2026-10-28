@@ -6,14 +6,19 @@ import { aligerarDocumento } from '../lib/pdfLigero'
 import { datosSiigo, siigoConectado, traerEstadoSiigo, verPdfSiigo, type DatosSiigo } from '../services/siigoApi'
 import {
   ESTADOS_CARTERA, actualizarFactura, anularPago, claveHacienda, estadoAcuerdo, infoEstado, ligarFacturaAcuerdo,
-  loadAcuerdos, loadCartera, loadPagos, nombreCuota, pesos, registrarPago,
-  type Acuerdo, type EstadoCartera, type FacturaCartera, type Pago,
+  loadAcuerdos, loadCartera, loadClientesFact, loadConceptosDeduccion, loadPagos, loadReglasClientes,
+  nombreCuota, pesos, registrarPago,
+  type Acuerdo, type ClienteFact, type ConceptoDeduccion, type EstadoCartera, type FacturaCartera, type Pago,
 } from '../services/carteraApi'
 import { AcuerdoDetalle, AcuerdoForm, ListaAcuerdos, type PrefillAcuerdo } from '../components/AcuerdosCartera'
+import { ListaClientesFact } from '../components/ClientesFact'
+import { SeccionClientesFactura, SeccionDeduccionesFactura, SeccionObservacionesFactura } from '../components/DeduccionesFactura'
 import { FiltrosPeriodoLabor } from '../components/FiltrosPeriodoLabor'
 import { cumpleLabor, cumplePeriodo, filtrosIniciales, hayFiltroLabor, type FiltrosLabor } from '../lib/filtrosPeriodoLabor'
+import { useCapaAtras } from '../lib/atras'
+import type { ReglaDeduccion } from '../lib/deduccionesCartera'
 import { getAssignmentIngenioId } from '../services/samApi'
-import type { Assignment } from '../domain/sam'
+import type { Assignment, UserProfile } from '../domain/sam'
 
 /**
  * CARTERA (2-oct-2026) — la revisa Viviana. Cada factura con su vencimiento
@@ -26,11 +31,16 @@ import type { Assignment } from '../domain/sam'
  * según su plan (la próxima cuota) y el anticipo se descuenta de ella.
  */
 export function CarteraTab() {
-  const { session, todayKey, assignments, maestro, ingenios, setError, setInfo } = useAppData()
+  const { session, todayKey, assignments, maestro, ingenios, users, setError, setInfo } = useAppData()
   const [facturas, setFacturas] = useState<FacturaCartera[]>([])
   const [acuerdos, setAcuerdos] = useState<Acuerdo[]>([])
+  // Catálogo de clientes de facturación y sus deducciones predeterminadas (Ola 2, 27-oct-2026).
+  // Si la migración no está aplicada, las lecturas devuelven vacío y la pantalla lo avisa.
+  const [clientes, setClientes] = useState<ClienteFact[]>([])
+  const [conceptos, setConceptos] = useState<ConceptoDeduccion[]>([])
+  const [reglasPorCliente, setReglasPorCliente] = useState<Record<string, ReglaDeduccion[]>>({})
   const [cargando, setCargando] = useState(true)
-  const [vista, setVista] = useState<'FACTURAS' | 'ACUERDOS'>('FACTURAS')
+  const [vista, setVista] = useState<'FACTURAS' | 'ACUERDOS' | 'CLIENTES'>('FACTURAS')
   const [filtro, setFiltro] = useState<EstadoCartera | 'PENDIENTES' | 'TODAS' | 'CON_ACUERDO' | 'ALERTAS_COBRO'>('PENDIENTES')
   const [buscar, setBuscar] = useState('')
   const [abierta, setAbierta] = useState<FacturaCartera | null>(null)
@@ -39,20 +49,29 @@ export function CarteraTab() {
   const [form, setForm] = useState<{ acuerdo: Acuerdo | null; prefill?: PrefillAcuerdo } | null>(null)
 
   const recargar = useCallback(async (abrirAcuerdo?: string) => {
-    const [f, ac] = await Promise.all([loadCartera(), loadAcuerdos()])
+    const [f, ac, cli, con, reg] = await Promise.all([
+      loadCartera(), loadAcuerdos(), loadClientesFact(), loadConceptosDeduccion(), loadReglasClientes(),
+    ])
     setFacturas(f)
     setAcuerdos(ac)
+    setClientes(cli)
+    setConceptos(con)
+    setReglasPorCliente(reg)
     setAbierta((a) => (a ? f.find((x) => x.id === a.id) ?? null : null))
     setAcuerdoAbierto((a) => ac.find((x) => x.id === (abrirAcuerdo ?? a?.id)) ?? null)
     setCargando(false)
   }, [])
   useEffect(() => {
     let vivo = true
-    void Promise.all([loadCartera(), loadAcuerdos()]).then(([f, ac]) => {
-      if (vivo) { setFacturas(f); setAcuerdos(ac); setCargando(false) }
-    })
+    void Promise.all([loadCartera(), loadAcuerdos(), loadClientesFact(), loadConceptosDeduccion(), loadReglasClientes()])
+      .then(([f, ac, cli, con, reg]) => {
+        if (vivo) { setFacturas(f); setAcuerdos(ac); setClientes(cli); setConceptos(con); setReglasPorCliente(reg); setCargando(false) }
+      })
     return () => { vivo = false }
   }, [])
+
+  // «Atrás» del celular: cierra el detalle de la factura en vez de salir de la app.
+  useCapaAtras(!!abierta, () => setAbierta(null))
 
   // Los mismos filtros del Reporte (26-oct-2026). El período se mide sobre la FECHA DE LA FACTURA; ingenio,
   // hacienda, suerte y operador se buscan en las labores que esa factura cubre. Todo lo que muestra la pantalla
@@ -129,7 +148,7 @@ export function CarteraTab() {
         if (filtro === 'ALERTAS_COBRO') return f.estado !== 'PAGADA' && (f.estado === 'CRITICA' || f.estado === 'OTRAS_MEDIDAS' || f.diasMora > 0)
         return f.estado === filtro
       })
-      .filter((f) => !q || `${f.numero} ${f.cliente ?? ''} ${f.razonSocial ?? ''} ${f.colono ?? ''}`.toLowerCase().includes(q))
+      .filter((f) => !q || `${f.numero} ${f.cliente ?? ''} ${f.razonSocial ?? ''} ${f.colono ?? ''} ${f.facturadoA ?? ''} ${f.pagador ?? ''}`.toLowerCase().includes(q))
   }, [facturasVista, filtro, buscar])
 
   async function ver(path: string | null) {
@@ -179,9 +198,21 @@ export function CarteraTab() {
         <button type="button" role="tab" aria-selected={vista === 'ACUERDOS'} className={`realizadas-seg__btn${vista === 'ACUERDOS' ? ' is-active' : ''}`} onClick={() => setVista('ACUERDOS')}>
           🤝 Acuerdos de pago ({vigentes})
         </button>
+        <button type="button" role="tab" aria-selected={vista === 'CLIENTES'} className={`realizadas-seg__btn${vista === 'CLIENTES' ? ' is-active' : ''}`} onClick={() => setVista('CLIENTES')}>
+          👥 Clientes ({clientes.filter((c) => c.activo).length})
+        </button>
       </div>
 
-      {vista === 'ACUERDOS' ? (
+      {vista === 'CLIENTES' ? (
+        <ListaClientesFact
+          clientes={clientes}
+          conceptos={conceptos}
+          reglasPorCliente={reglasPorCliente}
+          usuario={session?.id ?? ''}
+          onCambio={async (msg) => { setInfo(msg); await recargar() }}
+          onError={setError}
+        />
+      ) : vista === 'ACUERDOS' ? (
         <ListaAcuerdos acuerdos={acuerdos} hoy={todayKey} onAbrir={setAcuerdoAbierto} onNuevo={() => setForm({ acuerdo: null })} />
       ) : (<>
       <FiltrosPeriodoLabor
@@ -219,7 +250,7 @@ export function CarteraTab() {
         <table className="validacion-table">
           <thead>
             <tr>
-              <th>Factura</th><th>Cliente</th><th>Fecha</th><th>Vence</th><th className="num">Días</th><th className="num">Mora</th>
+              <th>Factura</th><th className="cc-col-facturado">Facturado a</th><th>Tipo de cliente</th><th>Fecha</th><th>Vence</th><th className="num">Días</th><th className="num">Mora</th>
               <th>Estado</th><th className="num">Valor</th><th className="num">Saldo</th>
             </tr>
           </thead>
@@ -228,7 +259,20 @@ export function CarteraTab() {
               const e = infoEstado(f.estado)
               return (
                 <tr key={f.id} className={`cart-fila${abierta?.id === f.id ? ' factura-row--sel' : ''}`} onClick={() => setAbierta(f)}>
-                  <td><b>{f.numero}</b><small className="subtle-copy"> {f.razonSocial ?? ''}</small></td>
+                  <td>
+                    <b>{f.numero}</b>
+                    {f.nObservaciones > 0 && <span className="cc-ind" title="Tiene observaciones">💬 {f.nObservaciones}</span>}
+                    {f.deducido > 0 && <span className="cc-chip-ded" title="Deducciones aplicadas">Ded. {pesos(f.deducido)}</span>}
+                    <small className="subtle-copy"> {f.razonSocial ?? ''}</small>
+                  </td>
+                  <td className="cc-col-facturado">
+                    {f.facturadoA ? (
+                      <>
+                        <strong>{f.facturadoA}</strong>
+                        {f.pagador && f.pagador !== f.facturadoA && <small className="cc-pagador-nota">↳ Pagó: {f.pagador}</small>}
+                      </>
+                    ) : <span className="cc-sin-asignar">—</span>}
+                  </td>
                   <td>{f.cliente ?? '—'}{f.colono && <small className="acu-sub">🤝 {f.colono}</small>}</td>
                   <td className="nowrap">{f.fecha}</td>
                   <td className="nowrap">{f.vence}{f.acuerdoId && f.estado !== 'PAGADA' && <small className="subtle-copy acu-sub">cuota del acuerdo</small>}</td>
@@ -243,7 +287,7 @@ export function CarteraTab() {
               )
             })}
             {lista.length === 0 && (
-              <tr><td colSpan={9} className="validacion-empty">
+              <tr><td colSpan={10} className="validacion-empty">
                 {cargando ? 'Cargando…' : facturas.length === 0 ? 'Todavía no hay facturas: se vinculan en Facturación.' : 'Nada en este filtro.'}
               </td></tr>
             )}
@@ -257,6 +301,10 @@ export function CarteraTab() {
           factura={abierta}
           acuerdos={acuerdos}
           haciendas={[...new Set(assignments.filter((x) => x.facturaId === abierta.id).map((x) => x.haciendaName ?? ''))]}
+          clientes={clientes}
+          conceptos={conceptos}
+          reglasPorCliente={reglasPorCliente}
+          usuarios={users}
           usuario={session.id}
           hoy={todayKey}
           onVer={ver}
@@ -300,8 +348,10 @@ export function CarteraTab() {
   )
 }
 
-function DetalleFactura({ factura: f, acuerdos, haciendas, usuario, hoy, onVer, onCambio, onError, onCerrar, onAbrirAcuerdo, onNuevoAcuerdo }: {
-  factura: FacturaCartera; acuerdos: Acuerdo[]; haciendas: string[]; usuario: string; hoy: string
+function DetalleFactura({ factura: f, acuerdos, haciendas, clientes, conceptos, reglasPorCliente, usuarios, usuario, hoy, onVer, onCambio, onError, onCerrar, onAbrirAcuerdo, onNuevoAcuerdo }: {
+  factura: FacturaCartera; acuerdos: Acuerdo[]; haciendas: string[]
+  clientes: ClienteFact[]; conceptos: ConceptoDeduccion[]; reglasPorCliente: Record<string, ReglaDeduccion[]>; usuarios: UserProfile[]
+  usuario: string; hoy: string
   onVer: (path: string | null) => void; onCambio: (msg: string) => Promise<void>; onError: (m: string) => void; onCerrar: () => void
   onAbrirAcuerdo: (f: FacturaCartera) => void; onNuevoAcuerdo: (f: FacturaCartera) => void
 }) {
@@ -364,6 +414,7 @@ function DetalleFactura({ factura: f, acuerdos, haciendas, usuario, hoy, onVer, 
           <div className="assignment-detail-row"><dt>Labores</dt><dd>{f.nLineas} · {f.cantidad.toLocaleString('es-CO', { maximumFractionDigits: 2 })}</dd></div>
           <div className="assignment-detail-row"><dt>Valor</dt><dd>{pesos(f.valor)}</dd></div>
           <div className="assignment-detail-row"><dt>Pagado</dt><dd>{pesos(f.pagado)}{f.anticipo > 0 && <small className="subtle-copy"> (incluye anticipo descontado {pesos(f.anticipo)})</small>}</dd></div>
+          {f.deducido > 0 && <div className="assignment-detail-row"><dt>Deducido</dt><dd>{pesos(f.deducido)}</dd></div>}
           <div className="assignment-detail-row"><dt>Saldo</dt><dd><b>{pesos(f.saldo)}</b></dd></div>
         </dl>
         {f.archivoPath && <button type="button" className="af-link" onClick={() => onVer(f.archivoPath)}>📄 Abrir la factura</button>}
@@ -440,6 +491,24 @@ function DetalleFactura({ factura: f, acuerdos, haciendas, usuario, hoy, onVer, 
             </button>
           </>
         )}
+
+        {/* Ola 2 (27-oct-2026): quién, deducciones y bitácora de la factura. Van plegadas
+            para que en el celular se puedan cerrar y no empujen el resto hacia abajo. */}
+        <details className="cart-plegable" open>
+          <summary>Quién</summary>
+          <SeccionClientesFactura factura={f} clientes={clientes} usuario={usuario} onCambio={onCambio} onError={onError} />
+        </details>
+
+        <details className="cart-plegable" open>
+          <summary>Deducciones</summary>
+          <SeccionDeduccionesFactura factura={f} conceptos={conceptos} reglasPorCliente={reglasPorCliente}
+            usuario={usuario} hoy={hoy} onCambio={onCambio} onError={onError} />
+        </details>
+
+        <details className="cart-plegable" open>
+          <summary>Observaciones</summary>
+          <SeccionObservacionesFactura factura={f} usuarios={usuarios} usuario={usuario} onCambio={onCambio} onError={onError} />
+        </details>
 
         <details className="cart-plegable">
           <summary>Valor y plazo de la factura</summary>

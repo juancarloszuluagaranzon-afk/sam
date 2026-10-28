@@ -723,7 +723,17 @@ código. 🔴 **No mover esta regla**: cambiarla corre quincenas, planilla y fac
   en computador y barra superior del analista de 413 px a 320 px (afecta a todos los roles; arreglo aparte).
 - Falta: manual de las pantallas nuevas, y las Olas 2 y 3.
 
-## En construcción, SIN publicar — Ola 2 de la reunión: CARTERA CONTABLE (rama `ola2-cartera`, 27-oct-2026)
+## PUBLICADO el 27-oct-2026 (versión `3ea1d50`) — Ola 2 de la reunión: CARTERA CONTABLE
+
+> Publicada con copia de seguridad (`/var/backups/supabase/antes_ola2_cartera_20261027.dump`, 3.750.482 bytes) y la migración `20261027140000`
+> aplicada ANTES del deploy (como `supabase_admin`, una sola transacción), con `notify pgrst, 'reload schema'`. Verificado en la base: 5 tablas
+> nuevas con RLS y solo `select` para `anon`/`authenticated` (sin insert/update/delete), 2 columnas en `fact_documentos`, 6 funciones
+> `security definer`, 7 conceptos sembrados, 0 clientes y 0 reglas (ningún porcentaje sembrado); `cartera_facturas_v` siguió dando las mismas
+> 22 filas, el mismo saldo total y los mismos estados, ahora con 32 columnas (las 7 nuevas al final). `pruebas_ola2_cartera.sql` OK en la base
+> real (begin…rollback, sin dejar nada). Fusión `3ea1d50` (rama `ola2-cartera`). **Sin probar todavía con un usuario real escribiendo**
+> (crear un cliente, fijar sus deducciones, aplicar una deducción, anotar una observación). El texto de abajo se escribió antes de publicar.
+> **Falta**: esa prueba con usuario real, el manual, los porcentajes reales por cliente (archivo de Viviana), observaciones del analista en
+> Ganchos/Otros insumos y la Ola 3.
 
 - **Pedido**: deducciones contables por cliente en Cartera (retefuente, reteICA, ICA, fondo de garantía, timbre, descuentos) con lista de
   predeterminadas por cliente y opción manual para lo excepcional; observaciones por factura; catálogo de clientes (el campo «Cliente» de hoy pasa
